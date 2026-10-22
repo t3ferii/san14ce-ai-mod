@@ -1,6 +1,6 @@
 # 기능별 켜기/끄기
 
-설치기 목록은 묶음 포함 **44개**다. 설치·배포본의 기능 수는 CURRENT를 따른다. 기준은 `distribution/FeatureSelect.ps1`의 `$taskFeatureCatalog`, DLL 해석은 `src/native_adapter.cpp::load_mod_features`, 로더 해석은 `src/module_loader.cpp`다. 배포 기본값과 현재 사용자 INI 값은 다르다.
+개발 설치기 목록은 아래 표와 기능 카탈로그를 따른다. 설치·배포본의 기능 수는 CURRENT를 따른다. 기준은 `distribution/FeatureSelect.ps1`의 `$taskFeatureCatalog`, DLL 해석은 `src/native_adapter.cpp::load_mod_features`, 로더 해석은 `src/module_loader.cpp`다. 배포 기본값과 현재 사용자 INI 값은 다르다.
 
 게임 시작 때 한 번 읽으므로 변경 후 재시작한다. `AI모드_설치관리자.exe`의 설정만 저장 또는 `optional_tools/AI모드_기능선택.cmd`를 사용한다. 설치기는 `관리.ps1 -NonInteractive`에 적용/복구를 위임한다. 메뉴 밖 설정은 보존한다.
 
@@ -8,6 +8,7 @@
 
 | 탭 | 섹션.키 | 기본값 | 묶음 / 필요 기능 | 기능 |
 |---|---|---:|---|---|
+| 게임성 | stratagem.building_destruction_all | 0 | groups.convenience | 건물파괴 성공 시 선택 지역의 모든 적 군사시설·장애물·함정에 원래 피해량을 각각 적용. 성·관문·아군·동맹·중립 제외. 실패는 원작 처리, 플레이어·컴퓨터 공통. [설명](BUILDING_DESTRUCTION.md) |
 | 게임성 | combat.district_intercept_block | 1 | groups.convenience | 지원·내정 군단 출진 제한 (플레이어 2군단~): 지원=수송만, 내정=요격·점령·공격 출진 금지. 컴퓨터·직할·공격 방침·직접 명령·기존 야전부대 제외. 전투 DLL이 있으면 그 1EC890 훅이, 없으면 편의 DLL이 판정 |
 | 전투 | groups.combat | 1 | — | 전투 AI 교정 전체 (SAN14_CombatAI.dll) |
 | 전투 | combat.sortie_formation | 1 | groups.combat | 군세 출진 편성 (병력별 2~7부대·공성 진형·1,000명 지원) |
@@ -16,6 +17,8 @@
 | 전투 | combat.stationary_retreat | 1 | groups.combat | 같은 자리 40일 정지 부대 퇴각 |
 | 전투 | combat.morale | 1 | groups.combat | 사기 회복 우선 |
 | 전투 | combat.support | 1 | groups.combat | 호위·동행 지원 요청 |
+| 전투 | combat.mission_v2 | 1 | groups.combat | 임무 일관성 v2 (공성 시설만·대기 없음·원작 공격 우선) |
+| 전투 | combat.ai_max_aggression | 1 | groups.combat | AI 호전성 최대 (궁극과 같은 공격 검토) |
 | 전투 | combat.ai_wall_block | 1 | groups.combat | 컴퓨터 세력 방벽 건설 금지 |
 | 전투 | combat.combat_cut | 1 | groups.combat | 컴퓨터 군세의 플레이어 병참선 차단 |
 | 전투 | combat.hit_response | 1 | groups.combat | 피격 대응 (적 성·관문 피격 시 공성 고정, 피격 부대 보호) |
@@ -30,6 +33,7 @@
 | 편의성 | extensions.battle_deaths | 1 | groups.convenience | AI 전사 연출·게임 기록 |
 | 편의성 | extensions.captive_dialog | 1 | groups.convenience | 포획 대사 (플레이어 관련 포획 장면 표시) |
 | 편의성 | officer_ui.loyalty | 1 | groups.convenience | 숨겨진 충성도 숫자 표시 |
+| 편의성 | officer_ui.damage_preview | 1 | groups.convenience | 전투력대체 예상 피해량 |
 | 편의성 | extensions.tooltip_collab | 1 | groups.convenience | 개성·전법 툴팁 + 콜라보 개성/전법 해금 |
 | 편의성 | game_flow.speed_buttons | 1 | groups.convenience | 진행 속도 버튼 >>>>(×4)·>>>>>(×8) |
 | 편의성 | game_flow.occupy_fast | 1 | groups.convenience | 거점 자동점령 연출 단축 (원작의 약 1/4) |
@@ -40,6 +44,9 @@
 | 성능 | performance.name_lookup | 1 | groups.performance | 원작 이름 탐색 가속 |
 | 성능 | performance.layout_keep | 1 | groups.performance | 화면 레이아웃 보관 (턴 전환 로딩 단축) |
 | 성능 | game_flow.fast_save | 1 | groups.convenience | 빠른 자동저장 압축 |
+| 성능 | progress_native.geometry | 1 | groups.performance | 거리 계산 세부 가속 |
+| 게임성 | stratagem.building_destruction_all | 0 | groups.convenience | 건물파괴 지역 전체 피해 |
+| 게임성 | combat.district_intercept_block | 1 | groups.convenience | 지원·내정 군단 출진 제한 (플레이어 2군단~) |
 | 게임성 | personnel.merit | 1 | groups.convenience | 논공 친애 확장 |
 | 게임성 | personnel.awards_ai | 1 | groups.convenience + personnel.awards | 컴퓨터 명품 자동 배분 |
 | 게임성 | personnel.recruit_ai | 1 | groups.convenience | 컴퓨터·위임 군단 등용 시도 제한 |
@@ -52,6 +59,14 @@
 | 게임성 | extensions.traits9 | 1 | groups.convenience | 개성 9칸 |
 | 게임성 | extensions.stats200 | 1 | groups.convenience | 능력치 상한 200 |
 | 게임성 | extensions.stats200_growth | 1 | groups.convenience + extensions.stats200 | 능력치 100 이후 자연 성장 |
+| 기타(개발용) | groups.diagnostics | 1 | — | 개발용 기능 전체 |
+| 기타(개발용) | diagnostics.enabled | 0 | groups.diagnostics | 진단 로그 기록 (SAN14_*.log) |
+| 기타(개발용) | diagnostics.reuse_handle | 1 | groups.diagnostics | 로그 파일 핸들 재사용 |
+| 기타(개발용) | diagnostics.ai_trace | 0 | groups.diagnostics | 원작 AI 행동 추적 (CSV) |
+| 기타(개발용) | diagnostics.ai_trace_original | 0 | groups.diagnostics | 원작만 추적 (모드 훅 연결 안 함) |
+| 기타(개발용) | diagnostics.layout_wait | 0 | groups.diagnostics | 화면 레이아웃 대기 기록 |
+| 기타(개발용) | diagnostics.gpu_profile | 0 | groups.diagnostics | GPU 시간 기록 |
+| 기타(개발용) | progress_native.profile | 0 | groups.diagnostics | AI 진행 함수 시간 기록 |
 
 ## 해석과 종속 관계
 
@@ -60,11 +75,19 @@
 - combat=0이면 전투 DLL을 로드하지 않는다. 세 묶음이 모두 0이면 기능 모듈을 로드하지 않는다. 성능만 켜도 편의 DLL을 로드한다. convenience=0이면 그 DLL은 편의 기능을 게시하지 않고 필요한 조정·성능 경로만 맡는다.
 - 내정 틱은 자동 내정·명품 배분·본초학이 공유한다. 내부에서 각각 스위치를 판정한다. 논공/명품 보조 저장 연결은 보존한다.
 - 숙련 공방/인접효과와 툴팁/콜라보 해금은 각각 같은 코드 경로라 한 항목이다. 자료 설치와 기능 훅 선택은 별도이며 개성9·속도 레이아웃 자료가 남는 것만으로 기능이 켜지지는 않는다.
-- 숨은 `performance.timer_1ms`는 메뉴의 44개에 포함하지 않으며 기본 꺼짐이다. `progress_native.ini`의 거리/이름 탐색 하위 스위치도 함께 적용된다.
+- 숨은 `performance.timer_1ms`는 메뉴에 포함하지 않으며 기본 꺼짐이다. 거리/이름 탐색 하위 값도 기능설정.ini에서 읽으며, 키가 없을 때만 이전 progress_native.ini를 참조한다.
 - 설치기 없는 INI에서 `officer_ui.unified`가 누락되면 DLL 자체 fallback은 true다. 배포 설치기는 명시적 기본값 0을 기록한다. 위 표는 **설치기 기본값**이다.
 
 ## 검사와 확인 범위
 
 `tests/verify_feature_switches.py`, `tests/verify_installer_gui.py`, `tests/installer_gui_roundtrip.ps1`, `tests/verify_loader.py` 및 `check_feature.ps1 -Feature dll-split` 경로가 관련 검사다. 실제 게임의 모든 조합은 확인하지 않았다. 파일/fixture의 과거 통과 수치는 CURRENT와 후보 기록에서 구분한다.
 
-문서 목차 · [자동 내정](DOMESTIC.md) · 사용안내
+[문서 목차](README.md) · [자동 내정](DOMESTIC.md) · 사용안내
+
+## 기타(개발용) 탭 (2026-10-22)
+
+모든 설정은 `기능설정.ini` 하나에서 읽는다(키가 없을 때만 예전 `diagnostics.ini`/`progress_native.ini`). 묶음 `groups.diagnostics`(기본 1) 아래: `diagnostics.enabled`(진단 로그, 기본 0), `diagnostics.reuse_handle`(1), `diagnostics.ai_trace`(0), `diagnostics.ai_trace_original`(0), `diagnostics.layout_wait`(0), `diagnostics.gpu_profile`(0), `progress_native.profile`(0). 성능 탭에 `progress_native.geometry`(1). 묶음이 꺼지면 DLL이 아래 값을 모두 끈 것으로 읽는다.
+
+## 함께 쓸 수 없는 기능 (2026-10-22)
+
+`combat.mission_v2`가 켜져 있으면 `combat.departures`(정기 선제 출진), `combat.group_advance`(집결 후 집단 진군), `combat.support`(호위·동행 지원)는 설치기에서 회색으로 막히고 DLL도 꺼진 것으로 읽는다(설치기 `Catalog.ExcludedBy`, DLL `load_mod_features`). 이유: 모드 자체 출진·원작 군세 재조종·1,000명 호위는 "출진은 원작 판단, 출발 후 이동은 원작" 원칙과 3천 이하 원작 퇴각에 충돌한다.
