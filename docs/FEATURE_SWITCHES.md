@@ -1,6 +1,6 @@
 # 기능별 켜기/끄기
 
-개발 설치기 목록은 아래 표와 기능 카탈로그를 따른다. 설치·배포본의 기능 수는 CURRENT를 따른다. 기준은 `distribution/FeatureSelect.ps1`의 `$taskFeatureCatalog`, DLL 해석은 `src/native_adapter.cpp::load_mod_features`, 로더 해석은 `src/module_loader.cpp`다. 배포 기본값과 현재 사용자 INI 값은 다르다.
+개발 설치기 목록은 아래 표와 기능 카탈로그를 따른다. 설치·배포본의 기능 수는 [CURRENT](../development/CURRENT.md)를 따른다. 기준은 `distribution/FeatureSelect.ps1`의 `$taskFeatureCatalog`, DLL 해석은 `src/native_adapter.cpp::load_mod_features`, 로더 해석은 `src/module_loader.cpp`다. 배포 기본값과 현재 사용자 INI 값은 다르다.
 
 게임 시작 때 한 번 읽으므로 변경 후 재시작한다. `AI모드_설치관리자.exe`의 설정만 저장 또는 `optional_tools/AI모드_기능선택.cmd`를 사용한다. 설치기는 `관리.ps1 -NonInteractive`에 적용/복구를 위임한다. 메뉴 밖 설정은 보존한다.
 
@@ -37,6 +37,13 @@
 | 편의성 | extensions.tooltip_collab | 1 | groups.convenience | 개성·전법 툴팁 + 콜라보 개성/전법 해금 |
 | 편의성 | game_flow.speed_buttons | 1 | groups.convenience | 진행 속도 버튼 >>>>(×4)·>>>>>(×8) |
 | 편의성 | game_flow.occupy_fast | 1 | groups.convenience | 거점 자동점령 연출 단축 (원작의 약 1/4) |
+| 편의성 | game_flow.caravan_stay | 1 | groups.convenience | 교역 무장 소재 고정 (원래 도시에 남고 각자 도시로 귀환). 근거·원작 위치: src/native_caravan_stay.inl |
+| 성능 | performance.fast_menu | 1 | groups.performance | 지도 메뉴 클릭 대기 감소 (메뉴를 닫은 뒤 바로 다음 클릭). 근거·원작 위치: src/native_fast_menu.inl |
+| 편의성 | officer_ui.stat_exp | 1 | groups.convenience | 능력치 경험치 표시 (오각형 그래프 숫자 뒤 /N%). 근거·원작 위치: src/native_stat_exp.inl |
+| 편의성 | officer_ui.dispatch_days | 1 | groups.convenience | 파견 남은 일수 표시 (파견 목록에 귀환까지 N일). 근거·원작 위치: src/native_dispatch_days.inl |
+| 편의성 | officer_ui.mediation_plus | 1 | groups.convenience | 중개 확장 (의형제 3인, 일부다처, 이혼). 근거·원작 위치: src/native_mediation_plus.inl |
+| 편의성 | officer_ui.drag_learn | 1 | groups.convenience | 전법서 습득 다중 선택 (여러 무장 × 여러 전법서 한 번에). 근거·원작 위치: src/native_drag_learn.inl |
+| 편의성 | officer_ui.lord_change | 1 | groups.convenience | 시작 전 군주 변경 (세력 선택 하단 「반란」 버튼). 근거·원작 위치: src/native_lord_change.inl |
 | 편의성 | extensions.scenery_skip | 1 | groups.convenience | 명승지 연출 생략 |
 | 편의성 | officer_ui.unified | 0 | groups.convenience | 통합 인사·무장 검색·출진 전법 자동 선택 (시험 중) |
 | 성능 | groups.performance | 1 | — | 성능 가속 전체 |
@@ -65,6 +72,7 @@
 | 기타(개발용) | diagnostics.ai_trace | 0 | groups.diagnostics | 원작 AI 행동 추적 (CSV) |
 | 기타(개발용) | diagnostics.ai_trace_original | 0 | groups.diagnostics | 원작만 추적 (모드 훅 연결 안 함) |
 | 기타(개발용) | diagnostics.layout_wait | 0 | groups.diagnostics | 화면 레이아웃 대기 기록 |
+| 기타(개발용) | diagnostics.cost_profile | 0 | groups.diagnostics | 함수 시간 측정 (CSV): function_cost_*.csv(모드 함수), node_cost_*.csv(원작 판단 노드), 진단판에서만 동작 |
 | 기타(개발용) | diagnostics.gpu_profile | 0 | groups.diagnostics | GPU 시간 기록 |
 | 기타(개발용) | progress_native.profile | 0 | groups.diagnostics | AI 진행 함수 시간 기록 |
 
@@ -82,7 +90,7 @@
 
 `tests/verify_feature_switches.py`, `tests/verify_installer_gui.py`, `tests/installer_gui_roundtrip.ps1`, `tests/verify_loader.py` 및 `check_feature.ps1 -Feature dll-split` 경로가 관련 검사다. 실제 게임의 모든 조합은 확인하지 않았다. 파일/fixture의 과거 통과 수치는 CURRENT와 후보 기록에서 구분한다.
 
-[문서 목차](README.md) · [자동 내정](DOMESTIC.md) · 사용안내
+[문서 목차](README.md) · [자동 내정](DOMESTIC.md) · [사용안내](../사용안내.md)
 
 ## 기타(개발용) 탭 (2026-10-22)
 
