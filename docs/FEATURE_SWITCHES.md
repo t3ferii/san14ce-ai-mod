@@ -39,6 +39,9 @@
 | 편의성 | game_flow.occupy_fast | 1 | groups.convenience | 거점 자동점령 연출 단축 (원작의 약 1/4) |
 | 편의성 | game_flow.caravan_stay | 1 | groups.convenience | 교역 무장 소재 고정 (원래 도시에 남고 각자 도시로 귀환). 근거·원작 위치: src/native_caravan_stay.inl |
 | 성능 | performance.fast_menu | 1 | groups.performance | 지도 메뉴 클릭 대기 감소 (메뉴를 닫은 뒤 바로 다음 클릭). 근거·원작 위치: src/native_fast_menu.inl |
+| 성능 | performance.appear_batch | 1 | groups.performance | 부대 등장 묶음 처리 (전략중 뒤 0일 대기 단축) (2026-10-25) |
+| 성능 | performance.face_keep | 1 | groups.performance | 부대 깃발 지휘관 얼굴 상주 (0일 대기 단축), 최대 256(사용자 결정 2026-10-25, 얼굴당 최대 약 2.5MB) |
+| 성능 | performance.face_prefetch | 1 | performance.face_keep | 출진 지휘관 얼굴 미리 요청 (0일 대기 단축) (2026-10-25) |
 | 편의성 | officer_ui.stat_exp | 1 | groups.convenience | 능력치 경험치 표시 (오각형 그래프 숫자 뒤 /N%). 근거·원작 위치: src/native_stat_exp.inl |
 | 편의성 | officer_ui.dispatch_days | 1 | groups.convenience | 파견 남은 일수 표시 (파견 목록에 귀환까지 N일). 근거·원작 위치: src/native_dispatch_days.inl |
 | 편의성 | officer_ui.mediation_plus | 1 | groups.convenience | 중개 확장 (의형제 3인, 일부다처, 이혼). 근거·원작 위치: src/native_mediation_plus.inl |
@@ -72,7 +75,8 @@
 | 기타(개발용) | diagnostics.ai_trace | 0 | groups.diagnostics | 원작 AI 행동 추적 (CSV) |
 | 기타(개발용) | diagnostics.ai_trace_original | 0 | groups.diagnostics | 원작만 추적 (모드 훅 연결 안 함) |
 | 기타(개발용) | diagnostics.layout_wait | 0 | groups.diagnostics | 화면 레이아웃 대기 기록 |
-| 기타(개발용) | diagnostics.cost_profile | 0 | groups.diagnostics | 함수 시간 측정 (CSV): function_cost_*.csv(모드 함수), node_cost_*.csv(원작 판단 노드), 진단판에서만 동작 |
+| 기타(개발용) | diagnostics.day_stage | 0 | groups.diagnostics | 하루 처리 단계 기록: 하루 처리 단계별 머문 시간·계산 시간(day_stage), 진단판·진행 속도 버튼 필요 (2026-10-25) |
+| 기타(개발용) | diagnostics.cost_profile | 0 | groups.diagnostics | 함수 시간 측정 (CSV): function_cost_*.csv(모드 함수), node_cost_*.csv(원작 판단 노드), 부대 깃발 얼굴 지정 1B91E0 호출 지점 7곳(face_1B91E0_*, 2026-10-25), 진단판에서만 동작 |
 | 기타(개발용) | diagnostics.gpu_profile | 0 | groups.diagnostics | GPU 시간 기록 |
 | 기타(개발용) | progress_native.profile | 0 | groups.diagnostics | AI 진행 함수 시간 기록 |
 
