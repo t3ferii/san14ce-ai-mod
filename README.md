@@ -1,22 +1,12 @@
-> **2026-10-25: v13.2** — v13.1에서 「세력 차례 전환 즉시 처리」를 제거한 판입니다(전략중 화면이 1~2프레임 깨지던 시험 기능, v13.1에서는 기본 꺼짐). 그 밖의 기능은 v13.1과 같습니다. 미서명입니다.
+# 삼국지14 CE 모드
 
-> **2026-10-25: v13.1** — 성능 개선판: 경로 탐색 가속(같은 결과의 힙 + 탐색마다 1.9MB 버퍼 지우기 생략), 지역 칸 목록 캐시(AI 건설 검사), 부대 깃발 얼굴 상주의 메모리 보호(오래 안 쓴 얼굴부터 교체, 메모리 부족 시 절반 해제). 전략중·진행이 부드러워졌습니다(영웅난무 진단판 측정 전략중 5.72→5.04초). 미서명입니다.
+컴퓨터 군대의 판단을 보완하고, 내정·인사 관리와 반복 연출을 줄이는 한국어 Complete Edition용 모드입니다. 원하는 기능만 설치 관리자에서 켜고 끌 수 있습니다.
 
-> **2026-10-25: v13** — 등용 대상무장 다중 선택(자동등용 버튼 통합, 군사가 권하는 실행무장만 일괄 파견)과 통합패치 등 다른 패치와 함께 설치할 때의 호환(켜진 기능만 검사·다르면 그 기능만 끔, 전투·편의 독립 설치)을 더했습니다. 미서명입니다.
+> **v13.3 긴급 수정 (2026-10-26)** — 경로 탐색 가속의 메모리 누수를 수정했습니다. v13.1·v13.2 사용자는 업데이트해 주세요. 기존 기능·설정은 유지하며 미서명 배포입니다.
 
-# 삼국지14 CE AI·편의·최적화 모드
+[v13.3 다운로드](https://github.com/t3ferii/san14ce-ai-mod/releases/tag/SAN14_AI_v13.3) · [간단한 배포 설명](docs/RELEASE_NOTES.md) · [전체 기능과 설정](docs/FEATURE_SWITCHES.md) · [전체 변경 이력](docs/CHANGES_ALL.md)
 
-컴퓨터 군대가 출진 목적을 유지하도록 돕고, 내정·인사 관리와 반복 연출을 줄이는 한국어 Complete Edition용 모드입니다. 원하는 기능만 설치 관리자에서 켜고 끌 수 있습니다.
-
-**v13.1**은 컴퓨터 세력 차례(전략중)와 하루 진행의 계산·메모리 낭비를 줄였습니다. 원작 부대 경로 탐색의 다음 후보 목록을 같은 순서를 지키는 힙으로 바꾸고, 탐색마다 1.9MB 버퍼를 통째로 지우던 작업을 건너뜁니다. 경유지가 하나인 경로는 원작과 같은 결과이고, 경유지가 여럿인 경로는 원작의 이전 구간 상태가 섞이던 동작을 없애 구간마다 새로 찾습니다. AI 건설 검사의 지역 시설 수 세기는 맵 전체(48,400칸) 대신 지역별 칸 목록으로 셉니다. v13.2에서는 화면이 잠깐 깨지던 시험 기능 「세력 차례 전환 즉시 처리」를 제거했습니다. [v13.1·v13.2 배포 설명](docs/RELEASE_NOTES.md).
-
-**v13**은 원작 등용 화면에서 대상무장을 여러 명 골라 한 번에 보낼 수 있게 했습니다. 마지막 무장이 「○○ 외 N명」으로 표시되고, 나머지는 군사가 권하는 실행무장만 골라 보냅니다(1명이면 원작 그대로). 또 통합패치처럼 원작 코드를 고친 패치와 함께 쓸 때, 켜진 기능의 원작 자리만 검사해 다른 기능만 끄고 나머지(특히 전투 AI)는 켜지게 했습니다. 실제 통합패치 환경 확인은 아직 없습니다. [v13 배포 설명](docs/RELEASE_NOTES.md).
-
-**시험 배포 v12.22-rc4**는 출진 부대 등장(0일)을 한 프레임에 여러 개 처리하고, 부대 깃발 지휘관 얼굴을 상주·미리 요청해 영웅난무 기준 0일 대기를 원작보다 약 66~74% 줄였습니다(진단판·사용자 환경 측정). 아울러 rc3에서 추가한 숙련 인접효과 선택의 수정판을 포함합니다.
-
-**사용 중지 v12.22-rc3**는 숙련 설정2의 자세력·타세력 인접효과에 소·중·대 선택과 현재 난이도의 표준 적용을 추가합니다. 새 버튼을 원작 화면 노드와 행 초기화 경로에 등록하며, 특급의 39.2%·62.5%를 표시·계산·저장에 보존합니다. 기존 rc2의 전투 AI 기능을 유지하고 시작 전 군주 교체 버튼과 최신 설정 카탈로그를 포함합니다. [버전별 변경점](docs/CHANGES_ALL.md) · [배포 설명](docs/RELEASE_NOTES.md). 새 버튼의 실제 화면·클릭·저장 재로드는 아직 확인 전인 시험 배포이며, 정식판 v12.21과 이전 시험판을 보존합니다.
-
-[v13.2 다운로드](https://github.com/t3ferii/san14ce-ai-mod/releases/tag/SAN14_AI_v13.2) · [설치·배포 대조](docs/INSTALLATION_AUDIT.md) · [다운로드·이전 버전](https://github.com/t3ferii/san14ce-ai-mod/releases) · [전체 기능과 설정](docs/FEATURE_SWITCHES.md) · [함수별 변경 근거](docs/GITHUB_기능상세.md)
+v13·v13.1·v13.2는 다운로드를 중단하고 비공개 초안으로 보관합니다. v12.22 계열은 유지합니다.
 
 ## 실제 게임 화면·시연
 
@@ -38,13 +28,13 @@
 
 등용 대상의 가능성·주의 사유를 확인하고 여러 무장을 선택해 한 번에 등용을 진행합니다. 자동 등용은 군사의 조언에 따라 실행무장을 고릅니다. ‘가능성 있음’이 성공을 보장하지는 않습니다.
 
-![등용 대상의 가능성 표시](readme_screenshot/%EB%93%B1%EC%9A%A9%EA%B0%80%EB%8A%A5%EC%84%B1.png)
+![등용 대상의 가능성 표시](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EB%93%B1%EC%9A%A9%EA%B0%80%EB%8A%A5%EC%84%B1.png)
 
-![군사 조언을 이용한 자동 등용](readme_screenshot/%EC%9E%90%EB%8F%99%EB%93%B1%EC%9A%A9_%EA%B5%B0%EC%82%AC%EC%A1%B0%EC%96%B8.png)
+![군사 조언을 이용한 자동 등용](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%9E%90%EB%8F%99%EB%93%B1%EC%9A%A9_%EA%B5%B0%EC%82%AC%EC%A1%B0%EC%96%B8.png)
 
-![등용 대상무장 복수 선택](readme_screenshot/%EC%9E%90%EB%8F%99%EB%93%B1%EC%9A%A9_%EB%B3%B5%EC%88%98%EC%84%A0%ED%83%9D1.png)
+![등용 대상무장 복수 선택](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%9E%90%EB%8F%99%EB%93%B1%EC%9A%A9_%EB%B3%B5%EC%88%98%EC%84%A0%ED%83%9D1.png)
 
-![복수 선택 후 등용 진행](readme_screenshot/%EC%9E%90%EB%8F%99%EB%93%B1%EC%9A%A9_%EB%B3%B5%EC%88%98%EC%84%A0%ED%83%9D2.png)
+![복수 선택 후 등용 진행](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%9E%90%EB%8F%99%EB%93%B1%EC%9A%A9_%EB%B3%B5%EC%88%98%EC%84%A0%ED%83%9D2.png)
 
 </details>
 
@@ -53,7 +43,7 @@
 
 무공 1·2단계에서 각각 지휘병력 3,000명을 추가하고, 3단계에서는 군주와 상호 친애 관계를 부여합니다.
 
-![논공 지휘병력 증가와 군주 상호 친애](readme_screenshot/%EB%85%BC%EA%B3%B5%20%EC%A7%80%ED%9C%98%EB%B3%91%EB%A0%A5+3000_%EA%B5%B0%EC%A3%BC%EC%83%81%ED%98%B8%EC%B9%9C%EC%95%A0.png)
+![논공 지휘병력 증가와 군주 상호 친애](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EB%85%BC%EA%B3%B5%20%EC%A7%80%ED%9C%98%EB%B3%91%EB%A0%A5+3000_%EA%B5%B0%EC%A3%BC%EC%83%81%ED%98%B8%EC%B9%9C%EC%95%A0.png)
 
 </details>
 
@@ -62,7 +52,7 @@
 
 같은 능력을 보정하는 명품의 중복 장비를 정리하고, 출진 중인 무장에게도 조건에 맞는 명품을 수여할 수 있도록 보완합니다.
 
-![명품 관리와 출진 중 수여](readme_screenshot/%EB%AA%85%ED%92%88%20%ED%86%B5%EB%AC%B4%EC%A7%80%EC%A0%95%EB%A7%A4%201%EA%B0%9C%EC%94%A9%EB%A7%8C_%EC%B6%9C%EC%A7%84%EC%A4%91%EC%88%98%EC%97%AC.png)
+![명품 관리와 출진 중 수여](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EB%AA%85%ED%92%88%20%ED%86%B5%EB%AC%B4%EC%A7%80%EC%A0%95%EB%A7%A4%201%EA%B0%9C%EC%94%A9%EB%A7%8C_%EC%B6%9C%EC%A7%84%EC%A4%91%EC%88%98%EC%97%AC.png)
 
 </details>
 
@@ -71,7 +61,7 @@
 
 출진 중에도 현재 관직보다 지휘병력 한도가 같거나 높은 관직을 수여할 수 있습니다. 지휘병력 한도가 낮아지는 변경은 제한합니다.
 
-![출진 중 지휘병력 한도를 유지하는 관직 수여](readme_screenshot/%EC%B6%9C%EC%A7%84%EA%B4%80%EC%A7%81%EC%88%98%EC%97%AC%28%ED%98%84%EA%B4%80%EC%A7%81%EB%B3%B4%EB%8B%A4%20%EC%A7%80%ED%9C%98%EB%B3%91%EB%A0%A5%EC%9D%B4%EC%83%81%EA%B4%80%EC%A7%81%EB%A7%8C%29.png)
+![출진 중 지휘병력 한도를 유지하는 관직 수여](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%B6%9C%EC%A7%84%EA%B4%80%EC%A7%81%EC%88%98%EC%97%AC%28%ED%98%84%EA%B4%80%EC%A7%81%EB%B3%B4%EB%8B%A4%20%EC%A7%80%ED%9C%98%EB%B3%91%EB%A0%A5%EC%9D%B4%EC%83%81%EA%B4%80%EC%A7%81%EB%A7%8C%29.png)
 
 </details>
 
@@ -80,7 +70,7 @@
 
 임무 중인 무장의 목록에 귀환까지 남은 일수를 표시해 복귀 시점을 확인할 수 있습니다.
 
-![무장 목록의 귀환 예상 일수](readme_screenshot/%EA%B7%80%ED%99%98%EC%9D%BC%EB%B3%B4%EC%9D%B4%EA%B2%8C.png)
+![무장 목록의 귀환 예상 일수](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EA%B7%80%ED%99%98%EC%9D%BC%EB%B3%B4%EC%9D%B4%EA%B2%8C.png)
 
 </details>
 
@@ -89,7 +79,7 @@
 
 전법 선택 화면에서 여러 전법을 선택하는 모습입니다.
 
-![전법 화면의 다중 선택](readme_screenshot/%EB%8B%A4%EC%A4%91%EC%A0%84%EB%B2%95.png)
+![전법 화면의 다중 선택](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EB%8B%A4%EC%A4%91%EC%A0%84%EB%B2%95.png)
 
 </details>
 
@@ -98,7 +88,7 @@
 
 지도에서 지역담당관의 초상화와 내정 관련 개성을 확인할 수 있습니다. 담당관 임명은 기존 지역내정 화면에서 진행합니다.
 
-![지도에 표시된 지역담당관 초상화와 내정 개성](readme_screenshot/%EC%A7%80%EC%97%AD%EB%8B%B4%EB%8B%B9%EA%B4%80_%EC%B4%88%EC%83%81%ED%99%94_%EB%82%B4%EC%A0%95%EA%B0%9C%EC%84%B1.png)
+![지도에 표시된 지역담당관 초상화와 내정 개성](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%A7%80%EC%97%AD%EB%8B%B4%EB%8B%B9%EA%B4%80_%EC%B4%88%EC%83%81%ED%99%94_%EB%82%B4%EC%A0%95%EA%B0%9C%EC%84%B1.png)
 
 </details>
 
@@ -107,7 +97,7 @@
 
 칼 등급 대신 현재 능력치를 기준으로 계산한 1회 병사 피해와 시설 내구 피해를 표시합니다. [표시 범위와 계산 설명](docs/DAMAGE_PREVIEW.md).
 
-![현재 능력치 기준 예상 피해량](readme_screenshot/%EC%A0%84%ED%88%AC%EB%A0%A5%EB%8C%80%EC%B2%B4_%EC%98%88%EC%83%81%ED%94%BC%ED%95%B4%EB%9F%89_%ED%98%84%EC%9E%AC%EC%8A%A4%ED%83%AF%EA%B8%B0%EC%A4%80.png)
+![현재 능력치 기준 예상 피해량](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%A0%84%ED%88%AC%EB%A0%A5%EB%8C%80%EC%B2%B4_%EC%98%88%EC%83%81%ED%94%BC%ED%95%B4%EB%9F%89_%ED%98%84%EC%9E%AC%EC%8A%A4%ED%83%AF%EA%B8%B0%EC%A4%80.png)
 
 </details>
 
@@ -116,7 +106,7 @@
 
 건물파괴 계략이 성공하면 선택한 지역의 적 군사시설·장애물·함정 각각에 원래 피해량을 적용합니다. 성·관문·아군·동맹·중립은 제외합니다. [대상과 예외](docs/BUILDING_DESTRUCTION.md).
 
-![계략 건물파괴의 지역 전체 피해](readme_screenshot/%EA%B3%84%EB%9E%B5%EA%B1%B4%EB%AC%BC%ED%8C%8C%EA%B4%B4%EC%A0%84%EC%B2%B4%EB%8D%B0%EB%AF%B8%EC%A7%80.png)
+![계략 건물파괴의 지역 전체 피해](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EA%B3%84%EB%9E%B5%EA%B1%B4%EB%AC%BC%ED%8C%8C%EA%B4%B4%EC%A0%84%EC%B2%B4%EB%8D%B0%EB%AF%B8%EC%A7%80.png)
 
 </details>
 
@@ -125,11 +115,11 @@
 
 자세력·타세력의 기본 공방과 인접지역 효과를 조절하는 설정 화면입니다. 지역 효과 0 설정과 부대 강화·지역 효과 200 설정의 게임 화면을 함께 담았습니다.
 
-![숙련 모드 설정2 화면](readme_screenshot/%EC%88%99%EB%A0%A8%EB%AA%A8%EB%93%9C_%EC%84%A4%EC%A0%952.png)
+![숙련 모드 설정2 화면](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%88%99%EB%A0%A8%EB%AA%A8%EB%93%9C_%EC%84%A4%EC%A0%952.png)
 
-![숙련 모드 설정2 지역 효과 0 예시](readme_screenshot/%EC%88%99%EB%A0%A8%EB%AA%A8%EB%93%9C2%20%EC%A7%80%EC%97%AD%EB%B2%84%ED%94%840%EC%84%A4%EC%A0%95.png)
+![숙련 모드 설정2 지역 효과 0 예시](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%88%99%EB%A0%A8%EB%AA%A8%EB%93%9C2%20%EC%A7%80%EC%97%AD%EB%B2%84%ED%94%840%EC%84%A4%EC%A0%95.png)
 
-![숙련 모드 설정2 부대 강화 200 지역 효과 200 예시](readme_screenshot/%EC%88%99%EB%A0%A8%EB%AA%A8%EB%93%9C2_%EB%B6%80%EB%8C%80%EA%B0%95%ED%99%94200_%EC%A7%80%EC%97%AD%EB%B2%84%ED%94%84200.png)
+![숙련 모드 설정2 부대 강화 200 지역 효과 200 예시](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%88%99%EB%A0%A8%EB%AA%A8%EB%93%9C2_%EB%B6%80%EB%8C%80%EA%B0%95%ED%99%94200_%EC%A7%80%EC%97%AD%EB%B2%84%ED%94%84200.png)
 
 </details>
 
@@ -138,9 +128,9 @@
 
 게임 시작 전 세력 선택 화면의 ‘반란’ 버튼으로 군주를 변경합니다. 아래는 선택 화면과 조작 과정을 담은 애니메이션입니다.
 
-![시작 전 세력 군주 변경 화면](readme_screenshot/%EC%84%B8%EB%A0%A5%EA%B5%B0%EC%A3%BC%EB%B3%80%EA%B2%BD%28%EB%B0%98%EB%9E%80%29.png)
+![시작 전 세력 군주 변경 화면](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%84%B8%EB%A0%A5%EA%B5%B0%EC%A3%BC%EB%B3%80%EA%B2%BD%28%EB%B0%98%EB%9E%80%29.png)
 
-![반란 버튼을 이용한 군주 변경 과정](readme_screenshot/%EB%B0%98%EB%9E%80gif_gif%EB%82%98%20webp%20%EB%91%98%EC%A4%91%ED%95%98%EB%82%98%20%EC%93%B0%EC%8B%9C%EC%98%A4.gif)
+![반란 버튼을 이용한 군주 변경 과정](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EB%B0%98%EB%9E%80gif_gif%EB%82%98%20webp%20%EB%91%98%EC%A4%91%ED%95%98%EB%82%98%20%EC%93%B0%EC%8B%9C%EC%98%A4.gif)
 
 </details>
 
@@ -149,13 +139,13 @@
 
 진행 메뉴에 ×4·×8 버튼을 추가합니다. 기존 최고 속도 대비이며 게임 옵션 60fps 기준입니다.
 
-![진행 메뉴에 추가된 배속 버튼](readme_screenshot/%EC%A7%84%ED%96%89%EB%B0%B0%EC%86%8D%EB%B2%84%ED%8A%BC%EC%B6%94%EA%B0%80.png)
+![진행 메뉴에 추가된 배속 버튼](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%A7%84%ED%96%89%EB%B0%B0%EC%86%8D%EB%B2%84%ED%8A%BC%EC%B6%94%EA%B0%80.png)
 
 </details>
 
 ## 설치와 사용
 
-1. 게임을 종료하고 릴리스의 `SAN14_AI_v13.2_integrated.zip`을 **전체 압축 해제**합니다.
+1. 게임을 종료하고 릴리스의 `SAN14_AI_v13.3_integrated.zip`을 **전체 압축 해제**합니다.
 2. `AI모드_설치관리자.exe`를 실행합니다. 게임 폴더가 다르면 **게임 폴더 변경**에서 `SAN14CE_KO.exe`가 있는 폴더를 고릅니다.
 3. 다섯 탭에서 기능을 선택하고 **설치 / 적용**을 누릅니다. 이후 평소처럼 Steam/런처로 실행합니다.
 4. 기능을 바꾸면 **설정만 저장** 후 게임을 다시 시작합니다. 기존 설정은 업데이트할 때 보존합니다.
