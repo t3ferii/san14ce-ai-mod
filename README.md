@@ -18,6 +18,141 @@
 
 [v13.2 다운로드](https://github.com/t3ferii/san14ce-ai-mod/releases/tag/SAN14_AI_v13.2) · [설치·배포 대조](docs/INSTALLATION_AUDIT.md) · [다운로드·이전 버전](https://github.com/t3ferii/san14ce-ai-mod/releases) · [전체 기능과 설정](docs/FEATURE_SWITCHES.md) · [함수별 변경 근거](docs/GITHUB_기능상세.md)
 
+## 실제 게임 화면·시연
+
+### 성능 개선 영상
+
+일반 시나리오와 영웅난무에서 모드를 적용한 게임 진행 영상입니다. **썸네일이나 제목을 누르면 YouTube에서 재생됩니다.**
+
+| 일반 시나리오 | 영웅난무 |
+|---|---|
+| [![렉 제거 · 일반 시나리오](https://img.youtube.com/vi/nF1PYD4HI1c/hqdefault.jpg)](https://youtu.be/nF1PYD4HI1c) | [![렉 제거 · 영웅난무](https://img.youtube.com/vi/bkl1-_N1kD8/hqdefault.jpg)](https://youtu.be/bkl1-_N1kD8) |
+| [▶ 렉 제거 · 일반 시나리오](https://youtu.be/nF1PYD4HI1c) | [▶ 렉 제거 · 영웅난무](https://youtu.be/bkl1-_N1kD8) |
+
+### 기능별 스크린샷
+
+각 기능 제목을 누르면 설명과 실제 게임 화면을 펼쳐 볼 수 있습니다. 이미지를 누르면 크게 볼 수 있습니다.
+
+<details>
+<summary><strong>등용 가능성 표시·자동 등용·대상무장 복수 선택</strong></summary>
+
+등용 대상의 가능성·주의 사유를 확인하고 여러 무장을 선택해 한 번에 등용을 진행합니다. 자동 등용은 군사의 조언에 따라 실행무장을 고릅니다. ‘가능성 있음’이 성공을 보장하지는 않습니다.
+
+![등용 대상의 가능성 표시](readme_screenshot/%EB%93%B1%EC%9A%A9%EA%B0%80%EB%8A%A5%EC%84%B1.png)
+
+![군사 조언을 이용한 자동 등용](readme_screenshot/%EC%9E%90%EB%8F%99%EB%93%B1%EC%9A%A9_%EA%B5%B0%EC%82%AC%EC%A1%B0%EC%96%B8.png)
+
+![등용 대상무장 복수 선택](readme_screenshot/%EC%9E%90%EB%8F%99%EB%93%B1%EC%9A%A9_%EB%B3%B5%EC%88%98%EC%84%A0%ED%83%9D1.png)
+
+![복수 선택 후 등용 진행](readme_screenshot/%EC%9E%90%EB%8F%99%EB%93%B1%EC%9A%A9_%EB%B3%B5%EC%88%98%EC%84%A0%ED%83%9D2.png)
+
+</details>
+
+<details>
+<summary><strong>논공: 지휘병력 +3,000·군주와 상호 친애</strong></summary>
+
+무공 1·2단계에서 각각 지휘병력 3,000명을 추가하고, 3단계에서는 군주와 상호 친애 관계를 부여합니다.
+
+![논공 지휘병력 증가와 군주 상호 친애](readme_screenshot/%EB%85%BC%EA%B3%B5%20%EC%A7%80%ED%9C%98%EB%B3%91%EB%A0%A5+3000_%EA%B5%B0%EC%A3%BC%EC%83%81%ED%98%B8%EC%B9%9C%EC%95%A0.png)
+
+</details>
+
+<details>
+<summary><strong>명품 중복 장비 정리·출진 중 수여</strong></summary>
+
+같은 능력을 보정하는 명품의 중복 장비를 정리하고, 출진 중인 무장에게도 조건에 맞는 명품을 수여할 수 있도록 보완합니다.
+
+![명품 관리와 출진 중 수여](readme_screenshot/%EB%AA%85%ED%92%88%20%ED%86%B5%EB%AC%B4%EC%A7%80%EC%A0%95%EB%A7%A4%201%EA%B0%9C%EC%94%A9%EB%A7%8C_%EC%B6%9C%EC%A7%84%EC%A4%91%EC%88%98%EC%97%AC.png)
+
+</details>
+
+<details>
+<summary><strong>출진 중 관직 수여</strong></summary>
+
+출진 중에도 현재 관직보다 지휘병력 한도가 같거나 높은 관직을 수여할 수 있습니다. 지휘병력 한도가 낮아지는 변경은 제한합니다.
+
+![출진 중 지휘병력 한도를 유지하는 관직 수여](readme_screenshot/%EC%B6%9C%EC%A7%84%EA%B4%80%EC%A7%81%EC%88%98%EC%97%AC%28%ED%98%84%EA%B4%80%EC%A7%81%EB%B3%B4%EB%8B%A4%20%EC%A7%80%ED%9C%98%EB%B3%91%EB%A0%A5%EC%9D%B4%EC%83%81%EA%B4%80%EC%A7%81%EB%A7%8C%29.png)
+
+</details>
+
+<details>
+<summary><strong>귀환까지 남은 일수 표시</strong></summary>
+
+임무 중인 무장의 목록에 귀환까지 남은 일수를 표시해 복귀 시점을 확인할 수 있습니다.
+
+![무장 목록의 귀환 예상 일수](readme_screenshot/%EA%B7%80%ED%99%98%EC%9D%BC%EB%B3%B4%EC%9D%B4%EA%B2%8C.png)
+
+</details>
+
+<details>
+<summary><strong>다중 전법 선택</strong></summary>
+
+전법 선택 화면에서 여러 전법을 선택하는 모습입니다.
+
+![전법 화면의 다중 선택](readme_screenshot/%EB%8B%A4%EC%A4%91%EC%A0%84%EB%B2%95.png)
+
+</details>
+
+<details>
+<summary><strong>지역담당관 초상화·내정 개성 표시</strong></summary>
+
+지도에서 지역담당관의 초상화와 내정 관련 개성을 확인할 수 있습니다. 담당관 임명은 기존 지역내정 화면에서 진행합니다.
+
+![지도에 표시된 지역담당관 초상화와 내정 개성](readme_screenshot/%EC%A7%80%EC%97%AD%EB%8B%B4%EB%8B%B9%EA%B4%80_%EC%B4%88%EC%83%81%ED%99%94_%EB%82%B4%EC%A0%95%EA%B0%9C%EC%84%B1.png)
+
+</details>
+
+<details>
+<summary><strong>전투력 대신 예상 피해량 표시</strong></summary>
+
+칼 등급 대신 현재 능력치를 기준으로 계산한 1회 병사 피해와 시설 내구 피해를 표시합니다. [표시 범위와 계산 설명](docs/DAMAGE_PREVIEW.md).
+
+![현재 능력치 기준 예상 피해량](readme_screenshot/%EC%A0%84%ED%88%AC%EB%A0%A5%EB%8C%80%EC%B2%B4_%EC%98%88%EC%83%81%ED%94%BC%ED%95%B4%EB%9F%89_%ED%98%84%EC%9E%AC%EC%8A%A4%ED%83%AF%EA%B8%B0%EC%A4%80.png)
+
+</details>
+
+<details>
+<summary><strong>계략 건물파괴: 지역 전체 피해</strong></summary>
+
+건물파괴 계략이 성공하면 선택한 지역의 적 군사시설·장애물·함정 각각에 원래 피해량을 적용합니다. 성·관문·아군·동맹·중립은 제외합니다. [대상과 예외](docs/BUILDING_DESTRUCTION.md).
+
+![계략 건물파괴의 지역 전체 피해](readme_screenshot/%EA%B3%84%EB%9E%B5%EA%B1%B4%EB%AC%BC%ED%8C%8C%EA%B4%B4%EC%A0%84%EC%B2%B4%EB%8D%B0%EB%AF%B8%EC%A7%80.png)
+
+</details>
+
+<details>
+<summary><strong>숙련 모드 설정2: 부대 강화·인접지역 효과 조절</strong></summary>
+
+자세력·타세력의 기본 공방과 인접지역 효과를 조절하는 설정 화면입니다. 지역 효과 0 설정과 부대 강화·지역 효과 200 설정의 게임 화면을 함께 담았습니다.
+
+![숙련 모드 설정2 화면](readme_screenshot/%EC%88%99%EB%A0%A8%EB%AA%A8%EB%93%9C_%EC%84%A4%EC%A0%952.png)
+
+![숙련 모드 설정2 지역 효과 0 예시](readme_screenshot/%EC%88%99%EB%A0%A8%EB%AA%A8%EB%93%9C2%20%EC%A7%80%EC%97%AD%EB%B2%84%ED%94%840%EC%84%A4%EC%A0%95.png)
+
+![숙련 모드 설정2 부대 강화 200 지역 효과 200 예시](readme_screenshot/%EC%88%99%EB%A0%A8%EB%AA%A8%EB%93%9C2_%EB%B6%80%EB%8C%80%EA%B0%95%ED%99%94200_%EC%A7%80%EC%97%AD%EB%B2%84%ED%94%84200.png)
+
+</details>
+
+<details>
+<summary><strong>시작 전 세력 군주 변경: 반란 버튼</strong></summary>
+
+게임 시작 전 세력 선택 화면의 ‘반란’ 버튼으로 군주를 변경합니다. 아래는 선택 화면과 조작 과정을 담은 애니메이션입니다.
+
+![시작 전 세력 군주 변경 화면](readme_screenshot/%EC%84%B8%EB%A0%A5%EA%B5%B0%EC%A3%BC%EB%B3%80%EA%B2%BD%28%EB%B0%98%EB%9E%80%29.png)
+
+![반란 버튼을 이용한 군주 변경 과정](readme_screenshot/%EB%B0%98%EB%9E%80gif_gif%EB%82%98%20webp%20%EB%91%98%EC%A4%91%ED%95%98%EB%82%98%20%EC%93%B0%EC%8B%9C%EC%98%A4.gif)
+
+</details>
+
+<details>
+<summary><strong>진행 배속 버튼 추가</strong></summary>
+
+진행 메뉴에 ×4·×8 버튼을 추가합니다. 기존 최고 속도 대비이며 게임 옵션 60fps 기준입니다.
+
+![진행 메뉴에 추가된 배속 버튼](readme_screenshot/%EC%A7%84%ED%96%89%EB%B0%B0%EC%86%8D%EB%B2%84%ED%8A%BC%EC%B6%94%EA%B0%80.png)
+
+</details>
+
 ## 설치와 사용
 
 1. 게임을 종료하고 릴리스의 `SAN14_AI_v13.2_integrated.zip`을 **전체 압축 해제**합니다.
