@@ -1,4 +1,4 @@
-> **2026-10-25: v12.22-rc4 시험 배포.** rc3(숙련 모드 진입 충돌 보고로 삭제)의 수정본을 포함하고, 전략중 뒤 0일 부대 등장 대기를 줄이는 성능 기능 3가지를 추가했습니다. 미서명입니다.
+> **2026-10-25: v12.22-rc5 시험 배포** — rc4와 같은 DLL에 설치 스크립트만 고친 판입니다(Steam 보호 섹션 `.bind`가 없는 같은 빌드 EXE 설치 허용). **v12.22-rc4 시험 배포:** rc3(숙련 모드 진입 충돌 보고로 삭제)의 수정본을 포함하고, 전략중 뒤 0일 부대 등장 대기를 줄이는 성능 기능 3가지를 추가했습니다. 미서명입니다.
 
 # 삼국지14 CE AI·편의·최적화 모드
 
@@ -8,11 +8,11 @@
 
 **사용 중지 v12.22-rc3**는 숙련 설정2의 자세력·타세력 인접효과에 소·중·대 선택과 현재 난이도의 표준 적용을 추가합니다. 새 버튼을 원작 화면 노드와 행 초기화 경로에 등록하며, 특급의 39.2%·62.5%를 표시·계산·저장에 보존합니다. 기존 rc2의 전투 AI 기능을 유지하고 시작 전 군주 교체 버튼과 최신 설정 카탈로그를 포함합니다. [버전별 변경점](docs/CHANGES_ALL.md) · [배포 설명](docs/RELEASE_NOTES.md). 새 버튼의 실제 화면·클릭·저장 재로드는 아직 확인 전인 시험 배포이며, 정식판 v12.21과 이전 시험판을 보존합니다.
 
-[v12.22-rc4 시험판 다운로드](https://github.com/t3ferii/san14ce-ai-mod/releases/tag/SAN14_AI_v12.22-rc4) · [설치·배포 대조](docs/INSTALLATION_AUDIT.md) · [다운로드·이전 버전](https://github.com/t3ferii/san14ce-ai-mod/releases) · [전체 기능과 설정](docs/FEATURE_SWITCHES.md) · [함수별 변경 근거](docs/GITHUB_기능상세.md)
+[v12.22-rc5 시험판 다운로드](https://github.com/t3ferii/san14ce-ai-mod/releases/tag/SAN14_AI_v12.22-rc5) · [설치·배포 대조](docs/INSTALLATION_AUDIT.md) · [다운로드·이전 버전](https://github.com/t3ferii/san14ce-ai-mod/releases) · [전체 기능과 설정](docs/FEATURE_SWITCHES.md) · [함수별 변경 근거](docs/GITHUB_기능상세.md)
 
 ## 설치와 사용
 
-1. 게임을 종료하고 릴리스의 `SAN14_AI_v12.22-rc4_integrated.zip`을 **전체 압축 해제**합니다.
+1. 게임을 종료하고 릴리스의 `SAN14_AI_v12.22-rc5_integrated.zip`을 **전체 압축 해제**합니다.
 2. `AI모드_설치관리자.exe`를 실행합니다. 게임 폴더가 다르면 **게임 폴더 변경**에서 `SAN14CE_KO.exe`가 있는 폴더를 고릅니다.
 3. 다섯 탭에서 기능을 선택하고 **설치 / 적용**을 누릅니다. 이후 평소처럼 Steam/런처로 실행합니다.
 4. 기능을 바꾸면 **설정만 저장** 후 게임을 다시 시작합니다. 기존 설정은 업데이트할 때 보존합니다.
