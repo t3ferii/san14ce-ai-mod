@@ -133,8 +133,6 @@
 
 이번에는 다른 장수를 군주로 삼아 시작해 볼까요? 세력 선택 화면의 「반란」 버튼으로 군주를 바꾸고 새로운 천하통일 이야기를 만들어보세요.
 
-![시작 전 세력 군주 변경 화면](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%84%B8%EB%A0%A5%EA%B5%B0%EC%A3%BC%EB%B3%80%EA%B2%BD%28%EB%B0%98%EB%9E%80%29.png)
-
 ![반란 버튼을 이용한 군주 변경 과정](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EB%B0%98%EB%9E%80gif_gif%EB%82%98%20webp%20%EB%91%98%EC%A4%91%ED%95%98%EB%82%98%20%EC%93%B0%EC%8B%9C%EC%98%A4.gif)
 
 </details>
