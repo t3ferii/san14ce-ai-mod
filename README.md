@@ -9,7 +9,7 @@
 
 > **v13.3 긴급 수정 (2026-10-26)** — 경로 탐색 가속의 메모리 누수를 수정했습니다. v13.1·v13.2 사용자는 업데이트해 주세요. 기존에 골라 둔 기능과 설정은 그대로 이어집니다.
 
-[v13.3 다운로드](https://github.com/t3ferii/san14ce-ai-mod/releases/tag/SAN14_AI_v13.3) · [간단한 배포 설명](docs/RELEASE_NOTES.md) · [전체 기능과 설정](docs/FEATURE_SWITCHES.md) · [전체 변경 이력](docs/CHANGES_ALL.md)
+[모드 소개 홈페이지 · 영상 바로 재생](https://t3ferii.github.io/san14ce-ai-mod/) · [v13.3 다운로드](https://github.com/t3ferii/san14ce-ai-mod/releases/tag/SAN14_AI_v13.3) · [간단한 배포 설명](docs/RELEASE_NOTES.md) · [전체 기능과 설정](docs/FEATURE_SWITCHES.md) · [전체 변경 이력](docs/CHANGES_ALL.md)
 
 이전에 v13·v13.1·v13.2를 설치했다면 위의 v13.3으로 업데이트해 주세요.
 
@@ -17,7 +17,7 @@
 
 ### 성능 개선 영상
 
-일반 시나리오와 영웅난무에서 모드를 적용한 게임 진행 영상입니다. **썸네일이나 제목을 누르면 YouTube에서 재생됩니다.**
+일반 시나리오와 영웅난무의 실제 진행 영상입니다. **[소개 홈페이지에서 두 영상을 페이지 안에서 바로 재생](https://t3ferii.github.io/san14ce-ai-mod/#videos)**할 수 있습니다. 아래 썸네일과 제목은 YouTube로 연결됩니다.
 
 | 일반 시나리오 | 영웅난무 |
 |---|---|
