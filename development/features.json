@@ -1,0 +1,637 @@
+{
+  "integrated_build": [
+    "InputLoader",
+    "RecruitmentUICandidate",
+    "Development"
+  ],
+  "modules": {
+    "advisor-briefing": {
+      "sources": ["src/advisor_briefing.h", "src/advisor_briefing_profile.h", "src/native_advisor_briefing.inl", "src/native_advisor_overlay.inl", "src/advisor_briefing.hlsl", "src/advisor_vs.h", "src/advisor_ps.h", "src/native_adapter.cpp", "src/native_split_install.inl", "src/native_unified_overlay.inl", "src/native_unified_personnel.inl", "tests/advisor_briefing_fixture.cpp", "tests/advisor_overlay_fixture.cpp", "tests/verify_advisor_briefing.py", "tools/build_advisor_briefing_fixture.ps1", "tools/build_advisor_shaders.ps1", "tools/inspect_advisor_briefing.py", "tools/install_local.py", "tests/verify_local_install_rollback.py", "tools/generate_handoff.py", "installer/InstallerGui.cs", "distribution/FeatureSelect.ps1", "FeatureSelect.ps1"],
+      "tests": ["advisor-briefing"]
+    },
+    "diplomacy-intel": {
+      "sources": ["src/native_diplomacy_intel.inl", "src/diplomacy_intel.h", "src/diplomacy_intel_profile.h", "src/native_adapter.cpp", "src/native_split_install.inl", "tests/diplomacy_intel_fixture.cpp", "tests/verify_diplomacy_intel.py", "tests/split_module_fixture.cpp", "tools/build_diplomacy_intel_fixture.ps1", "installer/InstallerGui.cs", "distribution/FeatureSelect.ps1", "FeatureSelect.ps1"],
+      "tests": ["diplomacy-intel"]
+    },
+    "path-fast": {
+      "sources": [
+        "src/native_path_fast.inl", "src/path_fast.h", "src/native_adapter.cpp",
+        "src/native_path_count.inl",
+        "src/native_split_install.inl", "tests/path_fast_fixture.cpp", "tests/verify_path_fast.py",
+        "tests/split_module_fixture.cpp", "tools/build_path_fast_fixture.ps1",
+        "installer/InstallerGui.cs", "distribution/FeatureSelect.ps1", "FeatureSelect.ps1"
+      ],
+      "tests": ["path-fast"]
+    },
+    "path-count": {
+      "sources": [
+        "src/native_path_count.inl", "src/path_count.h", "src/native_adapter.cpp",
+        "src/native_split_install.inl", "src/native_progress.inl",
+        "tests/path_count_fixture.cpp", "tests/verify_path_count.py",
+        "tools/build_path_count_fixture.ps1", "installer/InstallerGui.cs",
+        "distribution/FeatureSelect.ps1", "FeatureSelect.ps1"
+      ],
+      "tests": ["path-count"]
+    },
+    "area-index": {
+      "sources": [
+        "src/native_area_index.inl",
+        "src/area_index.h",
+        "src/native_adapter.cpp",
+        "src/native_split_install.inl",
+        "tests/area_index_fixture.cpp",
+        "tests/verify_area_index.py",
+        "tests/split_module_fixture.cpp",
+        "tools/build_area_index_fixture.ps1",
+        "installer/InstallerGui.cs",
+        "distribution/FeatureSelect.ps1",
+        "FeatureSelect.ps1"
+      ],
+      "tests": [
+        "area-index"
+      ]
+    },
+    "damage-preview": {
+      "sources": [
+        "src/native_damage_preview.inl",
+        "src/damage_preview.h",
+        "src/damage_preview_profile.h",
+        "src/native_adapter.cpp",
+        "src/native_split_install.inl",
+        "installer/InstallerGui.cs",
+        "distribution/FeatureSelect.ps1",
+        "tests/damage_preview_fixture.cpp",
+        "tools/verify_damage_preview_native.py"
+      ],
+      "tests": [
+        "damage-preview",
+        "native",
+        "split-module",
+        "installer-gui"
+      ]
+    },
+    "district-intercept": {
+      "sources": [
+        "src/native_sortie.inl",
+        "src/native_adapter.cpp",
+        "installer/InstallerGui.cs",
+        "distribution/FeatureSelect.ps1",
+        "tests/district_intercept_fixture.inl",
+        "tests/verify_district_intercept.py",
+        "src/native_district_intercept.inl",
+        "src/native_split_install.inl"
+      ],
+      "tests": [
+        "district-intercept",
+        "sortie",
+        "native",
+        "split-module",
+        "installer-gui"
+      ]
+    },
+    "region-officers": {
+      "sources": [
+        "src/native_region_officers.inl",
+        "src/native_region_officer_traits.inl",
+        "src/region_officer_profile.h",
+        "tests/region_officer_fixture.cpp",
+        "tests/verify_region_officers.py"
+      ],
+      "tests": [
+        "region-officers",
+        "native",
+        "split-module"
+      ]
+    },
+    "ai-trace": {
+      "sources": [
+        "src/native_ai_trace.inl",
+        "src/ai_trace_nodes.h",
+        "tools/gen_ai_trace_nodes.py",
+        "tools/analyze_ai_trace.py",
+        "tests/ai_trace_fixture.cpp",
+        "tools/build_ai_trace.ps1"
+      ],
+      "tests": [
+        "ai-trace",
+        "split-module",
+        "native"
+      ]
+    },
+    "installer-gui": {
+      "sources": [
+        "installer/InstallerGui.cs",
+        "installer/app.manifest",
+        "tools/build_installer.ps1",
+        "tests/verify_installer_gui.py",
+        "tests/installer_gui_roundtrip.ps1",
+        "distribution/FeatureSelect.ps1"
+      ],
+      "tests": [
+        "installer-gui"
+      ]
+    },
+    "installer": {
+      "sources": [
+        "distribution/SplitManage.ps1",
+        "tests/verify_installer_layout.ps1",
+        "tests/verify_layout_restore.ps1",
+        "distribution/Manage.ps1",
+        "tests/installer_atomic_fixture.ps1"
+      ],
+      "tests": [
+        "installer-atomic",
+        "installer-layout",
+        "layout-restore"
+      ]
+    },
+    "expert-combat": {
+      "sources": [
+        "src/expert_combat_settings.h",
+        "src/native_expert_settings.inl",
+        "src/native_expert_links.inl",
+        "tools/inspect_expert_presets.py",
+        "research/expert_settings/build_preset_layout.py",
+        "src/native_adjacency.inl",
+        "src/native_split_install.inl",
+        "tests/expert_settings_fixture.inl",
+        "tests/split_module_fixture.cpp"
+      ],
+      "tests": [
+        "native",
+        "split-module"
+      ]
+    },
+    "combat-rebuild": {
+      "sources": [
+        "src/combat_v2/hex.h",
+        "src/combat_v2/legacy_features.cpp",
+        "src/combat_v2/legacy_features.h",
+        "src/combat_v2/movement.cpp",
+        "src/combat_v2/movement.h",
+        "src/combat_v2/native_contract.h",
+        "src/combat_v2/sortie.cpp",
+        "src/combat_v2/sortie.h",
+        "tests/combat_v2_sortie_fixture.cpp",
+        "tests/combat_v2_movement_fixture.cpp",
+        "tests/combat_v2_movement_model.h",
+        "tests/combat_v2_features_fixture.cpp",
+        "tests/verify_combat_rebuild.py",
+        "tools/build_combat_rebuild.ps1"
+      ],
+      "tests": [
+        "combat-rebuild"
+      ]
+    },
+    "progress-log": {
+      "sources": [
+        "src/native_adapter.cpp",
+        "src/native_crash_diagnostic.inl",
+        "src/native_adjacency.inl",
+        "src/native_progress.inl",
+        "src/native_merit_save.inl",
+        "src/native_friendship_save.inl",
+        "src/log_append.h",
+        "distribution/diagnostics.ini",
+        "distribution/progress_native.ini"
+      ],
+      "tests": [
+        "log",
+        "progress-native",
+        "progress-rollback",
+        "native",
+        "sortie",
+        "merit",
+        "recruitment",
+        "personnel",
+        "awards"
+      ]
+    },
+    "progress-native": {
+      "sources": [
+        "src/native_progress.inl",
+        "src/progress_geometry.h",
+        "src/native_progress_profile.h",
+        "src/progress_distance_kernel.asm",
+        "src/progress_distance_kernel.h",
+        "src/native_adapter.cpp"
+      ],
+      "tests": [
+        "progress-native",
+        "progress-rollback",
+        "native",
+        "sortie",
+        "merit",
+        "recruitment",
+        "personnel",
+        "awards"
+      ]
+    },
+    "progress-study": {
+      "sources": [
+        "distribution/ProgressMeasure.ps1",
+        "distribution/ProgressMetrics.psm1"
+      ],
+      "tests": [
+        "progress",
+        "progress-samples"
+      ]
+    },
+    "awards": {
+      "sources": [
+        "src/award_policy.h",
+        "src/native_awards.inl",
+        "src/native_awards_save.inl",
+        "src/native_awards_links.inl"
+      ],
+      "tests": [
+        "awards",
+        "native",
+        "merit",
+        "recruitment"
+      ]
+    },
+    "recruitment": {
+      "sources": [
+        "src/native_recruit_ui.inl",
+        "src/native_personnel_batch.inl",
+        "src/native_personnel.inl",
+        "src/native_recruit_ai.inl",
+        "src/personnel_policy.h"
+      ],
+      "tests": [
+        "recruitment"
+      ]
+    },
+    "ui-common": {
+      "sources": [
+        "src/native_ui_common.inl"
+      ],
+      "tests": [
+        "recruitment"
+      ]
+    },
+    "merit": {
+      "sources": [
+        "src/native_merit.inl",
+        "src/native_merit_save.inl",
+        "src/native_merit_links.inl",
+        "src/merit_bond.h",
+        "src/native_merit_scroll.inl"
+      ],
+      "tests": [
+        "merit"
+      ]
+    },
+    "ai": {
+      "sources": [
+        "src/native_campaign.inl",
+        "src/native_facilities.inl",
+        "src/native_adjacency.inl",
+        "src/tactics_policy.c",
+        "src/tactics_policy.h",
+        "src/native_obstacles.inl",
+        "src/obstacle_policy.h",
+        "src/native_campaign_routes.inl",
+        "src/native_campaign_support.inl",
+        "src/native_campaign_logistics.inl",
+        "src/native_campaign_reinforcements.inl",
+        "src/campaign_policy.h",
+        "src/native_campaign_operations.inl"
+      ],
+      "tests": [
+        "native"
+      ]
+    },
+    "domestic": {
+      "sources": [
+        "src/native_domestic.inl",
+        "src/native_population.inl"
+      ],
+      "tests": [
+        "native"
+      ]
+    },
+    "personnel": {
+      "sources": [
+        "src/native_personnel.inl",
+        "src/native_recruit_ai.inl",
+        "src/personnel_policy.h"
+      ],
+      "tests": [
+        "personnel"
+      ]
+    },
+    "core": {
+      "sources": [
+        "src/native_adapter.cpp",
+        "src/native_crash_diagnostic.inl",
+        "src/native_profile.h"
+      ],
+      "tests": [
+        "native",
+        "merit",
+        "recruitment"
+      ]
+    },
+    "injury": {
+      "sources": [
+        "src/native_injury.inl",
+        "src/native_injury_links.inl",
+        "src/native_personnel.inl",
+        "src/native_recruit_ai.inl",
+        "src/native_domestic.inl"
+      ],
+      "tests": [
+        "personnel",
+        "native",
+        "recruitment",
+        "merit"
+      ]
+    },
+    "sortie": {
+      "sources": [
+        "src/native_sortie.inl",
+        "src/native_sortie_links.inl",
+        "src/sortie_policy.h",
+        "src/native_campaign_departures.inl",
+        "tests/campaign_departure_fixture.inl",
+        "tests/campaign_priority_fixture.inl"
+      ],
+      "tests": [
+        "sortie",
+        "native",
+        "merit",
+        "recruitment",
+        "personnel"
+      ]
+    },
+    "campaign-revision": {
+      "sources": [],
+      "tests": [
+        "native",
+        "sortie",
+        "merit",
+        "recruitment",
+        "personnel",
+        "awards"
+      ]
+    },
+    "small-army-campaign": {
+      "sources": [
+        "src/campaign_policy.h",
+        "src/native_campaign_operations.inl",
+        "src/sortie_policy.h"
+      ],
+      "tests": [
+        "native",
+        "sortie",
+        "merit",
+        "recruitment",
+        "personnel",
+        "awards"
+      ]
+    },
+    "target-retreat": {
+      "sources": [
+        "src/native_target_retreat.inl",
+        "src/native_target_retreat_profile.h",
+        "src/native_adapter.cpp",
+        "distribution/target_retreat.ini"
+      ],
+      "tests": [
+        "target-retreat",
+        "log",
+        "progress-native",
+        "progress-rollback",
+        "native",
+        "sortie",
+        "merit",
+        "recruitment",
+        "personnel",
+        "awards"
+      ]
+    },
+    "field-activity": {
+      "sources": [
+        "src/native_adapter.cpp",
+        "src/native_sortie.inl",
+        "src/native_campaign.inl",
+        "src/native_campaign_routes.inl",
+        "src/native_campaign_operations.inl",
+        "src/native_campaign_logistics.inl",
+        "src/native_campaign_reinforcements.inl",
+        "src/native_campaign_support.inl",
+        "src/native_campaign_departures.inl",
+        "tests/campaign_departure_fixture.inl",
+        "tests/campaign_priority_fixture.inl"
+      ],
+      "tests": [
+        "target-retreat",
+        "log",
+        "progress-native",
+        "progress-rollback",
+        "native",
+        "sortie",
+        "merit",
+        "recruitment",
+        "personnel",
+        "awards"
+      ]
+    },
+    "dll-split": {
+      "sources": [
+        "src/native_adapter.cpp",
+        "src/native_split_install.inl",
+        "src/split_module_api.h",
+        "src/native_personnel.inl",
+        "src/input_proxy.cpp",
+        "distribution/Manage.ps1",
+        "distribution/SplitManage.ps1",
+        "tools/build_split.ps1",
+        "src/module_loader.cpp",
+        "tests/pure_loader_fixture.cpp",
+        "tests/loader_mock.cpp",
+        "tests/verify_loader.py",
+        "tests/verify_split_exports.py",
+        "src/native_campaign_departures.inl",
+        "tests/campaign_departure_fixture.inl",
+        "tests/campaign_priority_fixture.inl"
+      ],
+      "tests": [
+        "split-module",
+        "native",
+        "sortie",
+        "merit",
+        "recruitment",
+        "personnel",
+        "awards",
+        "target-retreat",
+        "progress-native",
+        "log",
+        "progress-rollback",
+        "unified-personnel"
+      ]
+    },
+    "field-io-revision": {
+      "sources": [
+        "src/native_adapter.cpp",
+        "src/native_sortie.inl",
+        "src/native_campaign.inl",
+        "src/native_campaign_routes.inl",
+        "src/native_campaign_operations.inl",
+        "src/native_campaign_support.inl",
+        "src/native_campaign_departures.inl",
+        "src/native_merit.inl",
+        "src/native_merit_save.inl",
+        "src/merit_bond.h",
+        "src/sidecar_cache.h",
+        "src/native_adjacency.inl",
+        "tests/verify_session_release.py"
+      ],
+      "tests": [
+        "split-module",
+        "native",
+        "sortie",
+        "merit",
+        "recruitment",
+        "personnel",
+        "awards",
+        "target-retreat",
+        "progress-native",
+        "log",
+        "progress-rollback"
+      ]
+    },
+    "modpack-v16": {
+      "sources": [
+        "src/native_modpack.inl",
+        "src/modpack_tables.h",
+        "src/stat_growth.h",
+        "src/native_split_install.inl",
+        "tools/import_modpack_objects.py",
+        "tools/prepare_modpack_tables.py",
+        "tests/modpack_fixture.cpp",
+        "tests/verify_modpack_static.py"
+      ],
+      "tests": [
+        "split-module",
+        "native"
+      ]
+    },
+    "traits9-captive": {
+      "sources": [
+        "src/native_traits9.inl",
+        "src/native_split_install.inl",
+        "tools/prepare_traits9.py",
+        "tests/verify_traits9_save.py",
+        "distribution/SplitManage.ps1"
+      ],
+      "tests": [
+        "split-module",
+        "traits9-save"
+      ]
+    },
+    "unified-personnel": {
+      "sources": [
+        "src/unified_personnel.h",
+        "src/unified_tactic_settings.h",
+        "src/native_unified_personnel.inl",
+        "src/native_unified_settings.inl",
+        "src/native_unified_actions.inl",
+        "src/native_unified_posts_trade.inl",
+        "src/native_tactic_priority.inl",
+        "tests/unified_personnel_fixture.cpp",
+        "tests/unified_native_fixture.cpp",
+        "tools/build_unified_fixture.ps1",
+        "src/unified_labels.h",
+        "tools/generate_unified_labels.py",
+        "src/native_unified_dialogs.inl",
+        "tests/unified_panes_fixture.cpp",
+        "tests/verify_unified_engine_ui.py",
+        "src/native_unified_overlay.inl",
+        "src/unified_overlay_policy.h",
+        "tests/unified_overlay_fixture.cpp",
+        "src/native_unified_relations.inl",
+        "tests/unified_relations_fixture.cpp",
+        "tests/verify_sortie_relation.py",
+        "tests/verify_unified_panes.py"
+      ],
+      "tests": [
+        "unified-personnel",
+        "split-module"
+      ]
+    },
+    "name-lookup": {
+      "sources": [
+        "src/name_lookup.h",
+        "src/native_name_lookup.inl",
+        "src/native_adapter.cpp",
+        "src/native_split_install.inl",
+        "tests/name_lookup_fixture.cpp",
+        "tools/build_name_lookup_fixture.ps1",
+        "tools/compare_name_lookup_ab.py",
+        "docs/NAME_LOOKUP.md",
+        "distribution/progress_native.ini"
+      ],
+      "tests": [
+        "name-lookup",
+        "split-module"
+      ]
+    },
+    "building-destruction": {
+      "sources": [
+        "src/native_building_destruction.inl",
+        "src/building_destruction_profile.h",
+        "src/native_adapter.cpp",
+        "src/native_split_install.inl",
+        "installer/InstallerGui.cs",
+        "distribution/FeatureSelect.ps1",
+        "tests/building_destruction_fixture.cpp",
+        "tools/verify_building_destruction_native.py"
+      ],
+      "tests": [
+        "building-destruction",
+        "native",
+        "split-module",
+        "installer-gui"
+      ]
+    },
+    "appear-batch": {
+      "sources": [
+        "src/appear_batch.h",
+        "src/native_appear_batch.inl",
+        "src/native_adapter.cpp",
+        "src/native_split_install.inl",
+        "tests/appear_batch_fixture.cpp",
+        "tests/verify_appear_batch.py",
+        "tools/build_appear_batch_fixture.ps1"
+      ],
+      "tests": [
+        "appear-batch",
+        "split-module"
+      ]
+    },
+    "face-keep": {
+      "sources": [
+        "src/face_keep.h",
+        "src/native_face_keep.inl",
+        "src/native_face_timing.inl",
+        "src/native_adapter.cpp",
+        "src/native_split_install.inl",
+        "tests/face_keep_fixture.cpp",
+        "tests/verify_face_keep.py",
+        "tools/build_face_keep_fixture.ps1",
+        "src/native_appear_batch.inl",
+        "src/appear_batch.h"
+      ],
+      "tests": [
+        "face-keep",
+        "split-module"
+      ]
+    }
+  },
+  "split_build": [
+    "tools/build_split.ps1"
+  ]
+}

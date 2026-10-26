@@ -1,0 +1,13 @@
+// Generated from the SHA-256 checked CE plain copy.
+struct Guard {unsigned rva,size;unsigned long long hash;};
+static const Guard guards[]={
+    {0x1F91A0,0x8A,0x9049AF136676CEB0ull},
+    {0x1F9DE0,0x1363,0x30373A53223F4916ull},
+    {0x1EB980,0x21C,0xC74D90B0C2A44B5Dull},
+    {0x1F42B0,0x92,0xCD4CCE4E0E924056ull},
+    {0x294B90,0x5C0,0xAA079D3E52482679ull},
+    {0x229EA0,0x2C,0xA2E199FE100A4E74ull},
+    {0x2CA280,0x30,0x7221823C76F2F29Full},
+    {0x2C5650,0x86,0x1713BE6413D071A6ull},
+    {0x22CA00,0x75,0x880B7C7EC5215155ull},
+};

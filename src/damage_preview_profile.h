@@ -1,0 +1,16 @@
+// Generated from the verified CE plain copy; do not hand-edit addresses.
+struct Guard {unsigned rva,size;unsigned long long hash;};
+static const Guard guards[]={
+    {0x7FA230,0x533,0xFA0E6E9FA81368AEull},
+    {0x7D0460,0x17D,0x27A85A72FD78E104ull},
+    {0x7F55D0,0x1C5,0x8999CD3A739DF67Dull},
+    {0x16A1D0,0x5B0,0x6258DD38B405FA38ull},
+    {0x2B21A0,0x2A0,0x3DAA963C35BDFC51ull},
+    {0x2B2440,0x244,0xA61EC6CEBEFA084Aull},
+    {0x2A9E50,0x2D3,0x7E749534421219C6ull},
+    {0x2AA2E0,0x283,0x28D3F3D39B51787Full},
+    {0x18FDA0,0x15D,0x43FA58B396A6750Cull},
+    {0x92F810,0x76,0x05424D9381749391ull},
+    {0x22C6D0,0x53,0xE8370CA5854F2A1Full},
+    {0x191760,0x4C8,0xA71EAF6B3CE0D745ull},
+};

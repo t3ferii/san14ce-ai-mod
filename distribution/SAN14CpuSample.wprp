@@ -1,0 +1,24 @@
+<!-- Sampled CPU stacks only. No context-switch, registry, network or UI providers. -->
+<WindowsPerformanceRecorder Version="1.0">
+  <Profiles>
+    <SystemCollector Id="SAN14CpuCollector" Name="SAN14 sampled CPU">
+      <BufferSize Value="1024" />
+      <Buffers Value="128" />
+    </SystemCollector>
+    <SystemProvider Id="SAN14CpuProvider">
+      <Keywords>
+        <Keyword Value="ProcessThread" />
+        <Keyword Value="Loader" />
+        <Keyword Value="SampledProfile" />
+      </Keywords>
+      <Stacks><Stack Value="SampledProfile" /></Stacks>
+    </SystemProvider>
+    <Profile Id="SAN14CPU.Verbose.File" Name="SAN14CPU" Description="SAN14 CPU sampling and stacks" LoggingMode="File" DetailLevel="Verbose">
+      <Collectors>
+        <SystemCollectorId Value="SAN14CpuCollector">
+          <SystemProviderId Value="SAN14CpuProvider" />
+        </SystemCollectorId>
+      </Collectors>
+    </Profile>
+  </Profiles>
+</WindowsPerformanceRecorder>
