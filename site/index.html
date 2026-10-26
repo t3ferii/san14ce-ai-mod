@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#171b18">
+  <meta name="description" content="삼국지14 한국어 Complete Edition을 더 빠르고 편하게. AI 전쟁 운영, 자동 등용과 내정, 예상 피해량, 개성 9칸과 배속까지 원하는 기능만 골라 쓰세요.">
+  <meta property="og:title" content="삼14CE AI교정 모드 — 천하를 다툴 시간">
+  <meta property="og:description" content="기다림은 줄이고, 장수와 전쟁에 더 집중하세요. 실제 게임 화면과 시연 영상, 기능 소개와 다운로드.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://t3ferii.github.io/san14ce-ai-mod/">
+  <title>삼14CE AI교정 모드 · 천하를 다툴 시간</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">본문으로 건너뛰기</a>
+  <header class="masthead">
+    <a class="brand" href="#" aria-label="삼14CE AI교정 모드 처음으로"><span class="seal" aria-hidden="true">三<br>國</span><span>삼14CE<span class="brand-small">AI교정 모드</span></span></a>
+    <nav aria-label="주요 메뉴"><a href="#features">기능 둘러보기</a><a href="#showcase">게임 화면</a><a href="#videos">시연 영상</a><a href="#install">설치 안내</a></nav>
+    <a class="nav-download" href="https://github.com/t3ferii/san14ce-ai-mod/releases/latest">다운로드 <span aria-hidden="true">↗</span></a>
+  </header>
+  <main id="main">
+    <section class="hero wrap" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="line"></span> ROMANCE OF THE THREE KINGDOMS XIV</p>
+        <h1 id="hero-title">천하를 다툴 시간.<br><em>기다림은 줄이고.</em></h1>
+        <p class="hero-description">길어지는 「전략중」 대기와 반복되는 인사 관리.<br>그 시간을 줄여, 장수를 키우고 전황을 읽는<br class="desktop-break"> 삼국지의 재미에 더 집중해 보세요.</p>
+        <div class="hero-actions"><a class="button primary" href="https://github.com/t3ferii/san14ce-ai-mod/releases/latest">모드 다운로드 <span aria-hidden="true">↓</span></a><a class="text-link" href="#videos"><span class="play-small" aria-hidden="true">▶</span> 실제 플레이 보기</a></div>
+        <p class="compat">한국어 Complete Edition · Windows 64비트 · 필요한 기능만 선택</p>
+      </div>
+      <figure class="hero-image">
+        <img src="https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%A0%84%ED%88%AC%EB%A0%A5%EB%8C%80%EC%B2%B4_%EC%98%88%EC%83%81%ED%94%BC%ED%95%B4%EB%9F%89_%ED%98%84%EC%9E%AC%EC%8A%A4%ED%83%AF%EA%B8%B0%EC%A4%80.png" data-asset="전투력대체_예상피해량_현재스탯기준.png" alt="삼국지14 지도에서 공격 전 예상 피해량을 확인하는 실제 모드 화면" width="1920" height="1080" fetchpriority="high">
+        <figcaption><span class="image-index">實戰 / 01</span><span>공격 전에, 피해량부터 읽다.</span><a href="#showcase" aria-label="실제 게임 화면 더 보기">↗</a></figcaption>
+        <span class="vertical-note" aria-hidden="true">더 깊게 즐기는 삼국지</span>
+      </figure>
+    </section>
+
+    <div class="release-bar"><div class="wrap release-inner"><span class="release-pill">업데이트</span><p><strong>v13.3</strong> 경로 탐색 가속의 메모리 누수를 수정했습니다. v13.1·v13.2 사용자는 업데이트해 주세요.</p><a href="https://github.com/t3ferii/san14ce-ai-mod/releases/latest">업데이트 내용 <span aria-hidden="true">↗</span></a></div></div>
+
+    <section id="features" class="section wrap" aria-labelledby="features-title">
+      <div class="section-heading"><div><p class="eyebrow">01 / YOUR WAY TO PLAY</p><h2 id="features-title">원하는 변화만,<br>내 플레이에 맞게.</h2></div><p class="section-intro">전쟁은 더 치열하게, 관리는 한결 편하게.<br>설치기에서 취향에 맞는 기능을 골라 쓰세요.</p></div>
+      <div class="feature-tabs" role="tablist" aria-label="기능 분야">
+        <button id="tab-war" role="tab" aria-selected="true" aria-controls="panel-war" data-tab="war">전쟁과 AI <span>兵</span></button>
+        <button id="tab-officers" role="tab" aria-selected="false" aria-controls="panel-officers" tabindex="-1" data-tab="officers">장수와 인사 <span>將</span></button>
+        <button id="tab-manage" role="tab" aria-selected="false" aria-controls="panel-manage" tabindex="-1" data-tab="manage">내정과 정보 <span>政</span></button>
+        <button id="tab-speed" role="tab" aria-selected="false" aria-controls="panel-speed" tabindex="-1" data-tab="speed">속도와 대기 <span>速</span></button>
+      </div>
+      <div id="panel-war" class="feature-panel" role="tabpanel" aria-labelledby="tab-war" tabindex="0">
+        <div class="feature-lead"><span class="chapter">兵</span><h3>공성부터 병참까지,<br>맞서 싸울 만한 상대.</h3><p>컴퓨터의 출진 편성·집결·공성·회군 판단을 보완합니다. 기본 설정인 임무 일관성 v2는 목표를 향한 공격을 이어가도록 돕습니다.</p></div>
+        <div class="feature-list">
+          <article><span>01</span><div><h4>역할을 나누는 군세 편성</h4><p>병력과 장수·진형에 맞춰 2~7부대를 꾸리고 앞줄·후열·지원을 나눕니다.</p></div></article>
+          <article><span>02</span><div><h4>성을 향한 공격을 이어가도록</h4><p>목표 성 주변 공성 시설, 출진 후 전력 재점검, 공성 중 정지 퇴각 보호를 함께 보완합니다.</p></div></article>
+          <article><span>03</span><div><h4>전선을 압박하는 병참 차단</h4><p>플레이어 부대의 병참을 끊을 기회를 살피고, 이동·집결·사기 회복 판단도 손봅니다.</p></div></article>
+          <article><span>04</span><div><h4>내 전장에 맞춘 공방 설정</h4><p>자세력·타세력 공방과 인접지역 효과를 조절하세요. 건물파괴 지역 전체 피해도 선택할 수 있습니다.</p></div></article>
+        </div>
+      </div>
+      <div id="panel-officers" class="feature-panel" role="tabpanel" aria-labelledby="tab-officers" tabindex="0" hidden>
+        <div class="feature-lead"><span class="chapter">將</span><h3>좋아하는 장수를,<br>더 오래, 더 깊게.</h3><p>등용과 명품 정리에 드는 손길을 줄이고, 논공·친애·성장으로 장수 육성의 재미를 더합니다.</p></div>
+        <div class="feature-list">
+          <article><span>01</span><div><h4>여러 대상을 한 번에 등용</h4><p>가능성과 걸림돌을 확인하고 군사의 조언을 바탕으로 자동 등용을 진행하세요.</p></div></article>
+          <article><span>02</span><div><h4>무공에 걸맞은 보상</h4><p>무공 1·2단계마다 지휘병력 +3,000명. 3단계에는 군주와 상호 친애를 얻습니다.</p></div></article>
+          <article><span>03</span><div><h4>명품 관리와 전법 습득을 가볍게</h4><p>명품창고·6슬롯, 출진 중 명품·관직 수여와 여러 무장·전법서의 다중 습득을 지원합니다.</p></div></article>
+          <article><span>04</span><div><h4>육성과 관계 플레이의 선택지</h4><p>개성 9칸, 능력치 상한 200과 추가 성장, 3인 의형제·일부다처·혼인 해제, 시작 전 군주 변경까지.</p></div></article>
+        </div>
+      </div>
+      <div id="panel-manage" class="feature-panel" role="tabpanel" aria-labelledby="tab-manage" tabindex="0" hidden>
+        <div class="feature-lead"><span class="chapter">政</span><h3>맡길 일은 맡기고,<br>중요한 판단은 한눈에.</h3><p>군단의 역할을 나누고, 내정과 인재 배치를 준비하는 데 필요한 정보를 화면에서 바로 확인하세요.</p></div>
+        <div class="feature-list">
+          <article><span>01</span><div><h4>위임 군단을 역할에 맞게</h4><p>지원 방침은 수송, 내정 방침은 수송·건설에 집중하도록 군사 출진을 제한합니다.</p></div></article>
+          <article><span>02</span><div><h4>상업·농업·병영을 균형 있게</h4><p>컴퓨터와 위임 군단의 자동 내정, 자동 담당관 임명 비용 0, 직할 1군단의 선택적 자동 내정을 지원합니다.</p></div></article>
+          <article><span>03</span><div><h4>공격 전 예상 피해량 확인</h4><p>현재 능력치 기준 병사·시설 피해, 충성도 숫자, 귀환 일수와 능력치 경험치를 확인하세요.</p></div></article>
+          <article><span>04</span><div><h4>지도에서 담당관과 개성 확인</h4><p>지역·성 이름표의 초상화와 내정 개성을 살피고 인재를 배치하세요. 교역 무장의 소재와 귀환 도시도 보완합니다.</p></div></article>
+        </div>
+      </div>
+      <div id="panel-speed" class="feature-panel" role="tabpanel" aria-labelledby="tab-speed" tabindex="0" hidden>
+        <div class="feature-lead"><span class="chapter">速</span><h3>다음 전황까지,<br>더 짧은 기다림.</h3><p>반복 계산과 화면 로딩을 줄이고, 배속과 연출 옵션으로 플레이의 흐름을 이어갑니다.</p></div>
+        <div class="feature-list">
+          <article><span>01</span><div><h4>×4·×8 진행 배속</h4><p>기존 최고 속도 대비 배속 버튼을 추가합니다. 60fps 설정 기준이며, 30fps에서는 최대 ×4입니다.</p></div></article>
+          <article><span>02</span><div><h4>전략중 계산 가속</h4><p>경로 탐색, 거리·기하 계산, AI 진입과 지역별 건설 검사에서 반복 작업을 줄입니다.</p></div></article>
+          <article><span>03</span><div><h4>출진 부대의 「0일」 대기 단축</h4><p>부대 등장 묶음 처리와 지휘관 얼굴 보관·미리 불러오기로 등장 대기를 줄입니다.</p></div></article>
+          <article><span>04</span><div><h4>저장·메뉴·연출도 빠르게</h4><p>자동저장 압축, 이름 탐색과 화면 보관을 가속하고 자동점령·명승지의 반복 연출을 줄입니다.</p></div></article>
+        </div>
+      </div>
+      <a class="section-link" href="https://github.com/t3ferii/san14ce-ai-mod#readme">전체 기능과 옵션 자세히 읽기 <span aria-hidden="true">↗</span></a>
+    </section>
+
+    <section id="showcase" class="section showcase" aria-labelledby="showcase-title"><div class="wrap">
+      <div class="section-heading"><div><p class="eyebrow">02 / IN THE GAME</p><h2 id="showcase-title">설명보다 먼저,<br>실제 화면으로.</h2></div><p class="section-intro">게임 안에서는 이렇게 달라집니다.<br>이미지를 누르면 크게 볼 수 있습니다.</p></div>
+      <div class="gallery">
+        <figure class="gallery-wide"><button class="zoom" data-caption="공격 전 예상 피해량 확인"><img src="https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%A0%84%ED%88%AC%EB%A0%A5%EB%8C%80%EC%B2%B4_%EC%98%88%EC%83%81%ED%94%BC%ED%95%B4%EB%9F%89_%ED%98%84%EC%9E%AC%EC%8A%A4%ED%83%AF%EA%B8%B0%EC%A4%80.png" data-asset="전투력대체_예상피해량_현재스탯기준.png" alt="칼 등급 대신 병사와 시설의 예상 피해를 숫자로 보여주는 화면" loading="lazy" width="1920" height="1080"></button><figcaption><span>戰 / 전황 읽기</span><h3>싸움을 걸기 전, 숫자로 가늠하다.</h3><p>현재 능력치를 반영한 예상 피해량으로 다음 한 수를 준비하세요.</p></figcaption></figure>
+        <figure><button class="zoom" data-caption="군사 조언을 이용한 자동 등용"><img src="https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%9E%90%EB%8F%99%EB%93%B1%EC%9A%A9_%EA%B5%B0%EC%82%AC%EC%A1%B0%EC%96%B8.png" data-asset="자동등용_군사조언.png" alt="군사의 조언으로 실행무장을 선택하는 자동 등용 화면" loading="lazy" width="1920" height="1080"></button><figcaption><span>人 / 인재 모으기</span><h3>군사의 조언으로 인재를 모으다.</h3></figcaption></figure>
+        <figure><button class="zoom" data-caption="지도 위 지역담당관과 내정 개성"><img src="https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%A7%80%EC%97%AD%EB%8B%B4%EB%8B%B9%EA%B4%80_%EC%B4%88%EC%83%81%ED%99%94_%EB%82%B4%EC%A0%95%EA%B0%9C%EC%84%B1.png" data-asset="지역담당관_초상화_내정개성.png" alt="지도 위에 지역담당관 초상화와 내정 개성이 표시된 화면" loading="lazy" width="1920" height="1080"></button><figcaption><span>政 / 영지 가꾸기</span><h3>내 땅을 맡은 장수, 지도에서 바로.</h3></figcaption></figure>
+        <figure><button class="zoom" data-caption="논공 지휘병력 증가와 군주 상호 친애"><img src="https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EB%85%BC%EA%B3%B5%20%EC%A7%80%ED%9C%98%EB%B3%91%EB%A0%A5%2B3000_%EA%B5%B0%EC%A3%BC%EC%83%81%ED%98%B8%EC%B9%9C%EC%95%A0.png" data-asset="논공 지휘병력+3000_군주상호친애.png" alt="논공에 따른 지휘병력 증가와 군주 친애 화면" loading="lazy" width="1920" height="1080"></button><figcaption><span>功 / 장수 키우기</span><h3>함께 세운 공에, 더 큰 군세를.</h3></figcaption></figure>
+        <figure><button class="zoom" data-caption="시작 전 반란 버튼으로 군주 변경"><img src="https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%84%B8%EB%A0%A5%EA%B5%B0%EC%A3%BC%EB%B3%80%EA%B2%BD%28%EB%B0%98%EB%9E%80%29.png" data-asset="세력군주변경(반란).png" alt="게임 시작 전 세력 선택 화면의 반란 버튼으로 군주를 바꾸는 화면" loading="lazy" width="1920" height="1080"></button><figcaption><span>始 / 새로운 이야기</span><h3>이번 천하는, 다른 군주와 함께.</h3></figcaption></figure>
+      </div>
+    </div></section>
+
+    <section id="videos" class="section wrap" aria-labelledby="videos-title">
+      <div class="section-heading"><div><p class="eyebrow">03 / WATCH IT PLAY</p><h2 id="videos-title">진행 속도는,<br>영상으로 느껴보세요.</h2></div><p class="section-intro">페이지를 떠나지 않고 바로 재생하세요.<br>일반 시나리오와 영웅난무의 실제 진행 영상입니다.</p></div>
+      <div class="video-grid">
+        <article><div class="video-frame"><iframe src="https://www.youtube-nocookie.com/embed/nF1PYD4HI1c?rel=0" title="삼14CE AI교정 모드 성능 개선 — 일반 시나리오" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><div class="video-caption"><span>PLAY 01</span><h3>일반 시나리오</h3><a href="https://youtu.be/nF1PYD4HI1c" aria-label="일반 시나리오 영상을 YouTube에서 열기">↗</a></div></article>
+        <article><div class="video-frame"><iframe src="https://www.youtube-nocookie.com/embed/bkl1-_N1kD8?rel=0" title="삼14CE AI교정 모드 성능 개선 — 영웅난무" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><div class="video-caption"><span>PLAY 02</span><h3>영웅난무</h3><a href="https://youtu.be/bkl1-_N1kD8" aria-label="영웅난무 영상을 YouTube에서 열기">↗</a></div></article>
+      </div>
+      <p class="fineprint">영상은 제작자가 공개한 실제 플레이 기록입니다. 체감 속도는 PC 사양·시나리오·게임 설정에 따라 달라집니다.</p>
+    </section>
+
+    <section class="development wrap" aria-labelledby="development-title"><div><p class="eyebrow">NEXT / 개발 소식</p><h2 id="development-title">모아 둔 군정으로,<br>끝까지 대응할 수 있도록.</h2></div><div><span class="outline-pill">로컬 후보 · 공개 ZIP 미포함</span><p>100%를 넘어 군정을 투입해 방어 여유를 남기고, 컴퓨터의 마지막 응답 뒤 플레이어가 한 번 더 대응하는 두 기능을 준비했습니다.</p><p class="muted">자동 검사와 로컬 설치를 마쳤으며, 실제 게임에서 입력·표시·결과 확인이 남아 있습니다. 공개판과는 구분해 안내합니다.</p></div></section>
+
+    <section id="install" class="section wrap install" aria-labelledby="install-title">
+      <div class="section-heading"><div><p class="eyebrow">04 / BACK TO THE THREE KINGDOMS</p><h2 id="install-title">다시, 천하로.</h2></div><a class="button primary" href="https://github.com/t3ferii/san14ce-ai-mod/releases/latest">최신 버전 다운로드 <span aria-hidden="true">↓</span></a></div>
+      <ol class="steps"><li><span>01</span><h3>게임 종료 후 압축 해제</h3><p>릴리스 ZIP을 내려받아 전체 압축 해제하세요.</p></li><li><span>02</span><h3>설치기에서 취향대로 선택</h3><p>AI모드_설치관리자.exe를 열고 게임 폴더와 사용할 기능을 골라 「설치 / 적용」을 누르세요.</p></li><li><span>03</span><h3>평소처럼 실행</h3><p>Steam이나 런처로 시작하세요. 옵션을 바꿨다면 설정을 저장하고 게임을 다시 시작하면 됩니다.</p></li></ol>
+      <details class="install-notes"><summary>설치 전에 알아두면 좋은 내용 <span aria-hidden="true">+</span></summary><div><p>한국어 Complete Edition(CE) 64비트의 지원 빌드용입니다. 실행 파일은 설치기가 확인합니다. 일반 플레이에서는 「기타(개발용)」 탭을 꺼두세요.</p><p>건물파괴 지역 전체 피해·통합 인사·1군단 자동 내정은 기본 OFF입니다. 통합 인사는 시험 기능으로 별도 안내합니다.</p><p>업데이트 시 기존 선택은 보존됩니다. 원래 게임으로 돌아가려면 「모드 해제 (원본 복구)」를 사용하세요. 논공·명품창고 보조 자료는 세이브와 함께 보관해 주세요.</p><p>배포 파일은 미서명입니다. 자동 검사와 실제 플레이 확인은 구분하며 장기 안정성도 계속 확인하고 있습니다.</p></div></details>
+    </section>
+  </main>
+  <footer class="footer wrap"><a class="brand" href="#"><span class="seal" aria-hidden="true">三<br>國</span><span>삼14CE<span class="brand-small">AI교정 모드</span></span></a><p>삼국지14를 함께 더 오래 즐기기 위한 유저 모드입니다.<br>게임 이미지와 원작의 권리는 각 권리자에게 있습니다.</p><div><a href="https://github.com/t3ferii/san14ce-ai-mod">GitHub ↗</a><a href="https://github.com/t3ferii/san14ce-ai-mod/blob/main/docs/CHANGES_ALL.md">변경 이력 ↗</a></div></footer>
+  <dialog id="image-dialog" aria-label="게임 화면 크게 보기"><button class="dialog-close" aria-label="이미지 닫기">닫기 <span aria-hidden="true">×</span></button><img id="dialog-image" alt=""><p id="dialog-caption"></p></dialog>
+  <noscript><p class="noscript-note">기능 분야 전환과 이미지 확대에는 JavaScript가 필요합니다. 전체 설명은 <a href="https://github.com/t3ferii/san14ce-ai-mod#readme">README</a>에서도 볼 수 있습니다.</p></noscript>
+</body>
+</html>
