@@ -153,6 +153,24 @@
 
 </details>
 
+<details>
+<summary><strong>부동산 계획: 지형 변경</strong></summary>
+
+내 도시권의 땅을 직접 바꿔 보세요. 지역내정에서 도시권 칸을 누르면 그 칸 위에 지형 선택 창이 뜹니다(무료·무제한). 바닥 재질과 높이, 부대가 서는 높이, 숲의 나무, 절벽, 물이 바로 바뀌고 세이브와 함께 저장됩니다. 격류의 흰 물살은 아직 반영되지 않습니다.
+
+![지역내정에서 칸 지형을 바꾸는 부동산 계획](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EB%B6%80%EB%8F%99%EC%82%B0%EA%B0%9C%EB%B0%9C.webp)
+
+</details>
+
+<details>
+<summary><strong>군사의 열흘 보고</strong></summary>
+
+진행 중 쏟아지는 통지와 대사를 좌하단 군사 알림함이 모아서 알려 줍니다. 진행을 멈추지 않고 지난 열흘의 소식을 한 번에 확인하세요. 외교·처분 같은 선택 창은 그대로 뜹니다(시험 기능).
+
+![좌하단 군사 알림함 버블](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EA%B5%B0%EC%82%AC%EB%B3%B4%EA%B3%A0%EB%B2%84%EB%B8%94.webp)
+
+</details>
+
 ## 처음 설치한다면
 
 1. 게임을 종료하고 [최신 릴리스](https://github.com/t3ferii/san14ce-ai-mod/releases/latest)의 ZIP을 **전체 압축 해제**합니다.
