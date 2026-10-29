@@ -8,18 +8,23 @@
 
 | 탭 | 섹션.키 | 기본값 | 묶음 / 필요 기능 | 기능 |
 |---|---|---:|---|---|
+| 편의성 | game_flow.advisor_briefing | 1 | groups.convenience | 군사의 열흘 보고(시험, v14부터 기본 ON). 통지·보고를 알림함에 모음. 선택 창 유지, 다음 진행 때 초기화. [설명](ADVISOR_BRIEFING.md) |
+| 게임성 | real_estate.terrain_edit | 1 | groups.convenience | 부동산 계획: 지역내정에서 도시권 칸 지형 변경(무료·무제한). 바닥 재질·높이·부대 높이·나무·절벽·수면 즉시 반영, `.terrain` 보조 저장. 격류 흰 물살 미반영, 급류 이동불가 테두리는 재로드 후 표시 |
+| 게임성 | diplomacy.diplomacy_overinvest | 1 | groups.convenience | 컴퓨터가 시작한 외교 교섭에서 보유 군정까지(100% 초과) 방어 투입 |
+| 게임성 | diplomacy.diplomacy_counterturn | 1 | groups.convenience | 컴퓨터의 마지막 응답 뒤 플레이어 추가 군정 대응 1회 |
 | 게임성 | stratagem.building_destruction_all | 0 | groups.convenience | 건물파괴 성공 시 선택 지역의 모든 적 군사시설·장애물·함정에 원래 피해량을 각각 적용. 성·관문·아군·동맹·중립 제외. 실패는 원작 처리, 플레이어·컴퓨터 공통. [설명](BUILDING_DESTRUCTION.md) |
 | 게임성 | combat.district_intercept_block | 1 | groups.convenience | 지원·내정 군단 출진 제한 (플레이어 2군단~): 지원=수송만, 내정=요격·점령·공격 출진 금지. 컴퓨터·직할·공격 방침·직접 명령·기존 야전부대 제외. 전투 DLL이 있으면 그 1EC890 훅이, 없으면 편의 DLL이 판정 |
 | 전투 | groups.combat | 1 | — | 전투 AI 교정 전체 (SAN14_CombatAI.dll) |
 | 전투 | combat.sortie_formation | 1 | groups.combat | 군세 출진 편성 (병력별 2~7부대·공성 진형·1,000명 지원) |
-| 전투 | combat.departures | 1 | groups.combat | 정기 선제 출진 검토 (10일마다) |
-| 전투 | combat.group_advance | 1 | groups.combat | 집결 후 30일 정지 군세의 집단 진군 |
+| 전투 | combat.departures | 0 | groups.combat | 정기 선제 출진 검토 (10일마다) — 사용 중지(2026-10-28) |
+| 전투 | combat.group_advance | 0 | groups.combat | 집결 후 30일 정지 군세의 집단 진군 — 사용 중지(2026-10-28) |
 | 전투 | combat.stationary_retreat | 1 | groups.combat | 같은 자리 40일 정지 부대 퇴각 |
 | 전투 | combat.morale | 1 | groups.combat | 사기 회복 우선 |
-| 전투 | combat.support | 1 | groups.combat | 호위·동행 지원 요청 |
+| 전투 | combat.support | 0 | groups.combat | 호위·동행 지원 요청 — 사용 중지(2026-10-28) |
 | 전투 | combat.mission_v2 | 1 | groups.combat | 임무 일관성 v2 (공성 시설만·대기 없음·원작 공격 우선) |
 | 전투 | combat.ai_max_aggression | 1 | groups.combat | AI 호전성 최대 (궁극과 같은 공격 검토) |
 | 전투 | combat.ai_wall_block | 1 | groups.combat | 컴퓨터 세력 방벽 건설 금지 |
+| 전투 | combat.ai_catapult_block | 0 | groups.combat | 컴퓨터 세력의 플레이어 성·관문 지역과 바로 인접한 지역 투석대 건설 금지(인접 지역 소유자 무관) |
 | 전투 | combat.combat_cut | 1 | groups.combat | 컴퓨터 군세의 플레이어 병참선 차단 |
 | 전투 | combat.hit_response | 1 | groups.combat | 피격 대응 (적 성·관문 피격 시 공성 고정, 피격 부대 보호) |
 | 전투 | combat.obstacle | 1 | groups.combat | 중립 장애물 파괴 판단 |
