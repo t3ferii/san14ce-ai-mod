@@ -43,6 +43,8 @@ python -B -X utf8 AI_TacticsMod/tools/install_local.py install <버전>
 
 공유 ZIP은 `tools/build_share.py --payload <후보 패키지>`로 만들고 `tests/verify_share.py` 등 관련 검사를 수행한다. 같은 이름의 기존 ZIP이 있으면 중단하며, 기존 dist 파일은 보존한다. 공유 패키지를 만들더라도 로컬 설치는 위 공용 도구를 사용한다.
 
+사용자 지시(2026-10-29): 모든 배포판은 다른 모드에서 가져온 기능의 출처를 README·읽어주세요.txt·설치 관리자 기능 설명에 표시한다. 기준 목록은 `docs/CREDITS.md`이며, 빠지거나 설치기 EXE가 옛것이면 `build_share.py`가 ZIP 생성을 멈춘다. 새로 가져온 기능이 생기면 CREDITS.md와 세 곳을 함께 고친다.
+
 ## 문서와 인계
 
 문서만 수정하면 링크·파일 경로·지침·변경 차이를 확인하며 DLL 빌드/설치와 기존 ZIP 재생성을 하지 않는다. 문서 경로를 옮기면 배포 도구의 입력 경로도 확인한다. 역사 보관 ZIP은 과거 기록이며 소스/현재 설정을 대신하지 않는다.

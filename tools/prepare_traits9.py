@@ -75,7 +75,7 @@ lines.append('static const ModpackBytes traits9_core[]={'+','.join('{0x%X,%d,%s,
 (out/'traits9_payloads.h').write_text('\n'.join(lines)+'\n',encoding='utf-8')
 # CaptiveDialog's original audience predicate and R15 capturing-force contract.
 sys.path.insert(0,str(P/'legacy/FogMod_Source/tools'))
-# Public snapshot: install capstone in the active Python environment.
+pass  # Public snapshot: install capstone in the active Python environment.
 from capstone import Cs,CS_ARCH_X86,CS_MODE_64,CS_GRP_CALL,CS_GRP_JUMP
 from audit_native_game import PEImage
 pe=PEImage(G/'SAN14CE_KO.exe');plain=(P/'legacy/FogMod_Source/native_game_analysis/running_code_text.bin').read_bytes()

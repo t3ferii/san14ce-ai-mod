@@ -8,7 +8,7 @@ $taskCsc='C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\
 if(-not [IO.File]::Exists($taskCsc)){$taskCsc=Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'}
 $taskFramework=Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319'
 $taskExe=Join-Path $taskOut 'AI모드_설치관리자.exe'
-$taskRefs=@('mscorlib.dll','System.dll','System.Core.dll','System.Drawing.dll','System.Windows.Forms.dll') | ForEach-Object { '/reference:' + (Join-Path $taskFramework $_) }
+$taskRefs=@('mscorlib.dll','System.dll','System.Core.dll','System.Drawing.dll','System.Windows.Forms.dll','System.IO.Compression.dll','System.IO.Compression.FileSystem.dll','System.Web.Extensions.dll') | ForEach-Object { '/reference:' + (Join-Path $taskFramework $_) }
 & $taskCsc /nologo /noconfig /nostdlib+ /target:winexe /platform:anycpu /optimize+ /warnaserror+ /utf8output /codepage:65001 `
     ("/win32manifest:" + (Join-Path $taskProject 'installer\app.manifest')) $taskRefs ("/out:" + $taskExe) (Join-Path $taskProject 'installer\InstallerGui.cs')
 if($LASTEXITCODE -ne 0){throw 'Installer compilation failed.'}

@@ -321,7 +321,7 @@ static void __fastcall award_ui(Obj state) { COST_SCOPE("awards_award_ui");
     }
     award_selected_item=previous;award_selected_person=previous_person;
 }
-static int __fastcall award_manual(Obj state) {
+static int __fastcall award_manual(Obj state) { COST_SCOPE("award_manual");
     if(enabled) {
         Obj layout=pointer(state,0x478),item=layout?pointer(layout,0x188):nullptr,person=layout?pointer(layout,0x190):nullptr;
         if(valid(item) && valid(person) && (award_stored(item) || person!=award_ruler(award_force_id(person))) && !award_allowed(person,item)) {
@@ -330,7 +330,7 @@ static int __fastcall award_manual(Obj state) {
     }
     return original_award_manual(state);
 }
-static void __fastcall award_post_people(Obj force,GameList *out) {
+static void __fastcall award_post_people(Obj force,GameList *out) { COST_SCOPE("award_post_people");
     original_post_people(force,out);if(!enabled || !out || !valid(force))return;
     // Resolve identity by table equality; no assumption about Force+10 (ruler).
     unsigned forceid=0;for(unsigned f=1;f<=51;++f)if(table(0xDF30,f,51)==force)forceid=f;
@@ -350,7 +350,7 @@ static unsigned award_post_capacity(unsigned id) {
     auto get=*reinterpret_cast<uint16_t(__fastcall **)(Obj,uint16_t,unsigned,unsigned)>(pointer(post,0)+0x58);
     return get(post,word(begin,0),13,id);
 }
-static Obj __fastcall award_post_picker(Obj state) {
+static Obj __fastcall award_post_picker(Obj state) { COST_SCOPE("award_post_picker");
     if(!enabled || !state)return original_post_picker(state);
     Obj layout=pointer(state,0x4C0),post=layout?pointer(layout,0x1B8):nullptr;
     if(!valid(post))return original_post_picker(state);
@@ -371,7 +371,7 @@ static Obj __fastcall award_post_picker(Obj state) {
     Obj result=original_post_picker(state);
     list_free(blocked);blocked=saved;return result;
 }
-static int __fastcall award_post_select(Obj state,Obj person,Obj post) {
+static int __fastcall award_post_select(Obj state,Obj person,Obj post) { COST_SCOPE("award_post_select");
     if(enabled && valid(person) && valid(post)) {
         unsigned id=fn<unsigned(__fastcall *)(Obj)>(0x22DF80)(post);
         Obj occupant=fn<Obj(__fastcall *)(Obj)>(0x6DC0A0)(post);
@@ -397,11 +397,11 @@ static void award_guard_post_tree(Obj node,Obj head,unsigned &count) {
     }
     award_guard_post_tree(pointer(node,0x10),head,count);
 }
-static void __fastcall award_post_batch(Obj map) {
+static void __fastcall award_post_batch(Obj map) { COST_SCOPE("award_post_batch");
     if(enabled && map && pointer(map,8)) {Obj head=pointer(map,8);unsigned count=0;award_guard_post_tree(pointer(head,8),head,count);}
     original_post_batch(map);
 }
-static uint64_t __fastcall award_native_ai_command(Obj node,Obj context,Obj subject) {
+static uint64_t __fastcall award_native_ai_command(Obj node,Obj context,Obj subject) { COST_SCOPE("award_native_ai_command");
     if(enabled) {Obj item=personnel_context_object(node,context,0x3C);if(valid(item) && award_mask(item))return 2;}
     return fn<Execute>(0x535E0)(node,context,subject);
 }

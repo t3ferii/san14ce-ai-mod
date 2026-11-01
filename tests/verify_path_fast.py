@@ -15,7 +15,7 @@ import sys
 P = Path(__file__).resolve().parents[1]
 BASE = 0x140000000
 CACHE = P / 'research/decomp_cache/1fbe6be7466a6646'
-# Public snapshot: install capstone in the active Python environment.
+pass  # Public snapshot: install capstone in the active Python environment.
 from capstone import Cs, CS_ARCH_X86, CS_MODE_64
 
 decoded = (P / 'build/ui_native_analysis/editor83_plain/game.exe.unpacked.exe').read_bytes()
@@ -238,12 +238,21 @@ def implementation():
     ok(not any(int(a,16) in (0x1843E0,0x2AA850,0x2B0290) for a,_,_ in guards),
        'other owners entry 16-byte publication blocks excluded')
     sortie=(P/'src/native_sortie_links.inl').read_text(encoding='utf-8')
-    patches=[(int(a,16)&~15,16,'sortie entry '+a) for a in re.findall(r'\{0x([0-9A-F]+),\d+,\{',sortie)]
+    # 사용자 결정 2026-10-30: 통합패치·발탁장수 공존을 위해 첫머리 훅을 호출 자리로 이동
+    patches=[(0x1EC890,16,'dispatch entry')]
+    normalized={0x183CC9,0x1865AA}
+    for name in ('sortie_plan_sites','sortie_search_sites','sortie_movement_sites'):
+        body=re.search(name+r'\[\]=\{(.*?)\};',sortie,re.S).group(1)
+        for raw in re.findall(r'0x([0-9A-F]+)',body):
+            site=int(raw,16)
+            if site not in normalized:patches.append((site,5,'sortie caller '+raw))
+    ok('movement_calls[]={0x183CC9,0x1865AA}' in native and 'movement_call_match(site)' in native,
+       'both overlapping movement CALLs validate native or external next before hash normalization')
     split=(P/'src/native_split_install.inl').read_text(encoding='utf-8')
     combat=split.split('static const SplitPointer split_pointers[]={',1)[1].split('#else',1)[0]
     patches += [(int(a,16),8,'combat pointer '+a) for a in re.findall(r'\{0x([0-9A-F]+),0x',combat)]
     patches += [(0x2AA850,16,'progress distance')]
-    ok(len(patches)==16,'all 8 sortie blocks, 7 combat pointer slots and progress distance block enumerated')
+    ok(len(patches)==82,'2026-10-30 reviewed graph: dispatch block, 73 disjoint sortie callers, 7 combat pointer slots and progress distance block enumerated')
     for address,size,_ in guards:
         a,n=int(address,16),int(size,16)
         ok(all(a+n<=b or b+size<=a for b,size,_ in patches),'fingerprint excludes all existing owner patches '+address)
@@ -262,7 +271,8 @@ def implementation():
         if f.suffix in ('.inl','.h','.cpp'):
             keys.update(re.findall(r'COST_SCOPE\("([^"]+)"\)',f.read_text(encoding='utf-8-sig')))
     maximum=int(re.search(r'maximum=(\d+)',(P/'src/native_cost_profile.h').read_text(encoding='utf-8')).group(1))
-    ok(len(keys)<=maximum and maximum==192,'cost keys within unchanged 192 limit')
+    # 사용자 결정 2026-10-30: 통합패치·발탁장수 공존을 위해 첫머리 훅을 호출 자리로 이동; 현행 native_cost_profile.h의 1024 한도 보존
+    ok(len(keys)<=maximum and maximum==1024,'current 1024-key limit retained; all cost keys fit')
     # User 2026-10-25 changes verification from boolean to global Nth sampling.
     for token in ['path_fast_day','path_fast_verify_day','path_fast_mismatch','totals.lines<64',
                   'path_fast_time_day','totals.only_fast,microseconds(totals.only_ticks),totals.all_compared',
@@ -321,9 +331,10 @@ def implementation():
        'path bit4 is written only at success; no later bit4 decision in 183A30')
     ok('destination' not in native and 'Result *out' not in native and '0x1BB3D20' not in native,
        'no 1843E0 hook or result-buffer writes remain')
-    movement=(P/'src/native_sortie.inl').read_text(encoding='utf-8').split('static float __fastcall sortie_movement',1)[1].split('static void sortie_move',1)[0]
-    ok('native=original_sortie_movement(army,formation,preview,modifier,tile)' in movement and
-       'return slowest>0?slowest:native;' in movement,'movement wrapper calls original but may adjust speed; both searches call same entry')
+    movement=(P/'src/native_sortie.inl').read_text(encoding='utf-8').split('static float sortie_movement_next',1)[1].split('static void sortie_move',1)[0]
+    ok('native=next(army,formation,preview,modifier,tile)' in movement and
+       'return slowest>0?slowest:native;' in movement,
+       '사용자 결정 2026-10-30: 통합패치·발탁장수 공존을 위해 첫머리 훅을 호출 자리로 이동; movement uses site next and common wrapper')
     progress=(P/'src/native_progress.inl').read_text(encoding='utf-8')
     ok('memcpy(relay,progress_kernel_bytes' in progress and 'original_progress_distance=' in progress,
        'progress valid-cell distance is equivalent kernel; fallback original gate')

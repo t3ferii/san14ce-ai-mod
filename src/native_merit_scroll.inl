@@ -53,7 +53,7 @@ static bool merit_scroll_route(MSG &msg,DWORD now,HWND foreground) {
     ReleaseSRWLockExclusive(&merit_scroll_input_lock);
     return consume;
 }
-static LRESULT CALLBACK merit_scroll_message(int code,WPARAM removed,LPARAM parameter) {
+static LRESULT CALLBACK merit_scroll_message(int code,WPARAM removed,LPARAM parameter) { COST_SCOPE("merit_scroll_message");
     if(code>=0 && removed==PM_REMOVE && parameter)
         merit_scroll_route(*reinterpret_cast<MSG *>(parameter),GetTickCount(),merit_scroll_foreground());
     return CallNextHookEx(merit_scroll_hook,code,removed,parameter);
@@ -83,7 +83,7 @@ static bool merit_scroll_install(HWND window) {
     return true;
 }
 struct MeritScrollWindow {HWND window=nullptr;int64_t area=0;};
-static BOOL CALLBACK merit_scroll_find_window(HWND window,LPARAM parameter) {
+static BOOL CALLBACK merit_scroll_find_window(HWND window,LPARAM parameter) { COST_SCOPE("merit_scroll_find_window");
     DWORD process=0;GetWindowThreadProcessId(window,&process);RECT rect={};
     if(process!=GetCurrentProcessId() || !IsWindowVisible(window) || !GetClientRect(window,&rect))return TRUE;
     int64_t area=int64_t(rect.right-rect.left)*(rect.bottom-rect.top);
@@ -151,7 +151,7 @@ static void merit_scroll_set(Obj profile,unsigned key,const std::wstring &text) 
     merit_scroll_active=static_cast<size_t>(at-merit_scrolls.begin());
     merit_scroll_render(s);merit_scroll_ensure_window();
 }
-static void __fastcall merit_profile_tick(Obj profile) {
+static void __fastcall merit_profile_tick(Obj profile) { COST_SCOPE("merit_profile_tick");
     fn<void(__fastcall *)(Obj)>(0x878810)(profile);
     for(size_t i=0;i<merit_scrolls.size();++i) {
         MeritScroll &s=merit_scrolls[i];if(s.profile!=profile)continue;

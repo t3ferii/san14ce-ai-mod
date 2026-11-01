@@ -1,6 +1,6 @@
 # 소스 수정·빌드
 
-2026-10-26 작업 폴더에서 추출한 개발 소스다. 정식 v13.3 배포 DLL의 정확한 재현 소스로 보장하지 않는다. 군사의 열흘 보고·숙련 설정 UI 등 실게임 검증이 남은 개발 후보와 이전 설계도 포함되어 있다. 설치·사용은 기존 [릴리스](https://github.com/t3ferii/san14ce-ai-mod/releases)를 따른다.
+v15(`SAN14_AI_v15`, 2026-11-01) 배포 DLL·설치기를 빌드한 작업 폴더의 소스를 그대로 옮겼다. 개인 PC 경로만 `<user>`로 가렸고 C/C++ 실행 토큰은 원본과 같다. 실게임 검증이 남은 개발 후보와 이전 설계도 포함되어 있다. 설치·사용은 기존 [릴리스](https://github.com/t3ferii/san14ce-ai-mod/releases)를 따른다.
 
 원하는 기능을 fork해서 수정할 수 있다. 프로젝트가 권리를 가진 독자 코드의 수정·재배포 허용은 [LICENSE](../LICENSE), 외부 구성요소의 예외는 [THIRD_PARTY](../THIRD_PARTY.md)를 따른다. AI 작업자는 [AI_EDITING](AI_EDITING.md)과 루트 [AGENTS](../AGENTS.md)부터 읽는다.
 
@@ -12,9 +12,11 @@ Windows x64, Visual Studio의 C++ 데스크톱 개발 도구와 Windows 10/11 SD
 & .\tools\build_public_smoke.ps1
 # 전투 AI DLL까지 외부 payload 없이 빌드하려면:
 & .\tools\build_public_smoke.ps1 -Combat
+# 조조전 DLL(SAN14_CCZ.dll)까지:
+& .\tools\build_public_smoke.ps1 -Combat -Ccz
 ```
 
-`build/development/public_smoke`에 기존 로더 dinput8.dll과 경로 탐색·무장 검색 fixture를 빌드한다. `-Combat`을 붙이면 같은 폴더에 실제 `SAN14_CombatAI.dll`도 빌드하며 원래 split 전투 빌드와 같은 release 매크로·링크 라이브러리를 쓴다. 이 미서명 산출물은 자동 설치하지 않는다. 편의 DLL의 외부 payload는 이 전투 빌드에 필요하지 않다. 두 DLL 전체 빌드나 ABI·실게임 검증과는 구별한다. `src/combat_v2`는 별도 미연결 후보다.
+`build/development/public_smoke`에 기존 로더 dinput8.dll과 경로 탐색·무장 검색 fixture를 빌드한다. `-Combat`을 붙이면 같은 폴더에 실제 `SAN14_CombatAI.dll`도 빌드하며 원래 split 전투 빌드와 같은 release 매크로·링크 라이브러리를 쓴다. 이 미서명 산출물은 자동 설치하지 않는다. `-Ccz`는 `SAN14_CCZ.dll`을 같은 release 매크로로 빌드한다(실행 시에는 `assets/ccz/ccz_units.bin`이 필요하며 저장소에 없다). 편의 DLL의 외부 payload는 이 두 빌드에 필요하지 않다. 두 DLL 전체 빌드나 ABI·실게임 검증과는 구별한다. `src/combat_v2`는 별도 미연결 후보다.
 
 ## 전체 split 빌드
 
@@ -37,7 +39,7 @@ python -m pip install capstone
 & .\tools\build_installer.ps1
 ```
 
-진단판은 `build/development/loader_split_diagnostic`, 일반판은 `build/development/loader_split`에 세 DLL을 만든다. 설치기는 `build/development/installer`에 생성된다. 필수 split 검사는 fixture와 일반판 빌드를 포함하며 원작 dump·외부 payload도 필요하다. 준비 도구는 `research/traits9`와 `build`에 파생 자료를 쓴다. `build_native.ps1 -InputLoader`의 과거 통합 경로를 최신 split 배포 대신 쓰지 않는다.
+진단판은 `build/development/loader_split_diagnostic`, 일반판은 `build/development/loader_split`에 편의·전투·조조전 DLL을 만든다(로더 dinput8.dll 포함 네 개). 설치기는 `build/development/installer`에 생성된다. 필수 split 검사는 fixture와 일반판 빌드를 포함하며 원작 dump·외부 payload도 필요하다. 준비 도구는 `research/traits9`와 `build`에 파생 자료를 쓴다. `build_native.ps1 -InputLoader`의 과거 통합 경로를 최신 split 배포 대신 쓰지 않는다.
 
 ## 설치와 검증 범위
 

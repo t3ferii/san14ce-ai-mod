@@ -5,33 +5,137 @@
     "Development"
   ],
   "modules": {
+    "terrain-edit": {
+      "sources": [
+        "src/native_terrain_trees.inl",
+        "tests/terrain_trees_fixture.cpp",
+        "tests/terrain_trees_verify.py",
+        "tests/terrain_trees_build.ps1",
+        "src/terrain_edit_policy.h",
+        "src/native_terrain_edit.inl",
+        "src/native_terrain_render.inl",
+        "src/native_water_diag.inl",
+        "tests/water_diag_fixture.cpp",
+        "tests/water_diag_build.ps1",
+        "tests/water_diag_verify.py",
+        "src/native_unified_overlay.inl",
+        "tests/terrain_render_fixture.cpp",
+        "tests/terrain_render_r2_fixture.cpp",
+        "tests/terrain_render_overlay_fixture.cpp",
+        "tests/terrain_render_site_fixture.cpp",
+        "tests/terrain_render_early_fixture.cpp",
+        "tests/terrain_render_verify.py",
+        "tests/terrain_render_build.ps1",
+        "tests/terrain_render_water_mask_fixture.cpp",
+        "tests/split_module_fixture.cpp",
+        "src/native_terrain_edit_ui.inl",
+        "src/native_split_install.inl",
+        "src/native_terrain_edit_save.inl",
+        "src/native_adapter.cpp",
+        "src/native_merit_save.inl",
+        "tests/terrain_edit_fixture.cpp",
+        "tests/terrain_edit_ui_fixture.cpp",
+        "tests/terrain_edit_split_fixture.cpp",
+        "tests/terrain_edit_verify.py",
+        "tests/terrain_edit_build.ps1",
+        "tests/build_terrain_edit_fixture.ps1",
+        "installer/InstallerGui.cs",
+        "distribution/FeatureSelect.ps1",
+        "FeatureSelect.ps1"
+      ],
+      "tests": [
+        "terrain-edit",
+        "terrain-edit-ui",
+        "terrain-render",
+        "terrain-trees",
+        "water-diag"
+      ]
+    },
     "advisor-briefing": {
-      "sources": ["src/advisor_briefing.h", "src/advisor_briefing_profile.h", "src/native_advisor_briefing.inl", "src/native_advisor_overlay.inl", "src/advisor_briefing.hlsl", "src/advisor_vs.h", "src/advisor_ps.h", "src/native_adapter.cpp", "src/native_split_install.inl", "src/native_unified_overlay.inl", "src/native_unified_personnel.inl", "tests/advisor_briefing_fixture.cpp", "tests/advisor_overlay_fixture.cpp", "tests/verify_advisor_briefing.py", "tools/build_advisor_briefing_fixture.ps1", "tools/build_advisor_shaders.ps1", "tools/inspect_advisor_briefing.py", "tools/install_local.py", "tests/verify_local_install_rollback.py", "tools/generate_handoff.py", "installer/InstallerGui.cs", "distribution/FeatureSelect.ps1", "FeatureSelect.ps1"],
-      "tests": ["advisor-briefing"]
+      "sources": [
+        "src/advisor_briefing.h",
+        "src/advisor_briefing_profile.h",
+        "src/native_advisor_briefing.inl",
+        "src/native_advisor_overlay.inl",
+        "src/advisor_briefing.hlsl",
+        "src/advisor_vs.h",
+        "src/advisor_ps.h",
+        "src/native_adapter.cpp",
+        "src/native_split_install.inl",
+        "src/native_unified_overlay.inl",
+        "src/native_unified_personnel.inl",
+        "tests/advisor_briefing_fixture.cpp",
+        "tests/advisor_overlay_fixture.cpp",
+        "tests/verify_advisor_briefing.py",
+        "tools/build_advisor_briefing_fixture.ps1",
+        "tools/build_advisor_shaders.ps1",
+        "tools/inspect_advisor_briefing.py",
+        "tools/install_local.py",
+        "tests/verify_local_install_rollback.py",
+        "tools/generate_handoff.py",
+        "installer/InstallerGui.cs",
+        "distribution/FeatureSelect.ps1",
+        "FeatureSelect.ps1"
+      ],
+      "tests": [
+        "advisor-briefing"
+      ]
     },
     "diplomacy-intel": {
-      "sources": ["src/native_diplomacy_intel.inl", "src/diplomacy_intel.h", "src/diplomacy_intel_profile.h", "src/native_adapter.cpp", "src/native_split_install.inl", "tests/diplomacy_intel_fixture.cpp", "tests/verify_diplomacy_intel.py", "tests/split_module_fixture.cpp", "tools/build_diplomacy_intel_fixture.ps1", "installer/InstallerGui.cs", "distribution/FeatureSelect.ps1", "FeatureSelect.ps1"],
-      "tests": ["diplomacy-intel"]
+      "sources": [
+        "src/native_diplomacy_intel.inl",
+        "src/diplomacy_intel.h",
+        "src/diplomacy_intel_profile.h",
+        "src/native_adapter.cpp",
+        "src/native_split_install.inl",
+        "tests/diplomacy_intel_fixture.cpp",
+        "tests/verify_diplomacy_intel.py",
+        "tests/split_module_fixture.cpp",
+        "tools/build_diplomacy_intel_fixture.ps1",
+        "installer/InstallerGui.cs",
+        "distribution/FeatureSelect.ps1",
+        "FeatureSelect.ps1"
+      ],
+      "tests": [
+        "diplomacy-intel"
+      ]
     },
     "path-fast": {
       "sources": [
-        "src/native_path_fast.inl", "src/path_fast.h", "src/native_adapter.cpp",
+        "src/native_path_fast.inl",
+        "src/path_fast.h",
+        "src/native_adapter.cpp",
         "src/native_path_count.inl",
-        "src/native_split_install.inl", "tests/path_fast_fixture.cpp", "tests/verify_path_fast.py",
-        "tests/split_module_fixture.cpp", "tools/build_path_fast_fixture.ps1",
-        "installer/InstallerGui.cs", "distribution/FeatureSelect.ps1", "FeatureSelect.ps1"
+        "src/native_split_install.inl",
+        "tests/path_fast_fixture.cpp",
+        "tests/verify_path_fast.py",
+        "tests/split_module_fixture.cpp",
+        "tools/build_path_fast_fixture.ps1",
+        "installer/InstallerGui.cs",
+        "distribution/FeatureSelect.ps1",
+        "FeatureSelect.ps1"
       ],
-      "tests": ["path-fast"]
+      "tests": [
+        "path-fast"
+      ]
     },
     "path-count": {
       "sources": [
-        "src/native_path_count.inl", "src/path_count.h", "src/native_adapter.cpp",
-        "src/native_split_install.inl", "src/native_progress.inl",
-        "tests/path_count_fixture.cpp", "tests/verify_path_count.py",
-        "tools/build_path_count_fixture.ps1", "installer/InstallerGui.cs",
-        "distribution/FeatureSelect.ps1", "FeatureSelect.ps1"
+        "src/native_path_count.inl",
+        "src/path_count.h",
+        "src/native_adapter.cpp",
+        "src/native_split_install.inl",
+        "src/native_progress.inl",
+        "tests/path_count_fixture.cpp",
+        "tests/verify_path_count.py",
+        "tools/build_path_count_fixture.ps1",
+        "installer/InstallerGui.cs",
+        "distribution/FeatureSelect.ps1",
+        "FeatureSelect.ps1"
       ],
-      "tests": ["path-count"]
+      "tests": [
+        "path-count"
+      ]
     },
     "area-index": {
       "sources": [
@@ -627,6 +731,24 @@
       ],
       "tests": [
         "face-keep",
+        "split-module"
+      ]
+    },
+    "ccz-sprites": {
+      "sources": [
+        "src/native_ccz_sprites.inl",
+        "src/ccz_sprites.hlsl",
+        "src/ccz_sprites_vs.h",
+        "src/ccz_sprites_ps.h",
+        "src/native_unified_overlay.inl",
+        "src/native_adapter.cpp",
+        "src/native_split_install.inl",
+        "tools/ccz_extract_units.py",
+        "assets/ccz/ccz_units.bin",
+        "tests/verify_ccz_sprites.py"
+      ],
+      "tests": [
+        "ccz-sprites",
         "split-module"
       ]
     }

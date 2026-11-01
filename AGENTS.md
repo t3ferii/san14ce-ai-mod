@@ -1,8 +1,8 @@
 # Public mod source: AI editing contract
 
-Read `docs/SOURCE_BUILD.md`, `docs/AI_EDITING.md`, the relevant `docs/MODULES.md` row and `development/features.json` before editing. This is a development snapshot, not a verified reproduction of the v13.3 release. Experimental code can be present without being enabled.
+Read `docs/SOURCE_BUILD.md`, `docs/AI_EDITING.md`, the relevant `docs/MODULES.md` row and `development/features.json` before editing. This is the working-tree source that built the v15 release DLLs (2026-11-01); third-party payloads and game data are not included. Experimental code can be present without being enabled.
 
-- `dinput8.dll`: input forwarding/module loader only. `SAN14_CombatAI.dll`: combat decisions. `SAN14_Convenience.dll`: other features and publication coordinator. One hook/site/vtable slot has exactly one owner; inspect `src/native_split_install.inl` and build defines together.
+- `dinput8.dll`: input forwarding/module loader only. `SAN14_CombatAI.dll`: combat decisions. `SAN14_CCZ.dll`: 조조전 tab features, loaded lazily by the convenience module (`src/ccz_module.cpp`, `src/native_ccz_bridge.inl`). `SAN14_Convenience.dll`: other features and publication coordinator. One hook/site/vtable slot has exactly one owner; inspect `src/native_split_install.inl` and build defines together.
 - Run native game functions only from their original UI/AI callback threads. Loader workers may validate/publish hooks, never enumerate game objects or issue commands. No external live-memory writes or remote calls.
 - Preserve original game EXE, saves, references and existing backups. Do not run historical installers or reference binaries. Use `tools/install_local.py` only after its documented installed-package prerequisites are met; a clone alone is not an installable package.
 - Follow `AI-CONTRACT` comments at the relevant implementation. Raw pointers/RVAs are build-specific. New hooks need byte/ABI/caller evidence, per-feature guards, one owner, rollback and mismatch fixtures. Do not suppress guards to make a different patch load.

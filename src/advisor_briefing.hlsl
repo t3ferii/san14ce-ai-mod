@@ -11,9 +11,14 @@ float4 ps_main(Vertex v):SV_TARGET {
     float distance=length(max(p,0))+min(max(p.x,p.y),0)-shape.z;
     float coverage=saturate(.75-distance);
     float4 c=image.Sample(linear_sampler,v.uv);
-    if(shape.z<0) {
-        coverage=saturate((v.uv.x-abs(v.uv.y-.5)*2)*min(shape.x,shape.y)+.5);
-        c=float4(32./255,42./255,53./255,1);
+    if(shape.z<-1.5) {
+        float2 q=abs((v.uv-.5)*shape.xy)-(shape.xy*.5-10-22);
+        float d=length(max(q,0))+min(max(q.x,q.y),0)-22;
+        coverage=exp(-max(d,0)*max(d,0)/32);
+    } else if(shape.z<0) {
+        float tail_x=shape.z<-1.1?1-v.uv.x:v.uv.x;
+        coverage=saturate((tail_x-abs(v.uv.y-.5)*2)*min(shape.x,shape.y)+.5);
+        c=image.Sample(linear_sampler,float2(.01,.9));
     }
     // Captured backbuffer RGB is already composited. Its alpha is undefined
     // in the game; use our geometric mask instead of multiplying that alpha.

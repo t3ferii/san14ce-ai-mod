@@ -24,7 +24,7 @@ static bool player_ranged_army(Obj attacker) {
     // Active formation getter chooses land/water from the ACTUAL terrain.
     return active && (active==table(0x77428,3,20) || active==table(0x77428,13,20));
 }
-static uint64_t __fastcall combat_apply_damage(Obj manager,Obj pair,Obj output) {
+static uint64_t __fastcall combat_apply_damage(Obj manager,Obj pair,Obj output) { COST_SCOPE("combat_apply_damage");
     if(!enabled || in_policy)return original_damage(manager,pair,output);
     Obj source=pair?pointer(pair,0):nullptr;
     unsigned aid=source && dword(source,4)==27?word(source,0):0;

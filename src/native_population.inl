@@ -2,7 +2,7 @@
 // taper and Culture 35. Multiply only its positive delta, preserving cap.
 using PopulationGrowth=uint64_t(__fastcall *)(Obj);
 static PopulationGrowth original_population_growth;
-static uint64_t __fastcall population_growth(Obj city) {
+static uint64_t __fastcall population_growth(Obj city) { COST_SCOPE("population_growth");
     NativePhase phase("monthly_population");
     if(!enabled || !valid(city) || word(city,0x4E)>51)return original_population_growth(city);
     struct Sample {Obj area;unsigned before;};std::vector<Sample> samples;

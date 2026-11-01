@@ -3,7 +3,7 @@ distribution/FeatureSelect.ps1 catalog (section/key/default/group/requires/inher
 DLL applies every Requires as an AND, and the GUI delegates DLL installation to the guarded
 관리.ps1 (-NonInteractive). Not a UI/game check."""
 from pathlib import Path
-import json,re,sys
+import ast,json,re,sys
 P=Path(__file__).resolve().parents[1]
 gui=(P/'installer/InstallerGui.cs').read_text(encoding='utf-8')
 menu=(P/'distribution/FeatureSelect.ps1').read_text(encoding='utf-8-sig')
@@ -19,7 +19,20 @@ pm={(s,k):(g,int(d),r,i,t) for g,s,k,d,r,i,t in ps}
 ok(len(rows)==len(cs) and len(ps)==len(pm),'duplicate keys')
 ok(cs==pm,'GUI/PS catalogs differ: %s'%sorted(k for k in set(cs)|set(pm) if cs.get(k)!=pm.get(k)))
 ids={s+'.'+k for s,k in cs}
-tabs=('전투','편의성','성능','게임성','기타(개발용)')
+# 사용자 결정 2026-10-28: 충돌 옵션 사용 중지 (ExcludedBy보다 우선, mission_v2 OFF도 동일).
+retired={'combat.departures','combat.group_advance','combat.support'}
+retired_body=re.search(r'HashSet<string> Retired = new HashSet<string> \{(.*?)\};',gui,re.S)
+ok(retired_body is not None and set(re.findall(r'"([\w.]+)"',retired_body[1]))==retired,'GUI retired set')
+ps_retired={s+'.'+k for s,k in re.findall(r"Section='(\w+)'; Key='(\w+)';[^\r\n]*Retired=\$true",menu)}
+ok(ps_retired==retired,'PS retired set equals GUI')
+ok((P/'FeatureSelect.ps1').read_text(encoding='utf-8-sig')==menu,'game-folder PS catalog equals distribution')
+ok('f.departures = f.group_advance = f.support = false;' in adapter and
+   'if (f.mission_v2) { f.departures = false;' not in adapter,'DLL retired switches unconditionally OFF')
+ok('user 2026-10-28: retired, conflicts with mission_v2' in adapter,'DLL retirement decision recorded')
+ok('!f.IsMaster && !Catalog.Retired.Contains(f.Id)' in gui,'tab denominator excludes retired rows')
+ok('임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.' in gui and
+   menu.count("Retired=$true;")==3 and menu.count("Note='임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.'")==3,'retirement explanations')
+tabs=('전투','편의성','성능','게임성','조조전','기타(개발용)')
 for (s,k),(g,d,r,i,t) in cs.items():
     ok(t in tabs,'unknown tab %s'%t)
     ok(g=='' or ('groups.'+g) in ids,'unknown group for %s.%s'%(s,k))
@@ -50,8 +63,40 @@ ok('WriteAllBytes' not in gui and 'dinput8.dll' not in gui,'GUI must not write m
 ok('package_files.txt' in gui and 'EndsWith(".dll"' in gui and 'StartsWith(root' in gui,'package copy limited to listed files inside the game folder')
 ok('게임 폴더 변경' in gui and 'libraryfolders.vdf' in gui,'folder picker and Steam library lookup present')
 exe=Path(sys.argv[1]) if len(sys.argv)>1 else None
+# 사용자 결정 2026-10-30: 기능 설명뿐 아니라 출처 탭 전체 목록과 배포 차단을 검증한다.
+credits=[line for line in (P/'docs/CREDITS.md').read_text(encoding='utf-8-sig').splitlines() if line.startswith('- ')]
+credits_body=re.search(r'static class Credits \{.*?string\[\] Lines = \{(.*?)\};',gui,re.S)
+ok(len(credits)==11 and credits_body is not None and re.findall(r'"([^"]+)"',credits_body[1])==credits,'credits tab matches all eleven canonical lines in order')
+ok('pages["출처"] = creditsPage;' in gui and 'new[] { "출처", "업데이트", "작업 기록" }' in gui,'credits page registered as a peer tab')
+for key,source in re.findall(r'^\* `(\w+)` = (.+)$',(P/'docs/CREDITS.md').read_text(encoding='utf-8-sig'),re.M):
+    ok(any('"'+key+'",' in row and '출처: '+source in row for row in gui.splitlines()),'GUI credit note: '+key)
+    ok(any("Key='"+key+"';" in row and '출처: '+source in row for row in menu.splitlines()),'PS credit note: '+key)
 if exe:
     data=exe.read_bytes();ok(data[:2]==b'MZ' and b'BSJB' in data,'managed PE produced')
+    for line in credits:ok(line.encode('utf-16-le') in data,'EXE credits tab line: '+line)
+    # Run only build_share's real credits preflight block; never execute ZIP/package writes.
+    share_tree=ast.parse((P/'tools/build_share.py').read_text(encoding='utf-8-sig'))
+    credit_blocks=[node for node in share_tree.body if isinstance(node,ast.If) and any(isinstance(child,ast.Name) and child.id=='gui_bytes' for child in ast.walk(node))]
+    ok(len(credit_blocks)==1,'share credits-only preflight found once')
+    if len(credit_blocks)==1:
+        preflight=compile(ast.Module(body=credit_blocks,type_ignores=[]),'build_share.py credits preflight','exec')
+        class Payload:
+            def __init__(self,content):self.content=content
+            def __truediv__(self,name):return self
+            def read_bytes(self):return self.content
+        sources=re.findall(r'^\* `(\w+)` = (.+)$',(P/'docs/CREDITS.md').read_text(encoding='utf-8-sig'),re.M)
+        def run_preflight(content,without_gui=False):
+            exec(preflight,{'manifest':{'gui_installer':{'file':'fixture.exe'}},'WITHOUT_GUI':without_gui,
+                            'PAYLOAD':Payload(content),'credits':credits,'installer_credits':sources})
+        run_preflight(data);ok(True,'share accepts rebuilt EXE credits')
+        for line in credits:
+            encoded=line.encode('utf-16-le')
+            try:
+                run_preflight(data.replace(encoded,b'\0'*len(encoded)))
+            except RuntimeError as error:
+                ok(str(error)=='Installer EXE lacks credits tab line: '+line+'; rebuild it.','share rejects missing line with rebuild guidance: '+line)
+            else:ok(False,'share accepted missing credits line: '+line)
+        run_preflight(b'',without_gui=True);ok(True,'share credits preflight preserves without-GUI packages')
 print(json.dumps({'status':'installer_gui_static_verified' if not fail else 'failed','checks':checks,'items':len(rows),
                   'failures':fail,'ui_verified':False},ensure_ascii=False))
 sys.exit(1 if fail else 0)

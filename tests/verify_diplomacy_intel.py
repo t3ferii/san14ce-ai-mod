@@ -38,6 +38,36 @@ for aa,tt in re.findall(r'\{0x([0-9A-F]+),0x([0-9A-F]+)\}',slots):
 for aa,tt in re.findall(r'\{0x([0-9A-F]+),0x([0-9A-F]+)\}',sites):
     a,t=int(aa,16),int(tt,16)
     check(read(a,1)==b'\xe8' and a+5+struct.unpack('<i',read(a+1,4))[0]==t,f'original call {aa}')
+# User 2026-10-28 live PID9808: modpack 0x230098 and advisor 930D20 relay made
+# guards fail and disabled both settings. Known same-mod windows hash as original.
+inl=(P/'src/native_diplomacy_intel.inl').read_text(encoding='utf-8-sig')
+modpack=(P/'src/modpack_tables.h').read_text(encoding='utf-8-sig')
+check('{0x230098,8,{0x74,0x48,0x66,0x0F,0x1F,0x44,0x00,0x00},{0x75,0x06,0x83,0xFE,0x64,0x7C,0x43,0x90}}' in modpack,'modpack window source')
+check('{0x230098,8,{0x74,0x48,0x66,0x0F,0x1F,0x44,0x00,0x00},{0x75,0x06,0x83,0xFE,0x64,0x7C,0x43,0x90},false}' in inl,'modpack window accepted')
+check('{0x930D20,5,{0x48,0x89,0x5C,0x24,0x08},{0xE9},true}' in inl,'advisor relay window accepted')
+check(read(0x230098,8)==bytes([0x74,0x48,0x66,0x0F,0x1F,0x44,0,0]) and read(0x930D20,5)==bytes([0x48,0x89,0x5C,0x24,0x08]),'known windows original bytes')
+advisor=(P/'src/native_advisor_briefing.inl').read_text(encoding='utf-8-sig')
+check('prepare_link(text_link,0x930D20,0xE9,relay)' in advisor,'advisor 930D20 uses JMP relay')
+def masked(a,n,patches):
+    data=bytearray(read(a,n))
+    for pa,pb in patches:
+        if a<=pa and pa+len(pb)<=a+n:data[pa-a:pa-a+len(pb)]=pb
+    return bytes(data)
+def emulate(a,n,patches):
+    data=bytearray(masked(a,n,patches))
+    for ka,orig,alt,anyjmp in [(0x230098,bytes([0x74,0x48,0x66,0x0F,0x1F,0x44,0,0]),bytes([0x75,0x06,0x83,0xFE,0x64,0x7C,0x43,0x90]),False),(0x930D20,bytes([0x48,0x89,0x5C,0x24,0x08]),b'\xe9',True)]:
+        if a<=ka<a+n:
+            w=bytes(data[ka-a:ka-a+len(orig)])
+            if w==orig or (w[0]==0xE9 if anyjmp else w==alt):data[ka-a:ka-a+len(orig)]=orig
+            else:return None
+    return fnv(data)
+guards={int(x,16):(int(y,16),int(z,16)) for x,y,z in re.findall(r'\{0x([0-9A-F]+),0x([0-9A-F]+),0x([0-9A-F]+)ull\}',code)}
+patched=[(0x230098,bytes([0x75,0x06,0x83,0xFE,0x64,0x7C,0x43,0x90])),(0x930D20,b'\xe9\xdb\xf2\x58\xff')]
+check(emulate(0x22FCE0,*[guards[0x22FCE0][0]],patched)==guards[0x22FCE0][1],'22FCE0 guard passes with modpack ability cap')
+check(emulate(0x930D20,*[guards[0x930D20][0]],patched)==guards[0x930D20][1],'930D20 guard passes with advisor relay')
+check(emulate(0x22FCE0,guards[0x22FCE0][0],[(0x230098,b'\x90'*8)]) is None,'unknown change in known window still rejected')
+check(emulate(0x930D20,guards[0x930D20][0],[(0x930D20,b'\xcc\x90\x90\x90\x90')]) is None,'non-jump change at 930D20 still rejected')
+check(fnv(masked(0x22FCE0,guards[0x22FCE0][0],[(0x22FD00,b'\xcc')]))!=guards[0x22FCE0][1],'change outside known window still rejected')
 cache=P/'research/decomp_cache/1fbe6be7466a6646'
 for address,fragments in {
     '00815EA0':['1408162e1 CALL 0x140804770','140816726 CALL 0x140324e20','1408167ae CALL qword ptr [RAX + 0x190]'],

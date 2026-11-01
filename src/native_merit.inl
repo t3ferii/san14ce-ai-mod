@@ -171,7 +171,7 @@ static std::vector<MeritBefore> merit_batch_snapshot(Obj command) {
     if(node!=head || visited!=count)return {};
     return result;
 }
-static unsigned __fastcall merit_batch(Obj command) {
+static unsigned __fastcall merit_batch(Obj command) { COST_SCOPE("merit_batch");
     std::vector<MeritBefore> before;
     if(enabled)try {before=merit_batch_snapshot(command);merit_route_lock(before);}catch(...) {before.clear();}
     unsigned result=original_merit_batch(command);
@@ -193,7 +193,7 @@ static unsigned __fastcall merit_batch(Obj command) {
     if(awards)log_event("merit_bond_awarded",awards);return result;
 }
 static uint64_t __fastcall merit_join(Obj person,Obj district,Obj city,Obj event,
-                                    int flag,uint64_t context,int mode) {
+                                    int flag,uint64_t context,int mode) { COST_SCOPE("merit_join");
     unsigned id=person?word(person,0x10):0;
     bool owned=enabled && merit_is_world_person(person,id);
     uint64_t result=original_merit_join(person,district,city,event,flag,context,mode);
@@ -239,7 +239,7 @@ static uint64_t __fastcall merit_query(Obj person,unsigned effect) {
     }
     return result;
 }
-static const wchar_t *__fastcall merit_effect_text(int stage) {
+static const wchar_t *__fastcall merit_effect_text(int stage) { COST_SCOPE("merit_effect_text");
     bool applied=false;
     if(enabled) {
         AcquireSRWLockExclusive(&merit_effect_lock);applied=merit_effects();ReleaseSRWLockExclusive(&merit_effect_lock);
@@ -247,14 +247,14 @@ static const wchar_t *__fastcall merit_effect_text(int stage) {
     if(applied && stage==3)return L"군주와 상호 친애";
     return original_merit_text(stage);
 }
-static void __fastcall merit_reset(Obj person) {
+static void __fastcall merit_reset(Obj person) { COST_SCOPE("merit_reset");
     unsigned id=word(person,0x10);bool owned=enabled && merit_is_world_person(person,id);
     original_merit_reset(person);
     if(owned) {
         AcquireSRWLockExclusive(&merit_lock);merit_bonds.erase_person(id,merit_remove_native_slot);ReleaseSRWLockExclusive(&merit_lock);
     }
 }
-static unsigned char __fastcall merit_person_read(Obj person,Obj archive) {
+static unsigned char __fastcall merit_person_read(Obj person,Obj archive) { COST_SCOPE("merit_person_read");
     unsigned old=word(person,0x10);bool reading=dword(archive,0x20)==1;
     bool old_owned=enabled && reading && merit_is_world_person(person,old);
     unsigned char result=fn<unsigned char(__fastcall *)(Obj,Obj)>(0x2390B0)(person,archive);
@@ -269,7 +269,7 @@ static unsigned char __fastcall merit_person_read(Obj person,Obj archive) {
     return result;
 }
 #include "native_merit_scroll.inl"
-static void __fastcall merit_profile(Obj profile,Obj person) {
+static void __fastcall merit_profile(Obj profile,Obj person) { COST_SCOPE("merit_profile");
     for(auto &state:merit_scrolls)if(state.profile==profile)state.visible=false;
     merit_scroll_reset_input();
     // Render the eight ordinary native friends with their original slots.

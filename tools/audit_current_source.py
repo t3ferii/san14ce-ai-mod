@@ -80,19 +80,19 @@ def main():
     out=P/'development';out.mkdir(exist_ok=True)
     with (out/'FUNCTION_INDEX.csv').open('w',encoding='utf-8-sig',newline='') as f:
         w=csv.DictWriter(f,fieldnames=['file','line','function','topic','scope','body_sha256']);w.writeheader();w.writerows(rows)
-    (out/'source_audit.json').write_text(json.dumps({'basis':'2026-10-26 public development source snapshot; no installed/release identity claim',
+    (out/'source_audit.json').write_text(json.dumps({'basis':'v12.19 game DLLs / v12.20 documentation',
         'method':'lexical definition candidates; not preprocessed; not full semantic review',
         'files':files},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     lines=['# 현재 소스 조사 범위와 함수 색인','',
-      '기준: 2026-10-26 공개 개발 소스. 이 실행은 정의 위치와 지문만 자동 추출하며 설치 버전·정식 릴리스 일치·원작 ABI·실게임 동작을 검증하지 않는다.',
+      '기준: v12.19의 게임 DLL과 v12.20 설명·배포 구성. 현재 설치기44개 항목, split 빌드 정의·연결 등록표·기능 게이트·정책 및 기존 함수 기록을 대조했다.',
       '일반 설명은 [README](../README.md), 원작 연결 함수와 변경 조건은 [기술 설명](../docs/GITHUB_기능상세.md)에 있다.','',
       '## 근거와 한계','',
       '- `FUNCTION_INDEX.csv`: 파일·행·함수 정의 후보·기능 주제·범위·본문 지문. `source_audit.json`: 모든 src 파일 지문과 정의 후보.',
       '- 정의 후보는 정규식과 괄호 대응으로 수집했다. 조건부 컴파일과 fixture 분기를 포함하며 템플릿·연산자·생성자 등을 완전히 파싱하는 컴파일러 색인이 아니다.',
       '- 핵심 실행 함수와 정책 조건을 수동 대조한 설명과, 위치를 자동 추출한 보조함수 색인을 구분한다. 모든 보조함수의 의미·ABI·도달성을 개별 검증 완료했다는 뜻은 아니다.',
       '- 실제 compile_commands.json이 없어 C++ LSP의 교차 참조 완전성을 주장하지 않는다. 원작 전체 EXE를 새로 역분석하거나 게임을 실행한 검사가 아니다.',
-      '- 툴팁·전사 코드는 지문이 고정된 참고 DLL의 COFF 변환물을 정적으로 포함한다. `tools/import_modpack_objects.py`와 `docs/SOURCE_DEPENDENCIES.md`가 근거이며 모든 내부 기계어 함수를 이번에 재분석한 것은 아니다.','',
-      '## 기존 프로젝트 문서의 경로 설명 (이번 공개 작업에서 재검증하지 않음)','',
+      '- 툴팁·전사 코드는 지문이 고정된 참고 DLL의 COFF 변환물을 정적으로 포함한다. `tools/import_modpack_objects.py`와 `research/modpack_v16/INTEGRATION.md`가 근거이며 모든 내부 기계어 함수를 이번에 재분석한 것은 아니다.','',
+      '## 수동 대조한 핵심 경로','',
       '| 경로 | 확인한 판단·변경 |','|---|---|',
       '| first_army_node / cut_node / city_node / retreat_node | 개별 우선순위·병참·원작 군세 재판정·10일 회군 억제·소규모 임무 유지 |',
       '| sortie_plan* / sortie_dispatch / sortie_departure_from / sortie_movement / sortie_step | 편성·예산·공성8000·지원1000·최저 중립지형 속도·대열과 지역 작업 |',

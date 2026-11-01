@@ -53,7 +53,7 @@ static unsigned collect(unsigned *handle,Obj *out,unsigned max) {
     return n;
 }
 static bool multi_officers(Obj cmd) {return officer_count>1 && pointer(cmd,0x488)==officers[0];}
-static void __fastcall book_open(int *limits,Obj cmd) {
+static void __fastcall book_open(int *limits,Obj cmd) { COST_SCOPE("drag_learn::book_open");
     if(!mod_features.drag_learn || valid(pointer(cmd,0x490)))return;
     unsigned limit=kMaxSelect,orders=orders_for(pointer(cmd,0x478));
     bool multi=multi_officers(cmd);
@@ -64,24 +64,24 @@ static void __fastcall book_open(int *limits,Obj cmd) {
     unsigned free=used<10?10-used:0;if(free<limit)limit=free;
     if(limit>1) {limits[0]=2;limits[1]=static_cast<int>(limit);limits[2]=0;}
 }
-static void __fastcall book_closed(unsigned *handle,Obj cmd) {
+static void __fastcall book_closed(unsigned *handle,Obj cmd) { COST_SCOPE("drag_learn::book_closed");
     book_count=collect(handle,books,16);book_officer=pointer(cmd,0x488);
 }
-static void __fastcall officer_open(int *limits,Obj cmd) {
+static void __fastcall officer_open(int *limits,Obj cmd) { COST_SCOPE("drag_learn::officer_open");
     if(!mod_features.drag_learn)return;
     unsigned limit=orders_for(pointer(cmd,0x478));if(limit>kMaxSelect)limit=kMaxSelect;
     if(limit>1) {limits[0]=2;limits[1]=static_cast<int>(limit);limits[2]=0;}
 }
-static void __fastcall officer_closed(unsigned *handle) {
+static void __fastcall officer_closed(unsigned *handle) { COST_SCOPE("drag_learn::officer_closed");
     Obj got[16];unsigned n=collect(handle,got,16);
     if(n) {memcpy(officers,got,sizeof(got));officer_count=n;}
 }
-static int __fastcall book_enabled(Obj cmd,Obj book) {
+static int __fastcall book_enabled(Obj cmd,Obj book) { COST_SCOPE("drag_learn::book_enabled");
     if(!mod_features.drag_learn || !multi_officers(cmd))return 0;
     for(unsigned i=0;i<officer_count;++i)if(officers[i] && can_learn(officers[i],book))return 1;
     return 0;
 }
-static unsigned long long __fastcall learn(Obj *args) {
+static unsigned long long __fastcall learn(Obj *args) { COST_SCOPE("drag_learn::learn");
     auto original=fn<unsigned long long(__fastcall *)(Obj *)>(kLearn);
     Obj officer=args[0],book=args[1],extra=args[2],source=args[3];
     if(!mod_features.drag_learn || !officer || !book)return original(args);

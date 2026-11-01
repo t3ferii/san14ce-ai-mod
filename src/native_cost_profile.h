@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 namespace costprofile {
-constexpr unsigned maximum=192;
+constexpr unsigned maximum=1024;
 static SRWLOCK registry_lock=SRWLOCK_INIT;
 static const char *names[maximum];static unsigned registered;
 static wchar_t file_path[MAX_PATH];static LONGLONG frequency;
@@ -41,7 +41,7 @@ static void initialize(HMODULE module) {
 }
 static void flush() {
     if(state.depth || !file_path[0] || frequency<=0)return;
-    char buffer[24576];size_t used=0;ULONGLONG now=GetTickCount64();
+    char buffer[maximum*256];size_t used=0;ULONGLONG now=GetTickCount64();
     unsigned count;AcquireSRWLockShared(&registry_lock);count=registered;ReleaseSRWLockShared(&registry_lock);
     for(unsigned i=0;i<count;++i) {const Entry &e=state.values[i];if(!e.calls)continue;
         int n=_snprintf_s(buffer+used,sizeof(buffer)-used,_TRUNCATE,

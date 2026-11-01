@@ -191,7 +191,10 @@ function Get-TraitLayoutPlan($State,$Patch,[bool]$Install) {
 }
 function Invoke-SplitPackage {
     Assert-GameClosed
-    $taskAllowed=@('SAN14_CombatAI.dll','SAN14_Convenience.dll','SAN14_전법설명.txt')+$taskLegacyLayout
+    $taskAllowed=@('SAN14_CombatAI.dll','SAN14_Convenience.dll','SAN14_CCZ.dll','SAN14_전법설명.txt')+$taskLegacyLayout
+    # 2026-11-01 user: 조조전 탭 = SAN14_CCZ.dll (v15+). Optional in a package; older packages do not know the
+    # name, so a restore drops it from the record it leaves (the file itself is deleted) for an older Apply.
+    $taskOptionalModules=@('SAN14_CCZ.dll')
     # Reference text only; no DLL reads it. A same-named file from another mod or an
     # older copy never blocks install/update/restore: it is left as it is, not owned.
     $taskOptionalAssets=@('SAN14_전법설명.txt')
@@ -257,8 +260,9 @@ function Invoke-SplitPackage {
             foreach($taskName in $taskOwned.Keys){[IO.File]::Delete((Join-Path $taskGame $taskName))}
             foreach($taskPath in $taskLayout.Writes.Keys){Write-Atomic $taskPath $taskLayout.Writes[$taskPath]}
             foreach($taskPath in $taskLayout.Deletes){[IO.File]::Delete($taskPath)}
+            $taskLeftModules=@{};foreach($taskName in $taskOwned.Keys){if($taskOptionalModules -notcontains $taskName){$taskLeftModules[$taskName]=$taskOwned[$taskName]}}
             $taskNewState=@{installed=$false;installed_sha256=$taskState.installed_sha256;previous_sha256=$taskState.previous_sha256;exe_unchanged=$true;
-                modules=$taskOwned;release_version=$taskState.release_version;install_backup=$taskState.install_backup}
+                modules=$taskLeftModules;release_version=$taskState.release_version;install_backup=$taskState.install_backup}
             Write-State $taskNewState
         } catch {
             foreach($taskPath in $taskOldFiles.Keys){Write-Atomic $taskPath $taskOldFiles[$taskPath]}
@@ -266,7 +270,7 @@ function Invoke-SplitPackage {
         }
         if($null -ne $taskOriginal){[IO.File]::Delete($taskChain)}
         foreach($taskMessage in $taskLayout.Messages){Write-Host $taskMessage}
-        Write-Host '로더·전투 판단·편의 기능 DLL을 해제하고 설치 전 구성을 복구했습니다.'
+        Write-Host '로더·전투 판단·편의·조조전 기능 DLL을 해제하고 설치 전 구성을 복구했습니다.'
         return
     }
     if(-not [IO.File]::Exists($taskExe)){throw 'SAN14CE_KO.exe가 없습니다. ZIP을 실제 게임 실행 파일과 같은 폴더에 풀어 주세요.'}
@@ -283,7 +287,7 @@ function Invoke-SplitPackage {
     $taskNames=@($taskManifest.split_modules.files.PSObject.Properties.Name)
     $taskRequired=@('dinput8.dll','SAN14_CombatAI.dll')
     if($taskManifest.split_modules.loader_only){$taskRequired+='SAN14_Convenience.dll'}
-    if($taskNames.Count -ne $taskRequired.Count){throw '분리 모드의 DLL 목록이 올바르지 않습니다.'}
+    if(@($taskNames | Where-Object { $taskOptionalModules -notcontains $_ }).Count -ne $taskRequired.Count){throw '분리 모드의 DLL 목록이 올바르지 않습니다.'}
     foreach($taskName in $taskRequired){if($taskNames -notcontains $taskName){throw '분리 모드의 필수 DLL이 없습니다.'}}
     $taskExpected=@{}
     foreach($taskName in $taskNames){$taskExpected[$taskName]=$taskManifest.split_modules.files.$taskName}
@@ -392,6 +396,6 @@ function Invoke-SplitPackage {
         throw
     }
     foreach($taskMessage in $taskLayout.Messages){Write-Host $taskMessage}
-    Write-Host '로더·전투 판단·편의 기능 DLL을 설치했습니다. 평소 Steam/런처로 실행해 주세요.'
+    Write-Host '로더·전투 판단·편의·조조전 기능 DLL을 설치했습니다. 평소 Steam/런처로 실행해 주세요.'
     Write-Host '기능을 나중에 바꾸려면 AI_TacticsMod\optional_tools\AI모드_기능선택.cmd를 실행하세요.'
 }

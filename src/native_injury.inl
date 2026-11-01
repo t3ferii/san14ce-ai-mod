@@ -139,7 +139,7 @@ static void injury_synchronize_city(Obj city) {
     }
     list_free(list);
 }
-static uint64_t __fastcall injury_departure_create(Obj node,Obj context,Obj subject) {
+static uint64_t __fastcall injury_departure_create(Obj node,Obj context,Obj subject) { COST_SCOPE("injury_departure_create");
     if(enabled) {
         Obj output=personnel_context_object(node,context,0x38);
         if(output)for(Link *l=list_first(*reinterpret_cast<GameList *>(output));l;l=l->next) {
@@ -149,8 +149,8 @@ static uint64_t __fastcall injury_departure_create(Obj node,Obj context,Obj subj
     }
     return fn<Execute>(0x35A40)(node,context,subject);
 }
-static uint64_t __fastcall injury_dual_destruction(Obj n,Obj c,Obj s) {return personnel_healthy_command(n,c,s,0x52600,0x3C);}
-static uint64_t __fastcall injury_estrange(Obj n,Obj c,Obj s) {return personnel_healthy_command(n,c,s,0x52780,0x3C);}
-static uint64_t __fastcall injury_hidden_poison(Obj n,Obj c,Obj s) {return personnel_healthy_command(n,c,s,0x534A0,0x3C);}
+static uint64_t __fastcall injury_dual_destruction(Obj n,Obj c,Obj s) { COST_SCOPE("injury_dual_destruction");return personnel_healthy_command(n,c,s,0x52600,0x3C);}
+static uint64_t __fastcall injury_estrange(Obj n,Obj c,Obj s) { COST_SCOPE("injury_estrange");return personnel_healthy_command(n,c,s,0x52780,0x3C);}
+static uint64_t __fastcall injury_hidden_poison(Obj n,Obj c,Obj s) { COST_SCOPE("injury_hidden_poison");return personnel_healthy_command(n,c,s,0x534A0,0x3C);}
 
-static uint64_t __fastcall injury_spy_away(Obj n,Obj c,Obj s) {return personnel_healthy_command(n,c,s,0x53F40,0x3C);}
+static uint64_t __fastcall injury_spy_away(Obj n,Obj c,Obj s) { COST_SCOPE("injury_spy_away");return personnel_healthy_command(n,c,s,0x53F40,0x3C);}

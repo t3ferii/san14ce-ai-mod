@@ -24,7 +24,7 @@ static bool hostile(Obj b,unsigned force,Obj region) {
     Obj tile=table(0xE270,hex,48399);
     return valid(tile) && fn<Obj(__fastcall *)(Obj)>(0x229EA0)(tile)==region;
 }
-static void __fastcall capture(Obj command,Obj primary,Obj region,int damage,Obj force) {
+static void __fastcall capture(Obj command,Obj primary,Obj region,int damage,Obj force) { COST_SCOPE("building_destruction::capture");
     Context *c=current;
     if(!active() || !c || c->command!=command || c->captured || damage<=0 ||
        !valid(primary) || !valid(region) || !valid(force))return;
@@ -58,7 +58,7 @@ static void apply(const Context &c) {
     }
     log_event("building_destruction_area",c.force,hits,static_cast<unsigned>(c.damage));
 }
-static int __fastcall complete(Obj command) {
+static int __fastcall complete(Obj command) { COST_SCOPE("building_destruction::complete");
     if(!active() || current)return fn<Complete>(0x1F9DE0)(command);
     Context context={};context.command=command;
     struct Scope {Scope(Context &c){current=&c;} ~Scope(){current=nullptr;}} scope(context);

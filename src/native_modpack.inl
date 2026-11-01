@@ -32,7 +32,7 @@ static bool modpack_write(unsigned rva,const void *before,const void *after,unsi
     if(!VirtualProtect(image+rva,size,old,&ignored))ok=false;
     return ok;
 }
-static void modpack_extended_growth(Obj person,unsigned ability) {
+static void modpack_extended_growth(Obj person,unsigned ability) { COST_SCOPE("modpack_extended_growth");
     if(!person || ability>=5)return;
     unsigned current=person[0xEC+ability];if(current<100 || current>=200)return;
     Obj table=reinterpret_cast<Obj(__fastcall *)()>(image+0x3359E0)();if(!table)return;
@@ -87,7 +87,7 @@ static void collab_unlock(Obj object,bool trait) {
     unsigned value=reinterpret_cast<Codec>(pointer(image+vt,trait?0x50:0x40))(object,after,1,static_cast<unsigned>(id));
     *reinterpret_cast<unsigned *>(storage)=value&(trait?0xFFFF:0xFF);object[flag]=static_cast<unsigned char>(after);
 }
-extern "C" void SAN14ModpackCollabBootstrap() {
+extern "C" void SAN14ModpackCollabBootstrap() { COST_SCOPE("SAN14ModpackCollabBootstrap");
     Obj root=pointer(image,0x277DF18);if(!root)return;
     for(auto id:collab_traits)collab_unlock(pointer(root,0x7DD18+id*8),true);
     for(auto id:collab_tactics)collab_unlock(pointer(root,0x774D0+id*8),false);
@@ -147,7 +147,7 @@ static void __fastcall scenery_tick(Obj o) { COST_SCOPE("modpack_scenery_tick");
     }
     reinterpret_cast<void(__fastcall *)(Obj)>(image+0x421990)(o);
 }
-static uint64_t __fastcall scenery_discovery(Obj o,Obj b,Obj c,Obj d) {
+static uint64_t __fastcall scenery_discovery(Obj o,Obj b,Obj c,Obj d) { COST_SCOPE("scenery_discovery");
     auto result=reinterpret_cast<CollabRead>(image+0x7229C0)(o,b,c,d);
     if(static_cast<unsigned>(result) && *reinterpret_cast<int *>(o+0x4B0)==5) {
         auto hide=reinterpret_cast<void(__fastcall *)(Obj,unsigned)>(image+0x83BF80);

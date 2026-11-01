@@ -16,9 +16,9 @@ from package_mod import atomic_write, no_game, ORIGINAL_SHA
 from install_damage_preview import exports, windows_script
 
 P=Path(__file__).resolve().parents[1]; G=P.parent
-NAMES={'loader':'dinput8.dll','combat':'SAN14_CombatAI.dll','convenience':'SAN14_Convenience.dll'}
+NAMES={'loader':'dinput8.dll','combat':'SAN14_CombatAI.dll','convenience':'SAN14_Convenience.dll','ccz':'SAN14_CCZ.dll'}
 EXPORTS={'combat':['AIInitialize','SAN14CombatGetApi','SAN14CombatTraceStep'],
-         'convenience':['AIInitialize','SAN14ConvenienceInitialize']}
+         'convenience':['AIInitialize','SAN14ConvenienceInitialize'],'ccz':['SAN14CczGetApi']}
 DIAG=P/'build/development/loader_split_diagnostic'; GUI_BUILD=P/'build/development/installer'
 def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
 def read(p): return json.loads(p.read_text(encoding='utf-8-sig'))
@@ -44,11 +44,13 @@ def prepare(a):
     no_game(); proof=proof_path(a.version)
     assert not proof.exists() or read(proof)['status']!='installed_and_verified','Version already installed'
     modules=[m for m in a.modules.split(',') if m]; assert modules or a.gui or a.layout,'Nothing to install'
-    assert all(m in EXPORTS for m in modules),'Modules: combat, convenience'
+    assert all(m in EXPORTS for m in modules),'Modules: combat, convenience, ccz'
     assert sha(G/'SAN14CE_KO.exe')==ORIGINAL_SHA
     state=read(P/'backup/input_state.json'); manifest=read(P/'build/input_package/manifest.json')
     assert state['installed'] and state['release_version']==manifest['release_version']
-    assert all(sha(G/n)==manifest['split_modules']['files'][n] for n in NAMES.values()),'Installed DLLs differ from Apply package'
+    # 2026-11-01: SAN14_CCZ.dll is new; a baseline without it is installed with it once 'ccz' is listed.
+    assert all(sha(G/n)==manifest['split_modules']['files'][n] for n in NAMES.values() if n in manifest['split_modules']['files']),'Installed DLLs differ from Apply package'
+    assert all(n in manifest['split_modules']['files'] or k in modules for k,n in NAMES.items()),'Add the new module: --modules ...,ccz'
     settings()
     backup=P/'backup'/('local_install_'+uuid.uuid4().hex); backup.mkdir()
     paths=[*(G/n for n in NAMES.values()),G/manifest['gui_installer']['file'],G/'0002/ScreenLayout.rdb',
@@ -85,7 +87,8 @@ def install(a):
     for m in p['modules']:
         f=DIAG/NAMES[m]; assert f.stat().st_mtime>=newest,'Stale build: '+f.name
         assert exports(f)==EXPORTS[m],'Unexpected exports: '+f.name
-        assert b'day=' in f.read_bytes(),'Diagnostic variant required: '+f.name
+        # SAN14_CCZ.dll writes through the convenience module's log_event (no day= writer of its own).
+        assert m=='ccz' or b'day=' in f.read_bytes(),'Diagnostic variant required: '+f.name
     if p['gui']: assert (GUI_BUILD/gui).stat().st_mtime>=newest,'Stale installer build'
     for key,name in NAMES.items():   # listed modules from the build, everything else as installed
         shutil.copyfile(DIAG/name if key in p['modules'] else G/name,stage/name)
@@ -194,7 +197,8 @@ def rollback(a):
     # Other modules must already equal the prior version and remain untouched.
     assert all(p['before_hashes'][n]==p['files'][n] for n in NAMES.values() if n not in owned)
     restore=[n for n in p['before_hashes'] if n.startswith('AI_TacticsMod/build/input_package/')]
-    restore+=sorted(owned)+['AI_TacticsMod/backup/input_state.json']
+    added=sorted(n for n in owned if n not in p['before_hashes'])   # e.g. SAN14_CCZ.dll over a baseline without it
+    restore+=sorted(n for n in owned if n in p['before_hashes'])+['AI_TacticsMod/backup/input_state.json']
     if p.get('layout'): restore+=['0002/ScreenLayout.rdb']
     if p.get('gui'): restore+=[current['gui_installer']['file']]
     contents={}
@@ -204,9 +208,10 @@ def rollback(a):
         contents[name]=source.read_bytes()
     settings_before=settings()
     protected={n:sha(G/n) for n in NAMES.values() if n not in owned}
-    before={n:(G/n).read_bytes() for n in restore}
+    before={n:(G/n).read_bytes() for n in restore+added}
     try:
         for name in restore: atomic_write(G/name,contents[name])
+        for name in added: (G/name).unlink()
         old=read(P/'build/input_package/manifest.json'); old_state=read(P/'backup/input_state.json')
         assert old['release_version']==old_state['release_version']==p['baseline_version']
         assert all(sha(G/n)==sha(P/'build/input_package'/n)==h for n,h in old['split_modules']['files'].items())
@@ -225,7 +230,7 @@ def rollback(a):
             assert hashlib.sha256(bank).hexdigest()==layout['bank_sha256']
             for r in layout['records']:assert g1t.raw_entry(r['ktid'])==bank[r['offset']:r['offset']+r['size']]
     except BaseException:
-        for name in reversed(restore): atomic_write(G/name,before[name])
+        for name in reversed(restore+added): atomic_write(G/name,before[name])
         raise
     p.update(status='rolled_back_user_report',installed=False,rolled_back_to=p['baseline_version'],
         rollback_settings_preserved=True,rollback_protected_modules=protected)

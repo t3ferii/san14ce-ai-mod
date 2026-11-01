@@ -1,28 +1,106 @@
 // Two disjoint owners. Keep legacy integrated fixtures/builds unchanged.
 // owner: 0 shared, 1 unified personnel UI, 2 auto domestic ([features] keys).
-enum : unsigned char {kPointerShared,kPointerUnified,kPointerDomestic,kPointerHud};
+enum : unsigned char {kPointerShared,kPointerUnified,kPointerDomestic,kPointerHud,kPointerTerrain};
 struct SplitPointer {unsigned slot,original;void *replacement;unsigned char owner;};
 #if !defined(SPLIT_COMBAT)
-// Officer roster: the setup call inside 8DF7E0, and the entry of the list
-// builder 2C0820. (Its call inside 5CC120 sits at 5CC37E, which crosses a
-// 16-byte block and cannot be swapped atomically, so we gate the entry and
-// pass every other caller straight through.)
+// Runtime COM slot, not an EXE RVA. Sole owner: SAN14_Convenience.
+// Its original D3D11 implementation/bytes are validated when a device arrives.
+static const struct SplitDeviceSlot {
+    unsigned slot;
+    bool (*guards)();
+    void (*restore)();
+} split_terrain_render_slot={terrain_render::CreateTexture2DSlot,&terrain_render_guards_match,&terrain_render::restore};
+static_assert(terrain_render::CreateTexture2DSlot==5,"ID3D11Device::CreateTexture2D ABI");
+// Officer roster: keep 2C0820 intact; redirect only its 5CC120 caller.
 static const unsigned char info_setup_call[]={0xE8,0x1B,0xC8,0xCE,0xFF};
-static const unsigned char info_list_entry[]={0x40,0x55,0x56,0x57,0x41,0x54}; // push rbp/rsi/rdi/r12
-static bool info_guards_match() {
-    return !memcmp(image+0x8DF900,info_setup_call,5) && !memcmp(image+0x2C0820,info_list_entry,6) &&
+static Obj info_list_target() {
+    if(image[0x5CC37E]!=0xE8)return nullptr;
+    int delta;memcpy(&delta,image+0x5CC37F,4);
+    uintptr_t target=reinterpret_cast<uintptr_t>(image+0x5CC383)+delta;
+    auto pe=reinterpret_cast<IMAGE_NT_HEADERS64 *>(image+reinterpret_cast<IMAGE_DOS_HEADER *>(image)->e_lfanew);
+    uintptr_t begin=reinterpret_cast<uintptr_t>(image),end=begin+pe->OptionalHeader.SizeOfImage;
+    return target==begin+0x2C0820 || target<begin || target>=end?reinterpret_cast<Obj>(target):nullptr;
+}
+static bool info_setup_guards_match() {
+    return !memcmp(image+0x8DF900,info_setup_call,5) &&
         pointer(image,0x14AB2C0+0x288)==image+0x8DF7E0 && pointer(image,0x14AB2C0+0x250)==image+0x5CC120;
 }
-static bool prepare_info(CodeLink *links,Obj relay) {
+static bool info_guards_match() {return info_setup_guards_match() && info_list_target();}
+static bool prepare_info(CallLink *links,Obj relay) {
     absolute_jump(relay+3200,reinterpret_cast<void *>(&unified_native::info_setup));
     absolute_jump(relay+3232,reinterpret_cast<void *>(&unified_native::info_list_create));
-    memcpy(relay+3264,info_list_entry,6);absolute_jump(relay+3270,image+0x2C0826);
-    unified_native::info_list_original=reinterpret_cast<unified_native::InfoListCreate>(relay+3264);
-    return prepare_link(links[0],0x8DF900,0xE8,relay+3200) && prepare_link(links[1],0x2C0820,0xE9,relay+3232);
+    links[1]={};Obj next=info_list_target();
+    if(next && call_prepare(links[1],0x5CC37E,relay+3232))
+        unified_native::info_list_original=reinterpret_cast<unified_native::InfoListCreate>(next);
+    else log_event("info_call_skip",0x5CC37E,0x2C0820,0);
+    return call_prepare(links[0],0x8DF900,relay+3200);
+}
+static void restore_info(CallLink *links) {
+    for(unsigned i=2;i>0;--i) {
+        auto &c=links[i-1];if(!c.published || image[c.site]!=0xE8)continue;
+        int delta;memcpy(&delta,image+c.site+1,4);if(delta!=c.redirected)continue;
+        if(c.raw)call_write(c.site,c.redirected,c.original);
+        else {
+            CodeLink undo{};undo.block=c.site&~15u;
+            memcpy(undo.original,image+undo.block,16);memcpy(undo.modified,undo.original,16);
+            memcpy(undo.modified+(c.site-undo.block)+1,&c.original,4);
+            replace_code16(undo.block,undo.original,undo.modified);
+        }
+        c.published=false;
+    }
+}
+static bool publish_info(CallLink *links) {
+    bool setup=false;
+    for(unsigned i=0;i<2;++i) {
+        auto &c=links[i];if(!c.site)continue;
+        int delta;memcpy(&delta,image+c.site+1,4);
+        bool ok=image[c.site]==0xE8 && delta==c.original && call_publish(c);
+        if(!ok)log_event("info_call_skip",c.site,0,1);
+        if(i==0)setup=ok;
+    }
+    return setup;
 }
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
 #include "native_modpack.inl"
+#endif
+#if !defined(SPLIT_COMBAT) && !defined(SPLIT_MODULE_FIXTURE)
+// Terrain edit, user 2026-10-29: units sank into raised cells. BC2380 builds two CPU
+// height collision objects with A07B70 at BC2467/BC247C and stores them in its owner
+// (+B0/+B8; no static path). Redirect only those two CALLs to record the results.
+namespace terrain_height_link {
+static constexpr unsigned kSites[2]={0xBC2467,0xBC247C};
+static constexpr unsigned char kCreateEntry[]={0x4C,0x8B,0xDC,0x56,0x41,0x56,0x41,0x57,0x48,0x81,0xEC,0x10,0x01,0x00,0x00};
+static CallLink links[2];
+static Obj relay;
+using Create=Obj(__fastcall *)(Obj,Obj);
+template<unsigned I> static Obj __fastcall create(Obj source,Obj allocator) { COST_SCOPE(I==0?"terrain_height_create_0":"terrain_height_create_1");
+    Obj object=fn<Create>(0xA07B70)(source,allocator);
+    terrain_render::heightfield_created(I,object,image+0x14D22F0);
+    return object;
+}
+static bool guards() {
+    if(memcmp(image+0xA07B70,kCreateEntry,sizeof(kCreateEntry)))return false;
+    for(unsigned site:kSites)
+        if(image[site]!=0xE8 || image+site+5+*reinterpret_cast<int *>(image+site+1)!=image+0xA07B70)return false;
+    return true;
+}
+// split_activate, before any map load reaches BC2380.
+static void install() {
+    if(relay || !mod_features.terrain_edit || !guards())return;
+    relay=allocate_near(image+kSites[0]);if(!relay)return;
+    absolute_jump(relay,reinterpret_cast<void *>(&create<0>));absolute_jump(relay+32,reinterpret_cast<void *>(&create<1>));
+    DWORD old=0;
+    bool ok=VirtualProtect(relay,4096,PAGE_EXECUTE_READ,&old) && FlushInstructionCache(GetCurrentProcess(),relay,4096) &&
+        call_prepare(links[0],kSites[0],relay) && call_prepare(links[1],kSites[1],relay+32) &&
+        call_publish(links[0]) && call_publish(links[1]);
+    if(!ok){call_restore(links[1]);call_restore(links[0]);}
+#ifndef NO_RUNTIME_LOG
+    log_event("terrain_height_hook",ok?1:0,0,0);
+#endif
+}
+static void restore() {call_restore(links[1]);call_restore(links[0]);}
+}
 #endif
 // AI-CONTRACT [ownership]: Each original slot/site has one DLL owner. Check this table and conditional CodeLink paths together before adding a hook; shared helper code does not authorize a second publisher.
 static const SplitPointer split_pointers[]={
@@ -35,6 +113,13 @@ static const SplitPointer split_pointers[]={
     {0x134D248,0x7DC00,reinterpret_cast<void *>(&foothold_strength_node)},   // attack_recheck_fix #10114
     {0x13517A8,0x91030,reinterpret_cast<void *>(&variable_minus_node)},      // attack_recheck_fix #10115
 #else
+    {terrain_trees::Slot,terrain_trees::UpdateRva,reinterpret_cast<void *>(&terrain_trees::update),kPointerTerrain},
+    {0x144D350,0x7A7DB0,reinterpret_cast<void *>(&terrain_edit::domestic_click),kPointerTerrain},
+    {0x14410B8,0x724660,reinterpret_cast<void *>(&terrain_edit::hex_menu_state),kPointerTerrain},
+    {0x14410C0,0x71E180,reinterpret_cast<void *>(&terrain_edit::hex_menu_exit),kPointerTerrain},
+    {0x144DD28,0x7A8060,reinterpret_cast<void *>(&terrain_edit::hex_menu_click),kPointerTerrain},
+    {0x144DD60,0x7A92C0,reinterpret_cast<void *>(&terrain_edit::hex_menu_hint),kPointerTerrain},
+    {0x143C8C8,0x6EB5C0,reinterpret_cast<void *>(&terrain_edit::menu_build),kPointerTerrain},
     {0x1458848,0x7DF540,reinterpret_cast<void *>(&tactic_priority::update),kPointerUnified},
     {0x1458830,0x7D9E50,reinterpret_cast<void *>(&tactic_priority::leave),kPointerUnified},
     {0x14751D8,0x894420,reinterpret_cast<void *>(&unified_native::frame),kPointerHud},
@@ -64,7 +149,7 @@ struct SplitInstallState {
     ExpertCode expert;
     bool save_ready; // merit/warehouse sidecar has its own guard, independent of merit gameplay
     bool info_ready;
-    CodeLink info[2]; // officer roster: 8DF900 -> 5CC120, 5CC37E -> 2C0820
+    CallLink info[2]; // officer roster: 8DF900 -> 5CC120, 5CC37E -> 2C0820
     bool intercept_ready;
     CodeLink intercept; // 1EC890 entry -> district_intercept::dispatch (only without the combat module)
     bool safety_ready;
@@ -86,10 +171,23 @@ static bool split_pointer_enabled(const SplitPointer &p);
 static void split_disable(bool &feature,unsigned id) {
     if(feature) {feature=false;log_event("feature_guard_mismatch",id);}
 }
+static void split_terrain_render_guard() {
+    if(mod_features.terrain_edit && !split_terrain_render_slot.guards())split_disable(terrain_render::permitted,28);
+#ifdef SAN14_WATER_DIAG_INCLUDED
+    if(mod_features.terrain_edit && water_diag::permitted && !water_diag_guards_match()) {
+        split_disable(water_diag::permitted,30);water_diag::restore();
+    }
+#endif
+}
 // AI-CONTRACT [compatibility]: New hook sites need feature-specific original-byte guards and a unique split_disable diagnostic ID. A mismatch disables that feature; do not replace these checks with a whole-image CRC requirement.
 static void split_feature_guards() {
     auto &f=mod_features;auto &s=split_install;
     if(!f.convenience || f.trace_original)return;
+    // ResourceMap compatibility is independent of the terrain UI/height hooks.
+    if(f.terrain_edit && terrain_trees::permitted && !terrain_trees_guards_match())split_disable(terrain_trees::permitted,29);
+#ifdef SAN14_TERRAIN_FOAM_INCLUDED
+    if(f.terrain_edit && terrain_foam::permitted && !terrain_foam_guards_match())split_disable(terrain_foam::permitted,31);
+#endif
     if(f.battle_rules && (memcmp(image+0x169F44,kPairCallBytes,5) ||
         memcmp(image+0x2B07C0,kAdjacencyEntryBytes,5) || !expert_guards_match()))split_disable(f.battle_rules,1);
     if((f.domestic || f.awards || f.injury || f.injury_herbal) && memcmp(image+0x295160,kDomesticTickEntryBytes,5)) {
@@ -103,6 +201,7 @@ static void split_feature_guards() {
         if(p.owner==kPointerUnified)split_disable(f.unified,5);
         else if(p.owner==kPointerHud){split_disable(f.unified,5);split_disable(f.advisor_briefing,26);}
         else if(p.owner==kPointerDomestic)split_disable(f.domestic,2);
+        else if(p.owner==kPointerTerrain)split_disable(f.terrain_edit,27);
     }
     if(s.save_ready && !merit_save_guards_match()) {
         split_disable(s.save_ready,7);split_disable(f.merit,6);split_disable(f.awards,12);
@@ -121,6 +220,9 @@ static void split_feature_guards() {
         split_disable(f.diplomacy_overinvest,24);split_disable(f.diplomacy_counterturn,25);
     }
     if(f.advisor_briefing && !advisor_briefing_guards_match())split_disable(f.advisor_briefing,26);
+    if(f.terrain_edit && !terrain_edit_guards_match())split_disable(f.terrain_edit,27);
+    if(f.ccz_sprites && !ccz_sprites_guards_match())split_disable(f.ccz_sprites,32); // army display submit 1C6EC0
+    split_terrain_render_guard();
 #ifndef SPLIT_MODULE_FIXTURE
     if(!text_exact) {
         // Imported installers do not expose all original-site fingerprints.
@@ -146,14 +248,24 @@ static bool split_guards_match() {
     split_feature_guards();return true; // an empty feature set is a successful no-op
 #endif
 }
-static void split_rollback() {
+static void split_rollback() { COST_SCOPE("split_rollback");
     InterlockedExchange(&enabled,0);
+#ifndef SPLIT_COMBAT
+    split_terrain_render_slot.restore();
+#ifdef SAN14_TERRAIN_FOAM_INCLUDED
+    terrain_foam::restore();
+#endif
+#ifndef SPLIT_MODULE_FIXTURE
+    terrain_height_link::restore();
+#endif
+#endif
     if(!split_install.attempted)return;
 #ifdef SPLIT_COMBAT
     restore_sortie(split_install.sortie);
 #else
+    terrain_edit::reset_ui_context();
     restore_link(split_install.safety);restore_link(split_install.intercept);
-    restore_link(split_install.info[1]);restore_link(split_install.info[0]);
+    restore_info(split_install.info);
 #ifndef SPLIT_MODULE_FIXTURE
     restore_traits9();restore_modpack();
 #endif
@@ -168,6 +280,27 @@ static void split_rollback() {
     split_install.published=false;
     // Retain any gate that another native thread could have entered.
 }
+#if defined(SPLIT_MODULE_FIXTURE) && !defined(SPLIT_COMBAT)
+// Fixture-only access to the registered runtime slot; absent from all releases.
+extern "C" __declspec(dllexport) unsigned __cdecl SAN14TerrainRenderFixture(unsigned action,ID3D11Device *device) {
+    if(action==0)return split_terrain_render_slot.slot;
+    LONG saved_enabled=enabled;auto saved_features=mod_features;
+    enabled=1;mod_features.convenience=mod_features.terrain_edit=true;
+    unsigned result=0;
+    if(action==1) {terrain_render::on_device(device);result=split_terrain_render_slot.guards() && terrain_render::permitted;}
+    if(action==2) {
+        split_terrain_render_guard();
+        result=(!terrain_render::permitted?1u:0u)|(mod_features.terrain_edit?2u:0u)|(mod_features.convenience?4u:0u);
+    }
+    if(action==3) {split_rollback();result=1;}
+    if(action==4 && device) {
+        auto table=*reinterpret_cast<void ***>(device);
+        for(auto &s:terrain_render::slots)if(s.table==table && table[5]==reinterpret_cast<void *>(&terrain_render::create_texture_2d))s.published=true;
+        split_rollback();result=1;
+    }
+    enabled=saved_enabled;mod_features=saved_features;return result;
+}
+#endif
 static bool split_prepare() {
     if(split_install.prepared)return false;
     load_mod_features();
@@ -185,7 +318,7 @@ static bool split_prepare() {
 #endif
     if(!split_guards_match())return false;
     auto &s=split_install;
-    s.relay=allocate_near(image+0x169F44);if(!s.relay)return false;
+    s.relay=allocate_near(image+0x169F44,0x2000);if(!s.relay)return false;
     Obj r=s.relay;bool ok;
 #ifdef SPLIT_COMBAT
     absolute_jump(r,reinterpret_cast<void *>(&cut_player_predicate));
@@ -235,7 +368,7 @@ static bool split_prepare() {
 #endif
        ;
     // The roster panel is optional: if its sites differ, keep every other feature.
-    s.info_ready=ok && mod_features.unified && info_guards_match() && prepare_info(s.info,r);
+    s.info_ready=ok && mod_features.unified && info_setup_guards_match() && prepare_info(s.info,r);
     // Optional like the roster. Skipped when the combat module owns 1EC890 (it applies the policy).
     s.intercept_ready=ok && mod_features.district_intercept_block && district_intercept::prepare(s.intercept,r);
     s.safety_ready=ok && mod_features.district_intercept_block && district_intercept::prepare_safety(s.safety,r);
@@ -243,7 +376,7 @@ static bool split_prepare() {
     }
 #endif
     DWORD old=0;
-    if(!ok || !VirtualProtect(r,4096,PAGE_EXECUTE_READ,&old) || !FlushInstructionCache(GetCurrentProcess(),r,4096)) {
+    if(!ok || !VirtualProtect(r,8192,PAGE_EXECUTE_READ,&old) || !FlushInstructionCache(GetCurrentProcess(),r,8192)) {
 #ifdef SPLIT_BASE
         if(s.expert.relay)VirtualFree(s.expert.relay,0,MEM_RELEASE);
 #endif
@@ -270,11 +403,13 @@ static bool split_pointer_enabled(const SplitPointer &p) {
     (void)p;return true;
 #else
     if(!mod_features.convenience || mod_features.trace_original)return false;
+    if(p.slot==terrain_trees::Slot)return mod_features.terrain_edit && terrain_trees::permitted;
     return p.owner==kPointerUnified?mod_features.unified:p.owner==kPointerDomestic?mod_features.domestic:
-        p.owner==kPointerHud?(mod_features.unified || mod_features.advisor_briefing):true;
+        p.owner==kPointerHud?(mod_features.unified || mod_features.advisor_briefing):
+        p.owner==kPointerTerrain?mod_features.terrain_edit:true;
 #endif
 }
-static bool split_publish() {
+static bool split_publish() { COST_SCOPE("split_publish");
     auto &s=split_install;
     if(!s.prepared || s.attempted || !split_guards_match())return false;
     s.attempted=true;
@@ -289,6 +424,11 @@ static bool split_publish() {
         if(!split_pointer_enabled(p))continue;
         if(!patch_pointer(p.slot,p.original,p.replacement)) {split_rollback();return false;}
     }
+#ifndef SPLIT_COMBAT
+#ifndef NO_RUNTIME_LOG
+    log_event("terrain_edit_installed",[]() {unsigned count=0;for(const auto &p:split_pointers)if(p.owner==kPointerTerrain && pointer(image,p.slot)==reinterpret_cast<Obj>(p.replacement))++count;return count;}(),0,mod_features.terrain_edit);
+#endif
+#endif
 #ifdef SPLIT_COMBAT
     bool ok=publish_sortie(s.sortie);
 #else
@@ -304,9 +444,9 @@ static bool split_publish() {
         && publish_modpack() && publish_traits9(f.traits9,f.captive_dialog) && activate_modpack()
 #endif
         );
-    if(!f.unified || (s.info_ready && !info_guards_match()))s.info_ready=false;
-    if(ok && s.info_ready && !(publish_link(s.info[0]) && publish_link(s.info[1]))) {
-        restore_link(s.info[1]);restore_link(s.info[0]);s.info[0].published=s.info[1].published=false;s.info_ready=false;
+    if(!f.unified || (s.info_ready && !info_setup_guards_match()))s.info_ready=false;
+    if(ok && s.info_ready && !publish_info(s.info)) {
+        restore_info(s.info);s.info[0].published=s.info[1].published=false;s.info_ready=false;
     }
     if(ok && s.intercept_ready && !publish_link(s.intercept))s.intercept_ready=false;
     if(ok && s.safety_ready && !publish_link(s.safety))s.safety_ready=false;
@@ -315,7 +455,7 @@ static bool split_publish() {
     if(!ok) {split_rollback();return false;}
     s.published=true;return true;
 }
-static void split_activate() {
+static void split_activate() { COST_SCOPE("split_activate");
     if(!split_install.published)return;
     InterlockedExchange(&enabled,1);
 #ifdef SPLIT_COMBAT
@@ -324,6 +464,13 @@ static void split_activate() {
 #else
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
     if(mod_features.trace_original) {ai_trace::install(true); return;} // original AI, observed only
+#endif
+    terrain_render::install_early();
+#ifdef SAN14_TERRAIN_FOAM_INCLUDED
+    terrain_foam::install();
+#endif
+#ifndef SPLIT_MODULE_FIXTURE
+    terrain_height_link::install();
 #endif
     if(mod_features.distance)install_progress_native();
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
@@ -353,6 +500,10 @@ static void split_activate() {
     if(mod_features.drag_learn)drag_learn::install(); // several books x officers per learning command
     if(mod_features.lord_change)lord_change::install(); // new game: force select footer button 「세력내 군주교체」 (needs the ScreenLayout patch)
     if(mod_features.region_officers)region_officers::install(); // read-only native map portraits
+    if(mod_features.ccz_sprites && !ccz_sprites::install(mod_features.ccz_hide_model,mod_features.ccz_depth))split_disable(mod_features.ccz_sprites,32); // 조조전 병종 그림
+    if((mod_features.ccz_block || mod_features.ccz_critical) && !ccz_combat::install(mod_features.ccz_block,mod_features.ccz_critical)) {
+        split_disable(mod_features.ccz_block,33);split_disable(mod_features.ccz_critical,33);   // 16FDD0 call at 169F8B
+    }
     if(mod_features.building_destruction_all)building_destruction::install();
     if(mod_features.damage_preview)damage_forecast::install(); // target UI only; no damage application
     // The game never raises the timer resolution (no winmm import), so its Sleep(n)

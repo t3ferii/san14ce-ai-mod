@@ -93,7 +93,7 @@ static void expert_create_presets(Obj row,Obj pane) {
     }
     log_event("expert_preset_controls_created",button?1:0,53,1);
 }
-static Obj __fastcall expert_number_factory(Obj table,int id,int style,int kind,int layer,int order) {
+static Obj __fastcall expert_number_factory(Obj table,int id,int style,int kind,int layer,int order) { COST_SCOPE("expert_number_factory");
     Obj number=fn<Obj(__fastcall *)(Obj,int,int,int,int,int)>(0x92E430)(table,id,style,kind,layer,order);
     Obj pane=table?pointer(table,0x18):nullptr;
     Obj row=pane?pointer(pane,8):nullptr;
@@ -162,7 +162,7 @@ static void expert_project_rows(Obj layout,float scroll=-1.0f) {
         list_free(projected);
     } catch(...) {log_event("expert_settings_rows_failed");}
 }
-static void __fastcall expert_populate(Obj layout,Obj second,Obj third,Obj fourth) {
+static void __fastcall expert_populate(Obj layout,Obj second,Obj third,Obj fourth) { COST_SCOPE("expert_populate");
     original_expert_populate(layout,second,third,fourth);
     if(enabled && expert_layout_valid(layout))expert_project_rows(layout,*reinterpret_cast<float *>(layout+0x1B4));
 }
@@ -218,7 +218,7 @@ static void __fastcall expert_bind_row(Obj row,Obj source,Obj help,int preset,in
                 help,control,expert_tooltip(id),nullptr);
     }
 }
-static void __fastcall expert_choice_event(Obj callback,Obj *event) {
+static void __fastcall expert_choice_event(Obj callback,Obj *event) { COST_SCOPE("expert_choice_event");
     Obj layout=pointer(callback,8),data=event?*event:nullptr;
     if(enabled && expert_layout_valid(layout)) {
         if(expert_binding_depth)return;
@@ -233,7 +233,7 @@ static void __fastcall expert_choice_event(Obj callback,Obj *event) {
     }
     fn<void(__fastcall *)(Obj,Obj *)>(0x65EDD0)(callback,event);
 }
-static void __fastcall expert_slider_event(Obj callback,Obj *event) {
+static void __fastcall expert_slider_event(Obj callback,Obj *event) { COST_SCOPE("expert_slider_event");
     Obj layout=pointer(callback,8),data=event?*event:nullptr;
     if(enabled && expert_layout_valid(layout)) {
         if(expert_binding_depth)return;
@@ -243,7 +243,7 @@ static void __fastcall expert_slider_event(Obj callback,Obj *event) {
     }
     fn<void(__fastcall *)(Obj,Obj *)>(0x65E810)(callback,event);
 }
-static void __fastcall expert_number_event(Obj callback,Obj *event,Obj third,Obj fourth) {
+static void __fastcall expert_number_event(Obj callback,Obj *event,Obj third,Obj fourth) { COST_SCOPE("expert_number_event");
     Obj layout=pointer(callback,8),data=event?*event:nullptr;
     unsigned id=data?dword(data,0x88):0;
     if(!enabled || !expert_layout_valid(layout) || !expert_setting_id(id)) {
@@ -265,7 +265,7 @@ static void __fastcall expert_number_event(Obj callback,Obj *event,Obj third,Obj
     expert_popup_layout=previous_layout;expert_popup_id=previous_id;
     *reinterpret_cast<unsigned *>(layout+0x1A4)=id;
 }
-static void __fastcall expert_number_confirm(Obj callback) {
+static void __fastcall expert_number_confirm(Obj callback) { COST_SCOPE("expert_number_confirm");
     Obj layout=pointer(callback,8);
     unsigned id=layout?dword(layout,0x1A4):0;
     if(enabled && expert_layout_valid(layout) && expert_setting_id(id)) {
@@ -278,16 +278,16 @@ static void expert_release_panel(Obj row) {
     // The pane's native layout registry owns rendering and control teardown.
     expert_preset_panels.erase(row);
 }
-static void __fastcall expert_row_leave(Obj row,Obj context) {
+static void __fastcall expert_row_leave(Obj row,Obj context) { COST_SCOPE("expert_row_leave");
     // Native 6475C0 destroys the numeric panel, including its native children.
     expert_release_panel(row);
     fn<void(__fastcall *)(Obj,Obj)>(0x6475C0)(row,context);
 }
-static Obj __fastcall expert_row_destroy(Obj row,unsigned flags) {
+static Obj __fastcall expert_row_destroy(Obj row,unsigned flags) { COST_SCOPE("expert_row_destroy");
     expert_release_panel(row);
     return fn<Obj(__fastcall *)(Obj,unsigned)>(0x5A7450)(row,flags);
 }
-static Obj __fastcall expert_destroy(Obj layout,unsigned flags) {
+static Obj __fastcall expert_destroy(Obj layout,unsigned flags) { COST_SCOPE("expert_destroy");
     // Discard borrowed pointers before native teardown of the pane registry.
     for(auto it=expert_preset_panels.begin();it!=expert_preset_panels.end();)
         if(it->second.layout==layout){Obj row=it->first;++it;expert_release_panel(row);}else ++it;

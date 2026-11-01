@@ -1,3 +1,7 @@
+// User/Claude 2026-10-29: standalone fixture instrumentation declaration.
+#ifndef COST_SCOPE
+#define COST_SCOPE(name) do {} while(0)
+#endif
 // Delayed native queue completions against the production UI adapter.
 // Does not load, render, attach to, or modify the game.
 #define WIN32_LEAN_AND_MEAN

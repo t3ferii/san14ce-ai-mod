@@ -70,7 +70,7 @@ $taskReport = [ordered]@{
     runtime_fingerprint_checked=$false
     files=[ordered]@{}; steam=$null; mod_log_tail=@(); application_errors=@(); notes=@()
 }
-foreach ($taskName in @('SAN14CE_KO.exe','dinput8.dll','SAN14_CombatAI.dll','SAN14_Convenience.dll','SAN14_AI_PreviousInput.dll','D3D11.dll','dxgi.dll')) {
+foreach ($taskName in @('SAN14CE_KO.exe','dinput8.dll','SAN14_CombatAI.dll','SAN14_Convenience.dll','SAN14_CCZ.dll','SAN14_AI_PreviousInput.dll','D3D11.dll','dxgi.dll')) {
     if ($Trace) { Write-Host ('Reading: ' + $taskName) }
     try { $taskReport.files[$taskName] = Get-FileRecord (Join-Path $taskGame $taskName) }
     catch { $taskReport.files[$taskName] = @{present=[IO.File]::Exists((Join-Path $taskGame $taskName)); read_error=$_.Exception.Message} }

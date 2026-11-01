@@ -463,15 +463,23 @@ static void sortie_tests() {
     for(unsigned i=100;i<125;++i)slot(0x7F8D8,i,nullptr);slot(0x7F8D8,150,nullptr);
     list_free(sources);list_free(outputs);
     BIND(0x2AA850,mock_distance);BIND(0x26C940,mock_finalize);BIND(0x22B090,mock_active_formation);
-    // Per-entry publication failure leaves earlier changes recoverable.
+    // 사용자 결정 2026-10-30: 통합패치·발탁장수 공존을 위해 첫머리 훅을 호출 자리로 이동
+    auto dos=reinterpret_cast<IMAGE_DOS_HEADER *>(image);dos->e_lfanew=0x80;
+    auto pe=reinterpret_cast<IMAGE_NT_HEADERS64 *>(image+0x80);pe->OptionalHeader.SizeOfImage=0x2800000;
     for(const auto &e:sortie_entries)memcpy(image+e.rva,e.bytes,16);
-    Obj relay=allocate_near(image+0x48CE0);SortieCode code;
-    check(relay && prepare_sortie(code,relay),"all eight guarded entry trampolines prepared");
-    image[sortie_entries[3].rva]=0xCC;
-    check(!publish_sortie(code),"partial hook publication fails on changed native entry");
+    auto seed=[](unsigned site,unsigned target) {image[site]=0xE8;int d=static_cast<int>(target-site-5);memcpy(image+site+1,&d,4);};
+    for(unsigned i=0;i<5;++i)seed(sortie_plan_sites[i],sortie_entries[i].rva);
+    for(unsigned site:sortie_search_sites)seed(site,0x1843E0);
+    for(unsigned site:sortie_movement_sites)seed(site,0x2B0290);
+    Obj relay=allocate_near(image+0x48CE0,8192);SortieCode code;
+    check(relay && prepare_sortie(code,relay),"all graph-derived search callers, movement callers and dispatch gate prepared");
+    image[sortie_plan_sites[3]]=0xCC;
+    check(publish_sortie(code),"changed planner site is skipped without failing other sites");
+    check(image[sortie_plan_sites[0]]==0xE8 && image[sortie_plan_sites[3]]==0xCC,"other planner published and foreign opcode preserved");
+    for(unsigned i:{0u,1u,2u,3u,4u,6u,7u})check(!memcmp(image+sortie_entries[i].rva,sortie_entries[i].bytes,16),"all seven native entries preserved");
     restore_sortie(code);
-    for(unsigned i=0;i<3;++i)check(memcmp(image+sortie_entries[i].rva,sortie_entries[i].bytes,16)==0,"earlier entries rolled back");
-    memcpy(image+sortie_entries[3].rva,sortie_entries[3].bytes,16);
+    for(unsigned i=0;i<3;++i)check(sortie_call_target(sortie_plan_sites[i],sortie_entries[i].rva)==image+sortie_entries[i].rva,"earlier caller edits restored");
+    seed(sortie_plan_sites[3],sortie_entries[3].rva);
     VirtualFree(relay,0,MEM_RELEASE);
 }
 
@@ -490,11 +498,11 @@ static void sortie_abi_tests() {
         size_t length=i<5?sizeof(planner_tail):i==5?sizeof(dispatch_tail):i==6?sizeof(speed_tail):sizeof(search_tail);
         memcpy(image+e.rva+e.size,tail,length);FlushInstructionCache(GetCurrentProcess(),image+e.rva,64);
         if(i<5) {
-            auto installed=reinterpret_cast<SortiePlanner>(image+e.rva);
+            auto installed=reinterpret_cast<SortiePlanner>(image+sortie_plan_sites[i]+5+*reinterpret_cast<int *>(image+sortie_plan_sites[i]+1));
             Obj a=reinterpret_cast<Obj>(0x11223344ull),b=reinterpret_cast<Obj>(0x55667788ull),c=reinterpret_cast<Obj>(0x123456789ABCDEF0ull);
             uint64_t expected=reinterpret_cast<uint64_t>(a)^reinterpret_cast<uint64_t>(b)^reinterpret_cast<uint64_t>(c);
             check(original_sortie_planners[i](a,b,c)==expected && installed(a,b,c)==expected,
-                "all five planner gates and installed jumps preserve three arguments and 64 bit return");
+                "all five native planners and installed caller relays preserve three arguments and 64 bit return");
         } else if(i==5) {
             unsigned command[30]={};auto installed=reinterpret_cast<SortieDispatch>(image+e.rva);
             Obj expected=reinterpret_cast<Obj>(reinterpret_cast<uintptr_t>(command)^7);
@@ -502,20 +510,20 @@ static void sortie_abi_tests() {
                 "departure dispatcher preserves command pointer spend argument and all four pushed registers");
         } else if(i==6) {
             uint64_t forwarded[2]={};float value=3.75f;Obj form=reinterpret_cast<Obj>(0x123456789ABCDEF0ull);
-            auto installed=reinterpret_cast<SortieMovement>(image+e.rva);
+            auto installed=reinterpret_cast<SortieMovement>(image+sortie_movement_sites[0]+5+*reinterpret_cast<int *>(image+sortie_movement_sites[0]+1));
             check(original_sortie_movement(reinterpret_cast<Obj>(forwarded),form,7,13,reinterpret_cast<Obj>(&value))==value &&
                 forwarded[0]==reinterpret_cast<uint64_t>(form) && forwarded[1]==(13ull<<32|7),
-                "movement gate preserves fifth tile pointer and four register arguments with float return");
+                "native movement preserves fifth tile pointer and four register arguments with float return");
             forwarded[0]=forwarded[1]=0;
             check(installed(reinterpret_cast<Obj>(forwarded),form,7,13,reinterpret_cast<Obj>(&value))==value &&
                 forwarded[0]==reinterpret_cast<uint64_t>(form) && forwarded[1]==(13ull<<32|7),
-                "installed movement jump and callback preserve native fifth pointer ABI");
+                "installed movement caller relay and callback preserve native fifth pointer ABI");
         }
         else {
-            auto installed=reinterpret_cast<SortieSearch>(image+e.rva);SortieNativePath path={};unsigned target=1;
+            auto installed=reinterpret_cast<SortieSearch>(image+sortie_search_sites[0]+5+*reinterpret_cast<int *>(image+sortie_search_sites[0]+1));SortieNativePath path={};unsigned target=1;
             check(original_sortie_search(&path,nullptr,0,&target,7,11,13)==31 &&
                 installed(&path,nullptr,0,&target,7,11,13)==31,
-                "path capture trampoline and installed callback forward all seven arguments including three stack arguments");
+                "path capture caller relay and installed callback forward all seven arguments including three stack arguments");
         }
     }
     enabled=1;

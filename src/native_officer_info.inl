@@ -87,7 +87,7 @@ static void info_sync_selection() {
     for(Link *l=list_first(checked.value);l;l=l->next)if(serving(l->value))selected.insert(word(l->value,0x10));
 }
 using InfoSetup=void(__fastcall *)(Obj,Obj *,unsigned,unsigned,int,unsigned,int,unsigned,unsigned);
-static void __fastcall info_setup(Obj dialog,Obj *desc,unsigned a,unsigned b,int c,unsigned d,int e,unsigned f,unsigned g) {
+static void __fastcall info_setup(Obj dialog,Obj *desc,unsigned a,unsigned b,int c,unsigned d,int e,unsigned f,unsigned g) { COST_SCOPE("unified_native::info_setup");
     bool ours=enabled && dialog && desc && pointer(dialog,0)==image+kInfoVtable && desc[2]==image+kInfoTabs && desc[0];
     if(ours) {
         if(info.world!=world()) {
@@ -108,8 +108,8 @@ static void __fastcall info_setup(Obj dialog,Obj *desc,unsigned a,unsigned b,int
     info.building=false;
 }
 using InfoListCreate=void(__fastcall *)(Obj,Obj);
-static InfoListCreate info_list_original; // relocated 2C0820 entry; set when the hook is prepared
-static void __fastcall info_list_create(Obj dialog,Obj config) {
+static InfoListCreate info_list_original; // 5CC37E CALL next target; set when the hook is prepared
+static void __fastcall info_list_create(Obj dialog,Obj config) { COST_SCOPE("unified_native::info_list_create");
     bool ours=info.building && dialog==info.dialog;
     if(ours) {
         // 2C0820 sizes the list from the first N columns of tab 0 when +A4>0.
@@ -279,7 +279,7 @@ static void info_action(unsigned action) {
 static int info_absolute(Obj node,unsigned offset) {
     int total=0;for(unsigned depth=0;node && depth<30;++depth){total+=static_cast<int>(dword(node,offset));node=pointer(node,8);}return total;
 }
-static void __fastcall info_frame(Obj object) {
+static void __fastcall info_frame(Obj object) { COST_SCOPE("unified_native::info_frame");
     fn<void(__fastcall *)(Obj)>(0x2FB440)(object);
     if(!enabled || !mod_features.unified || object!=info.dialog)return;
     ui_thread=GetCurrentThreadId();opened_world=world();opened_force=player_force();force_id=0;
@@ -302,7 +302,7 @@ static void __fastcall info_frame(Obj object) {
     }
     info_publish();
 }
-static Obj __fastcall info_destroy(Obj object,unsigned flags) {
+static Obj __fastcall info_destroy(Obj object,unsigned flags) { COST_SCOPE("unified_native::info_destroy");
     if(object==info.dialog) {
         officer_panel::show(false,{});officer_panel::take();
         info.dialog=nullptr;info.source=nullptr;info.argument=nullptr;info.reference=nullptr;info.refilter=false;
@@ -310,7 +310,7 @@ static Obj __fastcall info_destroy(Obj object,unsigned flags) {
     }
     return fn<Obj(__fastcall *)(Obj,unsigned)>(0x8C6150)(object,flags);
 }
-static void __fastcall info_leave(Obj object,Obj context) {
+static void __fastcall info_leave(Obj object,Obj context) { COST_SCOPE("unified_native::info_leave");
     if(object==info.dialog){officer_panel::show(false,{});officer_panel::take();}
     fn<void(__fastcall *)(Obj,Obj)>(0x8FD320)(object,context);
 }

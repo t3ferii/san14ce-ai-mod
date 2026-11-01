@@ -54,10 +54,10 @@ static void apply(Obj state) {
     }
     for(auto it=seen.begin();it!=seen.end();)if(!present.count(it->first))it=seen.erase(it);else ++it;
 }
-static void __fastcall update(Obj state) {
+static void __fastcall update(Obj state) { COST_SCOPE("tactic_priority::update");
     apply(state);fn<void(__fastcall *)(Obj)>(0x7DF540)(state);
 }
-static uint64_t __fastcall leave(Obj state,Obj next) {
+static uint64_t __fastcall leave(Obj state,Obj next) { COST_SCOPE("tactic_priority::leave");
     if(active_state==state)clear();return fn<uint64_t(__fastcall *)(Obj,Obj)>(0x7D9E50)(state,next);
 }
 }

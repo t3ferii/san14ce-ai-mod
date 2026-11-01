@@ -3,10 +3,130 @@
 #undef SPLIT_MODULE_FIXTURE
 #define TACTICS_FIXTURE
 #include "../src/native_adapter.cpp"
-static void *fixture_function(unsigned) {return nullptr;}
+// Exercise the actual speed frame wrapper through simulated native functions.
+static Obj __fastcall mock_speed_manager();
+static Obj __fastcall mock_speed_settings();
+static int __fastcall mock_native_speed(Obj);
+static void __fastcall mock_speed_frame(Obj);
+static bool callsite_capture_active;
+static void *callsite_capture_function(unsigned);
+static void *fixture_function(unsigned rva) {
+    if(callsite_capture_active)if(void *function=callsite_capture_function(rva))return function;
+    switch(rva) {
+        case 0x110E0:return reinterpret_cast<void *>(&mock_speed_manager);
+        case 0x3E9C90:return reinterpret_cast<void *>(&mock_speed_settings);
+        case 0x3E9E90:return reinterpret_cast<void *>(&mock_native_speed);
+        case 0x44BCA0:return reinterpret_cast<void *>(&mock_speed_frame);
+        default:return nullptr;
+    }
+}
+static unsigned speed_skip_logs,speed_log_reason,speed_log_delta;
+static void speed_fixture_log(const char *kind,unsigned reason=0,unsigned delta=0,unsigned=0) {
+    if(!strcmp(kind,"speed_second_skip")) {++speed_skip_logs;speed_log_reason=reason;speed_log_delta=delta;}
+}
+#pragma push_macro("log_event")
+#undef log_event
+#define log_event(...) speed_fixture_log(__VA_ARGS__)
+#include "../src/native_speed_buttons.inl"
+#pragma pop_macro("log_event")
 #include "../src/split_module_api.h"
 static unsigned checks;
 static void check(bool value,const char *label) {++checks;if(!value){fprintf(stderr,"%s\n",label);exit(1);}}
+static Obj speed_state_manager;
+static unsigned speed_calls,speed_action;
+static unsigned long long speed_pending_change;
+static int speed_native=2;
+static Obj __fastcall mock_speed_manager() {return speed_state_manager;}
+static Obj __fastcall mock_speed_settings() {return nullptr;}
+static int __fastcall mock_native_speed(Obj) {return speed_native;}
+static void __fastcall mock_speed_frame(Obj speed_progress) {
+    ++speed_calls;
+    if(speed_calls!=1)return;
+    if(speed_action==1 || speed_action==2) // pop/push both enqueue in manager+30
+        *reinterpret_cast<unsigned long long *>(speed_state_manager+0x30)+=speed_pending_change;
+    if(speed_action==3)*reinterpret_cast<Obj *>(pointer(speed_state_manager,0x20)+8)=nullptr;
+    if(speed_action==4)*reinterpret_cast<unsigned long long *>(speed_state_manager+0x10)=0;
+    if(speed_action==5)*reinterpret_cast<unsigned long long *>(speed_state_manager+0x30)-=1;
+    if(speed_action==6)*reinterpret_cast<unsigned *>(speed_progress+0x484)=1;
+    if(speed_action==7)speed_buttons::mode=0;
+    if(speed_action==8)enabled=0;
+    if(speed_action==9)speed_native=1;
+    if(speed_action==10) { // 571EF0 yield: next 570840 update drains the queue before resuming.
+        *reinterpret_cast<unsigned long long *>(speed_state_manager+0x30)=0;
+        *reinterpret_cast<unsigned long long *>(speed_state_manager+0x30)+=1; // resumed frame queues pop
+    }
+}
+static void speed_second_start_tests() {
+    // User/Claude 2026-10-28: idle after a queued turn-end pop must not
+    // restart CProgressState. 110E0 Obj(), 12540 +30 queue increment and
+    // 570840's four-slot state+50 pool are verified in verify_speed_buttons.py.
+    alignas(8) unsigned char state[0x50]={},speed_progress[0x500]={};
+    Obj stack[2]={nullptr,speed_progress};speed_state_manager=state;
+    const int saved_interval=*reinterpret_cast<int *>(image+speed_buttons::kInterval);
+    const LONG saved_enabled=enabled;
+    auto reset=[&](unsigned action,LONG mode=2) {
+        memset(speed_progress,0,sizeof(speed_progress));stack[1]=speed_progress;
+        *reinterpret_cast<unsigned long long *>(state+0x10)=2;
+        *reinterpret_cast<Obj *>(state+0x20)=reinterpret_cast<Obj>(stack);
+        *reinterpret_cast<unsigned long long *>(state+0x30)=0;
+        *reinterpret_cast<int *>(image+speed_buttons::kInterval)=2;
+        speed_buttons::mode=mode;speed_buttons::accumulator=0;
+        speed_calls=0;speed_action=action;speed_pending_change=1;speed_native=2;enabled=1;
+    };
+    speed_buttons::second_skips[0]=speed_buttons::second_skips[1]=0;
+    speed_buttons::second_skip_last=0;speed_skip_logs=0;
+    for(LONG mode:{1L,2L}) {
+        reset(1,mode);speed_buttons::frame(speed_progress);
+        check(speed_calls==1,"queued turn-end pop blocks second native frame at x4 and x8");
+        check(speed_buttons::accumulator==1.0,"pop skip keeps unused accumulator credit");
+    }
+    check(speed_skip_logs==1 && speed_log_reason==1 && speed_log_delta==1,"same pending skip reason logs once, with delta one");
+    reset(2);speed_buttons::frame(speed_progress);
+    check(speed_calls==1 && speed_buttons::accumulator==1.0,"queued push also blocks second frame and keeps credit");
+    check(speed_buttons::second_skips[0]==3,"pending skip counter includes repeated pop and push");
+    reset(0);speed_buttons::frame(speed_progress);
+    // Claude review 2026-10-28 supersedes the old nonempty-queue allowance:
+    // only an empty queue plus actual stack top may retain the second start.
+    check(speed_calls==2 && speed_buttons::accumulator==0.0,"empty queue and actual stack top retain second start");
+    check(speed_skip_logs==1 && speed_buttons::second_skip_last==0,"normal frame resets diagnostic reason without a skip log");
+    reset(3);speed_buttons::frame(speed_progress);
+    check(speed_calls==1 && speed_buttons::accumulator==1.0,"progress below stack top skips second start and keeps credit");
+    check(speed_log_reason==2 && speed_log_delta==0 && speed_skip_logs==2,"top change logs its distinct reason");
+    reset(4);speed_buttons::frame(speed_progress);
+    check(speed_calls==1 && speed_buttons::second_skips[1]==2,"empty stack skips safely without count underflow");
+    reset(1);speed_pending_change=1ull<<32;speed_buttons::frame(speed_progress);
+    check(speed_calls==1 && speed_buttons::accumulator==1.0,"pending comparison uses all 64 bits");
+    reset(5);*reinterpret_cast<unsigned long long *>(state+0x30)=2;speed_buttons::frame(speed_progress);
+    check(speed_calls==1 && speed_buttons::accumulator==1.0,"decreased but still nonzero pending count blocks second start");
+    // Carry the skipped credit into a lower-rate next frame (4/8 interval).
+    speed_calls=0;speed_action=0;speed_buttons::mode=1;
+    *reinterpret_cast<int *>(image+speed_buttons::kInterval)=8;
+    speed_buttons::frame(speed_progress);
+    check(speed_calls==1 && speed_buttons::accumulator==0.5,"skipped credit remains usable on the next frame");
+    for(LONG mode:{1L,2L}) {
+        reset(10,mode);*reinterpret_cast<unsigned long long *>(state+0x30)=1;
+        speed_buttons::frame(speed_progress);
+        check(speed_calls==1 && speed_buttons::accumulator==1.0,"yield then queue drain 1->0 and resumed pop 0->1 blocks second start at x4/x8");
+        check(speed_log_reason==3 && speed_log_delta==0,"equal before/after counts are diagnostic only and do not permit restart");
+    }
+    reset(0);*reinterpret_cast<unsigned long long *>(state+0x30)=1;
+    speed_buttons::frame(speed_progress);
+    check(speed_calls==1 && speed_buttons::accumulator==1.0,"another state's unchanged pending work defers acceleration once");
+    *reinterpret_cast<unsigned long long *>(state+0x30)=0;speed_calls=0;
+    speed_buttons::frame(speed_progress);
+    check(speed_calls==2 && speed_buttons::accumulator==0.0,"second start resumes normally after other state's work drains");
+    reset(5);*reinterpret_cast<unsigned long long *>(state+0x30)=1;speed_buttons::frame(speed_progress);
+    check(speed_calls==2 && speed_buttons::accumulator==0.0,"drained queue permits second start even when before differs");
+    for(unsigned action:{6u,7u,8u,9u}) {
+        reset(action);speed_buttons::frame(speed_progress);
+        check(speed_calls==1 && speed_buttons::accumulator==1.0,"existing idle/mode/enabled/native-speed condition still blocks second start");
+    }
+    reset(0);speed_buttons::mode=0;speed_buttons::frame(speed_progress);
+    check(speed_calls==1 && speed_buttons::accumulator==0.0,"native mode remains one unchanged frame");
+    *reinterpret_cast<int *>(image+speed_buttons::kInterval)=saved_interval;
+    enabled=saved_enabled;speed_buttons::mode=0;speed_buttons::accumulator=0;
+    speed_state_manager=nullptr;
+}
 static unsigned expert_population_calls;
 static unsigned expert_power_calls;
 static float __fastcall mock_expert_power(Obj army,Obj city,int parts,int kind) {
@@ -25,6 +145,7 @@ static uint64_t __fastcall mock_departure(Obj,Obj,Obj) {
 }
 static void seed_pointers() {
     auto put=[](unsigned slot,unsigned original){*reinterpret_cast<Obj *>(image+slot)=image+original;};
+    put(terrain_trees::Slot,terrain_trees::UpdateRva);
     put(0x1458848,0x7DF540);put(0x1458830,0x7D9E50);
     put(0x14751D8,0x894420);put(0x14751C8,0x87E3D0);put(0x14751F0,0x8782E0);
     put(0x13AC588,0x2FB440);put(0x13AC578,0x256970);
@@ -61,6 +182,68 @@ static bool unified_slots_owned() {
            pointer(image,0x14751D8)!=image+0x894420 && pointer(image,0x14751C8)==image+0x87E3D0 && pointer(image,0x14751F0)!=image+0x8782E0 &&
            pointer(image,0x13AC588)!=image+0x2FB440 && pointer(image,0x13AC578)!=image+0x256970 && pointer(image,0x13AC5B0)!=image+0x258170;
 }
+// User/Claude 2026-10-29: tree slot/start mismatches isolate only placement edits.
+static void terrain_trees_guard_tests() {
+    check(terrain_trees_guards_match(),"tree slot and both native 16-byte starts match captured EXE");
+    for(unsigned site:{terrain_trees::Slot,terrain_trees::UpdateRva,terrain_trees::SetterRva}) {
+        unsigned length=site==terrain_trees::Slot?8:16;
+        for(unsigned offset=0;offset<length;++offset) {
+            image[site+offset]^=1;
+            check(!terrain_trees_guards_match(),"every tree slot/start byte detects mismatch");
+            image[site+offset]^=1;
+        }
+    }
+    check(terrain_trees_guards_match() && code_ready(),"tree guard tests preserve native code and slot");
+}
+static HRESULT STDMETHODCALLTYPE terrain_foreign_texture(ID3D11Device *,const D3D11_TEXTURE2D_DESC *,const D3D11_SUBRESOURCE_DATA *,ID3D11Texture2D **) {return E_NOTIMPL;}
+static void terrain_render_early_real_tests() {
+    // User 2026-10-29 R1b: real windowless hardware probe in this fixture only.
+    const LONG saved_enabled=enabled;auto saved_features=mod_features;
+    enabled=1;mod_features.convenience=mod_features.terrain_edit=true;
+    terrain_render::install_early();
+    check(terrain_render::early_library && terrain_render::early_table && terrain_render_guards_match(),"real early system hardware device installs guarded slot before overlay");
+    check(!terrain_render::slots[0].keep,"real early slot retains no temporary device");
+    auto create=reinterpret_cast<decltype(&D3D11CreateDevice)>(GetProcAddress(terrain_render::early_library,"D3D11CreateDevice"));
+    check(create!=nullptr,"early slot retains system implementation module");
+    ID3D11Device *device=nullptr;
+    check(SUCCEEDED(create(nullptr,D3D_DRIVER_TYPE_HARDWARE,nullptr,0,nullptr,0,D3D11_SDK_VERSION,&device,nullptr,nullptr)) && device,"second real hardware device created without a window or swapchain");
+    auto table=*reinterpret_cast<void ***>(device);terrain_render::on_device(device);
+    check(table[5]==reinterpret_cast<void *>(&terrain_render::create_texture_2d) && terrain_render_guards_match(),"real game-like hardware table reuses or joins early hook");
+    unsigned owned=0;for(const auto &s:terrain_render::slots)if(s.published)++owned;
+    terrain_render::on_device(device);
+    unsigned after=0;for(const auto &s:terrain_render::slots)if(s.published)++after;
+    check(owned==after,"repeated real-device observation does not publish another slot");
+    terrain_render::restore();
+    for(const auto &s:terrain_render::slots)if(s.table)check(s.table[5]==reinterpret_cast<void *>(s.original) && !s.keep,"real early and late tables restore without probe device references");
+    device->Release();enabled=saved_enabled;mod_features=saved_features;
+}
+static void terrain_render_owner_tests(HMODULE base,HMODULE combat) {
+    // User/Claude 2026-10-29: a real Windows WARP device, in this fixture process
+    // only. No game process, original game calls, game memory or texture writes.
+    using Test=unsigned(__cdecl *)(unsigned,ID3D11Device *);
+    auto test=reinterpret_cast<Test>(GetProcAddress(base,"SAN14TerrainRenderFixture"));
+    check(test && !GetProcAddress(combat,"SAN14TerrainRenderFixture"),"terrain device slot has convenience owner only");
+    check(test(0,nullptr)==5,"registered runtime slot is CreateTexture2D index five");
+    HMODULE d3d=LoadLibraryW(L"d3d11.dll");check(d3d!=nullptr,"Windows D3D11 loaded for isolated owner test");
+    auto create=reinterpret_cast<decltype(&D3D11CreateDevice)>(GetProcAddress(d3d,"D3D11CreateDevice"));
+    check(create!=nullptr,"D3D11 device entry found");ID3D11Device *device=nullptr;
+    check(SUCCEEDED(create(nullptr,D3D_DRIVER_TYPE_WARP,nullptr,0,nullptr,0,D3D11_SDK_VERSION,&device,nullptr,nullptr)) && device,"isolated WARP device created");
+    auto table=*reinterpret_cast<void ***>(device);void *original=table[5];
+    check(test(1,device)==1 && table[5]!=original,"registered owner accepts original D3D11 implementation and bytes");
+    void *hook=table[5];check(test(1,device)==1 && table[5]==hook,"same runtime table is not installed twice");
+    DWORD prior=0;check(VirtualProtect(table+5,sizeof(void *),PAGE_READWRITE,&prior)!=0,"fixture slot writable");
+    InterlockedExchangePointer(table+5,reinterpret_cast<void *>(&terrain_foreign_texture));
+    DWORD ignored=0;VirtualProtect(table+5,sizeof(void *),prior,&ignored);
+    check(test(2,device)==7,"foreign slot disables renderer only, preserving terrain edit and convenience");
+    check(test(3,device)==1 && table[5]==reinterpret_cast<void *>(&terrain_foreign_texture),"split rollback preserves foreign runtime owner");
+    check(VirtualProtect(table+5,sizeof(void *),PAGE_READWRITE,&prior)!=0,"fixture slot restoration writable");
+    InterlockedExchangePointer(table+5,hook);VirtualProtect(table+5,sizeof(void *),prior,&ignored);
+    // Re-arm only the ownership bit in the fixture DLL, then exercise rollback
+    // of our actual hook. This is distinct from overwriting a foreign owner.
+    check(test(4,device)==1 && table[5]==original,"split rollback restores its registered runtime hook");
+    device->Release();FreeLibrary(d3d);
+}
+#include "callsite_compat_fixture.inl"
 int main(int argc,char **argv) {
     check(argc==2 || argc==3,"captured original text supplied");
     image=static_cast<Obj>(VirtualAlloc(nullptr,0x29FF000,MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE));
@@ -70,6 +253,8 @@ int main(int argc,char **argv) {
     auto dos=reinterpret_cast<IMAGE_DOS_HEADER *>(image);dos->e_magic=IMAGE_DOS_SIGNATURE;dos->e_lfanew=0x80;
     auto pe=reinterpret_cast<IMAGE_NT_HEADERS64 *>(image+0x80);pe->Signature=IMAGE_NT_SIGNATURE;pe->OptionalHeader.SizeOfImage=0x29FF000;
     seed_pointers();check(code_ready(),"original captured text CRC matches");
+    callsite_sortie_tests();
+    speed_second_start_tests();
     check(diplomacy_intel_guards_match(),"diplomacy original code, calls and all screen slots match");
     check(advisor_briefing_guards_match(),"adviser briefing original functions and exact informational slots match");
     for(const auto &g:diplomacy_intel::guards)for(unsigned offset:{0u,g.size-1}) {
@@ -117,8 +302,11 @@ int main(int argc,char **argv) {
     }
     check(area_index_guards_match() && code_ready(),"area guard checks leave original code intact");
     // User decision 2026-10-25: strategy_batch and its guard cases removed (screen corruption).
+    terrain_trees_guard_tests();
+    terrain_render_early_real_tests();
     HMODULE base=LoadLibraryW(L"SplitBaseFixture.dll"),combat=LoadLibraryW(L"SplitCombatFixture.dll");
     check(base && combat,"both real fixture DLLs loaded");
+    terrain_render_owner_tests(base,combat);
     auto getter=reinterpret_cast<GetSplitCombatApi>(GetProcAddress(combat,"SAN14CombatGetApi"));
     check(getter && getter(99)==nullptr,"unknown cross-module ABI rejected");
     const SplitCombatApi *api=getter(split_module_abi);check(api && api->size==sizeof(SplitCombatApi),"combat API size and version");
@@ -127,6 +315,10 @@ int main(int argc,char **argv) {
     auto combat_get=reinterpret_cast<Getter>(GetProcAddress(combat,"SAN14SplitFixtureGetApi"));
     check(base_get && combat_get,"test-only fixture exports present");
     const SplitFixtureApi *base_api=base_get();combat_fixture=combat_get();
+    if(argc==3 && !strncmp(argv[2],"--callsite-",11)) {
+        callsite_info_tests(base_api,argv[2]);
+        printf("{\"status\":\"callsite_compat_passed\",\"case\":\"%s\",\"checks\":%u}\n",argv[2],checks);return 0;
+    }
     // User decision 2026-10-25: append compat coverage; retain every strict assertion below.
     if(argc==3 && strcmp(argv[2],"--failure")) {
         const char *mode=argv[2];
@@ -227,7 +419,8 @@ int main(int argc,char **argv) {
     }
     check(base_api->publish(),"other module publishes after combat without guard conflicts");
     check(unified_slots_owned(),"convenience exclusively owns personnel HUD and player tactic selection");
-    check(image[0x8DF900]==0xE8 && memcmp(image+0x8DF900,"\xE8\x1B\xC8\xCE\xFF",5) && image[0x2C0820]==0xE9,"officer roster setup call and list builder entry published");
+    // 사용자 결정 2026-10-30: 통합패치·발탁장수 공존을 위해 첫머리 훅을 호출 자리로 이동
+    check(image[0x8DF900]==0xE8 && memcmp(image+0x8DF900,"\xE8\x1B\xC8\xCE\xFF",5) && image[0x2C0820]==0x40 && image[0x5CC37E]==0xE8 && *reinterpret_cast<int *>(image+0x5CC37F)!=static_cast<int>(0x2C0820-0x5CC383),"2026-10-30 roster setup and list CALL published; native entry preserved");
     check(pointer(image,0x1346E70)!=image+0x36320 && image[0x2B07C0]==0xE9 && image[0x302980]==0xE9,"other module owns domestic adjacency and population");
     check(image[0x1EC890]==0xE9 && image[0x295160]==0xE9 && pointer(image,0x1346AF8)!=image+0x34F10,"sortie plus independent injury protection coexist");
     check(image[0x6566E0]==0xE9 && image[0x6566E5]==0x90 && pointer(image,0x14296B8)!=image+0x65E810 &&

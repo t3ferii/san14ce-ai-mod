@@ -20,7 +20,7 @@ static unsigned long long fingerprint(unsigned rva,unsigned size) {
 template<class T> static T &global(unsigned rva){return *reinterpret_cast<T *>(image+rva);}
 static void release(Obj allocator,void *block){reinterpret_cast<void(__fastcall *)(Obj,void *)>(pointer(pointer(allocator,0),0x58))(allocator,block);}
 // AI-CONTRACT [save compatibility]: Keep decode-and-compare before committing replacement output and retain original-encoder fallback. Match the native allocator and ownership for returned buffers; a faster stream must remain readable by the unmodified decoder.
-static unsigned long long __fastcall encode(uint8_t *rank,void *notify,unsigned wparam,Obj allocator) {
+static unsigned long long __fastcall encode(uint8_t *rank,void *notify,unsigned wparam,Obj allocator) { COST_SCOPE("save_codec_hook::encode");
     const uint8_t *src=global<uint8_t *>(kSrc);const unsigned n=global<unsigned>(kSrcSize);const unsigned cap=global<unsigned>(kCap);
     uint8_t *out=nullptr;uint32_t *work=nullptr;uint8_t *check=nullptr;size_t coded=0;bool ok=false;
     if(enabled && src && n && cap) {

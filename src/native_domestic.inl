@@ -26,7 +26,7 @@ static unsigned balanced_development(Obj area) {
     }
     return selected; // zero means all three are MAX; keep the officer.
 }
-static uint64_t __fastcall domestic_selection_node(Obj node,Obj context,Obj subject) {
+static uint64_t __fastcall domestic_selection_node(Obj node,Obj context,Obj subject) { COST_SCOPE("domestic_selection_node");
     if(!enabled)return fn<Execute>(0x7A110)(node,context,subject);
     Obj store=fn<Obj(__fastcall *)(Obj)>(0xBF7A40)(context),area=nullptr;
     if(!fn<unsigned char(__fastcall *)(Obj,unsigned,Obj *,int)>(0xB26470)(store,dword(node,0x38),&area,0) ||
@@ -52,7 +52,7 @@ static uint64_t __fastcall domestic_officer_node(Obj node,Obj context,Obj subjec
     __finally { --in_auto_domestic; }
     return result;
 }
-static unsigned __fastcall domestic_command_cost() {
+static unsigned __fastcall domestic_command_cost() { COST_SCOPE("domestic_command_cost");
     if(enabled && in_auto_domestic) {
         log_event("auto_domestic_free_cost",0,dword(image,0x1A483DC),0);
         return 0;

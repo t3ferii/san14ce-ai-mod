@@ -44,16 +44,30 @@ static Obj campaign_guard(Obj army,unsigned region,unsigned goal) {
 struct CampaignRoute {std::vector<unsigned> cells,regions;std::vector<Obj> guards;};
 // 2D96C5 -> 269150 supplies native daily movement points. 2D970A
 // charges BE120(2318B0(next tile)) for a hex, not one point per hex.
+// Mod-owned movement queries previously traversed the 2B0290 entry hook.
+#ifdef SORTIE_FORMATION
+static float __fastcall sortie_movement(Obj,Obj,int,int,Obj);
+#endif
 struct CampaignMovement {Obj army,formation;float daily,here;};
 static CampaignMovement campaign_movement(Obj army) {
     Obj formation=fn<Obj(__fastcall *)(Obj)>(0x22B090)(army);
     return {army,formation,static_cast<float>(fn<int(__fastcall *)(Obj)>(0x269150)(army)),
-        fn<float(__fastcall *)(Obj,Obj,int,int,Obj)>(0x2B0290)(army,formation,1,0,nullptr)};
+#ifdef SORTIE_FORMATION
+        sortie_movement(army,formation,1,0,nullptr)
+#else
+        fn<float(__fastcall *)(Obj,Obj,int,int,Obj)>(0x2B0290)(army,formation,1,0,nullptr)
+#endif
+};
 }
 static float campaign_tile_days(const CampaignMovement &m,unsigned hex) {
     Obj tile=table(0xE270,hex,48399);
     if(!(m.daily>0) || !(m.here>0) || !valid(tile))return 1.0e9f;
-    float there=fn<float(__fastcall *)(Obj,Obj,int,int,Obj)>(0x2B0290)(m.army,m.formation,1,0,tile);
+    float there=
+#ifdef SORTIE_FORMATION
+        sortie_movement(m.army,m.formation,1,0,tile);
+#else
+        fn<float(__fastcall *)(Obj,Obj,int,int,Obj)>(0x2B0290)(m.army,m.formation,1,0,tile);
+#endif
     Obj terrain=fn<Obj(__fastcall *)(Obj)>(0x2318B0)(tile);
     if(!(there>0) || !valid(terrain))return 1.0e9f;
     int cost=fn<int(__fastcall *)(Obj)>(0xBE120)(terrain);

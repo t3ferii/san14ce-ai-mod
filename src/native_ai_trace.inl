@@ -381,7 +381,7 @@ static uint64_t run(unsigned index,Obj node,Obj context,Obj subject) {
     if(--depth==0){after(index,node,result);InterlockedDecrement(&active);}
     return result;
 }
-template<unsigned I> static uint64_t __fastcall wrap(Obj node,Obj context,Obj subject){return run(I,node,context,subject);}
+template<unsigned I> static uint64_t __fastcall wrap(Obj node,Obj context,Obj subject){ COST_SCOPE(trace_nodes[I].name);return run(I,node,context,subject);}
 template<unsigned... I> static constexpr std::array<Exec,sizeof...(I)> wrappers(std::integer_sequence<unsigned,I...>) {return {&wrap<I>...};}
 static const auto replacement=wrappers(std::make_integer_sequence<unsigned,kNodes>{});
 // A slot may hold the original Execute or a hook published earlier by one of the mod's own

@@ -1,6 +1,6 @@
 # 전체 빌드에 필요한 미포함 자료
 
-이 저장소만으로 실행 가능한 검사는 `tools/build_public_smoke.ps1`이다. `-Combat` 옵션은 외부 payload 없이 실제 전투 DLL도 빌드한다. 다음 자료를 갖추기 전에는 두 모듈 전체 split 재빌드·원작 검사·설치가 완료된다고 주장하지 않는다. 누락 자료를 guard 삭제나 임의 바이트로 대체하지 않는다.
+이 저장소만으로 실행 가능한 검사는 `tools/build_public_smoke.ps1`이다. `-Combat` 옵션은 외부 payload 없이 실제 전투 DLL도 빌드한다. 다음 자료를 갖추기 전에는 편의 DLL을 포함한 전체 split 재빌드·원작 검사·설치가 완료된다고 주장하지 않는다. 누락 자료를 guard 삭제나 임의 바이트로 대체하지 않는다.
 
 | 입력·경로 (저장소 기준, `../`는 게임 폴더) | 소비 경로·의미 |
 |---|---|
@@ -11,6 +11,7 @@
 | `research/modpack_v16/extracted/payload/SAN14_BattleDeaths.dll` | 같은 도구의 deaths COFF 입력. SHA-256 `1f354aec9b1e2ee29d0f07e552e32f87606ca1bf8e21738c0db631cff56cf696` |
 | `../0002/ScreenLayout.rdb`와 참조 bank | `prepare_traits9.py`의 원작 index/layout 입력. 원작이 수정된 상태면 기존 백업·설치 상태에 따른 역병합 자료도 필요 |
 | `backup/input_state.json`, `build/input_package/*`, 관련 `research/.../layout_patch` | 기존 설치를 갱신할 때만 필요한 상태·패키지. 개인 설치 이력을 배포하지 않는다. 과거 설치 상태를 새 checkout에 임의로 만들어 넣지 않는다 |
+| `assets/ccz/ccz_units.bin` | `SAN14_CCZ.dll`이 실행 중 읽는 조조전 부대 형상(CCZU). 사용자가 보유한 조조전/신조조전 원본에서 `tools/ccz_extract_units.py`로 만든다. 원작 그림이므로 공개하지 않는다. DLL 빌드 자체에는 필요 없다 |
 | 관련 `research/` 정적 근거·검사 JSON·원작 캡처 | 일부 기능별 verify 스크립트는 파일로 저장된 조사 근거를 추가 입력으로 요구한다. 이 목록은 기본 split 빌드의 주요 입력이며 모든 역사적 검사 자료를 망라하지 않는다 |
 
 표의 외부 소스/DLL은 이 저장소에 들어 있지 않다. 바이너리에서 만든 `.obj`, `modpack_payloads.h`, `traits9_payloads.h`, 게임 layout 추출물도 포함하지 않는다. 공개 C++는 외부 코드에 대한 wrapper와 hook 연결을 포함하므로 외부 구현까지 모두 독자 C++ 소스라는 뜻은 아니다.

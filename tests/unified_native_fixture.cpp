@@ -1,3 +1,7 @@
+// User/Claude 2026-10-29: standalone fixture instrumentation declaration.
+#ifndef COST_SCOPE
+#define COST_SCOPE(name) do {} while(0)
+#endif
 // Exercises the actual pending-command callback against isolated native objects.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>

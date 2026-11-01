@@ -9,6 +9,7 @@
 | 플레이어 지원·내정 군단 출진 제한·수송 출발 보완 (1EC890 판정, CALL C2F73 조건84) | native_district_intercept.inl, native_district_intercept_link.inl, native_split_install.inl, tests/district_intercept_fixture.inl, installer/InstallerGui.cs. 원작 구조: research/ai_trace/원작_수송판단_군단방침_조건84_20261020.md | district-intercept |
 | 로더·입력 전달·DLL 경계 | module_loader.cpp, input_proxy.cpp, split_module_api.h, native_split_install.inl | dll-split |
 | 공통 객체·지문·스위치 | native_adapter.cpp, native_profile.h | core |
+| 지역내정 지형 편집·격류 물살 (편의 DLL, terrain_edit에 포함: 원작 물살 35개를 옮기고 숨김, 예비 물살 없음) | native_terrain_edit.inl, native_terrain_render.inl, native_terrain_trees.inl, native_terrain_foam.inl, tests/terrain_foam_extract.py, tests/terrain_foam_fixture.cpp, tests/terrain_foam_verify.py, tests/terrain_foam_build.ps1; 근거 research/real_estate/FOAM_POOL.md 7절 | terrain-edit |
 | 출진 편성·역할·병력·지원 | native_sortie.inl, native_sortie_links.inl, sortie_policy.h | sortie |
 | 군세 이동·공성·정지 퇴각·현장 행동 | native_campaign.inl, native_campaign_routes.inl, native_campaign_operations.inl, native_campaign_assault.inl, campaign_policy.h | ai / campaign-revision |
 | 정기 출진·합류·호위·병참·사기 | native_campaign_departures.inl, native_campaign_reinforcements.inl, native_campaign_support.inl, native_campaign_logistics.inl | campaign-revision |
@@ -16,6 +17,7 @@
 | 숙련 공방·인접효과·툴팁 | native_adjacency.inl, native_expert_settings.inl, native_expert_links.inl, expert_combat_settings.h | expert-combat |
 | 자동 내정·직할 군단·임명 비용·인구 | native_domestic.inl, native_population.inl | domestic |
 | 지역담당관·관련개성 표시 | native_region_officers.inl, native_region_officer_traits.inl, region_officer_profile.h | region-officers |
+| 조조전 탭(SAN14_CCZ.dll: 병종 그림·막기·회심) | ccz_module.cpp, ccz_module_api.h, native_ccz_bridge.inl(편의 DLL 쪽), native_ccz_sprites.inl, ccz_sprites.hlsl, ccz_sprites_vs.h, ccz_sprites_ps.h, assets/ccz/ccz_units.bin | ccz-sprites, dll-split |
 | 등용 화면·자동 실행·결과 안내 | native_recruit_ui.inl, native_personnel_batch.inl, native_personnel.inl, personnel_policy.h | recruitment |
 | 컴퓨터·위임 군단 등용 제한 | native_recruit_ai.inl | personnel; 연결 변경은 core |
 | 부상 보호·본초학 | native_injury.inl, native_injury_links.inl | injury |

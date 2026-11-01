@@ -31,7 +31,7 @@ static bool prepare(CodeLink &link,Obj relay) {
 // the condition is true; radius 10, hex/gate kinds and every other corps stay native.
 // Hooked through the single CALL in condition dispatcher C2610's case 0x54 (C2F73).
 using Condition=unsigned char(__fastcall *)(Obj,Obj,const unsigned *,unsigned);
-static unsigned char __fastcall transport_safety(Obj context,Obj subject,const unsigned *args,unsigned extra) {
+static unsigned char __fastcall transport_safety(Obj context,Obj subject,const unsigned *args,unsigned extra) { COST_SCOPE("district_intercept::transport_safety");
     if(enabled && mod_features.district_intercept_block && args && args[0]==5 && args[3]==15) {
         Obj corps=fn<Obj(__fastcall *)(Obj,Obj)>(0xB60E0)(context,subject);   // same lookup as condition 26
         if(restricted_corps(corps)) {COST_SCOPE("transport_safety_override");return 1;}

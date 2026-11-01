@@ -40,7 +40,7 @@ static Obj pin_manager;
 static bool prefetching,pump_installed;
 static Obj requested;
 static LONGLONG prefetch_hz;
-static unsigned long long __fastcall pump(Obj job,unsigned long long b,Obj system) {
+static unsigned long long __fastcall pump(Obj job,unsigned long long b,Obj system) { COST_SCOPE("face_keep::pump");
     if(prefetching) {requested=job;return 1;}   // this load's wait is run later by set_face
     return fn<Pump>(kPump)(job,b,system);
 }

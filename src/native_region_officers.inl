@@ -235,7 +235,7 @@ static void __fastcall frame(Obj layout) { COST_SCOPE("ro_frame");
 static void __fastcall leave(Obj layout,Obj context) { COST_SCOPE("ro_leave");
     release(layout,context);fn<Leave>(0x1A74D0)(layout,context);
 }
-static Obj __fastcall destroy(Obj layout,unsigned flags) {
+static Obj __fastcall destroy(Obj layout,unsigned flags) { COST_SCOPE("region_officers::destroy");
     release(layout,nullptr);return fn<Destroy>(0x19B1D0)(layout,flags);
 }
 // City labels: same panel logic, the class's own originals.
@@ -246,7 +246,7 @@ static void __fastcall city_frame(Obj layout) { COST_SCOPE("ro_city_frame");
 static void __fastcall city_leave(Obj layout,Obj context) { COST_SCOPE("ro_city_leave");
     release(layout,context);fn<Leave>(0x1A75A0)(layout,context);
 }
-static Obj __fastcall city_destroy(Obj layout,unsigned flags) {
+static Obj __fastcall city_destroy(Obj layout,unsigned flags) { COST_SCOPE("region_officers::city_destroy");
     release(layout,nullptr);return fn<Destroy>(0x19B350)(layout,flags);
 }
 struct Hook {unsigned slot,original;void *replacement;};

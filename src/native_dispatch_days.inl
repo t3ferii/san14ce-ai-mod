@@ -40,7 +40,7 @@ static int virtual_int(Obj o,unsigned slot) {return (*reinterpret_cast<int(__fas
     static unsigned next;cache[next++%16]={unit,today,days};
     return days;
 }
-static void __fastcall text(Obj set,int element,const wchar_t *value,int flag) {
+static void __fastcall text(Obj set,int element,const wchar_t *value,int flag) { COST_SCOPE("dispatch_days::text");
     auto original=fn<void(__fastcall *)(Obj,int,const wchar_t *,int)>(kText);
     if(!mod_features.dispatch_days || !value)return original(set,element,value,flag);
     Obj person=pointer(set-0x130,0x178);

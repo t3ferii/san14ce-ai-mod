@@ -25,6 +25,22 @@ def ok(cond,what):
 for fn_,size,h in (('kSetup',0x4C8,'kSetupHash'),('kClick',0xBB,'kClickHash'),('kFrame',0x9C4,'kFrameHash'),('kHover',0xF6,'kHoverHash')):
     rva=num(fn_);want=num(h)
     ok(fnv(rd(rva,size))==want,fn_+' exe fingerprint');ok(fnv(run(rva,size))==want,fn_+' running fingerprint')
+# User/Claude 2026-10-28, decoded SHA-256 1fbe6be7...: 12540 queues pop
+# rather than removing the stack frame immediately. Keep its full fingerprint
+# and the queue write/+30 increment path, independently of runtime hook guards.
+for label,read in (('decoded EXE',rd),('captured text',run)):
+    ok(fnv(read(0x12540,0x8A))==0x16F08801B40066F8,label+' pop queue function fingerprint')
+    ok(read(0x125AC,0x18)==bytes.fromhex('488b4f30488b47404803c90f104424300f1104c848ff4730'),
+       label+' pop writes queue entry then increments qword manager+30')
+    # 110E0 Obj() returns the static state manager 1B620B0; 570840 tracks
+    # pending work at +30 and assigns state+50 from a pool of four slots.
+    getter=read(0x110E0,0x90)
+    ok(any(getter[i:i+3]==bytes.fromhex('488d05') and
+           0x110E0+i+7+struct.unpack_from('<i',getter,i+3)[0]==0x1B620B0
+           for i in range(len(getter)-6)),label+' 110E0 static manager return')
+    ok(read(0x571CD0,4)==bytes.fromhex('4d8b7730') and
+       read(0x571CDE,4)==bytes.fromhex('488b7850'),label+' 570840 pending snapshot and state coroutine slot')
+    ok(read(0x571D1B,10)==bytes.fromhex('4863900802000083fa04'),label+' coroutine pool used count +208 and capacity four')
 for slot,target in (('kSetupSlot','kSetup'),('kFrameSlot','kFrame'),('kHoverSlot','kHover')):
     ok(struct.unpack_from('<Q',rd(num(slot),8))[0]-0x140000000==num(target),slot)
 ok(rd(0x898950,16)==bytes.fromhex('488b12488b4908e9c48dffffcccccccc'),'functor tail jump bytes')

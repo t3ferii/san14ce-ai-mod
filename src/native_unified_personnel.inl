@@ -142,11 +142,11 @@ static void action_menu() {
     for(unsigned i=0;i<7;++i){p.ids.push_back(i);p.labels.push_back(std::to_wstring(i+1)+L". "+actions[i]);}
     pick(std::move(p),[](bool ok,const std::vector<unsigned> &ids){if(ok && !ids.empty() && context_valid())execute_action(ids[0]);});
 }
-template<unsigned Slot>static const wchar_t *__fastcall trait_text(Obj p) {
+template<unsigned Slot>static const wchar_t *__fastcall trait_text(Obj p) { COST_SCOPE(Slot==0?"unified_native::trait_text_0":Slot==1?"unified_native::trait_text_1":Slot==2?"unified_native::trait_text_2":Slot==3?"unified_native::trait_text_3":Slot==4?"unified_native::trait_text_4":Slot==5?"unified_native::trait_text_5":Slot==6?"unified_native::trait_text_6":Slot==7?"unified_native::trait_text_7":"unified_native::trait_text_8");
     unsigned id=word(p,0x118+Slot*2);
     return id<sizeof(unified_labels::personalities)/sizeof(*unified_labels::personalities)?unified_labels::personalities[id]:L"";
 }
-template<unsigned Slot>static int __fastcall trait_compare(Obj a,Obj b){return wcscmp(trait_text<Slot>(a),trait_text<Slot>(b));}
+template<unsigned Slot>static int __fastcall trait_compare(Obj a,Obj b){ COST_SCOPE(Slot==0?"unified_native::trait_compare_0":Slot==1?"unified_native::trait_compare_1":Slot==2?"unified_native::trait_compare_2":Slot==3?"unified_native::trait_compare_3":Slot==4?"unified_native::trait_compare_4":Slot==5?"unified_native::trait_compare_5":Slot==6?"unified_native::trait_compare_6":Slot==7?"unified_native::trait_compare_7":"unified_native::trait_compare_8");return wcscmp(trait_text<Slot>(a),trait_text<Slot>(b));}
 static unsigned char columns[223][0x60];
 static bool columns_ready;
 static void prepare_columns() {
@@ -276,7 +276,7 @@ static void main_frame(unified_dialogs::Dialog &r,bool top) {
     if(info.refilter && unified_dialogs::active==&r){info.refilter=false;sync_selection();refresh_main();}
     info.matched=static_cast<unsigned>(visible.size());info_publish();
 }
-static void __fastcall frame(Obj layout) {
+static void __fastcall frame(Obj layout) { COST_SCOPE("unified_native::frame");
     fn<void(__fastcall *)(Obj)>(0x894420)(layout);if(!enabled){unified_overlay::show(false);return;}
     ui_thread=GetCurrentThreadId();
     Obj manager=fn<Obj(__fastcall *)()>(0x110E0)();
@@ -301,7 +301,7 @@ static void __fastcall frame(Obj layout) {
     }
     unified_overlay::show(!showing && !open_pending && !reopen_pending && !unified_dialogs::active);
 }
-static void __fastcall leave(Obj layout,Obj context) {
+static void __fastcall leave(Obj layout,Obj context) { COST_SCOPE("unified_native::leave");
     briefing_overlay::publish({},false);
     if(hud_layout==layout){hud_layout=nullptr;unified_overlay::show(false);unified_overlay::take_click();}
     fn<void(__fastcall *)(Obj,Obj)>(0x8782E0)(layout,context);

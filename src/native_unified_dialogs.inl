@@ -23,8 +23,8 @@ static Request *active;
 // Explicit UI-thread disposal only. CRT/DLL detach must never call the game.
 // The process reclaims this small owner if it exits with a dialog still open.
 static auto &retained=*new std::vector<std::unique_ptr<Request>>;
-static Completion *__fastcall copy_completion(Completion *self,Completion *out){if(out)*out=*self;return out;}
-static void __fastcall complete(Completion *self,Obj *state) {
+static Completion *__fastcall copy_completion(Completion *self,Completion *out){ COST_SCOPE("unified_dialogs::copy_completion");if(out)*out=*self;return out;}
+static void __fastcall complete(Completion *self,Obj *state) { COST_SCOPE("unified_dialogs::complete");
     Request *r=self->request;if(!r)return;r->delivered=true;if(r->completed)return;
     r->completed=true;active=r->parent;
     bool accepted=state && *state && dword(*state,8)==0x7FFFFFFD;
@@ -49,9 +49,9 @@ static void completion_storage(unsigned char *storage,Request *r) {
 struct Tab {const int *columns;const wchar_t *name;int message,padding;};
 static_assert(sizeof(Tab)==24,"native list tab ABI");
 struct Row {unsigned id;std::wstring label;};
-static const wchar_t *__fastcall row_text(Obj p){return reinterpret_cast<Row *>(p)->label.c_str();}
-static int __fastcall row_compare(Obj a,Obj b){return wcscmp(row_text(a),row_text(b));}
-static int __fastcall row_index_compare(Obj a,Obj b) {
+static const wchar_t *__fastcall row_text(Obj p){ COST_SCOPE("unified_dialogs::row_text");return reinterpret_cast<Row *>(p)->label.c_str();}
+static int __fastcall row_compare(Obj a,Obj b){ COST_SCOPE("unified_dialogs::row_compare");return wcscmp(row_text(a),row_text(b));}
+static int __fastcall row_index_compare(Obj a,Obj b) { COST_SCOPE("unified_dialogs::row_index_compare");
     unsigned x=reinterpret_cast<Row *>(a)->id,y=reinterpret_cast<Row *>(b)->id;return (x>y)-(x<y);
 }
 struct Dialog:Request {
@@ -84,8 +84,8 @@ static bool owns(const Dialog &r) {
 }
 struct Command {void **vtable;Dialog *dialog;unsigned index;};
 static void *command_vtable[6];
-static Command *__fastcall copy_command(Command *self,Command *out){if(out)*out=*self;return out;}
-static void __fastcall command_click(Command *self,Obj *) {
+static Command *__fastcall copy_command(Command *self,Command *out){ COST_SCOPE("unified_dialogs::copy_command");if(out)*out=*self;return out;}
+static void __fastcall command_click(Command *self,Obj *) { COST_SCOPE("unified_dialogs::command_click");
     if(enabled && self->dialog && !self->dialog->completed && self->dialog->command)
         self->dialog->command(self->index);
 }
@@ -193,7 +193,7 @@ static bool attach_sidebar(Dialog &r) {
 static void process_control(Obj object,unsigned offset) {
     if(object){auto process=*reinterpret_cast<void(__fastcall **)(Obj)>(pointer(object,0)+offset);process(object);}
 }
-static void __fastcall frame(Obj object) {
+static void __fastcall frame(Obj object) { COST_SCOPE("unified_dialogs::frame");
     fn<void(__fastcall *)(Obj)>(0x2FB440)(object);
     Dialog *owner=nullptr;
     for(auto &request:retained)if(auto r=dynamic_cast<Dialog *>(request.get()))
@@ -205,14 +205,14 @@ static void __fastcall frame(Obj object) {
     // May open pickers (retained grows): call after the scan, never inside it.
     if(owner->on_frame && owns(*owner))owner->on_frame(*owner,active==owner);
 }
-static void __fastcall controls(Obj object) {
+static void __fastcall controls(Obj object) { COST_SCOPE("unified_dialogs::controls");
     fn<void(__fastcall *)(Obj)>(0x258170)(object);
     for(auto &request:retained)if(auto r=dynamic_cast<Dialog *>(request.get()))
         if(!r->completed && r->object==object && r->sidebar && r->sidebar->object && active==r) {
             process_control(r->sidebar->object,0x38);process_control(r->sidebar->scrollbar,0x38);break;
         }
 }
-static Obj __fastcall destroy(Obj object,unsigned flags) {
+static Obj __fastcall destroy(Obj object,unsigned flags) { COST_SCOPE("unified_dialogs::destroy");
     for(auto &request:retained)if(auto r=dynamic_cast<Dialog *>(request.get()))
         if(r->object==object){dispose_sidebar(*r);break;}
     return fn<Obj(__fastcall *)(Obj,unsigned)>(0x256970)(object,flags);

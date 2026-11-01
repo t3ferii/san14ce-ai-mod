@@ -5,18 +5,20 @@
 # v12.8: Requires = parent feature that must also be on (DLL ANDs it); Inherit = the switch an
 # older file's missing key falls back to. Tab is the GUI installer tab (installer/InstallerGui.cs).
 $taskFeatureCatalog = @(
+    @{Group='convenience'; Section='real_estate'; Key='terrain_edit'; Default=1; Requires=''; Inherit=''; Tab='게임성'; Label='부동산 계획: 지형 변경'; Note='지역내정에서 거점·성·관문 칸을 클릭하면 담당관 임명, 그 밖 도시권 칸을 클릭하면 그 칸 위에 지형 선택 창(무료·무제한). 바닥 재질·높이·부대 높이·나무·절벽·수면이 바로 반영되고 세이브와 함께 보존됩니다. 격류의 흰 물살은 아직 반영되지 않습니다.'}
     @{Group='convenience'; Section='diplomacy'; Key='diplomacy_overinvest'; Default=1; Requires=''; Inherit=''; Tab='게임성'; Label='외교 군정 100% 초과 투입'; Note='컴퓨터가 시작한 친선·동맹·포로반환·공격요청 교섭에서 보유 군정까지 투입합니다. 100%를 넘긴 방어 효과는 상대의 추가 투입 후에도 유지됩니다.'}
     @{Group='convenience'; Section='diplomacy'; Key='diplomacy_counterturn'; Default=1; Requires=''; Inherit=''; Tab='게임성'; Label='외교 군정 마지막 추가 대응'; Note='컴퓨터의 마지막 응답 뒤 플레이어가 한 번 더 군정을 투입할 수 있습니다. 추가 대응 후에는 바로 판정합니다.'}
     @{Group=''; Section='groups'; Key='combat'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='전투 AI 교정 전체 (SAN14_CombatAI.dll)'; Note='출진 편성·군세 이동·공성·병참·퇴각을 하나의 진행 상태로 관리합니다. 끄면 전투 DLL을 불러오지 않습니다.'}
     @{Group='combat'; Section='combat'; Key='sortie_formation'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='군세 출진 편성 (병력별 2~7부대·공성 진형·1,000명 지원)'; Note='컴퓨터 출진 판단 때 모드 편성으로 군세를 꾸립니다. 끄면 원작 출진 편성을 그대로 씁니다.'}
-    @{Group='combat'; Section='combat'; Key='departures'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='정기 선제 출진 검토 (10일마다)'; Note='모드가 지휘하는 컴퓨터 세력이 여유 병력으로 주변 적 거점에 출진할지 검토합니다.'}
-    @{Group='combat'; Section='combat'; Key='group_advance'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='집결 후 30일 정지 군세의 집단 진군'; Note='대열과 최종 목표를 유지해 함께 진군하고 이 명령을 잠급니다. 끄면 새 집단 진군을 시작하지 않습니다.'}
+    @{Group='combat'; Section='combat'; Key='departures'; Default=1; Requires=''; Inherit=''; Tab='전투'; Retired=$true; Label='정기 선제 출진 검토 (10일마다)'; Note='임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.'}
+    @{Group='combat'; Section='combat'; Key='group_advance'; Default=1; Requires=''; Inherit=''; Tab='전투'; Retired=$true; Label='집결 후 30일 정지 군세의 집단 진군'; Note='임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.'}
     @{Group='combat'; Section='combat'; Key='stationary_retreat'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='같은 자리 40일 정지 부대 퇴각'; Note='4턴 동안 움직이지 못한 부대를 귀환시킵니다.'}
     @{Group='combat'; Section='combat'; Key='morale'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='사기 회복 우선'; Note='사기가 낮은 군세가 공격보다 회복을 먼저 합니다.'}
-    @{Group='combat'; Section='combat'; Key='support'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='호위·동행 지원 요청'; Note='경로 위 거점 호위와 공성 동행 부대를 다른 아군 부대에 요청합니다.'}
+    @{Group='combat'; Section='combat'; Key='support'; Default=1; Requires=''; Inherit=''; Tab='전투'; Retired=$true; Label='호위·동행 지원 요청'; Note='임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.'}
     @{Group='combat'; Section='combat'; Key='mission_v2'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='임무 일관성 v2 (공성 시설만·대기 없음·원작 공격 우선)'; Note='공성 목표 성 8칸 안에서만 공성 시설 1개를 짓고 건설 대기로 세우지 않습니다. 원작이 목표 성을 공격 중이면 모드 공성 진행이 끼어들지 않고, 공성 중인 부대는 40일 정지 퇴각에서 제외합니다. 경로상 적 지역을 원작 군세 작업 목록에 넣고, 최대 병력 90%·여유 4만 이상 도시는 연결된 적 성으로 대열 출진합니다.'}
     @{Group='combat'; Section='combat'; Key='ai_max_aggression'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='AI 호전성 최대 (궁극과 같은 공격 검토)'; Note='원작 판단표의 AI 설정 단계를 궁극(4)으로 읽게 하고, 군단 진행 검사의 단계별 턴 건너뛰기를 없앱니다. 다른 원작 판단은 그대로 둡니다. 플레이어 위임 군단에도 적용됩니다.'}
     @{Group='combat'; Section='combat'; Key='ai_wall_block'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='컴퓨터 세력 방벽 건설 금지'; Note='컴퓨터 세력이 방벽·관문을 짓지 않습니다.'}
+    @{Group='combat'; Section='combat'; Key='ai_catapult_block'; Default=0; Requires=''; Inherit=''; Tab='전투'; Label='플레이어 성 주변 컴퓨터 투석대 건설 불가'; Note='켜면 플레이어 성·관문이 있는 지역과 바로 붙은 지역(점령자 상관없음)에서 컴퓨터 세력이 투석대를 지을 수 없습니다. 그곳에서는 시정 Lv7처럼 요새가 최고 시설이 되어, 컴퓨터 부대는 요새 등 다른 시설을 짓거나 공성을 계속합니다. 그 밖의 지역, 컴퓨터끼리의 전투, 플레이어의 투석대는 원작 그대로입니다.'}
     @{Group='combat'; Section='combat'; Key='combat_cut'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='컴퓨터 군세의 플레이어 병참선 차단'; Note='모드가 지휘하는 컴퓨터 군세가 플레이어 부대만 골라 병참을 끊습니다. 끄면 이 차단 행동을 하지 않습니다.'}
     @{Group='combat'; Section='combat'; Key='hit_response'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='피격 대응 (적 성·관문 피격 시 공성 고정, 피격 부대 보호)'; Note='끄면 피격 기록을 남기지 않아 피격에 따른 공성 고정·호위 제외·원거리 피격 장애물 판단이 모두 꺼집니다.'}
     @{Group='combat'; Section='combat'; Key='obstacle'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='중립 장애물 파괴 판단'; Note='왕복 정체 경로의 중립 방벽만 파괴합니다(플레이어 원거리 공격 경로 사유는 ‘‘피격 대응’’도 켜져 있어야 함). 끄면 원작 명령을 그대로 둡니다.'}
@@ -27,21 +29,21 @@ $taskFeatureCatalog = @(
     @{Group='convenience'; Section='personnel'; Key='recruit'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='등용 보조 (등용 화면·자동 등용·결과 안내)'; Note='플레이어 등용 화면과 실행이 같은 판정을 써서 하나로 묶었습니다.'}
     @{Group='convenience'; Section='domestic'; Key='region_officers'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='월드맵 지역담당관 초상화'; Note='표시 전용. 공석은 빈 초상화·회색 테두리. 임명은 지역내정에서만 가능합니다.'}
     @{Group='convenience'; Section='domestic'; Key='region_officer_traits'; Default=1; Requires='domestic.region_officers'; Inherit=''; Tab='편의성'; Label='지역담당관 이름 옆 내정 관련 개성 표시'; Note='표시 전용.'}
-    @{Group='convenience'; Section='extensions'; Key='battle_deaths'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='AI 전사 연출·게임 기록'; Note='컴퓨터끼리의 전투에서 일어난 전사를 보여 주고 기록만 합니다.'}
-    @{Group='convenience'; Section='extensions'; Key='captive_dialog'; Default=1; Requires=''; Inherit='extensions.traits9'; Tab='편의성'; Label='포획 대사 (플레이어 관련 포획 장면 표시)'; Note='포로나 포획한 쪽 중 하나가 플레이어 세력이면 원작 포획 대화를 보여 줍니다.'}
+    @{Group='convenience'; Section='extensions'; Key='battle_deaths'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='AI 전사 연출·게임 기록'; Note='컴퓨터끼리의 전투에서 일어난 전사를 보여 주고 기록만 합니다. 출처: 삼갤 통합패치(180.71·175.115 유동)'}
+    @{Group='convenience'; Section='extensions'; Key='captive_dialog'; Default=1; Requires=''; Inherit='extensions.traits9'; Tab='편의성'; Label='포획 대사 (플레이어 관련 포획 장면 표시)'; Note='포로나 포획한 쪽 중 하나가 플레이어 세력이면 원작 포획 대화를 보여 줍니다. 출처: 삼갤 통합패치(180.71·175.115 유동)'}
     @{Group='convenience'; Section='officer_ui'; Key='loyalty'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='숨겨진 충성도 숫자 표시'; Note=''}
     @{Group='convenience'; Section='officer_ui'; Key='damage_preview'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='전투력대체 예상 피해량'; Note='적 대상 선택 시 칼 등급 대신 양쪽의 1회 병사 피해를 표시합니다. 성·관문·시설의 내구 피해도 표시합니다. 현재 조건의 단일 교전 예상이며 전법·미래 상태 변화는 제외합니다. 전투 규칙은 바꾸지 않습니다.'}
-    @{Group='convenience'; Section='extensions'; Key='tooltip_collab'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='개성·전법 툴팁 + 콜라보 개성/전법 해금'; Note='콜라보 해금이 툴팁 초기화에 실려 하나로 묶었습니다.'}
+    @{Group='convenience'; Section='extensions'; Key='tooltip_collab'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='개성·전법 툴팁 + 콜라보 개성/전법 해금'; Note='콜라보 해금이 툴팁 초기화에 실려 하나로 묶었습니다. 출처: 삼갤 통합패치(180.71·175.115 유동)'}
     @{Group='convenience'; Section='game_flow'; Key='speed_buttons'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='진행 속도 버튼 >>>>(×4)·>>>>>(×8)'; Note='기존 >>> 대비 배수. 게임 옵션을 60fps로 두면 ×4는 매 프레임 진행, ×8은 하루 처리가 끝난 프레임에 한 번 더 진행합니다(30fps는 최대 ×4).'}
     @{Group='convenience'; Section='game_flow'; Key='occupy_fast'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='거점 자동점령 연출 단축 (원작의 약 1/4)'; Note=''}
-    @{Group='convenience'; Section='game_flow'; Key='advisor_briefing'; Default=0; Requires=''; Inherit=''; Tab='편의성'; Label='군사의 열흘 보고 (개발 후보)'; Note='지난 10일의 소식을 좌하단 군사 알림함에 모읍니다. 다음 진행 때 비워지며, 외교·처분 등 선택 창은 유지합니다. 실게임 확인 전 기본 OFF.'}
-    @{Group='convenience'; Section='game_flow'; Key='caravan_stay'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='교역 무장 소재 고정 (원래 도시에 남고 각자 도시로 귀환)'; Note=''}
-    @{Group='convenience'; Section='officer_ui'; Key='stat_exp'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='능력치 경험치 표시 (오각형 그래프 숫자 뒤 /N%)'; Note=''}
-    @{Group='convenience'; Section='officer_ui'; Key='dispatch_days'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='파견 남은 일수 표시 (파견 목록에 귀환까지 N일)'; Note=''}
-    @{Group='convenience'; Section='officer_ui'; Key='mediation_plus'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='중개 확장 (의형제 3인, 일부다처, 이혼)'; Note=''}
-    @{Group='convenience'; Section='officer_ui'; Key='drag_learn'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='전법서 습득 다중 선택 (여러 무장 × 여러 전법서 한 번에)'; Note=''}
-    @{Group='convenience'; Section='officer_ui'; Key='lord_change'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='시작 전 군주 변경 (세력 선택 하단 「반란」 버튼)'; Note=''}
-    @{Group='convenience'; Section='extensions'; Key='scenery_skip'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='명승지 연출 생략'; Note=''}
+    @{Group='convenience'; Section='game_flow'; Key='advisor_briefing'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='군사의 열흘 보고 (개발 후보)'; Note='지난 10일의 소식을 좌하단 군사 알림함에 모읍니다. 다음 진행 때 비워지며, 외교·처분 등 선택 창은 유지합니다. 시험 기능입니다.'}
+    @{Group='convenience'; Section='game_flow'; Key='caravan_stay'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='교역 무장 소재 고정 (원래 도시에 남고 각자 도시로 귀환)'; Note='출처: 삼갤 주딱'}
+    @{Group='convenience'; Section='officer_ui'; Key='stat_exp'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='능력치 경험치 표시 (오각형 그래프 숫자 뒤 /N%)'; Note='출처: 삼갤 주딱'}
+    @{Group='convenience'; Section='officer_ui'; Key='dispatch_days'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='파견 남은 일수 표시 (파견 목록에 귀환까지 N일)'; Note='출처: 삼갤 주딱'}
+    @{Group='convenience'; Section='officer_ui'; Key='mediation_plus'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='중개 확장 (의형제 3인, 일부다처, 이혼)'; Note='출처: 삼갤 주딱'}
+    @{Group='convenience'; Section='officer_ui'; Key='drag_learn'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='전법서 습득 다중 선택 (여러 무장 × 여러 전법서 한 번에)'; Note='출처: 삼갤 주딱'}
+    @{Group='convenience'; Section='officer_ui'; Key='lord_change'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='시작 전 군주 변경 (세력 선택 하단 「반란」 버튼)'; Note='출처: 삼갤 주딱'}
+    @{Group='convenience'; Section='extensions'; Key='scenery_skip'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='명승지 연출 생략'; Note='출처: 112.151 유동(삼봉이정도전)의 「11종 선택패치」'}
     @{Group='convenience'; Section='officer_ui'; Key='unified'; Default=0; Requires=''; Inherit=''; Tab='편의성'; Label='통합 인사·무장 검색·출진 전법 자동 선택 (시험 중)'; Note=''}
     @{Group=''; Section='groups'; Key='performance'; Default=1; Requires=''; Inherit=''; Tab='성능'; Label='성능 가속 전체'; Note='원작과 같은 결과를 더 빠르게 계산합니다.'}
     @{Group='performance'; Section='performance'; Key='distance'; Default=1; Requires=''; Inherit=''; Tab='성능'; Label='거리·AI 진입 계산 가속'; Note=''}
@@ -56,6 +58,11 @@ $taskFeatureCatalog = @(
     @{Group='convenience'; Section='game_flow'; Key='fast_save'; Default=1; Requires=''; Inherit=''; Tab='성능'; Label='빠른 자동저장 압축'; Note='원작 형식 그대로 저장하며, 실패 시 원작 압축을 사용합니다. 편의 DLL이 담당합니다.'}
     @{Group='performance'; Section='progress_native'; Key='geometry'; Default=1; Requires=''; Inherit=''; Tab='성능'; Label='거리 계산 세부 가속'; Note='거리·AI 진입 가속 안에서 기하 계산을 같은 결과로 더 빠르게 처리합니다.'}
     @{Group='convenience'; Section='stratagem'; Key='building_destruction_all'; Default=0; Requires=''; Inherit=''; Tab='게임성'; Label='건물파괴 지역 전체 피해'; Note='건물파괴 성공 시 선택 지역의 모든 적 군사시설·장애물·함정에 원작에서 계산된 피해량을 각각 적용합니다. 성·관문·아군·동맹·중립 건물은 제외하며, 실패 시에는 원작 처리를 유지합니다. 플레이어와 컴퓨터 모두 적용됩니다.'}
+    @{Group='convenience'; Section='ccz'; Key='ccz_sprites'; Default=1; Requires=''; Inherit=''; Tab='조조전'; Label='조조전 병종 그림 (필드 부대)'; Note='필드의 부대를 조조전 병종 그림으로 그립니다. 옷만 세력색(파랑·초록·보라 같은 차가운 색은 빨강~주황 대비색)으로 칠하고 말·얼굴은 원래 색이며, 대비되는 테두리를 두르고 이동·공격·대기 동작과 방향이 바뀝니다. 신조조전 장수 92명(전용 병종 17명: 조조=위무제·여포=무신·관우=군신 등, 나머지 75명은 신조조전 개인 그림)은 군주·군사 병종보다 먼저 그 그림으로 고정됩니다. 그림 출처: 조조전(KOEI) 6.6·신조조전 7.0. 실험 기능입니다.'}
+    @{Group='convenience'; Section='ccz'; Key='ccz_hide_model'; Default=1; Requires='ccz.ccz_sprites'; Inherit=''; Tab='조조전'; Label='조조전 그림 부대의 원래 3D 모형 숨김'; Note='조조전 그림으로 그린 부대의 원래 3D 병사 모형을 그리지 않습니다. 끄면 원래 모형과 그림이 함께 보입니다(위치 확인용). 깃발은 그대로 남습니다.'}
+    @{Group='convenience'; Section='ccz'; Key='ccz_depth'; Default=1; Requires='ccz.ccz_sprites'; Inherit=''; Tab='조조전'; Label='조조전 그림 지형 가림 처리'; Note='산·건물 뒤의 부대 그림을 장면 깊이로 가립니다. 그림이 보이지 않으면 끄십시오(항상 맨 앞에 그림).'}
+    @{Group='convenience'; Section='ccz'; Key='ccz_block'; Default=1; Requires=''; Inherit=''; Tab='조조전'; Label='조조전식 막기'; Note='막기: 맞는 장수의 무력이 높을수록 일반 공격을 완전히 막아 1명만 잃습니다(5% + 무력 차 x 0.4, 1~10%). 한 번 발동하면 그 공격을 포함해 받는 일반 공격 5번을 막습니다. 하루 동안 일반 공격을 주고받지 않으면 상태가 끝납니다. 일반 공격만 대상이며 예상 피해 표시에는 반영되지 않습니다. 조조전 그림을 켜면 막기 자세·섬광이 보입니다.'}
+    @{Group='convenience'; Section='ccz'; Key='ccz_critical'; Default=1; Requires=''; Inherit=''; Tab='조조전'; Label='조조전식 회심의 일격'; Note='회심의 일격: 공격 장수의 무력·부대 사기가 높을수록 일반 공격 피해가 1.5배가 됩니다(5% + 무력 차 x 0.3 + 사기 차 x 0.2, 1~10%). 한 번 발동하면 그 공격을 포함해 다음 일반 공격 5번이 모두 회심이 됩니다. 하루 동안 일반 공격을 주고받지 않으면 상태가 끝납니다. 일반 공격만 대상이며 예상 피해 표시에는 반영되지 않습니다. 조조전 그림을 켜면 막기 자세·섬광이 보입니다.'}
     @{Group='convenience'; Section='combat'; Key='district_intercept_block'; Default=1; Requires=''; Inherit=''; Tab='게임성'; Label='지원·내정 군단 출진 제한 (플레이어 2군단~)'; Note='플레이어가 위임한 군단의 방침이 지원이면 수송 출진만, 내정이면 요격·지역 점령·공격 출진을 막습니다(수송·건설은 허용). 컴퓨터 군단·직할 1군단·공격 방침·직접 명령·이미 출전한 부대는 그대로입니다. 전투 AI 교정 없이도 적용됩니다.'}
     @{Group='convenience'; Section='personnel'; Key='merit'; Default=1; Requires=''; Inherit=''; Tab='게임성'; Label='논공 친애 확장'; Note='꺼도 기존 논공 기록·명품창고 저장은 보존됩니다.'}
     @{Group='convenience'; Section='personnel'; Key='awards_ai'; Default=1; Requires='personnel.awards'; Inherit=''; Tab='게임성'; Label='컴퓨터 명품 자동 배분'; Note='컴퓨터 세력·플레이어 위임 군단이 창고 명품을 능력에 맞게 배분합니다. 군주 직할 군단(1군단)은 제외.'}
@@ -108,7 +115,7 @@ function Get-FeatureValues($Ini) {
                 if ([int]::TryParse($Ini[$taskSource[0]][$taskSource[1]], [ref]$taskNumber)) { $taskValue = if ($taskItem.Key -eq 'path_fast_verify') { [Math]::Max(0, $taskNumber) } else { [int]($taskNumber -ne 0) } }
             }
         }
-        $taskValues[$taskItem.Section + '.' + $taskItem.Key] = $taskValue
+        $taskValues[$taskItem.Section + '.' + $taskItem.Key] = if ($taskItem.Retired) { 0 } else { $taskValue }
     }
     return $taskValues
 }
@@ -125,6 +132,7 @@ function Write-FeatureIni([string]$Path, $Values, $Ini) {
             $taskComment = '; ' + $taskItem.Label
             if ($taskItem.Note) { $taskComment += ' — ' + $taskItem.Note }
             $taskLines.Add($taskComment)
+            if ($taskItem.Retired) { $Values[$taskItem.Section + '.' + $taskItem.Key] = 0 }
             $taskLines.Add($taskItem.Key + '=' + $Values[$taskItem.Section + '.' + $taskItem.Key])
         }
     }
@@ -153,15 +161,15 @@ function Show-FeatureMenu($Values) {
         $taskNumber++
         $taskOn = $Values[$taskItem.Section + '.' + $taskItem.Key] -ne 0
         $taskParentOff = $taskItem.Group -and $Values['groups.' + $taskItem.Group] -eq 0
-        $taskMark = if ($taskOn) { '[켬]' } else { '[끔]' }
+        $taskMark = if ($taskItem.Retired) { '[사용 중지]' } elseif ($taskOn) { '[켬]' } else { '[끔]' }
         $taskIndent = if ($taskItem.Group) { '    ' } else { '' }
-        $taskColor = if ($taskParentOff) { 'DarkGray' } elseif (-not $taskItem.Group) { 'Yellow' } elseif ($taskOn) { 'Green' } else { 'Gray' }
+        $taskColor = if ($taskItem.Retired -or $taskParentOff) { 'DarkGray' } elseif (-not $taskItem.Group) { 'Yellow' } elseif ($taskOn) { 'Green' } else { 'Gray' }
         if (-not $taskItem.Group) { Write-Host '' }
         Write-Host ('{0}{1,2}. {2} {3}' -f $taskIndent, $taskNumber, $taskMark, $taskItem.Label) -ForegroundColor $taskColor
         if ($taskItem.Note) { Write-Host ('{0}       {1}' -f $taskIndent, $taskItem.Note) -ForegroundColor DarkGray }
     }
     Write-Host ''
-    Write-Host '번호를 입력하면 켬/끔이 바뀝니다 (여러 개: 4 7 12). 회색 항목은 묶음이 꺼져 있어 동작하지 않습니다.'
+    Write-Host '번호를 입력하면 켬/끔이 바뀝니다 (여러 개: 4 7 12). 사용 중지 항목은 선택할 수 없고, 묶음이 꺼진 회색 항목은 동작하지 않습니다.'
     Write-Host 'Enter = 이대로 저장   A = 모두 켜기   D = 배포 기본값   Q = 바꾸지 않고 진행'
 }
 # Returns $null when the user keeps the current file unchanged (Q), otherwise the values.
@@ -173,12 +181,13 @@ function Select-Features($Values) {
         $taskInput = $taskInput.Trim()
         if ($taskInput -eq '') { return $Values }
         if ($taskInput -ieq 'q') { return $null }
-        if ($taskInput -ieq 'a') { foreach ($taskItem in $taskFeatureCatalog) { $Values[$taskItem.Section + '.' + $taskItem.Key] = 1 }; continue }
-        if ($taskInput -ieq 'd') { foreach ($taskItem in $taskFeatureCatalog) { $Values[$taskItem.Section + '.' + $taskItem.Key] = $taskItem.Default }; continue }
+        if ($taskInput -ieq 'a') { foreach ($taskItem in $taskFeatureCatalog) { $Values[$taskItem.Section + '.' + $taskItem.Key] = if ($taskItem.Retired) { 0 } else { 1 } }; continue }
+        if ($taskInput -ieq 'd') { foreach ($taskItem in $taskFeatureCatalog) { $Values[$taskItem.Section + '.' + $taskItem.Key] = if ($taskItem.Retired) { 0 } else { $taskItem.Default } }; continue }
         foreach ($taskToken in ($taskInput -split '[\s,]+')) {
             $taskIndex = 0
             if ([int]::TryParse($taskToken, [ref]$taskIndex) -and $taskIndex -ge 1 -and $taskIndex -le $taskFeatureCatalog.Count) {
                 $taskItem = $taskFeatureCatalog[$taskIndex-1]; $taskName = $taskItem.Section + '.' + $taskItem.Key
+                if ($taskItem.Retired) { $Values[$taskName] = 0; Write-Host ($taskItem.Label + ': 사용 중지') -ForegroundColor DarkGray; continue }
                 $Values[$taskName] = [int]($Values[$taskName] -eq 0)
             } elseif ($taskToken) { Write-Host ('알 수 없는 입력: ' + $taskToken) -ForegroundColor Red }
         }

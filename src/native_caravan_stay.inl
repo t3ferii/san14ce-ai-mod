@@ -29,12 +29,12 @@ static bool guards_match() {
 static unsigned kind(Obj unit) {return valid(unit)?(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(unit,0)+0x98))(unit):0;}
 static unsigned base_owner(Obj base) {return valid(base)?(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(base,0)+0xB0))(base):0;}
 static Obj base(unsigned id) {return id<0x3E?fn<Obj(__fastcall *)(Obj,unsigned)>(0x32C130)(world(),id):nullptr;}
-static int __fastcall send_move(Obj list,int city) {   // result unused at 1F479E
+static int __fastcall send_move(Obj list,int city) { COST_SCOPE("caravan_stay::send_move");   // result unused at 1F479E
     if(!mod_features.caravan_stay)return fn<int(__fastcall *)(Obj,int)>(kMove)(list,city);
     log_event("caravan_stay_send_kept",0,static_cast<unsigned>(city));
     return 1;
 }
-static bool __fastcall arrive(Obj unit,Obj city) {
+static bool __fastcall arrive(Obj unit,Obj city) { COST_SCOPE("caravan_stay::arrive");
     using Arrive=bool(__fastcall *)(Obj,Obj);
     if(!mod_features.caravan_stay || kind(unit)!=kTradeKind || !valid(city))return fn<Arrive>(kArrive)(unit,city);
     struct Member {Obj person;unsigned short home;} members[16];unsigned count=0;
@@ -57,7 +57,7 @@ static bool __fastcall arrive(Obj unit,Obj city) {
     }
     return result;
 }
-static void __fastcall cancel(Obj unit) {
+static void __fastcall cancel(Obj unit) { COST_SCOPE("caravan_stay::cancel");
     if(mod_features.caravan_stay && kind(unit)==kTradeKind) {log_event("caravan_stay_corps_kept");return;}
     fn<void(__fastcall *)(Obj)>(kCancel)(unit);
 }

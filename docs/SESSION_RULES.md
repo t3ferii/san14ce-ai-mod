@@ -2,9 +2,9 @@
 
 여러 채팅 세션이 같은 모드를 동시에 고친다. **모든 세션은 작업 전에 이 문서를 읽고 그대로 따른다.** 전투 AI(총괄) 세션이 편의·성능·설치를 총괄한다. 다른 세션은 아래 규칙을 지키고, 규칙을 바꿔야 하면 총괄 세션에 넘긴다.
 
-## 1. 실행 파일은 세 DLL과 설치기 하나뿐
+## 1. 실행 파일은 네 DLL과 설치기 하나뿐
 
-- `dinput8.dll`(로더만), `SAN14_CombatAI.dll`(컴퓨터 AI 판단), `SAN14_Convenience.dll`(그 밖의 모든 기능), `AI모드_설치관리자.exe`(설정·설치). **새 DLL·EXE·상주 도구를 만들지 않는다.**
+- `dinput8.dll`(로더만), `SAN14_CombatAI.dll`(컴퓨터 AI 판단), `SAN14_Convenience.dll`(그 밖의 모든 기능), `SAN14_CCZ.dll`(조조전 탭 기능: 병종 그림·막기·회심. 사용자 2026-11-01; 편의 DLL이 [ccz] 기능이 켜졌을 때만 불러오며 Present 훅·169F8B CALL 게시는 편의 DLL 소유), `AI모드_설치관리자.exe`(설정·설치·업데이트). **이 밖의 새 DLL·EXE·상주 도구를 만들지 않는다.**
 - 새 기능은 해당 DLL 안의 모듈(`src/native_<기능>.inl`)로 추가하고 `development/features.json`과 `tools/check_feature.ps1` 경로에 등록한다.
 - 훅 하나에는 소유 DLL 하나. 같은 원작 주소·vtable 슬롯을 두 DLL이 걸지 않는다. 기존 소유자는 `docs/MODULES.md`, `src/native_split_install.inl`의 `split_pointers`로 확인한다.
 - 원작 함수는 원래 UI/AI 스레드에서만 부른다. 외부 프로세스의 메모리 쓰기·원격 호출 금지.

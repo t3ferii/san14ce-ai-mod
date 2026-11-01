@@ -54,7 +54,7 @@ static void __fastcall timed(Obj self,unsigned a,unsigned b,Obj parent,const cha
     if(n<=0)return;
     AcquireSRWLockExclusive(&lock);DWORD written;WriteFile(file,line,static_cast<DWORD>(n),&written,nullptr);ReleaseSRWLockExclusive(&lock);
 }
-static unsigned long long __fastcall wrapper(Obj self,unsigned a,unsigned b,Obj parent,const char *name,int async,unsigned long long tail) {
+static unsigned long long __fastcall wrapper(Obj self,unsigned a,unsigned b,Obj parent,const char *name,int async,unsigned long long tail) { COST_SCOPE("layout_wait::wrapper");
     timed(self,a,b,parent,name,0,async,tail);return 1;   // original 86E0C0: 86C570(...,name,0,async,tail); return 1
 }
 static CodeLink links[4];

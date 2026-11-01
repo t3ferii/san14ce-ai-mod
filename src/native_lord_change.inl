@@ -47,11 +47,11 @@ static void change(Obj old,Obj person) {   // choosing him in the list (결정) 
 // std::function callable in the game's MSVC layout (vtable: copy, move, call, target type, delete, get),
 // as 565EB0/65DFE0 implement it: [0] vtable, [8] callback; stored inline in the caller's 0x40 buffer.
 struct Callable {void **vtable;void (*callback)(Obj);};
-static void *__fastcall callable_copy(Callable *self,Callable *where) {if(where)*where=*self;return where;}
-static void __fastcall callable_call(Callable *self,Obj *arg) {self->callback(arg?*arg:nullptr);}
-static void *__fastcall callable_type(Callable *) {return nullptr;}
-static void __fastcall callable_delete(Callable *self,bool heap) {if(heap)fn<void(__fastcall *)(void *)>(0x3F6C50)(self);}
-static void *__fastcall callable_get(Callable *self) {return &self->callback;}
+static void *__fastcall callable_copy(Callable *self,Callable *where) { COST_SCOPE("lord_change::callable_copy");if(where)*where=*self;return where;}
+static void __fastcall callable_call(Callable *self,Obj *arg) { COST_SCOPE("lord_change::callable_call");self->callback(arg?*arg:nullptr);}
+static void *__fastcall callable_type(Callable *) { COST_SCOPE("lord_change::callable_type");return nullptr;}
+static void __fastcall callable_delete(Callable *self,bool heap) { COST_SCOPE("lord_change::callable_delete");if(heap)fn<void(__fastcall *)(void *)>(0x3F6C50)(self);}
+static void *__fastcall callable_get(Callable *self) { COST_SCOPE("lord_change::callable_get");return &self->callback;}
 static void *callable_vtable[6]={reinterpret_cast<void *>(&callable_copy),reinterpret_cast<void *>(&callable_copy),
     reinterpret_cast<void *>(&callable_call),reinterpret_cast<void *>(&callable_type),reinterpret_cast<void *>(&callable_delete),
     reinterpret_cast<void *>(&callable_get)};
@@ -142,11 +142,11 @@ static void add_button(Obj bar) {
     // later. The click checks the selected force and its ruler instead.
     log_event("lord_change_button_added");
 }
-static void __fastcall set_text(Obj bar,int index,const wchar_t *text,int flag) {   // only CALL 503C9C (휘하무장)
+static void __fastcall set_text(Obj bar,int index,const wchar_t *text,int flag) { COST_SCOPE("lord_change::set_text");   // only CALL 503C9C (휘하무장)
     fn<SetText>(kSetText)(bar,index,text,flag);
     if(mod_features.lord_change)add_button(bar);
 }
-static void __fastcall click(Obj state,Obj bar) {
+static void __fastcall click(Obj state,Obj bar) { COST_SCOPE("lord_change::click");
     if(mod_features.lord_change && bar && dword(bar,0x80)==static_cast<unsigned>(kButton)) {pick(state);return;}
     fn<Click>(kClick)(state,bar);
 }

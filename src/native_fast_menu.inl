@@ -35,7 +35,7 @@ static void wait_end(Obj state) {
     }
 }
 #endif
-static unsigned long long __fastcall busy(Obj state) {
+static unsigned long long __fastcall busy(Obj state) { COST_SCOPE("fast_menu::busy");
     if(mod_features.lord_change)lord_change::map_tick();   // game thread, map states only
     const bool waiting=state && dword(state,0x6C)==1;
 #ifndef NO_RUNTIME_LOG

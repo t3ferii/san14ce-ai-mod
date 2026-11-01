@@ -70,7 +70,7 @@ static bool marry_ok(Obj a,Obj b) {
     Obj man=a[0xA9]==0?a:b,woman=man==a?b:a;
     return !word(woman,0xBA) && word(man,0xBA) && adult(man) && adult(woman) && !related(man,woman);
 }
-static unsigned long long __fastcall pair(Obj view,Obj candidate,Obj a,Obj b) {
+static unsigned long long __fastcall pair(Obj view,Obj candidate,Obj a,Obj b) { COST_SCOPE("mediation_plus::pair");
     unsigned long long r=fn<unsigned long long(__fastcall *)(Obj,Obj,Obj,Obj)>(kPair)(view,candidate,a,b);
     if(r || !candidate || !a)return r;
     if(b) {Obj p[3]={candidate,a,b};return sworn_ok(p,3);}
@@ -81,7 +81,7 @@ static Obj ruler_of(Obj p) {
     Obj force=fn<Obj(__fastcall *)(Obj)>(0x22CA00)(p);
     return valid(force)?table(0x158,word(force,0x10),6000):nullptr;
 }
-static unsigned long long __fastcall filter(Obj view,Obj candidate,int slot) {
+static unsigned long long __fastcall filter(Obj view,Obj candidate,int slot) { COST_SCOPE("mediation_plus::filter");
     unsigned long long r=fn<unsigned long long(__fastcall *)(Obj,Obj,int)>(kFilter)(view,candidate,slot);
     // The original hides a person who is both married and sworn before any pair check.
     if(r || !mod_features.mediation_plus || !candidate || !word(candidate,0xBA) || !word(candidate,0xBC))return r;
@@ -99,12 +99,12 @@ static unsigned long long __fastcall filter(Obj view,Obj candidate,int slot) {
 static void selected(Obj state,Obj out[3]) {
     for(unsigned i=0;i<3;++i) {Obj p=pointer(state,0x1C0+i*8);out[i]=valid(p)?p:nullptr;}
 }
-static void __fastcall marry_button(Obj state) {
+static void __fastcall marry_button(Obj state) { COST_SCOPE("mediation_plus::marry_button");
     fn<void(__fastcall *)(Obj)>(kMarryButton)(state);
     Obj s[3];selected(state,s);
     if(s[0] && s[1] && !s[2] && marry_ok(s[0],s[1]))fn<void(__fastcall *)(Obj,int,int)>(kEnable)(pointer(state,0x198),2,1);
 }
-static void __fastcall sworn_button(Obj state) {
+static void __fastcall sworn_button(Obj state) { COST_SCOPE("mediation_plus::sworn_button");
     fn<void(__fastcall *)(Obj)>(kSwornButton)(state);
     Obj s[3];selected(state,s);
     Obj p[3];unsigned n=0;for(Obj x:s)if(x)p[n++]=x;
@@ -133,7 +133,7 @@ static void divorce(Obj man,Obj woman) {
         if(valid(p) && p!=woman && word(p,0xBA)==id_of(man))next=static_cast<unsigned short>(id);}
     *reinterpret_cast<unsigned short *>(man+0xBA)=static_cast<unsigned short>(next);
 }
-static unsigned long long __fastcall marry_exec(Obj command) {
+static unsigned long long __fastcall marry_exec(Obj command) { COST_SCOPE("mediation_plus::marry_exec");
     auto original=fn<unsigned long long(__fastcall *)(Obj)>(kMarryExec);
     Obj state=pointer(command,0x4B8);Obj s[3];if(state)selected(state,s);
     if(!mod_features.mediation_plus || !state || !s[0] || !s[1] || s[2] || !married_pair(s[0],s[1]))return original(command);
@@ -157,7 +157,7 @@ static unsigned long long __fastcall marry_exec(Obj command) {
     if(ui)(*reinterpret_cast<void(__fastcall **)(Obj,int)>(pointer(ui,0)+200))(ui,1);
     return 0;
 }
-static unsigned long long __fastcall sworn_exec(Obj command) {
+static unsigned long long __fastcall sworn_exec(Obj command) { COST_SCOPE("mediation_plus::sworn_exec");
     auto original=fn<unsigned long long(__fastcall *)(Obj)>(kSwornExec);
     Obj state=pointer(command,0x4B8);Obj s[3]={};if(state)selected(state,s);
     unsigned short old[3]={};for(unsigned i=0;i<3;++i)if(s[i])old[i]=word(s[i],0xBC);

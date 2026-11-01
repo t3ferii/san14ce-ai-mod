@@ -46,19 +46,53 @@ static const Guard guards[]={
 // AI-CONTRACT [hook boundary]: 183A30/184485 belong to convenience; 1843E0 entry belongs to combat. Preserve mutual exclusion with path_count and native-search reentrancy guards; delegation must restore native node state.
 static constexpr unsigned clear_site=0x184485;
 static constexpr unsigned char clear_bytes_expected[]={0xF3,0xAA};
+// 사용자 결정 2026-10-30: 통합패치·발탁장수 공존을 위해 첫머리 훅을 호출 자리로 이동
+// Combat now owns these two CALLs inside fingerprinted path helpers.
+static constexpr unsigned movement_calls[]={0x183CC9,0x1865AA};
+static bool movement_call_match(unsigned site) {
+    if(image[site]!=0xE8)return false;
+    int delta;memcpy(&delta,image+site+1,4);
+    uintptr_t target=reinterpret_cast<uintptr_t>(image+site+5)+delta;
+    auto pe=reinterpret_cast<IMAGE_NT_HEADERS64 *>(image+reinterpret_cast<IMAGE_DOS_HEADER *>(image)->e_lfanew);
+    uintptr_t begin=reinterpret_cast<uintptr_t>(image),end=begin+pe->OptionalHeader.SizeOfImage;
+    return target==begin+0x2B0290 || target<begin || target>=end;
+}
 static bool guards_match() {
+    for(unsigned site:movement_calls)if(!movement_call_match(site))return false;
     for(const auto &g:guards) {
         unsigned long long h=0xcbf29ce484222325ull;
-        for(unsigned i=0;i<g.size;++i)h=(h^image[g.rva+i])*0x100000001b3ull;
+        for(unsigned i=0;i<g.size;++i) {
+            unsigned at=g.rva+i;unsigned char value=image[at];
+            for(unsigned site:movement_calls)if(at>site && at<site+5) {
+                int native=static_cast<int>(0x2B0290-site-5);
+                value=reinterpret_cast<unsigned char *>(&native)[at-site-1];
+            }
+            h=(h^value)*0x100000001b3ull;
+        }
         if(h!=g.hash)return false;
     }
     // Independent confirmation of the debug-global RIP displacement, not its value.
     return !memcmp(image+clear_site,clear_bytes_expected,sizeof(clear_bytes_expected)) && image[0x183D68]==0x83 && 0x183D6F+*reinterpret_cast<int *>(image+0x183D6A)==debug_rva;
 }
+static float movement(Obj army,Obj formation,int preview,int modifier,Obj tile) {
+    // The native search used this CALL. Follow its combat-owned thunk so the
+    // convenience DLL reads the combat DLL's cohort state, including its next.
+    if(movement_call_match(0x183CC9)) {
+        int delta;memcpy(&delta,image+0x183CCA,4);
+        auto next=reinterpret_cast<float(__fastcall *)(Obj,Obj,int,int,Obj)>(image+0x183CCE+delta);
+        return next(army,formation,preview,modifier,tile);
+    }
+#ifdef SORTIE_FORMATION
+    return sortie_movement(army,formation,preview,modifier,tile);
+#else
+    return fn<float(__fastcall *)(Obj,Obj,int,int,Obj)>(0x2B0290)(army,formation,preview,modifier,tile);
+#endif
+}
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
 using path_fast_core::Node;
 using Path=Node *(__fastcall *)(Obj,unsigned,const int *,int,Node *,int,unsigned);
 using Unary=int(__fastcall *)(Obj);
+
 static Path original;
 static CodeLink link,clear_link;
 static bool active;
@@ -185,7 +219,7 @@ struct Native {
             army=pointer(ctx,0); // 183C8A reload after constructor/setter callbacks
             const unsigned id=army[0x1B];
             Obj terrain_type=pointer(world(),0x77428+(id<0x15?id:0)*8);
-            const float speed=fn<float(__fastcall *)(Obj,Obj,int,int,Obj)>(0x2B0290)(army,terrain_type,0,0,object);
+            const float speed=movement(army,terrain_type,0,0,object);
             // COMISS numerator,speed; CMOVBE selects numerator (including NaN).
             if(!_mm_comile_ss(numerator,_mm_set_ss(speed)))denominator=_mm_set_ss(speed);
             fn<void(__fastcall *)(Obj)>(0x221FC0)(object);

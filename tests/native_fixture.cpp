@@ -34,6 +34,7 @@ static std::vector<Obj> region_tiles;
 static int fixture_day=100;
 static bool region_available=true;
 static bool path_available=true, wrong_waypoint=false, field_alternative=false;
+static unsigned alternative_calls;
 static unsigned build_permission_calls;
 static Obj permission_force,permission_tile,permission_definition;
 static int permission_policy;
@@ -158,7 +159,9 @@ static void __fastcall mock_finalize(Obj army) {
     put16(army,0x48,permitted?(wrong_waypoint?48400:next):48400);
 }
 static int __fastcall mock_cost(Obj, Obj) { return 100; }
-static int __fastcall mock_possible(GameList *people, Obj, Obj def) {
+static bool mock_native_build_hook;
+static int __fastcall mock_possible(GameList *people, Obj tile, Obj def) {
+    if(mock_native_build_hook && !build_permission(table(0xDF30,2,51),tile,def,7))return 0;
     return list_first(*people) && (legal_facilities & (1u << word(def, 0x10)));
 }
 static void __fastcall mock_candidates(Obj, Obj, Obj def, GameList *out, Obj, Obj, Obj next) {
@@ -172,6 +175,7 @@ static uint64_t __fastcall mock_city_capture(Obj, Obj, Obj) {
     table(0xE270,100,48399)[0x14] = 2; ++original_nodes; return 1;
 }
 static uint64_t __fastcall mock_alternative(Obj, Obj, Obj army) {
+    ++alternative_calls;
     if(!field_alternative)return 2;
     mock_action(army,1);mock_target(army,9,150);put16(army,0x2C,150);mock_finalize(army);return 1;
 }
@@ -215,6 +219,105 @@ static unsigned checks,failures;
 static void check(bool condition, const char *description) {
     if (!condition) { fprintf(stderr, "FAIL: %s\n", description); ++failures; }
     ++checks;
+}
+static std::map<unsigned,Obj> catapult_bases;
+static unsigned catapult_base_lookups;
+static Obj __fastcall mock_catapult_base(Obj,unsigned id) {
+    ++catapult_base_lookups;auto it=catapult_bases.find(id);return it==catapult_bases.end()?nullptr:it->second;
+}
+static Obj __fastcall mock_catapult_base_owner(Obj base) {return table(0xDF30,base[0x150],51);}
+static unsigned __fastcall mock_catapult_base_hex(Obj base) {return word(base,0x2A);}
+static void catapult_policy_tests(Obj army) {
+    auto saved_features=mod_features;auto saved_cache=catapult_ground_cache;auto saved_tile_areas=tile_areas;
+    int saved_day=fixture_day;unsigned saved_lookups=catapult_base_lookups;
+    auto saved_goal=functions[0x32C130],saved_owner=functions[0x22C990],saved_hex=functions[0x22D740];
+    BIND(0x32C130,mock_catapult_base);BIND(0x22C990,mock_catapult_base_owner);BIND(0x22D740,mock_catapult_base_hex);
+    Obj areas[10],tiles[10],old_areas[10],old_tiles[10];
+    for(unsigned i=0;i<10;++i) {
+        old_areas[i]=table(0x6CAF0,450+i,500);old_tiles[i]=table(0xE270,48000+i,48399);
+        areas[i]=object(450+i);tiles[i]=object(48000+i);put16(areas[i],0x3A,48000+i);put16(tiles[i],0x12,450+i);
+        tiles[i][0x14]=(i==2 || i==4)?1:2;slot(0x6CAF0,450+i,areas[i]);slot(0xE270,48000+i,tiles[i]);tile_areas[tiles[i]]=areas[i];
+    }
+    // User decision 2026-10-29: first neighbours of owned base regions, regardless of owner.
+    areas[0][0x66]=0x1B;put16(areas[0],0x56,451);put16(areas[0],0x58,452);
+    put16(areas[0],0x5A,459);put16(areas[0],0x5C,501);put16(areas[0],0x5E,499);
+    areas[1][0x66]=1;put16(areas[1],0x56,453);
+    areas[5][0x66]=1;put16(areas[5],0x56,456);
+    areas[7][0x66]=1;put16(areas[7],0x56,458);
+    Obj missing_area=table(0x6CAF0,499,500);slot(0x6CAF0,499,nullptr);
+    Obj castle=object(1),gate=object(1),computer_castle=object(1);
+    put16(castle,0x4E,1);put16(castle,0x2A,48000);castle[0x150]=1;
+    put16(gate,0x4E,52);put16(gate,0x2A,48005);gate[0x150]=1;
+    put16(computer_castle,0x4E,2);put16(computer_castle,0x2A,48007);computer_castle[0x150]=2;
+    catapult_bases={{1,castle},{2,computer_castle},{52,gate}};catapult_ground_cache={};
+    Obj force=table(0xDF30,2,51),definition=table(0x73958,6,30);
+    auto allows=[&](unsigned i,Obj actor=nullptr) {return build_permission(actor?actor:force,tiles[i],definition,7);};
+    unsigned calls=build_permission_calls,lookups=catapult_base_lookups;
+    check(!mod_features.ai_catapult_block,"catapult policy code default is off");
+    check(allows(0) && build_permission_calls==calls+1 && permission_force==force && permission_tile==tiles[0] &&
+          permission_definition==definition && permission_policy==7,"option off forwards original arguments on castle region");
+    check(!build_permission(force,tiles[0],definition,0),"option off preserves native rejection");
+    check(!catapult_ground_cache.ready && catapult_base_lookups==lookups,"option off does not compute forbidden regions");
+    mod_features.ai_wall_block=false;mod_features.ai_catapult_block=true;calls=build_permission_calls;
+    check(!allows(0) && build_permission_calls==calls,"2026-10-29 owned castle region blocked even with AI center owner");
+    lookups=catapult_base_lookups;
+    check(!allows(1),"2026-10-29 first adjacent enemy-owned region blocked");
+    check(!allows(2),"2026-10-29 first adjacent player-owned region blocked");
+    check(allows(3),"2026-10-29 second neighbour allowed instead of recursive expansion");
+    check(allows(4),"2026-10-29 distant player-owned region allowed instead of center-owner rule");
+    check(!allows(5),"2026-10-29 owned gate region blocked instead of distance-six ring");
+    check(!allows(6),"2026-10-29 gate first adjacent region blocked regardless of hex distance");
+    check(allows(7) && allows(8),"2026-10-29 computer castle region and its neighbour allowed");
+    check(allows(9),"disabled adjacency bit does not protect its stored region ID");
+    check(catapult_base_lookups==lookups,"same world day player reuses forbidden region cache across candidate tiles");
+    check(allows(0,player),"player catapult forwarded in forbidden region");
+    check(allows(0,object(51)),"unregistered force catapult forwarded");
+    for(unsigned id:{4u,7u,9u})check(build_permission(force,tiles[0],table(0x73958,id,30),7),"other facility forwarded independently of catapult policy");
+    enabled=0;check(allows(0),"disabled module forwards catapult");enabled=1;
+    Obj normal_player=player,context=pointer(root,0x871E8);unsigned control=context[0x3A];player=object(0);
+    check(allows(0),"missing player force forwards catapult");context[0x3A]=0;
+    check(allows(0) && catapult_base_lookups==lookups,"observer mode forwards without rebuilding cache");
+    player=normal_player;context[0x3A]=static_cast<unsigned char>(control);
+    Progress p={};p.campaign=true;p.city=9;p.facility=6;p.construction_hex=48001;p.credit=true;p.build_chain=true;p.finished_build=true;
+    army[0x150]=2;army[0x37]=8;army[0x46]=6;put16(army,0x42,48001);
+    mod_features.ai_catapult_block=false;
+    check(!cancel_catapult_order(army,p) && army[0x37]==8 && p.facility==6,"option off preserves catapult order");
+    mod_features.ai_catapult_block=true;unsigned finish=finalized;
+    check(cancel_catapult_order(army,p) && army[0x37]==13 && army[0x46]==0 && word(army,0x42)==48400 &&
+          !p.facility && p.construction_hex==48400 && !p.credit && !p.build_chain && !p.finished_build &&
+          p.campaign && p.city==9 && finalized==finish+1,"2026-10-29 forbidden adjacent-region order cancelled preserving campaign");
+    army[0x37]=9;army[0x46]=6;put16(army,0x42,48005);
+    check(cancel_catapult_order(army,p),"2026-10-29 gate-region construction order cancelled");
+    army[0x37]=8;army[0x46]=6;put16(army,0x42,48003);
+    check(!cancel_catapult_order(army,p) && army[0x37]==8 && word(army,0x42)==48003,"2026-10-29 second-neighbour order retained");
+    put16(army,0x42,48004);
+    check(!cancel_catapult_order(army,p) && army[0x37]==8,"2026-10-29 distant player-region order retained");
+    put16(army,0x42,48001);army[0x150]=1;
+    check(!cancel_catapult_order(army,p) && army[0x37]==8 && army[0x46]==6,"player catapult order retained");army[0x150]=2;
+    player=object(0);context[0x3A]=0;
+    check(!cancel_catapult_order(army,p) && army[0x37]==8,"observer catapult order retained");
+    player=normal_player;context[0x3A]=static_cast<unsigned char>(control);
+    army[0x37]=4;check(!cancel_catapult_order(army,p),"stale catapult field cannot cancel city attack");
+    army[0x37]=8;army[0x46]=4;check(!cancel_catapult_order(army,p),"other facility order retained");
+    castle[0x150]=2;
+    check(!allows(0) && catapult_base_lookups==lookups,"same-day cache remains a snapshot of base ownership");
+    ++fixture_day;check(allows(0) && catapult_base_lookups==lookups+61,"day change rebuilds cache and removes captured castle regions");
+    castle[0x150]=1;lookups=catapult_base_lookups;
+    Obj alternate_root=static_cast<Obj>(malloc(0x90000));memcpy(alternate_root,root,0x90000);putptr(image,0x277DF18,alternate_root);
+    check(!allows(0) && catapult_base_lookups==lookups+61,"world change rebuilds cache even with same day and player");
+    putptr(image,0x277DF18,root);free(alternate_root);allows(0);lookups=catapult_base_lookups;
+    player=force;
+    check(!allows(7,normal_player) && catapult_base_lookups==lookups+61,"player force change rebuilds around the new player's castle");
+    player=normal_player;check(!allows(0),"restored player rebuilds its own region set");
+    catapult_bases.erase(1);put16(castle,0x4E,51);catapult_bases[51]=castle;
+    catapult_bases.erase(52);put16(gate,0x4E,61);catapult_bases[61]=gate;++fixture_day;
+    check(!allows(0) && !allows(5),"last castle and gate IDs included in forbidden region set");
+    lookups=catapult_base_lookups;mod_features.ai_catapult_block=false;++fixture_day;
+    check(allows(0) && catapult_base_lookups==lookups,"option off skips refresh even after key change");
+    for(unsigned i=0;i<10;++i) {slot(0x6CAF0,450+i,old_areas[i]);slot(0xE270,48000+i,old_tiles[i]);}
+    slot(0x6CAF0,499,missing_area);tile_areas=saved_tile_areas;catapult_bases.clear();catapult_base_lookups=saved_lookups;
+    functions[0x32C130]=saved_goal;functions[0x22C990]=saved_owner;functions[0x22D740]=saved_hex;
+    fixture_day=saved_day;catapult_ground_cache=saved_cache;mod_features=saved_features;
 }
 #include "domestic_fixture.inl"
 #include "obstacle_fixture.inl"
@@ -310,6 +413,18 @@ int main() {
           "observing another unit does not reset the first unit's history");
     auto center = table(0xE270,100,48399); center[0x14] = 3; observe_capture(army); center[0x14]=2; observe_capture(army);
     check(p->credit,"ownership transition near army grants capture");
+    // Saved 278FA0 calls 279190; emulate that edge to exercise builder fallback.
+    {
+        Progress saved=*p;unsigned char order[0x34];memcpy(order,army+0x2C,sizeof(order));
+        auto saved_cache=catapult_ground_cache;Obj old_tile=table(0xE270,200,48399);unsigned old_city=word(goal,0x4E);
+        slot(0xE270,200,center);put16(goal,0x4E,1);catapult_ground_cache={};
+        original_build_permission=mock_build_permission;mock_native_build_hook=true;mod_features.ai_catapult_block=true;
+        check(try_build(army,*p) && p->facility==4,"2026-10-29 castle-region catapult denial falls through to fortress via native permission");
+        p->facility=6;p->construction_hex=105;
+        check(!continue_build(army,*p) && !p->facility,"2026-10-29 continued catapult plan rechecks castle-region permission");
+        mod_features.ai_catapult_block=false;mock_native_build_hook=false;catapult_ground_cache=saved_cache;
+        slot(0xE270,200,old_tile);put16(goal,0x4E,old_city);*p=saved;memcpy(army+0x2C,order,sizeof(order));
+    }
     legal_facilities = (1u<<4)|(1u<<7)|(1u<<3);
     check(try_build(army,*p) && p->facility==4,"unavailable catapult falls through to fortress");
     check(!p->credit && army[0x37]==8 && army[0x38]==9 && word(army,0x42)==105,"build consumes one capture and sets native target");
@@ -411,6 +526,27 @@ int main() {
     p->built_once=true;p->finished_build=true;p->return_deadline_day=219;calls=original_nodes;
     check(retreat_node(node,node,army)==1 && original_nodes==calls,
           "healthy army remains useful after construction protection expires");
+    {   // User decision 2026-10-29: no work must fall through without forty idle days.
+        std::vector<Progress> saved_progress(progress,progress+501);
+        unsigned char saved_army[0x400];memcpy(saved_army,army,sizeof(saved_army));
+        Obj saved_owner=goal_owner;bool saved_alternative=field_alternative;
+        goal_owner=table(0xDF30,2,51);field_alternative=false;
+        mock_clear(army);mock_action(army,4);mock_target(army,5,9);
+        army[0x46]=0;put16(army,0x42,48400);
+        memset(p,0,sizeof(*p));observe_capture(army);remember_campaign(army,*p);
+        check(word(army,0x16)>3000 && !p->campaign && !p->credit && !p->build_chain &&
+              !p->facility && !p->forced_return && !campaign_field_city(army,*p),
+              "2026-10-29 healthy retreat fixture has no mod mission or hostile city candidate");
+        calls=original_nodes;unsigned alternatives=alternative_calls;
+        check(retreat_node(node,node,army)==2 && original_nodes==calls+1 && alternative_calls>alternatives,
+              "2026-10-29 healthy army with no work and failed alternatives forwards native retreat result");
+        field_alternative=true;calls=original_nodes;alternatives=alternative_calls;
+        check(retreat_node(node,node,army)==1 && original_nodes==calls && alternative_calls>alternatives &&
+              army[0x37]==1 && army[0x38]==9 && word(army,0x3A)==150,
+              "2026-10-29 healthy army with successful native alternative still vetoes retreat");
+        goal_owner=saved_owner;field_alternative=saved_alternative;
+        memcpy(army,saved_army,sizeof(saved_army));memcpy(progress,saved_progress.data(),sizeof(progress));
+    }
     // Continuous construction, actual cap vs no money, ownership/threat gates.
     put16(army,0x2A,101);p->build_center=100;p->build_chain=true;p->cycle_mask=1u<<4;p->credit=false;
     legal_facilities=(1u<<4)|(1u<<7);put16(tile,0x1A,0);region_tiles.clear();
@@ -743,6 +879,7 @@ int main() {
           "human construction forwards force tile definition and fourth argument exactly");
     check(!build_permission(player,center,stone,0),"human illegal stone wall remains illegal under native rules");
     check(build_permission(player,center,stone,7),"player legal stone wall remains buildable");
+    mod_features.ai_catapult_block=false; // Existing non-wall baseline keeps the new option off.
     for(unsigned facility:{6u,4u,7u,3u,11u,12u,14u,13u})
         check(build_permission(ai_force,center,table(0x73958,facility,30),7),"AI non-wall native eligibility preserved");
     center[0x14]=1;
@@ -783,6 +920,7 @@ int main() {
     check(destructible(wall_builder,neutral_wall),"neutral earthen wall destruction remains available");
     neutral_wall[0x12]=10;check(destructible(wall_builder,neutral_wall),"neutral stone wall destruction remains available");
     neutral_wall[0x13]=1;check(destructible(wall_builder,neutral_wall),"hostile player wall destruction remains available");
+    catapult_policy_tests(wall_builder);
     slot(0x7E838,9,nullptr);
     unsigned allocated=next_handle;
     check(frees==allocated,"all temporary native lists released");

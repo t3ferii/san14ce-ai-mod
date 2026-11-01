@@ -25,7 +25,7 @@ def main():
     inputs=sources()
     newest=max((P/n).stat().st_mtime for n in inputs if n.startswith('src/'))
     expected={'dinput8.dll':['DirectInput8Create'],'SAN14_CombatAI.dll':['AIInitialize','SAN14CombatGetApi'],
-              'SAN14_Convenience.dll':['AIInitialize','SAN14ConvenienceInitialize']}
+              'SAN14_Convenience.dll':['AIInitialize','SAN14ConvenienceInitialize'],'SAN14_CCZ.dll':['SAN14CczGetApi']}
     for n,e in expected.items():
         assert exports(binary/n)==e,n
         if n!='dinput8.dll':
@@ -43,6 +43,9 @@ def main():
     gui='AI모드_설치관리자.exe'
     shutil.copyfile(P/'build/development/installer'/gui,stage/gui)
     for n in ('traits9_layout.bin','traits9_layout.json'):shutil.copyfile(layout/n,stage/n)
+    # Installer update/rollback colours (user 2026-11-01): feature catalogue of every published release + this one.
+    import subprocess,sys
+    subprocess.run([sys.executable,'-B','-X','utf8',str(P/'tools/release_features.py'),args.version,str(stage/'release_features.json')],check=True)
     files={n:sha(stage/n) for n in expected}
     m.update(release_version=args.version,dll_sha256=files['dinput8.dll'],local_diagnostic_only=False,
              code_signed=False,gameplay_verified=False,progress_log={'runtime_logging_compiled_out':True,'enabled':False},
@@ -50,6 +53,7 @@ def main():
     m['split_modules'].update(files=files,source_sha256=inputs,source_sha256_by_module={n:inputs for n in expected},
         runtime_log_writers_compiled_out=True,gameplay_verified=False,startup_verified=False)
     m['gui_installer'].update(sha256=sha(stage/gui))
+    m['ccz_assets']={'assets/ccz/ccz_units.bin':sha(P/'assets/ccz/ccz_units.bin')}   # SAN14_CCZ.dll sprite atlas
     m['feature_switches']['count']=(P/'distribution/FeatureSelect.ps1').read_text(encoding='utf-8-sig').count('@{Group=')
     m['layout_patch'].update(bank_sha256=j['bank_sha256'],json_sha256=sha(stage/'traits9_layout.json'),merge=str(len(j['records']))+' ktid entries')
     m['progress_native']['profile_logging_compiled_out']=True

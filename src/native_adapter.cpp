@@ -112,6 +112,7 @@ struct ModFeatures {
     bool ai_trace = false, trace_original = false;                          // [diagnostics] native AI trace (v12.12)                                            // [domestic] v12.10: ruler's 1st corps too (dependent, default off)
     bool battle_rules = true;                                               // [battle_rules]
     bool unified = true, loyalty = true;                                    // [officer_ui]
+    bool terrain_edit = false;                                              // [real_estate]
     bool building_destruction_all = false;                                 // [stratagem], gameplay tab
     bool diplomacy_overinvest = false, diplomacy_counterturn = false;       // [diplomacy], incoming computer negotiations
     bool damage_preview = true;                                            // [officer_ui], convenience only
@@ -124,6 +125,7 @@ struct ModFeatures {
     bool stat_exp = false, dispatch_days = false, mediation_plus = false, drag_learn = false, lord_change = false; // [officer_ui] 2026-10-23
     bool distance = true, name_lookup = true, layout_keep = true, timer_1ms = false; // [performance]
     bool ai_wall_block = true;                                              // [combat] (combat module)
+    bool ai_catapult_block = false;                                         // [combat] (combat module)
     bool district_intercept_block = true;                                   // [combat], gameplay tab
     bool combat_cut = true, hit_response = true, obstacle = true, recall_veto = true; // [combat] v12.8 leaf gates
     bool sortie_formation = true, departures = true, group_advance = true, stationary_retreat = true, morale = true, support = true;
@@ -135,6 +137,7 @@ struct ModFeatures {
     bool ai_max_aggression = false;
     // attack_recheck_fix (2026-10-22, under mission_v2): original tree-1 post-departure recheck bug (#10114/#10115).
     bool attack_recheck_fix = false;
+    bool ccz_sprites = false, ccz_hide_model = true, ccz_depth = true, ccz_block = false, ccz_critical = false;     // [ccz] 2026-10-31 user: 조조전 병종 그림, gameplay tab
 };
 static ModFeatures mod_features;
 static bool feature_key(const wchar_t *config, const wchar_t *section, const wchar_t *key, bool fallback)
@@ -173,6 +176,7 @@ static void load_mod_features()
     f.battle_rules = on && feature_key(config, L"battle_rules", L"battle_rules", true);
     f.unified = on && feature_key(config, L"officer_ui", L"unified", true);
     f.loyalty = on && feature_key(config, L"officer_ui", L"loyalty", true);
+    f.terrain_edit = on && feature_key(config, L"real_estate", L"terrain_edit", false);
     f.building_destruction_all = on && feature_key(config, L"stratagem", L"building_destruction_all", false);
     f.diplomacy_overinvest = on && feature_key(config, L"diplomacy", L"diplomacy_overinvest", false);
     f.diplomacy_counterturn = on && feature_key(config, L"diplomacy", L"diplomacy_counterturn", false);
@@ -200,11 +204,17 @@ static void load_mod_features()
     f.mediation_plus = on && feature_key(config, L"officer_ui", L"mediation_plus", false);
     f.drag_learn = on && feature_key(config, L"officer_ui", L"drag_learn", false);
     f.lord_change = on && feature_key(config, L"officer_ui", L"lord_change", false);
+    f.ccz_sprites = on && feature_key(config, L"ccz", L"ccz_sprites", false);   // 2026-10-31 user: draw 조조전 unit sprites ourselves
+    f.ccz_hide_model = f.ccz_sprites && feature_key(config, L"ccz", L"ccz_hide_model", true);
+    f.ccz_depth = f.ccz_sprites && feature_key(config, L"ccz", L"ccz_depth", true);
+    f.ccz_block = on && feature_key(config, L"ccz", L"ccz_block", false);         // 2026-10-31 user: 조조전식 막기 (완전 무효)
+    f.ccz_critical = on && feature_key(config, L"ccz", L"ccz_critical", false);   // 2026-10-31 user: 조조전식 회심의 일격
     f.distance = fast && feature_key(config, L"performance", L"distance", true);
     f.name_lookup = fast && feature_key(config, L"performance", L"name_lookup", true);
     f.layout_keep = fast && feature_key(config, L"performance", L"layout_keep", true);
     f.timer_1ms = fast && feature_key(config, L"performance", L"timer_1ms", false);   // measured: no effect on layout loads
     f.ai_wall_block = feature_key(config, L"combat", L"ai_wall_block", true);
+    f.ai_catapult_block = feature_key(config, L"combat", L"ai_catapult_block", false);
     f.district_intercept_block = feature_key(config, L"combat", L"district_intercept_block", true);
     f.combat_cut = feature_key(config, L"combat", L"combat_cut", true);
     f.hit_response = feature_key(config, L"combat", L"hit_response", true);
@@ -219,8 +229,8 @@ static void load_mod_features()
     f.mission_v2 = feature_key(config, L"combat", L"mission_v2", false);
     f.ai_max_aggression = feature_key(config, L"combat", L"ai_max_aggression", false);
     f.attack_recheck_fix = f.mission_v2;   // no own key: part of mission_v2 (installer catalog unchanged)
-    // mission_v2 excludes the mod's own departures, group march and escorts (installer ExcludedBy).
-    if (f.mission_v2) { f.departures = false; f.group_advance = false; f.support = false; }
+    // user 2026-10-28: retired, conflicts with mission_v2
+    f.departures = f.group_advance = f.support = false;
 }
 static int game_day();
 #ifdef SORTIE_FORMATION
@@ -245,9 +255,26 @@ static bool mod_step(const char *name) {
     return true;
 }
 #ifndef NO_RUNTIME_LOG
+// User 2026-10-29: logger cost only; includes lock wait and IO, including perf_*.
+namespace log_perf {
+alignas(8) static volatile LONG64 calls,total_us,max_us;
+static const LONGLONG frequency=[] {LARGE_INTEGER f={};QueryPerformanceFrequency(&f);return f.QuadPart?f.QuadPart:1;}();
+struct Sample {
+    LARGE_INTEGER start;
+    Sample(){QueryPerformanceCounter(&start);}
+    ~Sample(){
+        LARGE_INTEGER end;QueryPerformanceCounter(&end);
+        LONG64 us=(end.QuadPart-start.QuadPart)*1000000/frequency;
+        InterlockedIncrement64(&calls);InterlockedAdd64(&total_us,us);
+        LONG64 old=InterlockedCompareExchange64(&max_us,0,0);
+        while(us>old){LONG64 seen=InterlockedCompareExchange64(&max_us,us,old);if(seen==old)break;old=seen;}
+    }
+};
+}
 static volatile LONG log_day = -1;
 static void write_log_event(const char *kind, unsigned army = 0, unsigned value = 0, unsigned hex = 0)
 {
+    log_perf::Sample perf_sample;
     if(strncmp(kind,"build_skip",10))mod_step(kind);
     AcquireSRWLockExclusive(&log_lock);
     {
@@ -377,7 +404,7 @@ static Link *list_first(GameList &list)
  * candidate list before the native predicate prevents choosing an AI victim
  * and avoids calling the predicate twice after it temporarily changes owners. */
 static int __fastcall cut_player_predicate(unsigned owner, GameList *tiles, GameList *enemies, Obj *target)
-{
+{ COST_SCOPE("cut_player_predicate");
     auto original = fn<int(__fastcall *)(unsigned, GameList *, GameList *, Obj *)>(0xC0C80);
     if (!in_cut) return original(owner, tiles, enemies, target);
     unsigned player = player_force();
@@ -822,7 +849,69 @@ static unsigned blocked_wall_force(Obj force, Obj definition) {
         if (force && force == table(0xDF30,id,51) && valid(force)) return id != player ? id : 0;
     return 0;
 }
-static bool __fastcall build_permission(Obj force, Obj tile, Obj definition, int check_policy) {
+// 2026-10-29: only owned castle/gate regions and their first neighbours.
+// Tile+12 and Area+56/+66 use the existing campaign region graph.
+struct CatapultGroundCache {
+    Obj root=nullptr;
+    int day=0;
+    unsigned player=0;
+    bool ready=false,blocked[501]={};
+};
+static CatapultGroundCache catapult_ground_cache;
+static SRWLOCK catapult_ground_lock=SRWLOCK_INIT;
+static unsigned catapult_tile_area(Obj tile) {
+    if(!valid(tile))return 0;
+    unsigned id=word(tile,0x12);
+    if(!id || id>500)return 0;
+    Obj area=fn<Obj(__fastcall *)(Obj)>(0x229EA0)(tile);
+    return valid(area) && area==table(0x6CAF0,id,500)?id:0;
+}
+static bool catapult_player_ground(Obj tile) {
+    if(!enabled || !mod_features.ai_catapult_block)return false;
+    unsigned player=player_force();
+    if(!player)return false;
+    unsigned region=catapult_tile_area(tile);
+    if(!region)return false;
+    Obj root=world();int day=game_day();
+    AcquireSRWLockExclusive(&catapult_ground_lock);
+    auto &cache=catapult_ground_cache;
+    if(!cache.ready || cache.root!=root || cache.day!=day || cache.player!=player) {
+        CatapultGroundCache next;next.root=root;next.day=day;next.player=player;next.ready=true;
+        for(unsigned id=1;id<=61;++id) {
+            Obj base=fn<Obj(__fastcall *)(Obj,unsigned)>(0x32C130)(root,id);
+            if(!valid(base) || word(base,0x4E)!=id)continue;
+            Obj owner=fn<Obj(__fastcall *)(Obj)>(0x22C990)(base);
+            if(!valid(owner))continue;
+            auto get_id=*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(owner,0)+0x60);
+            if(get_id(owner)!=player)continue;
+            unsigned hex=fn<unsigned(__fastcall *)(Obj)>(0x22D740)(base);
+            unsigned seed=catapult_tile_area(table(0xE270,hex,48399));
+            if(!seed)continue;
+            next.blocked[seed]=true;
+            Obj area=table(0x6CAF0,seed,500);
+            for(unsigned i=0;i<8;++i) {
+                unsigned n=word(area,0x56+i*2);
+                if((area[0x66]&(1u<<i)) && n && n<=500 && valid(table(0x6CAF0,n,500)))
+                    next.blocked[n]=true;
+            }
+        }
+        cache=next;
+    }
+    bool blocked=cache.blocked[region];
+    ReleaseSRWLockExclusive(&catapult_ground_lock);
+    return blocked;
+}
+static unsigned blocked_catapult_force(Obj force,Obj tile,Obj definition) {
+    if(!definition || definition!=table(0x73958,6,30))return 0;
+    unsigned player=player_force();
+    if(!player)return 0; // Observer mode has no player ground to protect.
+    for(unsigned id=1;id<52;++id)
+        if(force && force==table(0xDF30,id,51) && valid(force))
+            return id!=player && catapult_player_ground(tile)?id:0;
+    return 0;
+}
+static volatile LONG catapult_log_day[52];
+static bool __fastcall build_permission(Obj force, Obj tile, Obj definition, int check_policy) { COST_SCOPE("build_permission");
     unsigned owner = enabled && mod_features.ai_wall_block ? blocked_wall_force(force,definition) : 0;
     if (owner) {
         unsigned facility = definition == table(0x73958,9,30) ? 9 : 10;
@@ -830,6 +919,13 @@ static bool __fastcall build_permission(Obj force, Obj tile, Obj definition, int
         if (InterlockedExchange(&wall_log_day[owner][facility-9],stamp) != stamp)
             log_event("ai_wall_build_blocked",0,(owner<<8)|facility,
                       valid(tile) ? fn<unsigned(__fastcall *)(Obj)>(0x22DDA0)(tile) : 48400);
+        return false;
+    }
+    owner=enabled && mod_features.ai_catapult_block ? blocked_catapult_force(force,tile,definition) : 0;
+    if(owner) {
+        LONG stamp=static_cast<LONG>(game_day()+1);
+        if(InterlockedExchange(&catapult_log_day[owner],stamp)!=stamp)
+            log_event("ai_catapult_build_blocked",0,owner,fn<unsigned(__fastcall *)(Obj)>(0x22DDA0)(tile));
         return false;
     }
     return original_build_permission(force,tile,definition,check_policy);
@@ -846,6 +942,22 @@ static bool cancel_wall_order(Obj army, Progress &p) {
     p.finished_build=false;
     fn<void(__fastcall *)(Obj)>(0x26C940)(army);
     log_event("ai_wall_order_cancelled",army_id(army),facility,hex);
+    return true;
+}
+
+static bool cancel_catapult_order(Obj army,Progress &p) {
+    if(!enabled || !mod_features.ai_catapult_block || !computer_army(army) ||
+       (army[0x37]!=8 && army[0x37]!=9) || army[0x46]!=6)return false;
+    unsigned hex=word(army,0x42);
+    if(!blocked_catapult_force(table(0xDF30,army_force(army),51),table(0xE270,hex,48399),table(0x73958,6,30)))return false;
+    fn<void(__fastcall *)(Obj)>(0xA2410)(army);
+    fn<void(__fastcall *)(Obj,int)>(0x2EAAE0)(army,13);
+    fn<void(__fastcall *)(Obj,int,int)>(0x2EAB40)(army,255,0);
+    army[0x46]=0;*reinterpret_cast<unsigned short *>(army+0x42)=48400;
+    p.facility=0;p.construction_hex=48400;p.credit=false;p.build_chain=false;
+    p.finished_build=false;
+    fn<void(__fastcall *)(Obj)>(0x26C940)(army);
+    log_event("ai_catapult_order_cancelled",army_id(army),6,hex);
     return true;
 }
 
@@ -897,6 +1009,7 @@ static bool apply_priority(Obj army, Obj node, Obj context)
     }
     if(p && restore_cut(army,*p))return mod_step("ap:restore_cut"),true;
     bool cancelled = p && cancel_wall_order(army,*p);
+    if(p && cancel_catapult_order(army,*p))cancelled=true;
     if(p && cancel_unqualified_neutral_order(army,*p))cancelled=true;
     if(p && !p->regional_worker && recover_idle(army,*p))return mod_step("ap:recover_idle"),true;
     if(word(army,0x16)<1000)return cancelled && mod_step("ap:cancel_order");
@@ -933,7 +1046,7 @@ static bool apply_priority(Obj army, Obj node, Obj context)
 static bool patch_pointer(unsigned rva, unsigned expected, void *replacement);
 using BtCondition=uint64_t(__fastcall *)(unsigned,unsigned char,Obj,Obj,int *,int);
 static uint64_t __fastcall bt_condition(unsigned op,unsigned char negate,Obj context,Obj entity,int *args,int count)
-{
+{ COST_SCOPE("bt_condition");
     if(mod_features.ai_max_aggression && op==0x73 && args)return args[0]==4?1u:0u;
     auto original=fn<BtCondition>(0xC2610);
     uint64_t result=original(op,negate,context,entity,args,count);
@@ -951,7 +1064,7 @@ static uint64_t __fastcall bt_condition(unsigned op,unsigned char negate,Obj con
 // read as 20 (UI 5) for computer forces. Item 34 (+17E) is 계략 (stratagem preference with 외교, N2885),
 // so it is left unchanged.
 static uint64_t __fastcall person_info_node(Obj node,Obj context,Obj entity)
-{
+{ COST_SCOPE("person_info_node");
     uint64_t result=fn<uint64_t(__fastcall *)(Obj,Obj,Obj)>(0x8E7C0)(node,context,entity);
     if(!mod_features.ai_max_aggression || result!=1 || !node || !context)return result;
     unsigned item=dword(node,0x3C);
@@ -975,7 +1088,7 @@ static constexpr unsigned kRecheckFriendly=0x47EAF02Bu,kRecheckEnemy=0xB57EAF65u
 static thread_local bool recheck_pending;
 static thread_local int recheck_base_power;
 static uint64_t __fastcall foothold_strength_node(Obj node,Obj context,Obj entity)
-{
+{ COST_SCOPE("foothold_strength_node");
     auto original=fn<uint64_t(__fastcall *)(Obj,Obj,Obj)>(0x7DC00);
     if(!mod_features.attack_recheck_fix || !node || !context || dword(node,0x3C)!=kRecheckFriendly || dword(node,0x40)!=5)
         return original(node,context,entity);
@@ -992,7 +1105,7 @@ static uint64_t __fastcall foothold_strength_node(Obj node,Obj context,Obj entit
     return result;
 }
 static uint64_t __fastcall variable_minus_node(Obj node,Obj context,Obj entity)
-{
+{ COST_SCOPE("variable_minus_node");
     auto original=fn<uint64_t(__fastcall *)(Obj,Obj,Obj)>(0x91030);
     if(!recheck_pending || !node || !context || dword(node,0x38)!=kRecheckEnemy || dword(node,0x3C)!=kRecheckFriendly)
         return original(node,context,entity);
@@ -1191,9 +1304,9 @@ static uint64_t __fastcall retreat_node(Obj node, Obj context, Obj entity)
             unsigned city=campaign_field_city(army,*p);
             if(city) {p->city=static_cast<unsigned short>(city);p->campaign=true;changed=campaign_step(army,*p,node,context);}
         }
-        // Native retreat is vetoed for healthy field armies. Native field work
-        // remains available even when no hostile city currently exists.
-        if(!changed) {changed=try_other(army,node,context);if(!changed)changed=true;}
+        // 모드 일거리·원작 대체 행동이 모두 없으면 원작 퇴각을 허용
+        // (사용자 결정 2026-10-29: 목표 상실 후 40일 제자리 대기 방지).
+        if(!changed)changed=try_other(army,node,context);
     }
     if(!changed && p)log_event("native_retreat_allowed",army_id(army),word(army,0x16),word(army,0x2A));
     mod_step(changed?"retreat_node:mod_veto":"retreat_node:native");
@@ -1239,7 +1352,20 @@ static Obj personnel_context_object(Obj node,Obj context,unsigned field);
 #include "native_friendship.inl"
 #include "native_friendship_save.inl"
 #endif
+#include "native_terrain_foam.inl"
+#if !defined(SPLIT_COMBAT)
+#include "native_terrain_trees.inl"
+#include "native_water_diag.inl"
+#endif
+#if !defined(SPLIT_COMBAT)
+#include "native_terrain_render.inl"
+#endif
 #ifdef MERIT_CANDIDATE
+#if !defined(SPLIT_COMBAT)
+#include "native_terrain_edit.inl"
+#include "native_terrain_edit_ui.inl"
+#include "native_terrain_edit_save.inl"
+#endif
 #include "native_merit.inl"
 #ifdef AWARD_WAREHOUSE
 #include "native_awards_save.inl"
@@ -1613,7 +1739,7 @@ static void restore_personnel_nodes() {
         restore_pointer(link.slot,link.original,reinterpret_cast<void *>(link.replacement));
 }
 #endif
-static Obj allocate_near(Obj call)
+static Obj allocate_near(Obj call,unsigned bytes=0x1000)
 {
     SYSTEM_INFO info; GetSystemInfo(&info);
     uintptr_t start = reinterpret_cast<uintptr_t>(call) & ~(uintptr_t(info.dwAllocationGranularity) - 1);
@@ -1621,7 +1747,7 @@ static Obj allocate_near(Obj call)
         for (int sign : {1, -1}) {
             uintptr_t address = sign > 0 ? start + offset : (start > offset ? start - offset : 0);
             if (!address) continue;
-            Obj memory = static_cast<Obj>(VirtualAlloc(reinterpret_cast<void *>(address), 0x1000,
+            Obj memory = static_cast<Obj>(VirtualAlloc(reinterpret_cast<void *>(address), bytes,
                                                        MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
             if (memory) return memory;
         }
@@ -1676,6 +1802,7 @@ static Obj allocate_near(Obj call)
 #include "native_expert_links.inl"
 #include "native_tactic_priority.inl"
 #include "native_unified_personnel.inl"
+#include "native_ccz_bridge.inl" // 조조전 탭 -> SAN14_CCZ.dll; keeps the unified Present hook here
 #include "native_unified_settings.inl"
 #include "native_unified_actions.inl"
 #include "native_unified_posts_trade.inl"
@@ -1709,7 +1836,7 @@ static bool install()
     if(!loyalty_guards_match())return false;
 #endif
 #ifdef SORTIE_FORMATION
-    if(!sortie_guards_match())return false;
+    if(!sortie_guards_match())return false; // at least one compatible planner CALL
 #endif
     Obj call = image + 0xD2486;
     if (memcmp(call, kCutCallBytes, 5)) return false;
@@ -1725,7 +1852,7 @@ static bool install()
     if(pointer(image,0x1346E70)!=image+0x36320 || pointer(image,0x134C8F8)!=image+0x7A110)return false;
     Obj relay = allocate_near(call);
     if (!relay) return false;
-    Obj combat_relay=allocate_near(image+0x169F44);
+    Obj combat_relay=allocate_near(image+0x169F44,0x2000);
     if(!combat_relay) {VirtualFree(relay,0,MEM_RELEASE);return false;}
     absolute_jump(combat_relay,reinterpret_cast<void *>(&combat_pair_scores));
     absolute_jump(combat_relay+1536,reinterpret_cast<void *>(&combat_apply_damage));
@@ -1812,13 +1939,13 @@ static bool install()
     // Replace the complete six-byte RIP-relative MOV with CALL + NOP.
     cost_link.modified[0x1ED475-cost_link.block+5]=0x90;
     DWORD combat_old=0;
-    if(!VirtualProtect(combat_relay,0x1000,PAGE_EXECUTE_READ,&combat_old)) {
+    if(!VirtualProtect(combat_relay,0x2000,PAGE_EXECUTE_READ,&combat_old)) {
         VirtualFree(relay,0,MEM_RELEASE);VirtualFree(combat_relay,0,MEM_RELEASE);return false;
     }
     // Population trampoline ends at byte 3891; flush the entire allocated
     // relay page, including that monthly-only path and future additions.
     unsigned relay_used=224+domestic_bridge_size;
-    if(relay_used<0x1000)relay_used=0x1000;
+    if(relay_used<0x2000)relay_used=0x2000;
 #ifdef RECRUITMENT_UI_CANDIDATE
     if(relay_used<3040)relay_used=3040;
 #endif
@@ -1965,7 +2092,7 @@ static bool install() {
 }
 #endif
 #ifdef SPLIT_COMBAT
-static bool __cdecl combat_module_prepare(Obj host) {
+static bool __cdecl combat_module_prepare(Obj host) { COST_SCOPE("combat_module_prepare");
 #ifndef SPLIT_MODULE_FIXTURE
     if(host!=reinterpret_cast<Obj>(GetModuleHandleW(nullptr)))return false;
 #endif
@@ -1982,21 +2109,21 @@ static bool __cdecl combat_module_prepare(Obj host) {
     if(diagnostic_logging)AddVectoredExceptionHandler(0,observe_native_exception);
     return split_prepare();
 }
-static void __cdecl combat_departure_scope(int delta) {
+static void __cdecl combat_departure_scope(int delta) { COST_SCOPE("combat_departure_scope");
     if(delta>0)++sortie_auto_departure_scope;
     else if(delta<0 && sortie_auto_departure_scope)--sortie_auto_departure_scope;
 }
 #ifndef NO_RUNTIME_LOG // diagnostic builds only; release export list stays fixed
 // Optional diagnostic export (not part of SplitCombatApi): size 0 enables labels; otherwise copies and
 // clears this thread's labels. Called by ai_trace on the AI thread that ran the traced node.
-extern "C" __declspec(dllexport) unsigned __cdecl SAN14CombatTraceStep(char *out,unsigned size) {
+extern "C" __declspec(dllexport) unsigned __cdecl SAN14CombatTraceStep(char *out,unsigned size) { COST_SCOPE("SAN14CombatTraceStep");
     if(!size) {InterlockedExchange(&mod_step_wanted,1);return 0;}
     unsigned n=mod_step_length<size?mod_step_length:size-1;
     if(out) {memcpy(out,mod_step_text,n);out[n]=0;}
     mod_step_length=0;mod_step_text[0]=0;return n;
 }
 #endif
-extern "C" __declspec(dllexport) const SplitCombatApi *__cdecl SAN14CombatGetApi(unsigned abi) {
+extern "C" __declspec(dllexport) const SplitCombatApi *__cdecl SAN14CombatGetApi(unsigned abi) { COST_SCOPE("SAN14CombatGetApi");
     static const SplitCombatApi api={sizeof(SplitCombatApi),split_module_abi,combat_module_prepare,
         split_publish,split_rollback,split_activate,combat_departure_scope};
     return abi==split_module_abi?&api:nullptr;
@@ -2059,7 +2186,7 @@ static DWORD WINAPI initialize(LPVOID)
 }
 #endif
 #ifdef SPLIT_BASE
-extern "C" __declspec(dllexport) bool __cdecl SAN14ConvenienceInitialize(unsigned abi,const SplitCombatApi *api) {
+extern "C" __declspec(dllexport) bool __cdecl SAN14ConvenienceInitialize(unsigned abi,const SplitCombatApi *api) { COST_SCOPE("SAN14ConvenienceInitialize");
     if(abi!=split_module_abi || !api || api->size!=sizeof(SplitCombatApi) || api->abi!=split_module_abi ||
        !api->prepare || !api->publish || !api->rollback || !api->activate || !api->departure_scope)return false;
     static volatile LONG started=0;
@@ -2103,7 +2230,7 @@ extern "C" __declspec(dllexport) const SplitFixtureApi *__cdecl SAN14SplitFixtur
         split_fixture_scope,split_fixture_departure,split_fixture_failure};return &api;
 }
 #endif
-extern "C" __declspec(dllexport) void AIInitialize() { /* import anchor */ }
+extern "C" __declspec(dllexport) void AIInitialize() { COST_SCOPE("AIInitialize"); /* import anchor */ }
 #ifndef TACTICS_FIXTURE
 BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID)
 {

@@ -3,11 +3,31 @@
 #include "diplomacy_intel.h"
 #include "diplomacy_intel_profile.h"
 namespace diplomacy_intel {
+// Same-mod patches inside guarded ranges (user 2026-10-28, live PID9808: both
+// failed the guard and disabled overinvest/counterturn). Each window must hold
+// either the original bytes or that module's own known patch; it is hashed as
+// the original. Any other change still disables this feature.
+struct KnownPatch {unsigned rva,size;unsigned char original[8],patched[8];bool any_rel32_jump;};
+static const KnownPatch known_patches[]={
+    // modpack ability 200 cap (modpack_tables.h 0x230098) inside 22FCE0.
+    {0x230098,8,{0x74,0x48,0x66,0x0F,0x1F,0x44,0x00,0x00},{0x75,0x06,0x83,0xFE,0x64,0x7C,0x43,0x90},false},
+    // advisor_briefing text relay: first MOV of 930D20 replaced by JMP rel32.
+    {0x930D20,5,{0x48,0x89,0x5C,0x24,0x08},{0xE9},true},
+};
+static unsigned char guarded_byte(unsigned rva,bool &ok) {
+    for(const auto &k:known_patches)if(rva>=k.rva && rva<k.rva+k.size) {
+        const unsigned char *p=image+k.rva;
+        if(!memcmp(p,k.original,k.size))return k.original[rva-k.rva];
+        if(k.any_rel32_jump?p[0]==0xE9:!memcmp(p,k.patched,k.size))return k.original[rva-k.rva];
+        ok=false;return image[rva];
+    }
+    return image[rva];
+}
 static bool guards_match() {
     for(const auto &g:guards) {
-        unsigned long long h=0xcbf29ce484222325ull;
-        for(unsigned i=0;i<g.size;++i)h=(h^image[g.rva+i])*0x100000001b3ull;
-        if(h!=g.hash)return false;
+        unsigned long long h=0xcbf29ce484222325ull;bool ok=true;
+        for(unsigned i=0;i<g.size;++i)h=(h^guarded_byte(g.rva+i,ok))*0x100000001b3ull;
+        if(!ok || h!=g.hash)return false;
     }
     for(const auto &s:slots)if(pointer(image,s.rva)!=image+s.original)return false;
     for(const auto &s:sites)if(image[s.rva]!=0xE8 || s.rva+5+*reinterpret_cast<int *>(image+s.rva+1)!=s.original)return false;

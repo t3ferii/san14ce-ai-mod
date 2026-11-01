@@ -147,6 +147,9 @@ static bool merit_read_sidecar(const merit::SaveCoordinator::Completed &job,
     COST_SCOPE("merit_save_host");
     unsigned phase=dword(host,0x470);
     if(enabled && phase==1) {
+#ifndef SPLIT_COMBAT
+        terrain_edit::snapshot();
+#endif
 #ifdef AWARD_WAREHOUSE
         award_snapshot();
 #endif
@@ -171,6 +174,17 @@ static bool merit_read_sidecar(const merit::SaveCoordinator::Completed &job,
             try {ready=merit_jobs.finish_save(merit_save_epoch,dword(image,0x27D2A20)==1,job);}
             catch(...) {ReleaseSRWLockExclusive(&merit_job_lock);throw;}
             ReleaseSRWLockExclusive(&merit_job_lock);merit_save_epoch=0;
+#ifndef SPLIT_COMBAT
+            try {if(ready && !terrain_edit::write_sidecar(job)) {
+#ifndef NO_RUNTIME_LOG
+                log_event("terrain_edit_save_failed");
+#endif
+            }} catch(...) {
+#ifndef NO_RUNTIME_LOG
+                log_event("terrain_edit_save_failed");
+#endif
+            }
+#endif
             if(ready) {bool saved=merit_write_sidecar(job);log_event(saved?"merit_save_written":"merit_save_write_failed");}
 #ifdef AWARD_WAREHOUSE
             if(ready) {bool saved=award_write_sidecar(job);log_event(saved?"warehouse_save_written":"warehouse_save_write_failed");}
@@ -184,6 +198,9 @@ static bool merit_read_sidecar(const merit::SaveCoordinator::Completed &job,
     if(enabled && phase==1)try {
         // Loading is an explicit boundary: respect missing/replaced sidecars
         // and never resurrect a relation from a previous save's RAM cache.
+#ifndef SPLIT_COMBAT
+        terrain_edit::begin_load();
+#endif
         merit_sidecar_cache.clear();
 #ifdef AWARD_WAREHOUSE
         award_sidecar_cache.clear();
@@ -206,6 +223,9 @@ static bool merit_read_sidecar(const merit::SaveCoordinator::Completed &job,
             try {ready=merit_jobs.finish_load(merit_load_epoch,true,job);}
             catch(...) {ReleaseSRWLockExclusive(&merit_job_lock);throw;}
             ReleaseSRWLockExclusive(&merit_job_lock);
+#ifndef SPLIT_COMBAT
+            terrain_edit::restore_sidecar(ready?&job:nullptr);
+#endif
             if(ready)restored=merit_read_sidecar(job,replacement);
 #ifdef AWARD_WAREHOUSE
             award_restore_sidecar(ready?&job:nullptr);

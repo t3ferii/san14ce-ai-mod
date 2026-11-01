@@ -28,10 +28,10 @@ static bool guards_match() {
         fingerprint(0x42C190,0xF7)==kEffectPhaseHash && fingerprint(0x42BB90,0x38C)==kTilePhaseHash &&
         fingerprint(0x426DA0,0x157)==kLastPhaseHash;
 }
-static unsigned long long __fastcall camera(unsigned tile,int mode,int ms,double a,double b,int flag) {
+static unsigned long long __fastcall camera(unsigned tile,int mode,int ms,double a,double b,int flag) { COST_SCOPE("occupy_fast::camera");
     return fn<Camera>(kCamera)(tile,mode,ms>500?ms/4:(ms>125?125:ms),a,b,flag);
 }
-static void __fastcall update(Obj state,unsigned long long a,unsigned long long b,unsigned long long c) {
+static void __fastcall update(Obj state,unsigned long long a,unsigned long long b,unsigned long long c) { COST_SCOPE("occupy_fast::update");
     const unsigned phase=dword(state,0x470);
     int *frame=nullptr;int saved=0;
     if(phase==3) {

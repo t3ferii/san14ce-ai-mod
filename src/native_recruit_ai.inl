@@ -30,7 +30,7 @@ static bool recruit_ai_family_available(Obj target,Obj district,GameList &envoys
     }
     return false;
 }
-static uint64_t __fastcall recruit_ai_targets(Obj node,Obj context,Obj subject) {
+static uint64_t __fastcall recruit_ai_targets(Obj node,Obj context,Obj subject) { COST_SCOPE("recruit_ai_targets");
     NativePhase phase("ai_recruit_targets");
     uint64_t result=fn<Execute>(0x7B360)(node,context,subject);
     if(!enabled || result!=1)return result;
@@ -39,9 +39,12 @@ static uint64_t __fastcall recruit_ai_targets(Obj node,Obj context,Obj subject) 
     if(!valid(district) || !output)return result;
     GameList envoys={};bool envoys_ready=false;
     GameList &targets=*reinterpret_cast<GameList *>(output);
-    Link *link=list_first(targets);
-    while(link) {
+    // Decide every target once, then remove. Restarting from the head after each
+    // removal re-evaluated every earlier target (quadratic, ~2300 log lines per pass).
+    std::vector<Obj> blocked;unsigned reasons=0;
+    for(Link *link=list_first(targets);link;link=link->next) {
         Obj target=link->value;
+        if(std::find(blocked.begin(),blocked.end(),target)!=blocked.end())continue;
         unsigned reason=recruit_ai_reason(target,district,nullptr);
         if(recruit_ai_blocked(reason)) {
             bool exception=false;
@@ -54,19 +57,17 @@ static uint64_t __fastcall recruit_ai_targets(Obj node,Obj context,Obj subject) 
                 }
                 exception=recruit_ai_family_available(target,district,envoys);
             }
-            if(!exception) {
-                log_event("ai_recruit_target_blocked",valid(target)?word(target,0x10):0,reason,district[0x10]);
-                personnel_remove(targets,target);
-                // Removal may release every duplicate link for this target.
-                link=list_first(targets);continue;
-            }
+            if(!exception) {blocked.push_back(target);reasons|=reason;}
         }
-        link=link->next;
     }
     if(envoys_ready)list_free(envoys);
+    // Removal may release every duplicate link for a target; no link is held here.
+    for(Obj target:blocked)personnel_remove(targets,target);
+    if(!blocked.empty())
+        log_event("ai_recruit_targets_blocked",static_cast<unsigned>(blocked.size()),reasons,district[0x10]);
     return result;
 }
-static uint64_t __fastcall recruit_ai_command(Obj node,Obj context,Obj subject) {
+static uint64_t __fastcall recruit_ai_command(Obj node,Obj context,Obj subject) { COST_SCOPE("recruit_ai_command");
     NativePhase phase("ai_recruit_command");
     if(enabled) {
         Obj actor=personnel_context_object(node,context,0x38);

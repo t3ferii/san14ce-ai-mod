@@ -147,8 +147,26 @@ def write_current_split(manifest,state,share,share_check,pair):
         cfg=current_settings()
         briefing_on=cfg.get('game_flow.advisor_briefing','0')!='0' and cfg.get('groups.convenience','1')!='0'
         live_note='표시 상태 읽기 확인, 턴 진행은 별도 확인 필요' if briefing.get('runtime_probe_verified') else '수정판 실게임 확인 대기'
+        if briefing.get('runtime_observation',{}).get('diplomatic_events',0):
+            observed=briefing['runtime_observation']
+            live_note=briefing.get('version','')+' 읽기 전용 관찰: 외교 후속 대사 '+str(observed['diplomatic_events'])+'건/총 '+str(observed['events'])+'건 수집·플레이어 대기 복귀. 시각적 표시·다른 상호작용은 별도 확인 필요'
         if briefing.get('diplomacy_refusal_verified'):
             live_note=briefing.get('version','')+' 보고 ON·외교 금 요구 거절 후 정상 진행 사용자 확인. 소식 '+str(briefing.get('runtime_observation',{}).get('events','?'))+'건 수집 읽기 확인. 다른 상호작용·장기 안정성은 별도 확인 필요'
+        if briefing.get('diplomatic_followup'):
+            live_note+='; 외교 확인 전용 후속 대사 수집·명조/먹색 UI 적용'
+        if briefing.get('paper_report_theme'):
+            live_note+='; 창1160×1000·기존 글자 크기 유지·종이색 본문·정렬 개선·플레이어 프레임 입력·군사 보고 문체 적용'
+        if briefing.get('click_visibility_repaired'):
+            live_note+='; 명령 메뉴 자체 숨김과 버블 표시 분리·등용 결과 대화 수집/원작 자동 이어가기 추가'
+        if briefing.get('updating_state_guard_repaired'):
+            live_note+='; 갱신 중인 상태(manager+48)를 모달로 오인하던 입력 차단 제거·실제 맨 위 화면으로 판단'
+        if briefing.get('runtime_observation',{}).get('input_dispatches',0):
+            click=briefing['runtime_observation']
+            live_note+='; 실게임 입력 '+str(click['input_dispatches'])+'회·보고함 열림 읽기 확인(입력 큐 최대 '+str(click.get('input_max_delay_ms','?'))+'ms, 전체 표시 지연 아님)'
+        if briefing.get('readable_income_table'):
+            live_note+='; 본문 굵기/대비·무장6색·금/군량 고정 열·군사 결과 요약·전령형 진행 통지·보고 전환 마스크 적용'
+        if briefing.get('top_right_navigation'):
+            live_note+='; 우측 상단 이전/다음·페이지 복사 축소·입력부터 그리기 제출까지 진단 추가'
         entry='- 개발 후보: 군사의 열흘 보고. 좌하단 군사 알림함·10일치 집계·열람/삭제·다음 진행 초기화. 설정 '+('ON' if briefing_on else 'OFF')+', '+install_note+', 미서명. 후보 소스 일치: '+str(source_match)+'. 동작/가드 fixture '+str(briefing.get('behavior_checks'))+'개, WARP 그래픽 '+str(briefing.get('graphics_checks'))+'개, 원작 정적 '+str(briefing.get('native_checks'))+'개. '+live_note+'. [설명](../docs/ADVISOR_BRIEFING.md).'
         at=lines.index('## 미해결·실게임 확인 범위')-1
         lines[at:at]=[entry,'']

@@ -85,13 +85,13 @@ static uint64_t personnel_actor_node(Obj node,Obj context,Obj subject,unsigned o
     }
     return result;
 }
-static uint64_t __fastcall personnel_employ_actors(Obj node,Obj context,Obj subject) {
+static uint64_t __fastcall personnel_employ_actors(Obj node,Obj context,Obj subject) { COST_SCOPE("personnel_employ_actors");
     return personnel_actor_node(node,context,subject,0x39490);
 }
-static uint64_t __fastcall personnel_search_actors(Obj node,Obj context,Obj subject) {
+static uint64_t __fastcall personnel_search_actors(Obj node,Obj context,Obj subject) { COST_SCOPE("personnel_search_actors");
     return personnel_actor_node(node,context,subject,0x3D170);
 }
-static uint64_t __fastcall personnel_officer_candidates(Obj node,Obj context,Obj subject) {
+static uint64_t __fastcall personnel_officer_candidates(Obj node,Obj context,Obj subject) { COST_SCOPE("personnel_officer_candidates");
     return personnel_actor_node(node,context,subject,0x7E550,0x3C);
 }
 static uint64_t personnel_healthy_command(Obj node,Obj context,Obj subject,unsigned original_rva,unsigned actor_field) {
@@ -119,16 +119,16 @@ static uint64_t __fastcall personnel_departure(Obj node,Obj context,Obj subject)
     return personnel_healthy_command(node,context,subject,0x34F10,0x38);
 #endif
 }
-static uint64_t __fastcall personnel_transport(Obj node,Obj context,Obj subject) {
+static uint64_t __fastcall personnel_transport(Obj node,Obj context,Obj subject) { COST_SCOPE("personnel_transport");
     return personnel_healthy_command(node,context,subject,0x35770,0x38);
 }
-static uint64_t __fastcall personnel_recruit_officer(Obj node,Obj context,Obj subject) {
+static uint64_t __fastcall personnel_recruit_officer(Obj node,Obj context,Obj subject) { COST_SCOPE("personnel_recruit_officer");
     return personnel_healthy_command(node,context,subject,0x3DBF0,0x3C);
 }
-static uint64_t __fastcall personnel_training_officer(Obj node,Obj context,Obj subject) {
+static uint64_t __fastcall personnel_training_officer(Obj node,Obj context,Obj subject) { COST_SCOPE("personnel_training_officer");
     return personnel_healthy_command(node,context,subject,0x3E490,0x3C);
 }
-static uint64_t __fastcall personnel_spy_officer(Obj node,Obj context,Obj subject) {
+static uint64_t __fastcall personnel_spy_officer(Obj node,Obj context,Obj subject) { COST_SCOPE("personnel_spy_officer");
     return personnel_healthy_command(node,context,subject,0x3E100,0x3C);
 }
 static uint64_t __fastcall personnel_recruitment_targets(Obj node,Obj context,Obj subject) {
@@ -174,7 +174,7 @@ static uint64_t __fastcall personnel_employ_command(Obj node,Obj context,Obj sub
     }
     return fn<Execute>(0x2CC50)(node,context,subject);
 }
-static uint64_t __fastcall personnel_search_command(Obj node,Obj context,Obj subject) {
+static uint64_t __fastcall personnel_search_command(Obj node,Obj context,Obj subject) { COST_SCOPE("personnel_search_command");
     if(enabled) {
         Obj actor=personnel_context_object(node,context,0x3C);
         if(valid(actor) && !personnel::may_auto_work(actor[0x161]))return 2;

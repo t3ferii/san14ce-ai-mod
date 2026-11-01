@@ -29,7 +29,7 @@ static const Value &get(Obj person) {
     }
     return cache.emplace(person,std::move(value)).first->second;
 }
-static const wchar_t *__fastcall text(Obj person) {return get(person).text.c_str();}
-static NativeValue *__fastcall sort_value(NativeValue *out,Obj person) {*out=get(person).native;return out;}
+static const wchar_t *__fastcall text(Obj person) { COST_SCOPE("unified_relations::text");return get(person).text.c_str();}
+static NativeValue *__fastcall sort_value(NativeValue *out,Obj person) { COST_SCOPE("unified_relations::sort_value");*out=get(person).native;return out;}
 static bool comparable(Obj person) {return reference && person!=reference && get(person).native.kind==0;}
 }

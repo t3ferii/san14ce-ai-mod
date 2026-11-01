@@ -45,16 +45,16 @@ static int percent(Obj person,int stat) {
     long long have=static_cast<long long>(dword(person,0x104+stat*4))-low;
     long long p=have*100/(high-low);return p<0?0:p>99?99:static_cast<int>(p);
 }
-static int __fastcall stat_value(Obj person,int stat,int flags) {
+static int __fastcall stat_value(Obj person,int stat,int flags) { COST_SCOPE("stat_exp::stat_value");
     current_person=person;
     return fn<int(__fastcall *)(Obj,int,int)>(kStat)(person,stat,flags);
 }
-static void __fastcall chart(Obj object,int stat,unsigned value,unsigned long long base) {
+static void __fastcall chart(Obj object,int stat,unsigned value,unsigned long long base) { COST_SCOPE("stat_exp::chart");
     current_stat=stat;
     fn<void(__fastcall *)(Obj,int,unsigned,unsigned long long)>(kChart)(object,stat,value,base);
     current_stat=-1;current_person=nullptr;
 }
-static void __fastcall text(Obj set,int element,const wchar_t *value,int flag) {
+static void __fastcall text(Obj set,int element,const wchar_t *value,int flag) { COST_SCOPE("stat_exp::text");
     auto original=fn<void(__fastcall *)(Obj,int,const wchar_t *,int)>(kText);
     int p=mod_features.stat_exp && current_stat>=0?percent(current_person,current_stat):-1;
     if(p<0 || !value)return original(set,element,value,flag);

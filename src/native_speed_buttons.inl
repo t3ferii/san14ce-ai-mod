@@ -115,6 +115,14 @@ static bool idle(Obj manager) {
 // Switch: [diagnostics] day_stage=1 (기타(개발용) tab), read once at install.
 static bool stage_on;
 static unsigned stage_last=~0u,stage_frames;
+// Reasons: 1 = pending count changed; 2 = not topmost; 3 = pending count unchanged but nonzero.
+static volatile unsigned long long second_skips[2]; // retain diagnostic counters in optimized builds
+static unsigned second_skip_last;
+static void second_skip_note(unsigned reason,unsigned pending_delta) {
+    if(reason)++second_skips[reason==2?1:0]; // pending / not-top counters
+    if(reason!=second_skip_last && reason)log_event("speed_second_skip",reason,pending_delta,0);
+    second_skip_last=reason;
+}
 static LONGLONG stage_since,stage_inside,stage_hz;
 static unsigned stage_us(LONGLONG ticks) {
     const LONGLONG us=ticks*1000000/stage_hz;return us>0xFFFFFFFFll?0xFFFFFFFFu:static_cast<unsigned>(us);
@@ -153,13 +161,40 @@ static void __fastcall frame(Obj manager) { COST_SCOPE("speed_frame");
             else *reinterpret_cast<int *>(manager+0x470)=1;
         }
     }
+    // 2026-10-28 (decoded 1fbe6be7): 110E0 Obj() returns 1B620B0 on this
+    // original UI caller. Both 12540 (pop; INC qword [+30] at 125C0) and
+    // 830820 (push) enqueue work in +30. 570840 assigns state+50 from a
+    // four-slot coroutine pool; popping a state yielding in 571EF0 leaks it.
+    Obj state_manager=fn<Obj(__fastcall *)()>(0x110E0)();
+#ifndef NO_RUNTIME_LOG
+    const auto before=*reinterpret_cast<unsigned long long *>(state_manager+0x30);
+#endif
     run_frame(manager);
+    const auto after=*reinterpret_cast<unsigned long long *>(state_manager+0x30);
+#ifndef NO_RUNTIME_LOG
+    unsigned skip_reason=0;
+#endif
     // Second start only from the same state as a native frame start: the day
-    // that just began already completed and the manager is idle at phase 0.
+    // finished at phase 0, with no pending push/pop, and still topmost.
+    // A turn-ending pop also resets phase 0: never start another child then.
+    // Claude review 2026-10-28: 570840 drains +30 at update start. A yielded
+    // frame can resume after that reset and enqueue a new pop with the same
+    // count as before. Only after==0 permits a second start, regardless of owner.
     if(again && enabled && mode==m && idle(manager) && native_speed()==2) {
-        accumulator-=1.0;*reinterpret_cast<int *>(manager+0x470)=0;
-        run_frame(manager);
+        const auto count=*reinterpret_cast<unsigned long long *>(state_manager+0x10);
+        Obj stack=pointer(state_manager,0x20);
+        const bool top=count && stack && reinterpret_cast<Obj *>(stack)[count-1]==manager;
+        if(after==0 && top) {
+            accumulator-=1.0;*reinterpret_cast<int *>(manager+0x470)=0;
+            run_frame(manager);
+        }
+#ifndef NO_RUNTIME_LOG
+        else skip_reason=after?(after!=before?1u:3u):2u;
+#endif
     }
+#ifndef NO_RUNTIME_LOG
+    second_skip_note(skip_reason,static_cast<unsigned>(after-before));
+#endif
 }
 // 88C2E0 keeps the popup open only while the hovered control is the popup or one
 // of its three native buttons (popup+180..190); anything else closes it at once

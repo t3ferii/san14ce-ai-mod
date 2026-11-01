@@ -40,6 +40,10 @@ try {
         if($LASTEXITCODE -ne 0){throw 'Other-module build failed.'}
         & cl.exe @taskFlags /DSPLIT_COMBAT /LD (Join-Path $taskProject 'src\native_adapter.cpp') "/Fe$taskCombat" /link @taskDiagnosticLink kernel32.lib user32.lib
         if($LASTEXITCODE -ne 0){throw 'Combat-module build failed.'}
+        if(-not $Fixture) {   # 2026-11-01 user: 조조전 탭 = SAN14_CCZ.dll, loaded by the convenience module
+            & cl.exe @taskFlags "/I$(Join-Path $taskProject 'src')" /LD (Join-Path $taskProject 'src\ccz_module.cpp') /FeSAN14_CCZ.dll /link @taskDiagnosticLink kernel32.lib user32.lib gdi32.lib
+            if($LASTEXITCODE -ne 0){throw 'CCZ-module build failed.'}
+        }
         if(-not $Fixture) {
             & cl.exe /nologo /W4 /WX /utf-8 /O2 /MT /std:c++17 /EHsc /LD (Join-Path $taskProject 'src\module_loader.cpp') (Join-Path $taskProject 'src\input_proxy.cpp') /Fedinput8.dll /link kernel32.lib
             if($LASTEXITCODE -ne 0){throw 'Loader-only build failed.'}

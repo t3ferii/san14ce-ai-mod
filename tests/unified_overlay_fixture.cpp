@@ -2,7 +2,20 @@
 #include <windows.h>
 #include <vector>
 #include <cstdio>
+// User/Claude 2026-10-29: standalone declarations for adapter instrumentation.
+#define COST_SCOPE(name) do {} while(0)
+#ifndef NO_RUNTIME_LOG
+namespace terrain_trees {alignas(8) static volatile LONG64 perf_frame_us,perf_total_us,perf_calls,perf_max_us;}
+namespace log_perf {alignas(8) static volatile LONG64 calls,total_us,max_us;}
+static void log_event(const char *,unsigned,unsigned,unsigned) {}
+#endif
+// User 2026-10-29: standalone overlay fixture uses a no-op terrain observer.
+struct ID3D11Device;
+struct ID3D11DeviceContext;
+namespace terrain_render {static void on_device(ID3D11Device *){} static void on_present(ID3D11DeviceContext *){} static bool needs_present(){return false;}}
 #include "../src/native_unified_overlay.inl"
+// User 2026-10-31: 조조전 병종 그림 draws from the same Present hook; no-op here.
+namespace ccz_sprites {static bool needs_present(){return false;} static void on_present(ID3D11Device *,ID3D11DeviceContext *,ID3D11Texture2D *,const D3D11_TEXTURE2D_DESC &){}}
 static unsigned checks;
 static void check(bool ok,const char *label){++checks;if(!ok){fprintf(stderr,"%s\n",label);ExitProcess(1);}}
 int main() {

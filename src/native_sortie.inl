@@ -12,7 +12,7 @@ using SortieSearch=int(__fastcall *)(SortieNativePath *,Obj,unsigned,unsigned *,
 static SortieSearch original_sortie_search;
 struct SortieTrace {std::vector<unsigned> cells;unsigned count;};
 static __declspec(thread) SortieTrace *sortie_trace_output;
-static int __fastcall sortie_search(SortieNativePath *path,Obj context,unsigned from,unsigned *to,int a,int b,int c) {
+static int sortie_search_next(SortieSearch next,SortieNativePath *path,Obj context,unsigned from,unsigned *to,int a,int b,int c) {
     COST_SCOPE("sortie_search");
     // 1EC890 calls this even when 2B50D0 returns the no-destination sentinel.
     // Its caller accepts a failed path; 183A30 does not accept an invalid tile.
@@ -27,7 +27,7 @@ static int __fastcall sortie_search(SortieNativePath *path,Obj context,unsigned 
     native_search_flags=static_cast<unsigned>(b);native_search_buffer=static_cast<unsigned>(c);
     NativePhase phase("native_path_search");
     ++native_search_depth;
-    int result=original_sortie_search(path,context,from,to,a,b,c);
+    int result=next(path,context,from,to,a,b,c);
     --native_search_depth;
     native_search_caller=previous_caller;native_search_from=previous_from;
     native_search_flags=previous_flags;native_search_buffer=previous_buffer;
@@ -39,6 +39,9 @@ static int __fastcall sortie_search(SortieNativePath *path,Obj context,unsigned 
     if(result && campaign_native_trace && path && path->data && path->count<=48400)
         campaign_native_trace->assign(path->data,path->data+path->count);
     return result;
+}
+static int __fastcall sortie_search(SortieNativePath *path,Obj context,unsigned from,unsigned *to,int a,int b,int c) {
+    return sortie_search_next(original_sortie_search,path,context,from,to,a,b,c);
 }
 static __declspec(thread) Obj sortie_planner_node;
 static __declspec(thread) unsigned sortie_auto_departure_scope;
@@ -525,11 +528,11 @@ static uint64_t sortie_plan(Obj node,Obj context,Obj subject,unsigned index) {
         sortie_support_attach(node,l->value);
     sortie_planner_node=previous;return result;
 }
-static uint64_t __fastcall sortie_plan8(Obj n,Obj c,Obj s) {return sortie_plan(n,c,s,0);}
-static uint64_t __fastcall sortie_plan9(Obj n,Obj c,Obj s) {return sortie_plan(n,c,s,1);}
-static uint64_t __fastcall sortie_plan10(Obj n,Obj c,Obj s) {return sortie_plan(n,c,s,2);}
-static uint64_t __fastcall sortie_plan11(Obj n,Obj c,Obj s) {return sortie_plan(n,c,s,3);}
-static uint64_t __fastcall sortie_plan22(Obj n,Obj c,Obj s) {return sortie_plan(n,c,s,4);}
+static uint64_t __fastcall sortie_plan8(Obj n,Obj c,Obj s) { COST_SCOPE("sortie_plan8");return sortie_plan(n,c,s,0);}
+static uint64_t __fastcall sortie_plan9(Obj n,Obj c,Obj s) { COST_SCOPE("sortie_plan9");return sortie_plan(n,c,s,1);}
+static uint64_t __fastcall sortie_plan10(Obj n,Obj c,Obj s) { COST_SCOPE("sortie_plan10");return sortie_plan(n,c,s,2);}
+static uint64_t __fastcall sortie_plan11(Obj n,Obj c,Obj s) { COST_SCOPE("sortie_plan11");return sortie_plan(n,c,s,3);}
+static uint64_t __fastcall sortie_plan22(Obj n,Obj c,Obj s) { COST_SCOPE("sortie_plan22");return sortie_plan(n,c,s,4);}
 static bool sortie_valid_group(const SortieGroup &g) {
     if(!valid(g.group) || game_day()<g.last_motion)return false;
     bool build_return=g.working && word(g.group,0x14)==7;
@@ -557,26 +560,29 @@ static unsigned sortie_route_progress(const SortieGroup &g,unsigned slot) {
     // remains ahead; do not requeue the preceding waypoint behind the army.
     return best;
 }
-static float __fastcall sortie_movement(Obj army,Obj formation,int preview,int modifier,Obj tile) {
+static float sortie_movement_next(SortieMovement next,Obj army,Obj formation,int preview,int modifier,Obj tile) {
     COST_SCOPE("sortie_movement");
     float native;
-    {COST_SCOPE("native_sortie_movement");native=original_sortie_movement(army,formation,preview,modifier,tile);}
+    {COST_SCOPE("native_sortie_movement");native=next(army,formation,preview,modifier,tile);}
     SortieGroup g;unsigned id;
     if(!enabled || !(native>0) || !sortie_snapshot(army,g,id) || !sortie_valid_group(g))return native;
     static __declspec(thread) Obj terrain_root=nullptr,neutral=nullptr;
     if(terrain_root!=world()) {terrain_root=world();neutral=nullptr;
         for(unsigned h=0;h<48400;++h) {Obj t=table(0xE270,h,48399);if(valid(t) && t[0x10]==1) {neutral=t;break;}}}
     float slowest;
-    {COST_SCOPE("native_sortie_movement");slowest=original_sortie_movement(army,formation,preview,modifier,neutral);}
+    {COST_SCOPE("native_sortie_movement");slowest=next(army,formation,preview,modifier,neutral);}
     // Reference principle: common base movement and common terrain speed.
     // Existing native getter/ABI supplies neutral terrain, not foreign RVAs.
     for(Obj other:g.army)if(other) {
         float base;
-        {COST_SCOPE("native_sortie_movement");base=original_sortie_movement(other,fn<Obj(__fastcall *)(Obj)>(0x22B090)(other),preview,modifier,neutral);}
+        {COST_SCOPE("native_sortie_movement");base=next(other,fn<Obj(__fastcall *)(Obj)>(0x22B090)(other),preview,modifier,neutral);}
         if(base>0)slowest=(std::min)(slowest,base);
     }
     // Impassable terrain still returns native zero before this branch.
     return slowest>0?slowest:native;
+}
+static float __fastcall sortie_movement(Obj army,Obj formation,int preview,int modifier,Obj tile) {
+    return sortie_movement_next(original_sortie_movement?original_sortie_movement:fn<SortieMovement>(0x2B0290),army,formation,preview,modifier,tile);
 }
 static void sortie_move(Obj army,unsigned hex) {
     if(campaign_castle_locked(army))return;

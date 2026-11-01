@@ -1,5 +1,5 @@
 # Public source checks: no game files, imported payloads, installation or live process access.
-param([switch]$Combat)
+param([switch]$Combat,[switch]$Ccz)
 $ErrorActionPreference = 'Stop'
 $taskProject = Split-Path -Parent $PSScriptRoot
 $taskOut = Join-Path $taskProject 'build\development\public_smoke'
@@ -34,6 +34,13 @@ try {
             & $taskCl @taskCombatFlags /LD (Join-Path $taskProject 'src\native_adapter.cpp') /FeSAN14_CombatAI.dll /link kernel32.lib user32.lib
             if ($LASTEXITCODE -ne 0) { throw 'Public combat module compilation failed.' }
             Write-Output 'Unsigned combat module built; no installation or gameplay verification.'
+        }
+        if ($Ccz) {
+            # Same release defines/link libraries as the SAN14_CCZ.dll arm of build_split.ps1 (v15~).
+            $taskCczFlags = @('/nologo','/W4','/WX','/wd4505','/utf-8','/O2','/MT','/std:c++17','/EHsc','/DMERIT_CANDIDATE','/DRECRUITMENT_UI_CANDIDATE','/DHIDDEN_LOYALTY','/DINJURY_PROTECTION','/DAWARD_WAREHOUSE','/DSORTIE_FORMATION','/DNO_RUNTIME_LOG')
+            & $taskCl @taskCczFlags "/I$(Join-Path $taskProject 'src')" /LD (Join-Path $taskProject 'src\ccz_module.cpp') /FeSAN14_CCZ.dll /link kernel32.lib user32.lib gdi32.lib
+            if ($LASTEXITCODE -ne 0) { throw 'Public CCZ module compilation failed.' }
+            Write-Output 'Unsigned CCZ module built; no installation or gameplay verification.'
         }
         foreach ($taskFixture in @('path_fast_fixture', 'officer_query_fixture')) {
             & $taskCl /nologo /W4 /WX /utf-8 /O2 /MT /std:c++17 /EHsc (Join-Path $taskProject "tests\$taskFixture.cpp") "/Fe$taskFixture.exe"

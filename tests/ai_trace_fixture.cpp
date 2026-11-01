@@ -1,3 +1,7 @@
+// User/Claude 2026-10-29: standalone fixture instrumentation declaration.
+#ifndef COST_SCOPE
+#define COST_SCOPE(name) do {} while(0)
+#endif
 // The actual AI trace module against a fake image/world; no game process access.
 #include <windows.h>
 #include <cstdio>
