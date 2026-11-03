@@ -12,7 +12,7 @@ import hashlib,json,re,sys,zipfile
 P=Path(__file__).resolve().parents[1]
 ROW=re.compile(r"@\{Group='[\w]*'; Section='(\w+)'; Key='(\w+)'; Default=(\d); Requires='([\w.]*)'; Inherit='[\w.]*'; Tab='[^']+'; (?:Retired=\$true; )?"
                r"Label='((?:[^']|'')*)'; Note='((?:[^']|'')*)'")
-PUBLISHED=('v13.3','v14','v14.1','v14.2','v15','v15.1')
+PUBLISHED=('v13.3','v14','v14.1','v14.2','v15','v15.1','v15.2')
 
 def catalogue(text):
     rows={}
@@ -29,8 +29,9 @@ def main():
         with zipfile.ZipFile(P/'dist'/('SAN14_AI_'+v+'_integrated.zip')) as z:
             versions[v]=catalogue(z.read('AI_TacticsMod/FeatureSelect.ps1').decode('utf-8-sig'))
     menu=(P/'distribution/FeatureSelect.ps1').read_text(encoding='utf-8-sig')
-    versions[current]=catalogue(menu)
-    assert len(versions[current])==menu.count('@{Group='),'unparsed catalogue rows'
+    visible="\n".join(line for line in menu.splitlines() if "Retired=$true;" not in line)
+    versions[current]=catalogue(visible)
+    assert len(versions[current])==menu.count('@{Group=')-menu.count('Retired=$true;'),'unparsed catalogue rows'
     output.write_text(json.dumps({'format':1,'versions':versions},ensure_ascii=False,indent=1)+'\n',encoding='utf-8')
     print(json.dumps({v:len(r) for v,r in versions.items()}))
 

@@ -21,7 +21,7 @@ ok(len(rows)==len(cs) and len(ps)==len(pm),'duplicate keys')
 ok(cs==pm,'GUI/PS catalogs differ: %s'%sorted(k for k in set(cs)|set(pm) if cs.get(k)!=pm.get(k)))
 ids={s+'.'+k for s,k in cs}
 # 사용자 결정 2026-10-28: 충돌 옵션 사용 중지 (ExcludedBy보다 우선, mission_v2 OFF도 동일).
-retired={'combat.departures','combat.group_advance','combat.support'}
+retired={'combat.departures','combat.group_advance','combat.support','diplomacy.diplomacy_overinvest'}
 retired_body=re.search(r'HashSet<string> Retired = new HashSet<string> \{(.*?)\};',gui,re.S)
 ok(retired_body is not None and set(re.findall(r'"([\w.]+)"',retired_body[1]))==retired,'GUI retired set')
 ps_retired={s+'.'+k for s,k in re.findall(r"Section='(\w+)'; Key='(\w+)';[^\r\n]*Retired=\$true",menu)}
@@ -36,12 +36,12 @@ ok('f.departures = f.group_advance = f.support = false;' in adapter and
 ok('user 2026-10-28: retired, conflicts with mission_v2' in adapter,'DLL retirement decision recorded')
 ok('!f.IsMaster && !Catalog.Retired.Contains(f.Id)' in gui,'tab denominator excludes retired rows')
 ok('임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.' in gui and
-   menu.count("Retired=$true;")==3 and menu.count("Note='임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.'")==3,'retirement explanations')
+   menu.count("Retired=$true;")==4 and menu.count("Note='임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.'")==3,'retirement explanations')
 ok(cs.get(('diagnostics','terrain_diag_mode'))==('diagnostics',0,'','','기타(개발용)'),'terrain diagnostic mode catalog/default/group/tab')
 ok('Math.Max(0, Math.Min(3, n))' in gui and "[Math]::Max(0, [Math]::Min(3, $taskNumber))" in menu,'terrain diagnostic mode keeps 0..3')
 ok('0 — 기준: foam ON / renderer ON' in gui and '[0 기준]' in menu and '번호=값' in menu,'GUI/PS expose four terrain diagnostic choices')
 ok('A/B/C는 진단 전용입니다.' in gui and '실제 지형 편집·저장에는 사용하지 마세요.' in menu,'terrain diagnostic warning')
-ok('AssemblyVersion("15.1.0.0")' in gui,'installer assembly version 15.1.0.0')
+ok('AssemblyVersion("15.3.0.0")' in gui,'installer assembly version 15.3.0.0')
 tabs=('전투','편의성','성능','게임성','조조전','기타(개발용)')
 for (s,k),(g,d,r,i,t) in cs.items():
     ok(t in tabs,'unknown tab %s'%t)

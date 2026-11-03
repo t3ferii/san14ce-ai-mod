@@ -23,7 +23,7 @@ using System.Windows.Forms;
 
 [assembly: System.Reflection.AssemblyTitle("SAN14 AI 모드 설치 관리자")]
 [assembly: System.Reflection.AssemblyProduct("AI_TacticsMod")]
-[assembly: System.Reflection.AssemblyVersion("15.1.0.0")]
+[assembly: System.Reflection.AssemblyVersion("15.3.0.0")]
 
 namespace AiTacticsInstaller {
 
@@ -80,7 +80,7 @@ static class Catalog {
         new Feature("편의성", "convenience", "officer_ui", "stat_exp", 1, "", "", "능력치 경험치 표시 (오각형 그래프 숫자 뒤 /N%)", "출처: 삼갤 주딱"),
         new Feature("편의성", "convenience", "officer_ui", "dispatch_days", 1, "", "", "파견 남은 일수 표시 (파견 목록에 귀환까지 N일)", "출처: 삼갤 주딱"),
         new Feature("게임성", "convenience", "real_estate", "terrain_edit", 1, "", "", "부동산 계획: 지형 변경", "지역내정에서 거점·성·관문 칸을 클릭하면 담당관 임명, 그 밖 도시권 칸을 클릭하면 그 칸 위에 지형 선택 창(무료·무제한). 바닥 재질·높이·부대 높이·나무·절벽·수면이 바로 반영되고 세이브와 함께 보존됩니다. 격류의 흰 물살은 아직 반영되지 않습니다."),
-        new Feature("게임성", "convenience", "diplomacy", "diplomacy_overinvest", 1, "", "", "외교 군정 100% 초과 투입", "컴퓨터가 시작한 친선·동맹·포로반환·공격요청 교섭에서 보유 군정까지 투입합니다. 100%를 넘긴 방어 효과는 상대의 추가 투입 후에도 유지됩니다."),
+        new Feature("게임성", "convenience", "diplomacy", "diplomacy_overinvest", 0, "", "", "외교 군정 100% 초과 투입", "컴퓨터가 시작한 친선·동맹·포로반환·공격요청 교섭에서 보유 군정까지 투입합니다. 100%를 넘긴 방어 효과는 상대의 추가 투입 후에도 유지됩니다."),
         new Feature("게임성", "convenience", "diplomacy", "diplomacy_counterturn", 1, "", "", "외교 군정 마지막 추가 대응", "컴퓨터의 마지막 응답 뒤 플레이어가 한 번 더 군정을 투입할 수 있습니다. 추가 대응 후에는 바로 판정합니다."),
         new Feature("편의성", "convenience", "officer_ui", "mediation_plus", 1, "", "", "중개 확장 (의형제 3인, 일부다처, 이혼)", "출처: 삼갤 주딱"),
         new Feature("편의성", "convenience", "officer_ui", "drag_learn", 1, "", "", "전법서 습득 다중 선택 (여러 무장 × 여러 전법서 한 번에)", "출처: 삼갤 주딱"),
@@ -143,7 +143,7 @@ static class Catalog {
     public static readonly string[] RawSettings = { "ccz_appearance.profile" };
     // user 2026-10-28: retired, conflicts with mission_v2; independent of its current value.
     public static readonly HashSet<string> Retired = new HashSet<string> {
-        "combat.departures", "combat.group_advance", "combat.support"
+        "combat.departures", "combat.group_advance", "combat.support", "diplomacy.diplomacy_overinvest"
     };
     public const string RetiredNote = "임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.";
     // 함께 쓸 수 없는 기능: 키 기능이 켜져 있으면 값 기능은 설치되지 않는다 (DLL도 같은 규칙으로 끈다).
@@ -961,7 +961,7 @@ sealed class MainForm : Form {
 
     // 탭마다 독립 기능을 차례로, 같은 탭의 종속 기능은 상위 바로 아래에 들여 쓴다.
     static List<KeyValuePair<Feature, bool>> TabOrder(string tab) {
-        var items = Catalog.Items.Where(f => f.Tab == tab).ToList();
+        var items = Catalog.Items.Where(f => f.Tab == tab && !Catalog.Retired.Contains(f.Id)).ToList();
         var order = new List<KeyValuePair<Feature, bool>>();
         foreach (var f in items) {
             bool nestedHere = f.IsChild && items.Any(p => p.Id == f.Requires);

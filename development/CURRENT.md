@@ -1,3 +1,3 @@
-# 공개 소스 상태
+# v15.3 public source
 
-v15.2 공개 무로그 빌드 소스 (2026-11-03). 새 조조전 UI의 실게임 확인은 남아 있습니다. 빌드 의존성은 docs/SOURCE_DEPENDENCIES.md, 검증 범위는 docs/SOURCE_VALIDATION.md를 확인하세요.
+Unsigned, runtime logging compiled out. CCZ editor save and diplomacy final-response UI fixes included. Overinvestment disabled; original cap and marker restored. Retired combat options hidden. Local diagnostic gameplay was checked by the user; the public log-free build is not gameplay-verified.

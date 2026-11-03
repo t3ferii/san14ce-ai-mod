@@ -26,7 +26,8 @@ static const Guard guards[]={
     {0x824880,0x89,0xC2331598513E40A5ull},
     {0x806950,0x52,0x4444CED6F456EF3Bull},
     {0x841180,0xDB,0x3151C6539772611Bull},
-    {0x856500,0x117,0x24D4B9B60DED8F98ull},
+    {0x856620,0x17E,0x7401C846799E089Aull},
+    {0x83BFD0,0x134,0x044BDA4035D33931ull},
     {0x85B160,0x7,0xE79A5C99C5896991ull},
     {0x85B1A0,0x10,0xB904A9AE37C96A76ull},
     {0x85CF80,0x10,0x2497AFADFF8A0A9Eull},
@@ -35,9 +36,13 @@ static const Guard guards[]={
     {0x92F7B0,0x60,0x81C5EF3F68A59802ull},
     {0x92F810,0x77,0x643D23A4F9165456ull},
     {0x805010,0x28,0x5E88D2E55819EF51ull},
+#ifndef NO_RUNTIME_LOG
+    {0x3FB600,0x40,0x00272F28DF444A6Full},
+#endif
 };
 struct Slot {unsigned rva,original;};
 static const Slot slots[]={
+    {0x145DBE0,0x811210},
     {0x145DBC0,0x810CA0},
     {0x145DBC8,0x810640},
     {0x145F9C0,0x805010},
@@ -59,5 +64,8 @@ static const Site sites[]={
     {0x8162E1,0x804770},
     {0x816726,0x324E20},
     {0x81133D,0x815EA0},
+#ifndef NO_RUNTIME_LOG
+    {0x324E93,0x3FB600}, // Original six-argument draw, diagnostic pass-through only.
+#endif
 };
 }

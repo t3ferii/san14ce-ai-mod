@@ -8,6 +8,7 @@ struct Session {
     ccz_appearance::Settings value;std::wstring before,notice;wchar_t path[MAX_PATH]={};
     ccz_catalog::Reader catalog;unsigned pending=Root,step=Root,formation=1,tier=0,general=0;
     unsigned long long preview_key=~0ull;unified_dialogs::Dialog *dialog=nullptr;
+    bool save_requested=false;
 };
 static std::unique_ptr<Session> session;
 static unsigned preview_cell(unsigned code){return code==255?~0u:ccz_appearance::cell(code);}
@@ -45,6 +46,44 @@ static void preview(Session &s,unsigned selected){
     std::wstring hint=s.notice.empty()?L"통솔 경계 "+std::to_wstring(s.value.low)+L" / "+std::to_wstring(s.value.high)+L" · 목록에서 항목을 선택하세요":s.notice;
     ccz_preview::set(std::move(title),std::move(out),std::move(hint));
 }
+static bool gallery_footer(unified_dialogs::Dialog &r){
+    Obj footer=pointer(r.object,0x188);if(!footer)return false;
+    // The native mode2 footer setup (2C09E0..2C0AAD), independent of list mode.
+    // Keep the original footer/list/page objects alive. Only enable its native
+    // round button slots; single-select must not inherit mode2's full-capacity lock.
+    auto add=fn<void(__fastcall *)(Obj,unsigned,int,int)>(0x85FF50);
+    auto bind=fn<void(__fastcall *)(Obj,unsigned,unsigned)>(0x85C780);
+    add(footer,5,0,-1);add(footer,4,1,-1);
+    bind(footer,5,0x7FFFFFFD);bind(footer,4,0x7FFFFFFE);
+    // Publish the new slots before the modal entrance/resume sees the footer.
+    for(unsigned id:{5u,4u}){
+        Obj control=fn<Obj(__fastcall *)(Obj,unsigned)>(0x92CEE0)(footer+0x130,id);
+        if(!control)return false;
+        *reinterpret_cast<unsigned *>(control+0x40)=(dword(control,0x40)|1u)&~8u;
+        fn<void(__fastcall *)(Obj,int)>(0x873450)(control,255);
+        fn<void(__fastcall *)(Obj,int)>(0x873370)(control,1);
+    }
+    if(Obj old=fn<Obj(__fastcall *)(Obj,unsigned)>(0x92CEE0)(footer+0x130,1)){
+        *reinterpret_cast<unsigned *>(old+0x40)|=8;
+        fn<void(__fastcall *)(Obj,int)>(0x873450)(old,0);
+        fn<void(__fastcall *)(Obj,int)>(0x873370)(old,1);
+    }
+    return true;
+}
+static void root_footer(unified_dialogs::Dialog &r){
+    if(!gallery_footer(r))return;
+    Obj footer=pointer(r.object,0x188);
+    Obj save=fn<Obj(__fastcall *)(Obj,unsigned)>(0x92CEE0)(footer+0x130,5);
+    if(!save)return;
+    // Reuse the shared command functor ABI, but bind it to the round button.
+    // Root row clicks still navigate immediately; footer confirmation saves
+    // the complete draft independently of the currently highlighted row.
+    alignas(8) unsigned char callback[64]={};
+    *reinterpret_cast<unified_dialogs::Command *>(callback)={unified_dialogs::command_vtable,&r,0};
+    *reinterpret_cast<Obj *>(callback+56)=callback;
+    fn<void(__fastcall *)(Obj,unsigned)>(0x869BE0)(save+0x70,0x7FFFFFFE);
+    fn<void(__fastcall *)(Obj,unsigned,Obj)>(0x1A3CB0)(save,0x7FFFFFFE,callback);
+}
 static bool layout_existing_list(unified_dialogs::Dialog &r){
     // Keep native ownership and delegates. The frame queue can still refer to
     // these controls: never replace or destroy them from inside on_frame.
@@ -54,14 +93,29 @@ static bool layout_existing_list(unified_dialogs::Dialog &r){
     ui_call_trace::call(ui_call_trace::Move,0x874650,fn<void(__fastcall *)(Obj,int,int)>(0x874650),r.object,0,0);
     ui_call_trace::call(ui_call_trace::Width,0x875F00,fn<void(__fastcall *)(Obj,int)>(0x875F00),r.object,1920);
     ui_call_trace::call(ui_call_trace::Height,0x8740F0,fn<void(__fastcall *)(Obj,int)>(0x8740F0),r.object,1080);
-    ui_call_trace::call(ui_call_trace::Move,0x874650,fn<void(__fastcall *)(Obj,int,int)>(0x874650),list,80,150);
+    ui_call_trace::call(ui_call_trace::Move,0x874650,fn<void(__fastcall *)(Obj,int,int)>(0x874650),list,80,90);
     Obj config=pointer(r.object,0x1A8);if(!config)config=r.config;
     int viewport=1000+(((*reinterpret_cast<unsigned *>(config+0x18)>=2) && *reinterpret_cast<unsigned *>(config+0x100))?48:0);
     ui_call_trace::call(ui_call_trace::Width,0x875F00,fn<void(__fastcall *)(Obj,int)>(0x875F00),list,viewport);
-    ui_call_trace::call(ui_call_trace::Height,0x8740F0,fn<void(__fastcall *)(Obj,int)>(0x8740F0),list,740);
+    ui_call_trace::call(ui_call_trace::Height,0x8740F0,fn<void(__fastcall *)(Obj,int)>(0x8740F0),list,600);
+    // Keep the existing page identity/delegates and constrain its actual hit/paint
+    // viewport too; the original title frame ends at y720, above the footer.
+    Obj pages=pointer(list,0x130);unsigned index=dword(list,0x208),count=dword(list,0x20C);
+    if(pages && index<count){if(Obj body=pointer(pages,index*8)){
+        // 86C860 sets the actual clipping drawable (+A0)->size(+F0/F2).
+        // The outer CUI height alone leaves that old clipping rectangle intact.
+        if(Obj clip=pointer(body,0xA0))
+            ui_call_trace::call(ui_call_trace::Height,0x9303B0,fn<void(__fastcall *)(Obj,int,int)>(0x9303B0),clip,viewport,552);
+        ui_call_trace::call(ui_call_trace::Width,0x875F00,fn<void(__fastcall *)(Obj,int)>(0x875F00),body,viewport);
+        ui_call_trace::call(ui_call_trace::Height,0x8740F0,fn<void(__fastcall *)(Obj,int)>(0x8740F0),body,552);
+    }}
     if(bar){
-        ui_call_trace::call(ui_call_trace::Move,0x874650,fn<void(__fastcall *)(Obj,int,int)>(0x874650),bar,80+viewport+16,230);
-        ui_call_trace::call(ui_call_trace::Height,0x8740F0,fn<void(__fastcall *)(Obj,int)>(0x8740F0),bar,660);
+        ui_call_trace::call(ui_call_trace::Move,0x874650,fn<void(__fastcall *)(Obj,int,int)>(0x874650),bar,80+viewport+16,170);
+        ui_call_trace::call(ui_call_trace::Height,0x8740F0,fn<void(__fastcall *)(Obj,int)>(0x8740F0),bar,520);
+        // 851930 owns a second length at +1A4. 84CE60 lays out the track,
+        // thumb and bottom arrow from that length and the updated outer bounds.
+        *reinterpret_cast<unsigned *>(bar+0x1A4)=520;
+        ui_call_trace::call(ui_call_trace::Refresh,0x84CE60,fn<void(__fastcall *)(Obj)>(0x84CE60),bar);
     }
     ui_call_trace::call(ui_call_trace::Refresh,0x2FC280,fn<void(__fastcall *)(Obj)>(0x2FC280),r.object);return true;
 }
@@ -71,11 +125,32 @@ static bool pick(const std::wstring &title,const std::vector<std::wstring> &name
     // 2C0820: positive A4 computes both body viewport and scrollbar from column
     // widths. Changing only the outer CUI width left its inner body at 1400px.
     *reinterpret_cast<unsigned *>(r->config+0xA4)=1;
+    // 2C0CC4: no one-item tab selector. 2C0F53 -> 2BF781: the explicit
+    // empty hover mode uses 45C5F0 rather than the default 2435B0 callback,
+    // so 303CB0 never constructs the unrelated officer portrait popup.
+    *reinterpret_cast<unsigned *>(r->config+0x9C)=0;
+    *reinterpret_cast<unsigned *>(r->config+0x114)=1;
+    if(session->step==Root){
+        auto dialog=r.get();
+        r->command=[dialog](unsigned button){
+            if(button || !session || session->dialog!=dialog)return;
+            session->save_requested=true;unified_dialogs::close(*dialog,false);
+        };
+        r->on_created=&root_footer;
+    }
     if(session->step==Gallery){
-        // 2F0A80: A0=0 suppresses the single-select automatic +190 accept call.
+        // Preserve native single selection: mode2/max1 locks all other rows
+        // when the saved initial shape is selected. Configure the round footer separately.
+        *reinterpret_cast<unsigned *>(r->config+0x18)=1;
+        *reinterpret_cast<unsigned *>(r->config+0x1C)=1;
+        *reinterpret_cast<unsigned *>(r->config+0x20)=1;
+        *reinterpret_cast<unsigned *>(r->config+0x88)=1;
+        *reinterpret_cast<unsigned *>(r->config+0xF8)=0; // no multi-select 'select all' command
+        *reinterpret_cast<unsigned *>(r->config+0x100)=0;
         *reinterpret_cast<unsigned *>(r->config+0xA0)=0;
-        r->button_names[0]=L"결정";auto dialog=r.get();
-        r->command=[dialog](unsigned button){if(button==0)unified_dialogs::close(*dialog,true);};
+        r->on_created=[](unified_dialogs::Dialog &d){
+            bool ok=gallery_footer(d);log_event("ccz_footer_created",ok,5,4);
+        };
     }
     *reinterpret_cast<const wchar_t **>(r->column+8)=session->step==Root?L"진형별 병종":session->step==Tier?L"통솔 구간별 병종":session->step==Gallery?L"조형 선택":session->step==Masks?L"적용 진형":L"고유 무장";
     auto configured=std::make_shared<bool>(false);
@@ -101,12 +176,13 @@ static void finish(bool save){
     ccz_preview::hide();session.reset();ui_call_trace::end();
 }
 static void root_done(bool ok,const std::vector<unsigned> &chosen){
-    if(!session)return;if(!ok || chosen.empty()){queue(Cancel);return;}unsigned id=chosen[0];
+    if(!session)return;
+    if(session->save_requested){session->save_requested=false;queue(Save);return;}
+    if(!ok || chosen.empty()){queue(Cancel);return;}unsigned id=chosen[0];
     if(id<23){session->formation=id;if(id>10 && id!=19 && id<21){session->notice=L"수상·특수 진형의 원작 모형은 유지합니다";queue(Root);}else queue(Tier);}
     else if(id==100)queue(Low);else if(id==101)queue(High);else if(id==102)queue(Generals);
     else if(id==103){session->value=ccz_appearance::Settings{};session->notice=L"기본값 복원됨 · 저장하면 적용됩니다";queue(Root);}
     else if(id==104)queue(Save);
-    else if(id==105){session->value.forms[ccz_appearance::general_index(663)]=6;session->notice=L"장료: 어린진·봉시진만 고유 그림";queue(Root);}
 }
 static void open_step(unsigned step){
     if(!session)return;auto &s=*session;s.step=step;s.pending=0;s.preview_key=~0ull;
@@ -117,7 +193,7 @@ static void open_step(unsigned step){
     if(step==Root){
         title=L"조조전 설정";
         for(unsigned f=0;f<23;++f){std::wstring name=ccz_appearance::formation_labels[f];for(unsigned t=0;t<3;++t)name+=(t?L" / ":L" : ")+short_label(s.value.mapping[f][t]);names.push_back(name);ids.push_back(f);}
-        const wchar_t *extra[]={L"통솔 첫 경계 변경",L"통솔 두 번째 경계 변경",L"고유 무장 적용 진형",L"기본값 복원",L"저장하고 닫기",L"장료 예시 적용"};for(unsigned i=0;i<6;++i){ids.push_back(100+i);names.push_back(extra[i]);}
+        const wchar_t *extra[]={L"통솔 첫 경계 변경",L"통솔 두 번째 경계 변경",L"고유 무장 적용 진형",L"기본값 복원",L"저장하고 닫기"};for(unsigned i=0;i<5;++i){ids.push_back(100+i);names.push_back(extra[i]);}
         initial.insert(s.formation);pick(title,names,ids,false,initial,&root_done);
     }else if(step==Tier){
         title=L"병종 설정";for(unsigned t=0;t<3;++t){ids.push_back(t);names.push_back(range_label(s,t)+L" : "+short_label(s.value.mapping[s.formation][t]));}

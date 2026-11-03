@@ -72,6 +72,8 @@ struct Dialog:Request {
     unsigned channel=0;
     std::function<void(unsigned)> command;
     std::array<std::wstring,3> button_names;
+    // Native controls may be added before the modal entrance/resume runs.
+    std::function<void(Dialog &)> on_created;
     // Called once per UI frame while this dialog exists; argument: it is the top request.
     std::function<void(Dialog &,bool)> on_frame;
     // A native child dialog, without another modal state or global channel.
@@ -238,6 +240,7 @@ static bool open(std::unique_ptr<Dialog> request) {
     ui_call_trace::call(ui_call_trace::Create,0x45B620,fn<void(__fastcall *)(Obj,int)>(0x45B620),r->config,static_cast<int>(r->channel));
     r->object=pointer(image+0x27D3CA0,r->channel*8);
     if(!r->object){r->completed=r->delivered=true;active=r->parent;return false;}
+    if(r->on_created)r->on_created(*r);
     ui_call_trace::run(ui_call_trace::Sidebar,[&]{return attach_sidebar(*r);});
     Obj modal=r->object;
     alignas(8) unsigned char callback[64];ui_call_trace::run(ui_call_trace::Completion,[&]{completion_storage(callback,r);});

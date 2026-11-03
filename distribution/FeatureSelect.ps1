@@ -9,7 +9,7 @@ $taskRawSettings = @('ccz_appearance.profile')
 # older file's missing key falls back to. Tab is the GUI installer tab (installer/InstallerGui.cs).
 $taskFeatureCatalog = @(
     @{Group='convenience'; Section='real_estate'; Key='terrain_edit'; Default=1; Requires=''; Inherit=''; Tab='게임성'; Label='부동산 계획: 지형 변경'; Note='지역내정에서 거점·성·관문 칸을 클릭하면 담당관 임명, 그 밖 도시권 칸을 클릭하면 그 칸 위에 지형 선택 창(무료·무제한). 바닥 재질·높이·부대 높이·나무·절벽·수면이 바로 반영되고 세이브와 함께 보존됩니다. 격류의 흰 물살은 아직 반영되지 않습니다.'}
-    @{Group='convenience'; Section='diplomacy'; Key='diplomacy_overinvest'; Default=1; Requires=''; Inherit=''; Tab='게임성'; Label='외교 군정 100% 초과 투입'; Note='컴퓨터가 시작한 친선·동맹·포로반환·공격요청 교섭에서 보유 군정까지 투입합니다. 100%를 넘긴 방어 효과는 상대의 추가 투입 후에도 유지됩니다.'}
+    @{Group='convenience'; Section='diplomacy'; Key='diplomacy_overinvest'; Default=0; Requires=''; Inherit=''; Tab='게임성'; Retired=$true; Label='외교 군정 100% 초과 투입'; Note='컴퓨터가 시작한 친선·동맹·포로반환·공격요청 교섭에서 보유 군정까지 투입합니다. 100%를 넘긴 방어 효과는 상대의 추가 투입 후에도 유지됩니다.'}
     @{Group='convenience'; Section='diplomacy'; Key='diplomacy_counterturn'; Default=1; Requires=''; Inherit=''; Tab='게임성'; Label='외교 군정 마지막 추가 대응'; Note='컴퓨터의 마지막 응답 뒤 플레이어가 한 번 더 군정을 투입할 수 있습니다. 추가 대응 후에는 바로 판정합니다.'}
     @{Group=''; Section='groups'; Key='combat'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='전투 AI 교정 전체 (SAN14_CombatAI.dll)'; Note='출진 편성·군세 이동·공성·병참·퇴각을 하나의 진행 상태로 관리합니다. 끄면 전투 DLL을 불러오지 않습니다.'}
     @{Group='combat'; Section='combat'; Key='sortie_formation'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='군세 출진 편성 (병력별 2~7부대·공성 진형·1,000명 지원)'; Note='컴퓨터 출진 판단 때 모드 편성으로 군세를 꾸립니다. 끄면 원작 출진 편성을 그대로 씁니다.'}
@@ -170,6 +170,7 @@ function Show-FeatureMenu($Values) {
     $taskNumber = 0
     foreach ($taskItem in $taskFeatureCatalog) {
         $taskNumber++
+        if ($taskItem.Retired) { continue } # user 2026-11-03: hidden legacy keys retain OFF migration
         $taskValue = $Values[$taskItem.Section + '.' + $taskItem.Key]
         $taskOn = $taskValue -ne 0
         $taskParentOff = $taskItem.Group -and $Values['groups.' + $taskItem.Group] -eq 0

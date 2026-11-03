@@ -187,7 +187,7 @@ static void load_mod_features()
     const int terrain_diag = dev_group() ? mod_setting(L"diagnostics", L"terrain_diag_mode", 0) : 0;
     f.terrain_diag_mode = terrain_diag >= 0 && terrain_diag <= 3 ? static_cast<unsigned>(terrain_diag) : 0u;
     f.building_destruction_all = on && feature_key(config, L"stratagem", L"building_destruction_all", false);
-    f.diplomacy_overinvest = on && feature_key(config, L"diplomacy", L"diplomacy_overinvest", false);
+    f.diplomacy_overinvest = on && feature_key(config, L"diplomacy", L"diplomacy_overinvest", false) && false; // user 2026-11-03: restore native cap/marker, including legacy INI=1
     f.diplomacy_counterturn = on && feature_key(config, L"diplomacy", L"diplomacy_counterturn", false);
     f.damage_preview = on && feature_key(config, L"officer_ui", L"damage_preview", true);
     f.traits9 = on && feature_key(config, L"extensions", L"traits9", true);

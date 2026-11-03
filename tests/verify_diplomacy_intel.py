@@ -68,7 +68,14 @@ check(emulate(0x930D20,*[guards[0x930D20][0]],patched)==guards[0x930D20][1],'930
 check(emulate(0x22FCE0,guards[0x22FCE0][0],[(0x230098,b'\x90'*8)]) is None,'unknown change in known window still rejected')
 check(emulate(0x930D20,guards[0x930D20][0],[(0x930D20,b'\xcc\x90\x90\x90\x90')]) is None,'non-jump change at 930D20 still rejected')
 check(fnv(masked(0x22FCE0,guards[0x22FCE0][0],[(0x22FD00,b'\xcc')]))!=guards[0x22FCE0][1],'change outside known window still rejected')
+# User 2026-11-03: verify the native calls and the hidden-mode exclusion independently.
+for at in (0x814884,0x8149EE):
+    check(read(at,1)==b'\xe8' and at+5+struct.unpack('<i',read(at+1,4))[0]==0x856620,'original phase-seven resumes the footer with 856620')
+check(read(0x85652C,7)==bytes.fromhex('ffc883f8010f86'),'generic footer opener excludes modes one and two')
+check(struct.unpack('<Q',read(0x145DBE0,8))[0]==0x140811210,'frame hook retains native four-argument state handler')
+
 cache=P/'research/decomp_cache/1fbe6be7466a6646'
+check(read(0x324E98,4)==bytes.fromhex('3bc77d70'),'native resolver uses strict draw < chance after the original draw')
 check(read(0x816756,5)==bytes.fromhex('ba01000000'),'tail gate replaces one whole MOV EDX,1 after the resolver result is consumed')
 check(read(0x816756,5)==capture[0x816756-0x1000:0x81675B-0x1000],'independent retained tail instruction')
 check(read(0x81675B,3)==bytes.fromhex('488bce') and read(0x816807,4)==bytes.fromhex('488b4590'),'normal resume restores RSI argument; skipped UI path resumes at native container cleanup')
@@ -93,4 +100,4 @@ for key in ['diplomacy_overinvest','diplomacy_counterturn']:
 adapter=(P/'src/native_adapter.cpp').read_text(encoding='utf-8-sig')
 check('f.diplomacy_overinvest = on && feature_key' in adapter,'parent gate')
 check('f.diplomacy_counterturn = on && feature_key' in adapter,'parent gate')
-print(json.dumps(dict(status='diplomacy_intel_native_verified',checks=checks,code_guards=30,slots=11,sites=7,inline_gates=1,live_game=False)))
+print(json.dumps(dict(status='diplomacy_intel_native_verified',checks=checks,code_guards=32,slots=12,sites=8,inline_gates=1,live_game=False)))

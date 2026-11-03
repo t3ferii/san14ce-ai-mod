@@ -64,7 +64,7 @@ foreach($taskMode in 0..3){
     Check ($taskTerrainRaw -match ('(?m)^terrain_diag_mode='+$taskMode+'\r?$') -and $taskTerrainRaw -match '(?m)^extra_key=keep\r?$') ('GUI saves mode and preserves user key '+$taskMode)
 }
 # 사용자 결정 2026-10-28: 충돌 옵션 사용 중지. Legacy 1 and injected values must save as 0.
-$taskRetired=@('combat.departures','combat.group_advance','combat.support')
+$taskRetired=@('combat.departures','combat.group_advance','combat.support','diplomacy.diplomacy_overinvest')
 [string]$taskRetiredIni=Join-Path $Fixture 'retired.ini'
 [IO.File]::WriteAllText($taskRetiredIni,"[features]`r`ndepartures=1`r`ngroup_advance=1`r`nsupport=1`r`n[combat]`r`nmission_v2=0`r`ndepartures=1`r`ngroup_advance=1`r`nsupport=1`r`n",[Text.Encoding]::Unicode)
 $taskRetiredDoc=$taskLoad.Invoke($null,[object[]]@($taskRetiredIni.psobject.BaseObject))
@@ -179,15 +179,11 @@ foreach($mission in @(0,1)){foreach($master in @(0,1)){
     $taskSync.Invoke($taskForm.psobject.BaseObject,$null)
     foreach($id in $taskRetired){
         $taskRow=@($taskRows | Where-Object {$_.Item.Id -eq $id})
-        Check ($taskRow.Count -eq 1 -and $taskRow[0].Visible -and -not $taskRow[0].Box.Checked -and -not $taskRow[0].Box.Enabled) ('retired row stays visible/OFF/disabled: '+$id)
-        $taskNote=$taskRow[0].GetType().GetField('note',$taskFlags).GetValue($taskRow[0])
-        Check ($taskNote.Text -eq '임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.' -and -not $taskRow[0].Fix.Visible) ('retired reason without enable link: '+$id)
-        $taskState[$id]=1
-        Check (-not $taskEffective.Invoke($taskForm.psobject.BaseObject,[object[]]@($taskRow[0].Item.psobject.BaseObject))) ('retired cannot become effective: '+$id)
-        $taskForm.GetType().GetMethod('EnableChain',$taskFlags).Invoke($taskForm.psobject.BaseObject,[object[]]@($taskRow[0].Item.psobject.BaseObject,$true))
-        Check ($taskState[$id] -eq 0 -and $taskState['groups.combat'] -eq $master -and $taskState['combat.mission_v2'] -eq $mission) ('retired enable-chain does not change group/mission: '+$id)
-        $taskRow[0].Box.Checked=$true
-        Check (-not $taskRow[0].Box.Checked -and $taskState[$id] -eq 0) ('retired toggle rejected: '+$id)
+        Check ($taskRow.Count -eq 0) ('user 2026-11-03: retired row absent: '+$id)
+        $taskItem=@($taskItems | Where-Object {$_.Id -eq $id})[0]
+        Check (-not $taskEffective.Invoke($taskForm.psobject.BaseObject,[object[]]@($taskItem.psobject.BaseObject))) ('retired cannot become effective: '+$id)
+        $taskForm.GetType().GetMethod('EnableChain',$taskFlags).Invoke($taskForm.psobject.BaseObject,[object[]]@($taskItem.psobject.BaseObject,$true))
+        Check ($taskState[$id] -eq 0 -and $taskState['groups.combat'] -eq $master -and $taskState['combat.mission_v2'] -eq $mission) ('retired enable-chain preserves other settings: '+$id)
     }
     $taskCombat=@($taskItems | Where-Object {$_.Tab -eq '전투' -and -not $_.IsMaster -and $_.Id -notin $taskRetired})
     $taskCount=@($taskCombat | Where-Object {$taskEffective.Invoke($taskForm.psobject.BaseObject,[object[]]@($_.psobject.BaseObject))}).Count
@@ -248,7 +244,7 @@ foreach($taskSource in @('distribution\FeatureSelect.ps1','FeatureSelect.ps1')){
         foreach($id in $taskRetired){Check ($taskPSValues[$id] -eq 0) ('PS loads retired OFF: '+$taskSource+'/'+$id)}
         foreach($id in $taskRetired){$taskPSValues[$id]=1}
         $taskMenuText=(& {Show-FeatureMenu $taskPSValues} 6>&1 | Out-String)
-        Check (([regex]::Matches($taskMenuText,'\[사용 중지\]')).Count -eq 3) 'PS menu always marks exactly three retired features'
+        Check (([regex]::Matches($taskMenuText,'\[사용 중지\]')).Count -eq 0) 'user 2026-11-03: PS menu hides retired features'
         $taskNumbers=@(for($i=0;$i -lt $taskFeatureCatalog.Count;$i++){if($taskFeatureCatalog[$i].Retired){$i+1}}) -join ' '
         foreach($inputText in @($taskNumbers,'a','d')){
             $script:taskInputs=New-Object 'Collections.Generic.Queue[string]'

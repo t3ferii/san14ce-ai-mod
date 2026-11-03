@@ -1,6 +1,6 @@
 # GitHub 공개 배포 절차
 
-사용자 지시(2026-11-01): 매번 다시 찾지 않도록 공개 배포 절차를 한곳에 둔다. v15 배포에 실제로 쓴 순서다. 저장소 `t3ferii/san14ce-ai-mod`. 공개 전에 사용자 확인을 받는다(외부 공개).
+사용자 지시(2026-11-01): 매번 다시 찾지 않도록 공개 배포 절차를 한곳에 둔다. v15 배포에 실제로 쓴 순서다. 저장소 `t3ferii/san14ce-ai-mod`. 공개는 사용자 요청이 있을 때 진행한다. 현재 요청에서 배포를 명시했으면 재확인하지 않는다.
 
 ## 원칙
 - 커밋 작성자·커미터는 `t3ferii <188655834+t3ferii@users.noreply.github.com>`만. 실명·gmail 금지. 새 복제본마다 저장소 로컬 `user.name`/`user.email`을 먼저 설정한다.
@@ -37,7 +37,7 @@ python -B -X utf8 <스크래치>/src_<버전>/AI_TacticsMod/tools/audit_current_
 - 결과를 저장소에 `cp -r` 한 뒤 **README.md는 `git checkout README.md`로 되돌린다**(내보내기가 로컬 README로 「모더용 소스 공개」 절을 지움).
 - `FUNCTION_AUDIT.md` 3행·`source_audit.json` basis를 새 버전으로 고친다(생성기 문구가 v12.19로 남아 있음).
 - 저장소 전용 파일 유지: `tools/build_public_smoke.ps1`(로컬에 없음, `-Combat -Ccz` 실행해 통과 확인), `docs/SOURCE_*.md`, `AI_EDITING.md`, `development/CURRENT.md`, `public_source_manifest.json`(추가·변경 파일 지문), `THIRD_PARTY.md`, `site/`.
-- 커밋 전 `git diff --cached`에서 실명·gmail·`C:\Users\<user> 경로가 없는지 확인한다.
+- 커밋 전 `git diff --cached`에서 실명·gmail·`C:\Users\<계정>` 경로가 없는지 확인한다.
 
 ## 3. 임시 브랜치로 릴리스 생성
 main 커밋 해시를 `MAIN`으로 기억한 뒤:
@@ -105,3 +105,10 @@ jobs:
 - 설치 관리자 쪽 확인: 설치된 EXE를 PowerShell에서 `[Reflection.Assembly]::LoadFile`로 열어 `AiTacticsInstaller.Updates.Fetch()`가 새 버전과 `HistoryUrl`을 돌려주는지 본다.
 - 확인 후 임시 브랜치 삭제: `git push origin --delete release/<버전>` (태그·릴리스는 main 커밋을 가리키므로 남는다).
 - 로컬 기록: `docs/CHANGES_ALL.md` 상태 칸, 필요하면 `tools/generate_handoff.py`.
+
+## v15.3 절차 보완 (2026-11-03)
+- 사용자의 v15.3 정식 배포 지시가 공개 승인이다. 사전 릴리스로 게시하지 않는다.
+- v15.2에서 검증한 **초안 생성 → 자산 2개 업로드 → 각각 size·SHA-256 digest 대조 → draft=false, prerelease=false, make_latest=true** 순서로 게시한다. 위 예제의 즉시 공개 생성보다 이 순서를 우선한다.
+- v15.3은 군정 초과 투입을 DLL에서도 중지한다. GUI/PS는 충돌 전투 3개와 초과 투입을 숨기되 이전 키의 OFF 이전 처리를 유지한다.
+- PUBLISHED에 v15.2를 추가하고 release_features.json에 이전 판 비교 자료를 포함한다.
+- 로컬 설치는 게임 종료 후 공용 설치 경로만 사용한다. 공개 패키지 준비는 실행 중 게임을 수정하지 않는다. 공개 무로그판과 로컬 진단판의 검증 결과를 구분한다.

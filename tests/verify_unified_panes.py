@@ -45,7 +45,21 @@ check(pe.read(0x2C0ED6,7)==bytes.fromhex('418b8aa4000000'),'native constructor r
 check(pe.read(0x2F0B25,9)==bytes.fromhex('83b8a000000000741c'),'native single-choice auto-close is skipped when config+A0 is zero')
 pick=editor.split('static bool pick(',1)[1].split('static void ',1)[0]
 check('r->config+0xA4)=1' in pick and 'r->column+0x10)=1000' in pick,'CCZ configures internal column viewport before native open')
-check('if(session->step==Gallery)' in pick and 'r->config+0xA0)=0' in pick and 'L"결정"' in pick and 'unified_dialogs::close(*dialog,true)' in pick,'gallery uses original deferred acceptance plus an explicit confirmation command')
+# User 2026-11-03: use the original round confirm/back footer pair, not an auxiliary command.
+check(all(t in pick for t in ('if(session->step==Gallery)','r->config+0xA0)=0','r->config+0x18)=1','r->config+0x1C)=1','r->config+0x20)=1','r->config+0xF8)=0','r->config+0x88)=1','r->config+0x100)=0')) and 'button_names' not in pick,'gallery requests native paired footer, one selection and hidden checkbox gutter without auxiliary command')
+check(pe.read(0x2C0CC4,7)==bytes.fromhex('83b99c00000000') and 'r->config+0x9C)=0' in pick,'disable native tab construction before opening CCZ only')
+check(pe.read(0x2C0F53,6)==bytes.fromhex('8b8814010000') and pe.read(0x2C0F60,6)==bytes.fromhex('89886c020000'),'constructor forwards config+114 to the list hover mode+26C')
+def call_target(at,target):
+    b=pe.read(at,5)
+    check(b[0]==0xE8 and at+5+struct.unpack_from('<i',b,1)[0]==target,f'original call {at:X}->{target:X}')
+call_target(0x2BF78A,0x45C5F0)
+check(pe.read(0x45C5F4,2)==bytes.fromhex('33c0') and pe.read(0x45C5F9,4)==bytes.fromhex('48894138') and 'r->config+0x114)=1' in pick,'native non-default hover path constructs an empty callback before any popup is allocated')
+check(pe.read(0x303CCE,4)==bytes.fromhex('488b4a38') and pe.read(0x303CD7,7)==bytes.fromhex('48398b40010000'),'native popup helper checks the callback then existing popup before allocation')
+call_target(0x2C0A15,0x85FF50)
+call_target(0x2C0A2B,0x85C780)
+check(pe.read(0x2C0A1E,6)==bytes.fromhex('41b8fdffff7f') and pe.read(0x2C0AA0,6)==bytes.fromhex('41b8feffff7f'),'native round footer binds accept and cancel result codes')
+check('list,80,90' in layout and 'list,600' in layout and 'body,552' in layout and 'bar,520' in layout and 90+600<720,'parent list, native page and scrollbar fit within the original title frame')
+check('장료 예시 적용' not in editor and 'id==105' not in editor,'developer example action removed; existing user mapping remains untouched')
 check(80+1048<1232 and 80+1048+16+24<1232,'list and scrollbar including checkbox gutter end before preview starts')
 bounds={name:tuple(map(int,re.search(name+r'_bounds\{([^}]+)\}',source)[1].split(','))) for name in ('roster','condition')}
 for name,(x,y,w,h) in bounds.items():check(x>=0 and y>=0 and x+w+32<=1920 and y+h<=1080 and w>0 and h>80,name+' and its scrollbar stay inside the shared viewport')
