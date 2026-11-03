@@ -1,6 +1,6 @@
 {
   "snapshot": "v15.4 UI resource installer source; native DLL source unchanged from v15.3",
-  "files": 408,
+  "files": 409,
   "ai_contracts": 20,
   "cpp_executable_tokens_unchanged": true,
   "excluded": [
@@ -2459,6 +2459,12 @@
       "path": "tools/verify_target_retreat_release.py",
       "original_sha256": "6767fed57278fabc54899efd752a6c03026793112e12adca89d71f52e89867aa",
       "published_sha256": "6767fed57278fabc54899efd752a6c03026793112e12adca89d71f52e89867aa",
+      "ai_contracts": 0
+    },
+    {
+      "path": "tools/audit_feature_settings.py",
+      "original_sha256": "6a73ad1f0aa9c5f4c59efe74fa5953f45df759db1dfef29526b4664269e0e4a1",
+      "published_sha256": "6a73ad1f0aa9c5f4c59efe74fa5953f45df759db1dfef29526b4664269e0e4a1",
       "ai_contracts": 0
     }
   ]
