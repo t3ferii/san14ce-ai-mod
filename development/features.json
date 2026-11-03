@@ -5,8 +5,13 @@
     "Development"
   ],
   "modules": {
+    "terrain-profile": {
+      "sources": ["src/terrain_call_profile.h", "tests/terrain_call_profile_fixture.cpp", "tests/terrain_call_profile_build.ps1", "tools/analyze_terrain_profile.py", "tests/test_analyze_terrain_profile.py"],
+      "tests": ["terrain-profile"]
+    },
     "terrain-edit": {
       "sources": [
+        "src/terrain_call_profile.h",
         "src/native_terrain_trees.inl",
         "tests/terrain_trees_fixture.cpp",
         "tests/terrain_trees_verify.py",
@@ -44,6 +49,7 @@
         "FeatureSelect.ps1"
       ],
       "tests": [
+        "terrain-profile",
         "terrain-edit",
         "terrain-edit-ui",
         "terrain-render",
@@ -736,6 +742,30 @@
     },
     "ccz-sprites": {
       "sources": [
+          "src/ccz_appearance.h",
+          "src/ccz_appearance_io.h",
+          "src/ccz_appearance_labels.h",
+          "src/native_ccz_editor.inl",
+        "src/native_ui_call_trace.inl",
+        "tests/ui_call_trace_fixture.cpp",
+        "tools/inspect_ccz_ui_trace.py",
+          "src/native_ccz_preview.inl",
+          "src/ccz_catalog.h",
+          "src/ccz_preview_palette.h",
+          "tests/ccz_native_editor_fixture.cpp",
+          "tests/ccz_native_editor_build.ps1",
+          "tools/ccz_build_catalog.py",
+          "assets/ccz/ccz_catalog.bin",
+          "assets/ccz/ccz_catalog.json",
+          "src/native_ccz_title.inl",
+          "tests/ccz_settings_fixture.cpp",
+          "tests/ccz_settings_build.ps1",
+          "tests/verify_ccz_settings.py",
+          "tools/prepare_ccz_title_layout.py",
+          "src/ccz_module.cpp",
+          "src/native_ccz_bridge.inl",
+          "tests/ccz_battle_fixture.cpp",
+          "tests/ccz_battle_build.ps1",
         "src/native_ccz_sprites.inl",
         "src/ccz_sprites.hlsl",
         "src/ccz_sprites_vs.h",

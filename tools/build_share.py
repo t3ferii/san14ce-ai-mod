@@ -6,14 +6,18 @@ PROJECT=Path(__file__).resolve().parents[1]
 GAME=PROJECT.parent
 parser=argparse.ArgumentParser()
 parser.add_argument('--payload',type=Path,default=PROJECT/'build/input_package')
+parser.add_argument('--local-diagnostic-candidate',action='store_true',
+    help='Package runtime-diagnostic DLLs only under build/local_candidates, never dist.')
 # User 2026-11-01: no more _noexe packages; every release carries the installer EXE.
 parser.add_argument('--report',type=Path,help='Keep a version-specific packaging receipt under build.')
 ARGS=parser.parse_args()
 PAYLOAD=ARGS.payload.resolve();WITHOUT_GUI=False
 assert PAYLOAD.is_relative_to((PROJECT/'build').resolve())
 manifest=json.loads((PAYLOAD/'manifest.json').read_text(encoding='utf-8'))
-if manifest.get('local_diagnostic_only'):
+if manifest.get('local_diagnostic_only') and not ARGS.local_diagnostic_candidate:
     raise RuntimeError('Local runtime diagnostics must never be distributed.')
+if ARGS.local_diagnostic_candidate:
+    assert manifest.get('local_diagnostic_only'),'Local diagnostic candidate requires local_diagnostic_only manifest.'
 if manifest.get('release_version')=='v12.22-rc3' and (PROJECT/'data/diagnostics/v12_22_rc3_crash_rollback.json').exists():
     raise RuntimeError('v12.22-rc3 expert-entry crash reported; this release is quarantined.')
 if manifest.get('release_version')=='v11.11' and (PROJECT/'data/diagnostics/v11_11_crash_rollback.json').exists():
@@ -109,8 +113,8 @@ if manifest.get('feature_switches'):
 if manifest.get('gui_installer') and not WITHOUT_GUI:
     # v12.8: the GUI installer copies exactly these files when the game lives elsewhere.
     files['AI_TacticsMod/package_files.txt']=('\r\n'.join(sorted(files))+'\r\n').encode('utf-8')
-target=PROJECT/'dist'/('SAN14_AI_'+manifest['release_version']+'_integrated.zip')
-target.parent.mkdir(exist_ok=True)
+target=(PROJECT/'build/local_candidates' if ARGS.local_diagnostic_candidate else PROJECT/'dist')/('SAN14_AI_'+manifest['release_version']+'_integrated.zip')
+target.parent.mkdir(parents=True,exist_ok=True)
 if target.exists():raise FileExistsError('Existing dist archives are protected: '+str(target))
 with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as archive:
     for name,data in files.items():archive.writestr(name,data)
@@ -121,6 +125,7 @@ report={'release_version':manifest['release_version'],'zip':str(target),'zip_sha
         'files':list(files),'dll_sha256':manifest['dll_sha256'],
         'python_required':False,'game_exe_included':False,'user_backups_included':False,
         'candidate_gameplay_verified':False,'gui_installer_included':bool(manifest.get('gui_installer')) and not WITHOUT_GUI}
+report['local_diagnostic_only']=bool(ARGS.local_diagnostic_candidate)
 if combat_dll is not None:report['split_modules']=manifest['split_modules']
 receipt=ARGS.report.resolve() if ARGS.report else PROJECT/'build/share_package.json'
 assert receipt.is_relative_to((PROJECT/'build').resolve())

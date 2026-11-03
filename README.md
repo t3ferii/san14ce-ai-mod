@@ -4,7 +4,7 @@
 
 [소스 수정·빌드 안내](docs/SOURCE_BUILD.md) · [AI 수정 지침](docs/AI_EDITING.md) · [검증 결과](docs/SOURCE_VALIDATION.md) · [수정·재배포 허용 범위](LICENSE)
 
-`src/`, `tests/`, `tools/`, `installer/`, `distribution/`에서 원하는 기능을 fork하여 수정할 수 있습니다. 핵심 코드의 `AI-CONTRACT` 주석은 AI가 지켜야 할 스레드·ABI·훅 소유권·저장 호환성 제약을 설명합니다. **v15 배포 DLL을 빌드한 작업 폴더의 소스를 그대로 옮겼습니다(2026-11-01).** 설치기(`installer/InstallerGui.cs`)와 조조전 DLL(`src/ccz_module.cpp`) 소스도 포함합니다. 개인 PC 경로만 `<user>`로 가렸고 C/C++ 실행 토큰은 원본과 같습니다. 전체 빌드에 필요한 원작 자료·외부 모드 payload는 [별도 의존성](docs/SOURCE_DEPENDENCIES.md)을 확인하세요.
+`src/`, `tests/`, `tools/`, `installer/`, `distribution/`에서 원하는 기능을 fork하여 수정할 수 있습니다. 핵심 코드의 `AI-CONTRACT` 주석은 AI가 지켜야 할 스레드·ABI·훅 소유권·저장 호환성 제약을 설명합니다. **v15.2 배포 DLL을 빌드한 작업 폴더의 소스를 그대로 옮겼습니다(2026-11-03).** 설치기(`installer/InstallerGui.cs`)와 조조전 DLL(`src/ccz_module.cpp`) 소스도 포함합니다. 개인 PC 경로만 `<user>`로 가렸고 C/C++ 실행 토큰은 원본과 같습니다. 전체 빌드에 필요한 원작 자료·외부 모드 payload는 [별도 의존성](docs/SOURCE_DEPENDENCIES.md)을 확인하세요.
 
 
 길어지는 「전략중」 대기, 손이 많이 가는 등용과 내정, 아쉬웠던 컴퓨터의 전쟁 운영을 함께 손봤습니다. **기다리는 시간은 줄이고, 천하를 다투는 재미에 더 집중해 보세요.**
@@ -14,9 +14,9 @@
 - **판단에 필요한 정보를 한눈에** — 예상 피해량, 숨겨진 충성도, 담당관 개성과 귀환 예정일을 보여줍니다.
 - **내 취향대로 골라 쓰기** — 설치기의 전투·편의성·성능·게임성·조조전 탭에서 원하는 기능만 선택하세요.
 
-> **v15.1 (2026-11-02)** — 조조전 줌아웃 그림 복구·전투 방향·적이 없는 상황의 막기/회심 판정을 수정했습니다. 지형 변경을 켠 상태의 전체 지도 전환과 군사 보고 처리를 개선하고, 외교 마지막 대응에서 인물과 결정 버튼이 사라지는 문제를 수정했습니다. **미서명 공개판이며, 이번 외교 수정과 공개 무로그 빌드의 실게임 재확인은 남아 있습니다.** 기존 설정은 보존됩니다.
+> **v15.2 (2026-11-03)** — 첫 메뉴 우측 하단의 조조전 설정에서 진형별 병종·통솔 경계·고유 조형 적용 진형을 변경합니다. 목록과 미리보기 영역을 분리하고 병종은 ‘결정’으로 적용합니다. **미서명 공개판, 이번 UI의 실게임 확인은 남아 있습니다.** 기존 설정을 보존합니다.
 
-[모드 소개 홈페이지 · 영상 바로 재생](https://t3ferii.github.io/san14ce-ai-mod/) · [v15.1 다운로드](https://github.com/t3ferii/san14ce-ai-mod/releases/tag/SAN14_AI_v15.1) · [간단한 배포 설명](docs/RELEASE_NOTES.md) · [전체 기능과 설정](docs/FEATURE_SWITCHES.md) · [전체 변경 이력](docs/CHANGES_ALL.md)
+[모드 소개 홈페이지 · 영상 바로 재생](https://t3ferii.github.io/san14ce-ai-mod/) · [v15.2 다운로드](https://github.com/t3ferii/san14ce-ai-mod/releases/tag/SAN14_AI_v15.2) · [간단한 배포 설명](docs/RELEASE_NOTES.md) · [전체 기능과 설정](docs/FEATURE_SWITCHES.md) · [전체 변경 이력](docs/CHANGES_ALL.md)
 
 v15부터는 설치 관리자 상단의 **업데이트** 버튼으로 다음 버전을 받을 수 있습니다. v14.2 이전 사용자는 위 링크에서 한 번만 직접 받아 주세요.
 

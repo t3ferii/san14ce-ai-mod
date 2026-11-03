@@ -27,7 +27,17 @@ git config user.name t3ferii; git config user.email 188655834+t3ferii@users.nore
 ```
 - 저장소 README에는 로컬에 없는 「모더용 소스 공개」 절(3~9행)이 있다. 로컬 README를 통째로 덮지 말고 이 절을 유지한다.
 - `README.md`, `docs/CHANGES_ALL.md`, `docs/CREDITS.md`, `docs/RELEASE_NOTES.md`를 LF로 옮겨 `docs: <버전> — 요약` 커밋 후 `git push origin main`.
-- 지금까지 공개 판마다 문서만 갱신했고 `src/` 등 소스 스냅샷은 v14 시점 그대로다(사용자 요청 시에만 갱신).
+- 소스 스냅샷은 사용자 요청 시에만 갱신한다(마지막: v15, main `d7f1d58`, 2026-11-01).
+
+## 2-1. 소스 공개 갱신 (요청 시)
+```
+python -B -X utf8 tools/export_source_snapshot.py <스크래치>/src_<버전> "<버전> build source ..."   # 개인 경로 <user> 치환·C++ 토큰 동일 검사
+python -B -X utf8 <스크래치>/src_<버전>/AI_TacticsMod/tools/audit_current_source.py                 # 스냅샷 안에서 함수 색인 재생성(로컬 development 불변)
+```
+- 결과를 저장소에 `cp -r` 한 뒤 **README.md는 `git checkout README.md`로 되돌린다**(내보내기가 로컬 README로 「모더용 소스 공개」 절을 지움).
+- `FUNCTION_AUDIT.md` 3행·`source_audit.json` basis를 새 버전으로 고친다(생성기 문구가 v12.19로 남아 있음).
+- 저장소 전용 파일 유지: `tools/build_public_smoke.ps1`(로컬에 없음, `-Combat -Ccz` 실행해 통과 확인), `docs/SOURCE_*.md`, `AI_EDITING.md`, `development/CURRENT.md`, `public_source_manifest.json`(추가·변경 파일 지문), `THIRD_PARTY.md`, `site/`.
+- 커밋 전 `git diff --cached`에서 실명·gmail·`C:\Users\<user> 경로가 없는지 확인한다.
 
 ## 3. 임시 브랜치로 릴리스 생성
 main 커밋 해시를 `MAIN`으로 기억한 뒤:

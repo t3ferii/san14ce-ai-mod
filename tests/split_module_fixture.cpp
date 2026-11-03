@@ -3,6 +3,9 @@
 #undef SPLIT_MODULE_FIXTURE
 #define TACTICS_FIXTURE
 #include "../src/native_adapter.cpp"
+#define CCZ_GUARD_FIXTURE
+#include "../src/native_ccz_bridge.inl"
+#undef CCZ_GUARD_FIXTURE
 // Exercise the actual speed frame wrapper through simulated native functions.
 static Obj __fastcall mock_speed_manager();
 static Obj __fastcall mock_speed_settings();
@@ -256,7 +259,24 @@ int main(int argc,char **argv) {
     callsite_sortie_tests();
     speed_second_start_tests();
     check(diplomacy_intel_guards_match(),"diplomacy original code, calls and all screen slots match");
+    // User 2026-11-02: never place the deferred UI gate over a foreign tail.
+    for(unsigned offset=0;offset<5;++offset) {
+        image[diplomacy_intel::final_tail+offset]^=1;
+        check(!diplomacy_intel_guards_match(),"changed final-tail instruction disables diplomacy feature");
+        image[diplomacy_intel::final_tail+offset]^=1;
+    }
     check(advisor_briefing_guards_match(),"adviser briefing original functions and exact informational slots match");
+    // User 2026-11-02: friendly/ally rejection must use a verified native ABI.
+    check(ccz_combat::guards_match(),"CCZ combat call and native relation helpers match");
+    for(unsigned rva:{0x22CC40u,0x2CA280u})for(unsigned offset:{0u,0x2Fu}) {
+        image[rva+offset]^=1;check(!ccz_combat::guards_match(),"foreign relation helper prevents CCZ combat publication");image[rva+offset]^=1;
+    }
+    // User 2026-11-02: headless report ABI and its caller must fail closed.
+    for(const auto &g:advisor_briefing::guards)for(unsigned offset:{0u,g.size-1}) {
+        image[g.rva+offset]^=1;
+        check(!advisor_briefing_guards_match(),"foreign adviser code rejects its feature");
+        image[g.rva+offset]^=1;
+    }
     for(const auto &g:diplomacy_intel::guards)for(unsigned offset:{0u,g.size-1}) {
         image[g.rva+offset]^=1;
         check(!diplomacy_intel_guards_match(),"foreign diplomacy code rejects its feature");

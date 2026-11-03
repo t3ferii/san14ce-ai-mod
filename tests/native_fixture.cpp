@@ -61,6 +61,8 @@ static Obj __fastcall mock_goal(Obj, unsigned) { return goal; }
 static Obj __fastcall mock_goal_force(Obj) { return goal_owner; }
 static int __fastcall mock_day(Obj) { return fixture_day; }
 static unsigned __fastcall mock_goal_hex(Obj) { return 200; }
+static unsigned siege_castle_hex = 200;
+static unsigned __fastcall mock_siege_castle_hex(Obj) { return siege_castle_hex; }
 static float __fastcall mock_route_speed(Obj,Obj,int,int,Obj tile) {return region_available && (!tile || valid(tile))?1.0f:0.0f;}
 static int __fastcall mock_daily_points(Obj army) {float s=*reinterpret_cast<float *>(army+0x180);return s>0?static_cast<int>(s*100):100;}
 static Obj __fastcall mock_terrain(Obj tile) {return tile;}
@@ -425,6 +427,31 @@ int main() {
         mod_features.ai_catapult_block=false;mock_native_build_hook=false;catapult_ground_cache=saved_cache;
         slot(0xE270,200,old_tile);put16(goal,0x4E,old_city);*p=saved;memcpy(army+0x2C,order,sizeof(order));
     }
+    {   // [combat] mission_v2 siege ground (user 2026-11-01): sites stand 3..6 hexes from the hostile castle;
+        // a 건설 5 ruler fills regardless only while builder_ruler_fill is on.
+        Progress saved=*p;unsigned char order[0x34];memcpy(order,army+0x2C,sizeof(order));
+        auto saved_hex=functions[0x22D740];BIND(0x22D740,mock_siege_castle_hex);mod_features.mission_v2=true;
+        Obj force=table(0xDF30,2,51),ruler=object(77);unsigned short saved_ruler=word(force,0x10);
+        put16(force,0x10,77);slot(0x158,77,ruler);unsigned short saved_city=word(goal,0x4E);put16(goal,0x4E,9);
+        auto attempt=[&](unsigned castle) {
+            siege_castle_hex=castle;*p=saved;memcpy(army+0x2C,order,sizeof(order));
+            p->campaign=true;p->city=9;p->credit=true;p->facility=0;p->build_retry_day=0;
+            return try_build(army,*p);
+        };
+        check(hostile_city(army,9),"siege-ground fixture goal is hostile");
+        check(!attempt(107),"mission_v2: a site two hexes from the castle is inside its attack range");
+        check(attempt(108) && p->facility && word(army,0x42)==105,"mission_v2: a site three hexes from the castle builds");
+        check(attempt(111) && p->facility,"mission_v2: a site six hexes from the castle builds");
+        check(!attempt(112) && !p->facility,"mission_v2: a site seven hexes from the castle is beyond siege ground");
+        Obj saved_owner=goal_owner,own=object(2);putptr(own,0,pointer(force,0));put16(own,0x10,2);goal_owner=own;
+        check(!attempt(108),"mission_v2: without a hostile goal castle the army builds nothing");goal_owner=saved_owner;
+        *reinterpret_cast<short *>(ruler+0x180)=20;
+        check(!attempt(107),"builder_ruler_fill off: a 건설 5 ruler keeps the siege-ground range");
+        mod_features.builder_ruler_fill=true;
+        check(attempt(107) && p->facility,"builder_ruler_fill on: a 건설 5 ruler builds outside the siege range");
+        mod_features.builder_ruler_fill=false;mod_features.mission_v2=false;
+        put16(force,0x10,saved_ruler);put16(goal,0x4E,saved_city);functions[0x22D740]=saved_hex;*p=saved;memcpy(army+0x2C,order,sizeof(order));
+    }
     legal_facilities = (1u<<4)|(1u<<7)|(1u<<3);
     check(try_build(army,*p) && p->facility==4,"unavailable catapult falls through to fortress");
     check(!p->credit && army[0x37]==8 && army[0x38]==9 && word(army,0x42)==105,"build consumes one capture and sets native target");
@@ -730,6 +757,20 @@ int main() {
         Progress saved=*rp;mod_features.mission_v2=true;
         rp->build_chain=false;rp->credit=false;rp->work_reviewed_center=48400;prepare_local_build(recovery,*rp);
         check(!rp->build_chain && !rp->credit,"mission_v2: a friendly region far from the siege castle grants no construction");
+        {   // user 2026-11-01: own ground within ten hexes of the hostile castle (was eight).
+            auto saved_hex=functions[0x22D740];BIND(0x22D740,mock_siege_castle_hex);
+            // Earlier cases left siege facilities in this region; hide them for this opportunity check.
+            std::vector<std::pair<Obj,unsigned char>> owners;std::vector<std::pair<unsigned,unsigned char>> plans;
+            for(unsigned i=1;i<=3000;++i) {Obj b=table(0x6DA98,i,3000);if(valid(b) && b[0x13]) {owners.push_back({b,b[0x13]});b[0x13]=0;}}
+            for(unsigned i=1;i<=500;++i)if(progress[i].facility && &progress[i]!=rp) {plans.push_back({i,progress[i].facility});progress[i].facility=0;}
+            siege_castle_hex=word(recovery,0x2A)+11;rp->build_chain=false;rp->work_reviewed_center=48400;prepare_local_build(recovery,*rp);
+            bool beyond=rp->build_chain;
+            siege_castle_hex=word(recovery,0x2A)+10;rp->build_chain=false;rp->work_reviewed_center=48400;prepare_local_build(recovery,*rp);
+            check(!beyond && rp->build_chain,"mission_v2: own ground ten hexes from the castle is a build opportunity, eleven is not");
+            for(auto &o:owners)o.first[0x13]=o.second;
+            for(auto &f:plans)progress[f.first].facility=f.second;
+            rp->build_chain=false;functions[0x22D740]=saved_hex;
+        }
         unsigned char a37=recovery[0x37],a38=recovery[0x38];unsigned short a3a=word(recovery,0x3A);
         recovery[0x37]=4;recovery[0x38]=5;put16(recovery,0x3A,9);
         bool on=native_on_mission(recovery);put16(recovery,0x3A,8);bool off=native_on_mission(recovery);

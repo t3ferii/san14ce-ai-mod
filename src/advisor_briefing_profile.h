@@ -3,6 +3,14 @@
 namespace advisor_briefing {
 struct Guard {unsigned rva,size;unsigned long long hash;};
 static const Guard guards[]={
+    // User 2026-11-02: headless final report; exact caller and native data ABI.
+    {0x671950,0xB5,0x74E3247405593EE6ull},
+    {0x676D0D,0x5,0x4518FFC00815F7DEull},
+    {0x67AE80,0xC4,0x6E551AF4FA4BFEAAull},
+    {0x2213C0,0x84,0x9F4151F2F33C6416ull},
+    {0x2220A0,0x20,0x566641AC944BF594ull},
+    {0x92EF10,0x84,0x898FD7EFA62C2FCDull},
+    {0x92CEE0,0x2A,0x3F5EB08BB653F311ull},
     {0x304640,0xB9,0xB7BC7DC9C6A64EC3ull},
     {0x451FF0,0xF,0xAEE5EBB108CF720Bull},
     {0x43FF90,0xC,0x99B5448DC3A91CBEull},

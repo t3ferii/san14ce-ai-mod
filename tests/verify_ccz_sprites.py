@@ -65,8 +65,8 @@ want = {1: '선봉대 중전차 철갑차', 2: '척후병 중기병 친위대', 
 for f, names in want.items(): ok(' '.join(classes[cls(x)] for x in rows[f]) == names, 'formation %d -> %s' % (f, names))
 for name, want in (('kRulerClass', ['군웅', '영웅', '제왕']), ('kStrategistClass', ['책사교위', '참모중랑', '군사장군'])):
     m = re.search(name+r'\[3\]=\{([^}]*)\}', src); ok(m and [classes[int(x)] for x in m.group(1).split(',')] == want, name)
-ok('else if(main_rtv && post_seen && dsv && dsv!=scene_dsv)' in src and 'h*2==static_cast<unsigned>(want_height))post_seen=true;' in src and 'post_seen=false;drop(main_rtv);' in src and 'draw_scene(c,main_rtv,scene_dsv)' in src and 'if(scene_drawn || set_table)return;' in src,
-   'draws into the back buffer at the first non-scene depth bind after post starts (battle effects mid-scene ignored); Present only as fallback')
+ok('else if(main_rtv && post_seen && dsv && dsv!=scene_dsv)' in src and 'h*2==static_cast<unsigned>(want_height))post_seen=true;' in src and 'post_seen=false;' in src and 'fallback_attempted=false;drop(main_rtv);drop(frame_dsv);' in src and 'draw_scene(c,main_rtv,frame_dsv?frame_dsv:scene_dsv)' in src and 'rtv[0]==main_rtv && dsv && dsv!=frame_dsv && !post_seen' in src and 'drop(frame_dsv);' in src and 'ccz_sprites_zoom_fallback' in src and 'ccz_sprites_frame_stall' in src and 'if(draw_scene(c,main_rtv,frame_dsv?frame_dsv:scene_dsv))drawn_this_frame=true;' in src and 'if(scene_drawn || set_table)return;' in src,
+   'draws into the back buffer at the first non-scene depth bind after post starts (battle effects mid-scene ignored), depth = view bound with the scene colour target; Present only as fallback')
 ok('memcpy(cam,camera,sizeof(cam))' not in src, 'camera copy uses the array size, not a pointer parameter size (local8 bug)')
 gen = [l.split('	') for l in (P/'data/ccz_generals.tsv').read_text(encoding='utf-8').splitlines() if l and not l.startswith('#')]
 m = re.search(r'kGenerals\[\]=\{(.*?)\};', src, re.S)
@@ -79,7 +79,9 @@ ekd = P.parent/'신조조전'/'Ekd5.exe'
 if ekd.exists():
     rs = struct.unpack_from('<1024H', ekd.read_bytes(), 0x9f800+(0x501000-0x4ce000))
     ok(rs[0] == 1 and rs[1] == 2 and rs[32] == 22 and rs[119] == 122 and all(int(r[3][4:]) in rs for r in gen if r[3].startswith('개인 R')), '신조조전 Ekd5 0x501000 R형상 table (조조 1, 하후돈 2, 유비 22, 여포 122)')
-ok('if(r.cls!=kNative && formation<=7){unsigned g=general_cell(leader);if(g)r.cell=g;}' in src and 'if(r.cell==kFormationClass[formation][tier]*3u)r.cell=r.cls*3u;' in src and 'u.cell=who.cell;' in src and 'for(const auto &g:kGenerals)if(!entries.count(g.cell))return false;' in src,
+# User 2026-11-02: a selected formation mask now gates the same personal artwork.
+# The C++ appearance fixture exercises actual identify(), including masked-out fallbacks.
+ok('if(formation<=7){unsigned g=ccz_appearance::personal(config,leader,formation);if(g){r.cell=g;if(r.cls==kNative)r.cls=g/3u;}}' in src and 'if(!own)r.cell=ccz_appearance::cell(r.cls);' in src and 'u.cell=who.cell;' in src and 'for(const auto &g:kGenerals)if(!entries.count(g.cell))return false;' in src,
    'general picture wins over ruler/strategist, soldier formations only, asset must carry it')
 ok('person[0xEC]' in src and 'word(owner,0x10)' in src and 'word(owner,0x52)' in src, '통솔 Person+EC, ruler Force+10, strategist Force+52')
 ok(bytes.fromhex('0fb6411b') in rd(0x22B090, 0x90) or b'\x1b' in rd(0x22B090, 0x90), '22B090 reads Army+1B formation')
@@ -101,12 +103,13 @@ ok(cols[0] == 0x2828E8FF and cols[60] == 0xFFFFFFFF and cols[61] == 0 and 'colou
 ok('kStrategistClass[3]={75,76,77}' in src and 'cs>0.85f && ch_>=0.30f && ch_<=0.43f' in src and 'h=h<=0.62f?0.12f*(0.62f-h)/0.42f:1-0.06f*(h-0.62f)/0.30f' in src, 'mounted strategist; team colour only on the pure-green ramp; option C warm contrast')
 ok('kRows=64' in src and 't.Height=kRows' in src and 'owner[0x49]<kColourCount' in src, '64 palette rows by Force+49')
 hl = (P/'src/ccz_sprites.hlsl').read_text(encoding='utf-8')
-ok('near==0)discard' in hl and 'team&0x200' in hl and 'palette[row][0]=lum>0.45f' in src, 'contrasting outline and crit flash')
-ok('kSpecialRow+static_cast<unsigned>(view)*48' in src and 'kSpecialRow+3*48' in src and 'troops<u.troops && now-u.hurt_at>=kHurtCooldownMs)u.hurt_at=now' in src and 'kPixel=5.8f' in src and 'kForward' not in src and 'kAttackFrameMs=260' in src and '/150)%4' not in src, 'block / hurt special frames')
+ok('near==0)discard' in hl and 'team&0x200' in hl and 'output[row][0]=lum>0.45f' in src, 'contrasting outline and crit flash')
+ok('kSpecialRow+static_cast<unsigned>(view)*48' in src and 'kSpecialRow+3*48' in src and 'troops<u.troops && now-u.hurt_at>=kHurtCooldownMs)u.hurt_at=now' in src and 'kPixel=9.0f' in src and 'kMinScreen=1.0f/10' in src and 'drawable && InterlockedCompareExchange(&hide_model' in src and 'r.team=kRedHare' in src and 'row==kRedHare' in src and 'kForward' not in src and 'kAttackFrameMs=260' in src and '/150)%4' not in src, 'block / hurt special frames')
 ok('kCharges=5' in src and 'left=trigger?kCharges-1:(left>0?left-1:0);slot->last=day;' in src and 'day<=b.last+1' in src and 'kBuffDays' not in src, '5-charge state, ends after a day without an exchange')
 ok(rd(0x32BA50, 0x1C) == bytes.fromhex('0fbf018d14400fbe41028d14900fbe4103446bc21e83c0e14103c0c3') and '*12+static_cast<signed char>(d[2]))*30+static_cast<signed char>(d[3])-31' in src, '32BA50 day = (year*12+month)*30+day-31')
 ok('buff_use(victim,day,true,!guard)' in src and 'buff_use(attacker,day,false,!fury)' in src, 'blocks, guarded attacks and crits each spend a charge')
-ok('block && (guard ||' in src and 'critical && (fury ||' in src and 'if(u.guard && now-u.moved>=400)return guard_pose;' in src, 'held state blocks / crits every normal attack; guard pose while idle')
+# User 2026-11-02: keep five-hit mechanics, display effects only on real hits.
+ok('block && (guard ||' in src and 'critical && (fury ||' in src and 'if(u.guard && now-u.moved>=400)return guard_pose;' not in src and 'effect_visible(u,kind!=0,now)' in src, 'held charges cannot invent an idle block/critical effect')
 ok('uB9C9'+chr(92)+'uAE30!' in src and 'cells[written++]=kLabelCell' in src and 'kQuads=kSlots*3' in src and 'b.ByteWidth=sizeof(Vertex)*6*kQuads' in src, '막기!/회심! labels, vertex room for two per unit')
 ok('v.team&0x400' in hl and 'v.team&0x800' in hl, 'label colours in the shader')
 ok('ccz_combat::install(mod_features.ccz_block,mod_features.ccz_critical)' in (P/'src/native_split_install.inl').read_text(encoding='utf-8'), 'ccz_combat installed in split_activate')
@@ -122,5 +125,32 @@ for cat in ('installer/InstallerGui.cs', 'distribution/FeatureSelect.ps1', 'Feat
 ok('native_ccz_bridge.inl' in adapter and 'native_ccz_sprites.inl' not in adapter and '#include "native_ccz_sprites.inl"' in module, 'sprites code only in SAN14_CCZ.dll')
 ok('L"SAN14_CCZ.dll"' in bridge and 'found->abi!=ccz_module_abi' in bridge and 'combat_fix' in bridge and 'call_publish(link)' in bridge and 'call_publish' not in src, 'bridge loads the module, publishes the combat CALL')
 ok('SAN14CczGetApi' in module and 'patch_pointer(kSubmitSlot' in src and 'overlay_install();' in src and 'unified_overlay::' not in src, 'module exports its API; overlay via callback')
+# User 2026-11-02: opt-in retention must not gate the independent local14 render rescue.
+ok('far_position(u.army,pos,yaw)' in src and 'if(far_keep_enabled && !count && scene && armed>0 && distance<=armed*kFarFactor)' in src and '__except(EXCEPTION_EXECUTE_HANDLER)' in src and 'kFarFactor=2.0f' in src, 'far-zoom fallback keeps known armies only when enabled')
+ok('if(!far_keep_enabled || armed<=0' in src and 'else if(far_keep_enabled && !count && recent' in src,
+   'OFF disables stale-camera refresh and far-distance arming')
+ok('bool ccz_far_keep = false;' in adapter and 'f.ccz_far_keep = f.ccz_sprites && feature_key(config, L"ccz", L"ccz_far_keep", false)' in adapter,
+   'far keep defaults OFF and requires sprites')
+ok('ccz_module_abi=2' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8') and
+   'install_sprites(hide,depth,far_keep)' in bridge and 'ccz_sprites::install(hide,depth,far_keep)' in module,
+   'ABI 2 carries far flag; mismatched module is rejected')
+ok('ccz_sprites_far_keep' in src and 'ccz_sprites_zoom_recovered' in src and
+   'if(submitted)' in src and 'zoom_recovery_pending=false;has_submitted_sprites=true;' in src and
+   'submitted_at-last_sprite_submission>=500' in src,
+   'recovery log follows actual sprite submission')
+rescue=src[src.index('// The failed zoom path'):src.index('if(main_rtv && rtv[0]==main_rtv')]
+ok('far_keep_enabled' not in rescue and 'ccz_sprites_zoom_fallback' in rescue,
+   'local14 rescue is independent of far keep')
+render_hook=src[src.index('static void STDMETHODCALLTYPE set_targets('):src.index('static void hook_context(')]
+ok(hashlib.sha256(render_hook.encode('utf-8')).hexdigest()=='da0c30d9793f771077e39ff774d4b5b11ba817c760ed63fb528e9d6326b784fb',
+   '2026-11-02: entire local14 normal/rescue render-target hook unchanged')
+# Original damage stage: attacker is a pointer; defender is INLINE at pair+8.
+cache=P/'research/decomp_cache/1fbe6be7466a6646'
+apply=(cache/'001749A0_c.txt').read_text(encoding='utf-8')
+ok('puVar2 = (ushort *)*param_2;' in apply and 'puVar1 = (ushort *)(param_2 + 1);' in apply and 'victim=field_army(pair+8)' in src,'native attacker/inline defender ABI retained')
+ok('fn<unsigned char(__fastcall *)(Obj)>(0x22CC40)' in src and 'fn<bool(__fastcall *)(unsigned,unsigned)>(0x2CA280)' in src,'force byte and native hostility bool return ABIs')
+for rva,h in ((0x22CC40,0x777A504FBF698C1C),(0x2CA280,0x7221823C76F2F29F)):
+    ok(fnv(rd(rva,0x30))==h and rd(rva,0x30)==run(rva,0x30),'native force/relation guard '+hex(rva))
+ok('native_facing(u,yaw)' in src and 'std::sin(yaw)' in src and 'std::cos(yaw)' in src,'stationary turns use the native radians in both live and opted-in far capture')
 print(json.dumps({'checks': checks, 'failed': fail}, ensure_ascii=False))
 sys.exit(1 if fail else 0)

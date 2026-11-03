@@ -273,12 +273,12 @@ static void prepare_local_build(Obj army, Progress &p) {
     bool siege_ground=goal && hostile_city(army,p.city) && valid(standing) && standing[0x14]==army_force(army) &&
         campaign_area_id(castle)==campaign_area_id(word(army,0x2A));
     // Build policy v2 (2026-10-21): facilities serve a siege. Only an army of a hostile-city mission
-    // standing on its own ground within 8 hexes of that castle may build, and only while the region
+    // standing on its own ground within 10 hexes of that castle may build, and only while the region
     // around it has none of the siege facilities (fort 4, catapult 6, band 7, camp 3) of its force,
     // including ones another army is already building. Passing friendly regions build nothing.
     if(mod_features.mission_v2 && !p.regional_worker && !builder_force(army_force(army))) {
         if(!goal || !hostile_city(army,p.city) || !valid(standing) || standing[0x14]!=army_force(army) ||
-           castle>=48400 || distance(word(army,0x2A),castle)>8)return;
+           castle>=48400 || distance(word(army,0x2A),castle)>10)return; // 8 -> 10 (user 2026-11-01)
         if(local_facilities(army,area) & ((1u<<3)|(1u<<4)|(1u<<6)|(1u<<7)))return;
         if(p.work_reviewed_center==hex)return; // already rejected twice / complete here
         if(p.build_audit_day==game_day() && p.build_audit_mask)return;

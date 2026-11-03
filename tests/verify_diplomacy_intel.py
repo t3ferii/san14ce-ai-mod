@@ -69,6 +69,12 @@ check(emulate(0x22FCE0,guards[0x22FCE0][0],[(0x230098,b'\x90'*8)]) is None,'unkn
 check(emulate(0x930D20,guards[0x930D20][0],[(0x930D20,b'\xcc\x90\x90\x90\x90')]) is None,'non-jump change at 930D20 still rejected')
 check(fnv(masked(0x22FCE0,guards[0x22FCE0][0],[(0x22FD00,b'\xcc')]))!=guards[0x22FCE0][1],'change outside known window still rejected')
 cache=P/'research/decomp_cache/1fbe6be7466a6646'
+check(read(0x816756,5)==bytes.fromhex('ba01000000'),'tail gate replaces one whole MOV EDX,1 after the resolver result is consumed')
+check(read(0x816756,5)==capture[0x816756-0x1000:0x81675B-0x1000],'independent retained tail instruction')
+check(read(0x81675B,3)==bytes.fromhex('488bce') and read(0x816807,4)==bytes.fromhex('488b4590'),'normal resume restores RSI argument; skipped UI path resumes at native container cleanup')
+source=(P/'src/native_diplomacy_intel.inl').read_text(encoding='utf-8')
+check('number(button,0x40)|=2;' in source and 'number(child,0x40)|=2;' in source,'decision visibility matches native phase-seven OR, not an inverted clear')
+check('absolute_jump(at+21,cleanup)' in source and 'absolute_jump(at+40,resume)' in source and 'restore_link(final_tail_link)' in source,'deferred-only tail gate retains both native continuations and publication rollback')
 for address,fragments in {
     '00815EA0':['1408162e1 CALL 0x140804770','140816726 CALL 0x140324e20','1408167ae CALL qword ptr [RAX + 0x190]'],
     '00811210':['14081133d CALL 0x140815ea0'],
@@ -87,4 +93,4 @@ for key in ['diplomacy_overinvest','diplomacy_counterturn']:
 adapter=(P/'src/native_adapter.cpp').read_text(encoding='utf-8-sig')
 check('f.diplomacy_overinvest = on && feature_key' in adapter,'parent gate')
 check('f.diplomacy_counterturn = on && feature_key' in adapter,'parent gate')
-print(json.dumps(dict(status='diplomacy_intel_native_verified',checks=checks,code_guards=30,slots=11,sites=7,live_game=False)))
+print(json.dumps(dict(status='diplomacy_intel_native_verified',checks=checks,code_guards=30,slots=11,sites=7,inline_gates=1,live_game=False)))

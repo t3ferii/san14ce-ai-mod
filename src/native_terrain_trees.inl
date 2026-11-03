@@ -3,6 +3,7 @@
 #define SAN14_TERRAIN_TREES_INCLUDED 1
 #include <vector>
 #include <cmath>
+#include "terrain_call_profile.h"
 namespace terrain_trees {
 #ifndef NO_RUNTIME_LOG
 // Completion counters are sampled/reset by Present, without taking the tree lock.
@@ -139,6 +140,7 @@ static bool resource(Obj s,Obj &r,Obj &data) {
 // Only the original placement callback calls this function. Keep its SRW lock
 // through native setters so UI goals cannot change halfway through a hex.
 static void apply_pending(Obj s) {
+    TERRAIN_SCOPE(TreesApply);
     if(!active())return;
     // s is the live callback object; its R slot is read before R itself, so a
     // replaced R or data buffer still takes the validating path below.
@@ -166,7 +168,7 @@ static void apply_pending(Obj s) {
             size_t at=static_cast<size_t>(z)*Size+x;
             unsigned char target=restore?original_resource[at]:value;
             if(data[at]!=target)++writes;
-            fn<Set>(SetterRva)(r,static_cast<uint64_t>(static_cast<unsigned>(x))|
+            terrain_profile::invoke(terrain_profile::Id::TreesSet,fn<Set>(SetterRva),r,static_cast<uint64_t>(static_cast<unsigned>(x))|
                 (static_cast<uint64_t>(static_cast<unsigned>(z))<<32),target);
         }
         ++cells;
@@ -181,6 +183,7 @@ static void apply_pending(Obj s) {
 #endif
 }
 static uint64_t __fastcall update(Obj s,Obj second,Obj context,Obj view,Obj fifth,unsigned sixth,unsigned seventh,unsigned eighth) { COST_SCOPE("terrain_trees::update");
+    TERRAIN_SCOPE(TreesUpdate);
 #ifndef NO_RUNTIME_LOG
     static volatile LONG thread_logged=0;
     if(!InterlockedCompareExchange(&thread_logged,1,0))log_event("terrain_trees_thread",GetCurrentThreadId(),0,0);
@@ -194,6 +197,7 @@ static uint64_t __fastcall update(Obj s,Obj second,Obj context,Obj view,Obj fift
     LONG64 perf_old=InterlockedCompareExchange64(&perf_max_us,0,0);
     while(perf_us>perf_old){LONG64 seen=InterlockedCompareExchange64(&perf_max_us,perf_us,perf_old);if(seen==perf_old)break;perf_old=seen;}
 #endif
+    TERRAIN_SCOPE(TreesNative);
     return fn<Update>(UpdateRva)(s,second,context,view,fifth,sixth,seventh,eighth);
 }
 }

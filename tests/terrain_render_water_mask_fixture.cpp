@@ -8,7 +8,7 @@
 #include <cstring>
 #include <vector>
 static bool enabled=true;
-static struct {bool convenience=true,terrain_edit=true;} mod_features;
+static struct {bool convenience=true,terrain_edit=true;unsigned terrain_diag_mode=0;} mod_features;
 static unsigned checks;
 static void require(bool ok,const char *label){++checks;if(!ok){fprintf(stderr,"FAIL %s (%u)\n",label,checks);ExitProcess(1);}}
 #ifndef NO_RUNTIME_LOG

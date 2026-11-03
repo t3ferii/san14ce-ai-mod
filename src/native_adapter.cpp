@@ -113,6 +113,9 @@ struct ModFeatures {
     bool battle_rules = true;                                               // [battle_rules]
     bool unified = true, loyalty = true;                                    // [officer_ui]
     bool terrain_edit = false;                                              // [real_estate]
+    // 0=foam+renderer, 1=no foam, 2=no renderer/height capture, 3=neither.
+    // Diagnostic startup choice only; terrain editing UI/trees/save remain owned by terrain_edit.
+    unsigned terrain_diag_mode = 0;                                         // [diagnostics]
     bool building_destruction_all = false;                                 // [stratagem], gameplay tab
     bool diplomacy_overinvest = false, diplomacy_counterturn = false;       // [diplomacy], incoming computer negotiations
     bool damage_preview = true;                                            // [officer_ui], convenience only
@@ -132,12 +135,16 @@ struct ModFeatures {
     // [combat] mission_v2 (2026-10-21, default off until verified): siege-ground construction only, no
     // build wait, mod field steering yields to a native order on the mission goal.
     bool mission_v2 = false;
+    // [combat] builder_ruler_fill (user 2026-11-01, under mission_v2, default off): a 건설 5 ruler's
+    // armies ignore siege-ground limits and fill their regions' facility capacity.
+    bool builder_ruler_fill = false;
     // [combat] ai_max_aggression (2026-10-21): behaviour-tree "AI setting stage" reads as 궁극(4)
     // and the corps progress check loses its stage-based turn skipping (see bt_condition).
     bool ai_max_aggression = false;
     // attack_recheck_fix (2026-10-22, under mission_v2): original tree-1 post-departure recheck bug (#10114/#10115).
     bool attack_recheck_fix = false;
     bool ccz_sprites = false, ccz_hide_model = true, ccz_depth = true, ccz_block = false, ccz_critical = false;     // [ccz] 2026-10-31 user: 조조전 병종 그림, gameplay tab
+    bool ccz_far_keep = false;                                              // [ccz], opt-in far-LOD retention
 };
 static ModFeatures mod_features;
 static bool feature_key(const wchar_t *config, const wchar_t *section, const wchar_t *key, bool fallback)
@@ -177,6 +184,8 @@ static void load_mod_features()
     f.unified = on && feature_key(config, L"officer_ui", L"unified", true);
     f.loyalty = on && feature_key(config, L"officer_ui", L"loyalty", true);
     f.terrain_edit = on && feature_key(config, L"real_estate", L"terrain_edit", false);
+    const int terrain_diag = dev_group() ? mod_setting(L"diagnostics", L"terrain_diag_mode", 0) : 0;
+    f.terrain_diag_mode = terrain_diag >= 0 && terrain_diag <= 3 ? static_cast<unsigned>(terrain_diag) : 0u;
     f.building_destruction_all = on && feature_key(config, L"stratagem", L"building_destruction_all", false);
     f.diplomacy_overinvest = on && feature_key(config, L"diplomacy", L"diplomacy_overinvest", false);
     f.diplomacy_counterturn = on && feature_key(config, L"diplomacy", L"diplomacy_counterturn", false);
@@ -207,6 +216,7 @@ static void load_mod_features()
     f.ccz_sprites = on && feature_key(config, L"ccz", L"ccz_sprites", false);   // 2026-10-31 user: draw 조조전 unit sprites ourselves
     f.ccz_hide_model = f.ccz_sprites && feature_key(config, L"ccz", L"ccz_hide_model", true);
     f.ccz_depth = f.ccz_sprites && feature_key(config, L"ccz", L"ccz_depth", true);
+    f.ccz_far_keep = f.ccz_sprites && feature_key(config, L"ccz", L"ccz_far_keep", false);
     f.ccz_block = on && feature_key(config, L"ccz", L"ccz_block", false);         // 2026-10-31 user: 조조전식 막기 (완전 무효)
     f.ccz_critical = on && feature_key(config, L"ccz", L"ccz_critical", false);   // 2026-10-31 user: 조조전식 회심의 일격
     f.distance = fast && feature_key(config, L"performance", L"distance", true);
@@ -227,6 +237,7 @@ static void load_mod_features()
     f.morale = feature_key(config, L"combat", L"morale", true);
     f.support = feature_key(config, L"combat", L"support", true);
     f.mission_v2 = feature_key(config, L"combat", L"mission_v2", false);
+    f.builder_ruler_fill = f.mission_v2 && feature_key(config, L"combat", L"builder_ruler_fill", false);
     f.ai_max_aggression = feature_key(config, L"combat", L"ai_max_aggression", false);
     f.attack_recheck_fix = f.mission_v2;   // no own key: part of mission_v2 (installer catalog unchanged)
     // user 2026-10-28: retired, conflicts with mission_v2
@@ -311,9 +322,11 @@ static unsigned army_force(Obj army)
     return fn<unsigned(__fastcall *)(Obj)>(0x22CC40)(army);
 }
 // Ruler inner trait 건설 (Person+180 s16; UI 1..5 = -20,-10,0,10,20, column getter 344D10/356260).
-// A ruler at 5 (20) makes its armies fill their own regions' facility capacity (2026-10-21).
+// A ruler at 5 (20) makes its armies fill their own regions' facility capacity (2026-10-21),
+// only while builder_ruler_fill is on (user 2026-11-01).
 static bool builder_force(unsigned force)
 {
+    if(!mod_features.builder_ruler_fill)return false;
     Obj f=force && force<=51?table(0xDF30,force,51):nullptr;
     Obj ruler=valid(f)?table(0x158,word(f,0x10),6000):nullptr;
     return valid(ruler) && *reinterpret_cast<short *>(ruler+0x180)>=20;
@@ -639,6 +652,8 @@ static bool reserved_hex(unsigned hex, Obj actor)
     return false;
 }
 static bool campaign_build_order(Obj army,unsigned facility,unsigned hex);
+static Obj campaign_goal(unsigned city);
+static bool hostile_city(Obj army, unsigned city);
 static bool set_build(Obj army, unsigned facility, unsigned hex)
 {
     if(campaign_castle_locked(army))return false;
@@ -740,6 +755,15 @@ static bool try_build(Obj army, Progress &p, unsigned cohort_center=48400,unsign
     // Each missing type once (user decision 2026-10-21: no filling capacity with repeated types).
     // A builder ruler (inner 건설 5) also repeats useful types until the region is full.
     const bool builder=mod_features.mission_v2 && !p.regional_worker && builder_force(army_force(army));
+    // Siege ground (user 2026-11-01): sites stand 3..6 hexes from the hostile goal castle, outside
+    // its attack range. Without such a castle this army builds nothing; the mission/native AI go on.
+    const bool siege_range=mod_features.mission_v2 && !p.regional_worker && !builder;
+    unsigned siege_castle=48400;
+    if(siege_range) {
+        unsigned city=p.campaign && p.city ? p.city : (p.operation_city?p.operation_city:word(troops,0x16));
+        Obj castle=hostile_city(army,city) ? campaign_goal(city) : nullptr;
+        if(castle)siege_castle=fn<unsigned(__fastcall *)(Obj)>(0x22D740)(castle);
+    }
     bool missing=false;
     for (unsigned pass=0;pass<(builder?2u:1u) && !applied;++pass) for (unsigned facility : order) {
         if(preferred && facility!=preferred)continue;
@@ -767,12 +791,13 @@ static bool try_build(Obj army, Progress &p, unsigned cohort_center=48400,unsign
                 list_add(candidates,item->value);
             list_free(local);
         }
-        bool offered=list_first(candidates)!=nullptr,native_rejected=false;
+        bool offered=list_first(candidates)!=nullptr,native_rejected=false,out_of_range=false;
         for (Link *item = list_first(candidates); item; item = item->next) {
             Obj tile = item->value;
             if (!valid(tile) || tile[0x14] != army_force(army)) continue;
             unsigned hex = fn<unsigned(__fastcall *)(Obj)>(0x22DDA0)(tile);
             if (hex >= 48400 || reserved_hex(hex, army)) continue;
+            if(siege_range && (siege_castle>=48400 || distance(siege_castle,hex)<3 || distance(siege_castle,hex)>6)) {out_of_range=true;continue;}
             if(cohort_center<48400 && distance(cohort_center,hex)>2)continue;
             if (!fn<int(__fastcall *)(GameList *, Obj, Obj)>(0x278FA0)(&people, tile, definition)) {native_rejected=true;continue;}
             if (set_build(army, facility, hex)) {
@@ -789,7 +814,7 @@ static bool try_build(Obj army, Progress &p, unsigned cohort_center=48400,unsign
         }
         list_free(candidates);
         if(!applied)build_skip(army,p,facility,!offered?"build_skip_native_candidates":
-                              (native_rejected?"build_skip_native_check":"build_skip_no_free_site"));
+                              (native_rejected?"build_skip_native_check":out_of_range?"build_skip_siege_range":"build_skip_no_free_site"));
         if (applied) break;
     }
     list_free(people);
@@ -1803,6 +1828,10 @@ static Obj allocate_near(Obj call,unsigned bytes=0x1000)
 #include "native_tactic_priority.inl"
 #include "native_unified_personnel.inl"
 #include "native_ccz_bridge.inl" // 조조전 탭 -> SAN14_CCZ.dll; keeps the unified Present hook here
+#ifndef SPLIT_MODULE_FIXTURE
+#include "native_ccz_editor.inl"
+#include "native_ccz_title.inl"
+#endif
 #include "native_unified_settings.inl"
 #include "native_unified_actions.inl"
 #include "native_unified_posts_trade.inl"

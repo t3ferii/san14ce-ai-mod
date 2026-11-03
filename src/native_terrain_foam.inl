@@ -6,6 +6,7 @@
 #ifndef SPLIT_COMBAT
 #define SAN14_TERRAIN_FOAM_INCLUDED 1
 #include <cmath>
+#include "terrain_call_profile.h"
 namespace terrain_foam {
 static constexpr unsigned HexCount=48400,SourceCount=35,Count=SourceCount;
 // Hidden scale stays positive: E1B160 divides by the previous scale.
@@ -91,19 +92,20 @@ struct Goal {unsigned char next,original;bool known,queued,waiting;};
 static Goal goals[HexCount]={};
 static unsigned short dirty[HexCount];
 static unsigned head=0,dirty_count=0;
-static bool active() {return installed && permitted && enabled && mod_features.convenience && mod_features.terrain_edit;}
-static bool readable(Obj p,size_t n) {
-    uintptr_t at=reinterpret_cast<uintptr_t>(p),end=at+n;
-    if(!at || end<at)return false;
-    while(at<end) {
-        MEMORY_BASIC_INFORMATION m={};
-        if(!VirtualQuery(reinterpret_cast<void *>(at),&m,sizeof(m)) || m.State!=MEM_COMMIT ||
-            (m.Protect&(PAGE_GUARD|PAGE_NOACCESS)) ||
-            !(m.Protect&(PAGE_READONLY|PAGE_READWRITE|PAGE_WRITECOPY|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY)))return false;
-        uintptr_t next=reinterpret_cast<uintptr_t>(m.BaseAddress)+m.RegionSize;
-        if(next<=at)return false;at=next;
-    }
-    return true;
+static bool active() {return installed && permitted && enabled && mod_features.convenience && mod_features.terrain_edit && !(mod_features.terrain_diag_mode & 1u);}
+struct CaptureFields {Obj object;float pos[3],quat[4],scale[3];};
+static bool capture_fields(Obj handle,CaptureFields &out) {
+    // 2026-11-02 trace: one zoom frame spent 523ms in 222 post-create probes,
+    // versus 0.814ms in the original constructor. This runs synchronously after
+    // successful native creation: read just the fields we need, not the process VM map.
+    // Keep both identity validation and fault rejection, including an invalid handle.
+    __try {
+        Obj p=handle?pointer(handle,0x20):nullptr;
+        if(!p || pointer(p,0)!=image+0x16DA140)return false;
+        out.object=p;memcpy(out.pos,p+0x18,sizeof(out.pos));
+        memcpy(out.quat,p+0x24,sizeof(out.quat));memcpy(out.scale,p+0x34,sizeof(out.scale));
+        return true;
+    } __except(EXCEPTION_EXECUTE_HANDLER) {return false;}
 }
 static bool guards_match() {
     for(const auto &h:hooks)if(pointer(image,h.slot)!=(h.published?reinterpret_cast<Obj>(h.wrapper):image+h.rva) ||
@@ -165,30 +167,30 @@ static int find_locked(Obj p) {
 }
 static bool positive(const float *v) {return std::isfinite(v[0]) && std::isfinite(v[1]) && std::isfinite(v[2]) && v[0]>0 && v[1]>0 && v[2]>0;}
 static void capture(Obj handle) {
-    Obj p=handle?pointer(handle,0x20):nullptr;
-    if(!readable(p,0xF0) || pointer(p,0)!=image+0x16DA140)return;
-    float pos[3];memcpy(pos,p+0x18,sizeof(pos));
+    CaptureFields fields={};if(!capture_fields(handle,fields))return;
     for(unsigned i=0;i<Count;++i) {
-        double d=0;for(unsigned k=0;k<3;++k){double delta=pos[k]-sources[i].pos[k];d+=delta*delta;}
+        double d=0;for(unsigned k=0;k<3;++k){double delta=fields.pos[k]-sources[i].pos[k];d+=delta*delta;}
         if(d>1.0 || !std::isfinite(d))continue;
         AcquireSRWLockExclusive(&lock);
         log_event("foam_create",i,GetCurrentThreadId(),generation);
         Effect &e=effects[i];
         if(!e.object) {
-            e.object=p;e.handle=handle;e.hex=sources[i].owner;
-            memcpy(e.pos,p+0x18,12);memcpy(e.quat,p+0x24,16);memcpy(e.scale,p+0x34,12);
+            e.object=fields.object;e.handle=handle;e.hex=sources[i].owner;
+            memcpy(e.pos,fields.pos,sizeof(e.pos));memcpy(e.quat,fields.quat,sizeof(e.quat));memcpy(e.scale,fields.scale,sizeof(e.scale));
             update_watch_locked();
         }
         ReleaseSRWLockExclusive(&lock);return;
     }
 }
 static bool __fastcall create(Obj a,Obj b,Obj c,Obj d,Obj e) {
-    bool result=fn<Create>(0xE17CA0)(a,b,c,d,e);
+    TERRAIN_SCOPE(FoamCreate);
+    bool result=terrain_profile::invoke(terrain_profile::Id::FoamCreateNative,fn<Create>(0xE17CA0),a,b,c,d,e);
     if(result && active())capture(d);
     return result;
 }
 static bool __fastcall complete(Obj a,Obj b,Obj c,Obj handle,unsigned *state,unsigned char *flag) {
-    bool result=fn<Complete>(0xE1B580)(a,b,c,handle,state,flag);
+    TERRAIN_SCOPE(FoamComplete);
+    bool result=terrain_profile::invoke(terrain_profile::Id::FoamCompleteNative,fn<Complete>(0xE1B580),a,b,c,handle,state,flag);
     if(!active())return result;
     AcquireSRWLockExclusive(&lock);
     int index=find_locked(handle?pointer(handle,0x20):nullptr);
@@ -205,13 +207,16 @@ static bool __fastcall complete(Obj a,Obj b,Obj c,Obj handle,unsigned *state,uns
     ReleaseSRWLockExclusive(&lock);return result;
 }
 static uint64_t __fastcall destroy(Obj a,Obj b,Obj c,Obj handle) {
+    TERRAIN_SCOPE(FoamDestroy);
     AcquireSRWLockExclusive(&lock);
     int index=find_locked(handle?pointer(handle,0x20):nullptr);
     if(index>=0) {log_event("foam_destroy",static_cast<unsigned>(index),generation,GetCurrentThreadId());effects[index]={};update_watch_locked();}
     ReleaseSRWLockExclusive(&lock);
+    TERRAIN_SCOPE(FoamDestroyNative);
     return fn<Destroy>(0xE18280)(a,b,c,handle);
 }
 static void plan_locked() {
+    TERRAIN_SCOPE(FoamPlan);
     while(dirty_count) {
         unsigned h=dirty[head];head=(head+1)%HexCount;--dirty_count;
         Goal &g=goals[h];g.queued=false;g.waiting=false;
@@ -231,6 +236,7 @@ static void plan_locked() {
     }
 }
 static void apply_locked(unsigned index,bool from_time) {
+    TERRAIN_SCOPE(FoamApply);
     Effect &e=effects[index];
     if(!e.job || !e.ready || !pointer(e.object,0xA0))return;
     if(!positive(reinterpret_cast<const float *>(e.object+0x34))) {e.job=e.restore_job=false;log_event("foam_bad_scale",index,generation,0);return;}
@@ -247,9 +253,9 @@ static void apply_locked(unsigned index,bool from_time) {
     log_event(from_time?"foam_consume_time":"foam_consume_render",op,index,GetCurrentThreadId());
     log_event("foam_set_target",op,e.hex,e.hidden?1:0);
     // Each changed property goes directly from current to target once; no zero/reset round trip.
-    if(memcmp(e.object+0x18,pos,12))fn<Setter>(0xE1AAE0)(e.object,pos);
-    if(memcmp(e.object+0x24,quat,16))fn<Setter>(0xE1ADD0)(e.object,quat);
-    if(memcmp(e.object+0x34,scale,12))fn<Setter>(0xE1B160)(e.object,scale);
+    if(memcmp(e.object+0x18,pos,12))terrain_profile::invoke(terrain_profile::Id::FoamPosition,fn<Setter>(0xE1AAE0),e.object,pos);
+    if(memcmp(e.object+0x24,quat,16))terrain_profile::invoke(terrain_profile::Id::FoamRotation,fn<Setter>(0xE1ADD0),e.object,quat);
+    if(memcmp(e.object+0x34,scale,12))terrain_profile::invoke(terrain_profile::Id::FoamScale,fn<Setter>(0xE1B160),e.object,scale);
     if(e.restore_job)log_event("foam_restore_done",op,index,generation);
     e.job=e.restore_job=false;
 }
@@ -258,6 +264,7 @@ static bool restoration_pending_locked() {
     return false;
 }
 static void observe(Obj object,bool from_time) {
+    TERRAIN_SCOPE(FoamObserve);
     if(!active())return;
     AcquireSRWLockExclusive(&lock);
     int index=find_locked(object);
@@ -277,11 +284,15 @@ static void observe(Obj object,bool from_time) {
     ReleaseSRWLockExclusive(&lock);
 }
 static uint64_t __fastcall time_update(Obj a,uintptr_t b,uintptr_t c,uintptr_t d,uintptr_t e,uintptr_t f,uintptr_t g,uintptr_t h) {
+    TERRAIN_SCOPE(FoamTime);
     if(watch)observe(a,true);
+    TERRAIN_SCOPE(FoamTimeNative);
     return fn<Callback>(0xE1B7B0)(a,b,c,d,e,f,g,h);
 }
 static uint64_t __fastcall render(Obj a,uintptr_t b,uintptr_t c,uintptr_t d,uintptr_t e,uintptr_t f,uintptr_t g,uintptr_t h) {
+    TERRAIN_SCOPE(FoamRender);
     if(watch)observe(a,false);
+    TERRAIN_SCOPE(FoamRenderNative);
     return fn<Callback>(0xE19690)(a,b,c,d,e,f,g,h);
 }
 static void restore() {
@@ -295,7 +306,7 @@ static void restore() {
     }
 }
 static void install() {
-    if(installed || !permitted || !enabled || !mod_features.convenience || !mod_features.terrain_edit)return;
+    if(installed || !permitted || !enabled || !mod_features.convenience || !mod_features.terrain_edit || (mod_features.terrain_diag_mode & 1u))return;
     if(!guards_match()) {permitted=false;log_event("foam_guard_mismatch",31,0,0);return;}
     for(auto &h:hooks) {
         auto slot=reinterpret_cast<void **>(image+h.slot);DWORD old=0,ignored=0;

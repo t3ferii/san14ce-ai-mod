@@ -5,6 +5,7 @@
 #include <set>
 #include <sstream>
 #include "native_unified_overlay.inl"
+#include "native_ccz_preview.inl"
 #include "native_unified_dialogs.inl"
 #include "native_unified_relations.inl"
 namespace advisor_briefing {

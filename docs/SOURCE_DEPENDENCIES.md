@@ -17,3 +17,5 @@
 표의 외부 소스/DLL은 이 저장소에 들어 있지 않다. 바이너리에서 만든 `.obj`, `modpack_payloads.h`, `traits9_payloads.h`, 게임 layout 추출물도 포함하지 않는다. 공개 C++는 외부 코드에 대한 wrapper와 hook 연결을 포함하므로 외부 구현까지 모두 독자 C++ 소스라는 뜻은 아니다.
 
 Python PE 파서 `legacy/FogMod_Source/tools/audit_native_game.py`는 도구들이 import하는 독자 로컬 helper라 포함했다. 파일을 읽어 PE를 해석할 뿐, 원본 바이너리 자체는 포함하지 않는다. capstone은 별도 Python 의존성이다. 원래 개인 PC의 capstone 검색 경로 두 곳은 제거했으며 현재 Python 환경에 설치하여 사용한다.
+
+- v15.2 인게임 조형 선택창은 배포 ZIP의 `assets/ccz/ccz_catalog.bin`도 필요합니다. 1,078개 조형의 대표 그림·압축 애니메이션 자료이며, 원본 게임·제삼자 자료는 소스 저장소에 포함하지 않습니다.

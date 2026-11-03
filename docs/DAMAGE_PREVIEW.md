@@ -30,7 +30,7 @@
 
 지원 EXE SHA256은 `87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a`다. 검사 전용 해제 PE와 원작 호출부·분기·ABI를 대조하고 12개 코드 범위 지문을 생성했다. 불일치하면 새 UI 훅을 설치하지 않는다. 원래 함수의 null 입력 분기도 보존한다.
 
-상세 조사: [전투 계산](../data/diagnostics/combat_formula_20261021/조사결과.md), [대상 비교 UI](../data/diagnostics/combat_hover_20261021/조사결과.md). 지문 재생성 도구는 `tools/verify_damage_preview_native.py --generate`다.
+상세 조사: 전투 계산, 대상 비교 UI. 지문 재생성 도구는 `tools/verify_damage_preview_native.py --generate`다.
 
 ## 검사와 남은 확인
 
@@ -38,7 +38,7 @@
 - 현재 EXE/검사용 PE 대조: 12개 코드 범위와 4개 호출부 통과.
 - `tools/check_feature.ps1 -Feature damage-preview -Build`와 필수 `-Feature dll-split -Build` 통과. 세 DLL 분리 빌드·로더/내보내기 검사 포함.
 - 설치기 격리 fixture 62개 통과. 편의성 항목의 기본 체크·탭·문구 및 렌더 이미지를 확인했다. 게임 화면 검사가 아니다.
-- 사용자 제공 화면에서 부대·강주 대상 한글/숫자 표시를 확인했다. 부대 피해 4방향은 화면 공방의 절삭 오차 범위와 양립한다. [수치 대조와 성의 13명 설명](../data/diagnostics/combat_formula_20261021/사용자화면_조인_대조.md). 실제 병력/내구 감소, 관문·시설 화면, 장기 안정성은 미확인이다.
+- 사용자 제공 화면에서 부대·강주 대상 한글/숫자 표시를 확인했다. 부대 피해 4방향은 화면 공방의 절삭 오차 범위와 양립한다. 수치 대조와 성의 13명 설명. 실제 병력/내구 감소, 관문·시설 화면, 장기 안정성은 미확인이다.
 
 개발 검사 기록은 `build/development/damage_preview/verification.json`, 개별 로그와 `native_evidence.json`에 있다. 일반 개발 DLL은 `build/development/loader_split/SAN14_Convenience.dll`이다.
 

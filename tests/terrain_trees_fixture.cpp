@@ -13,7 +13,7 @@
 using Obj=unsigned char *;
 static Obj image;
 static bool enabled=true;
-static struct {bool convenience=true,terrain_edit=true;} mod_features;
+static struct {bool convenience=true,terrain_edit=true;unsigned terrain_diag_mode=0;} mod_features;
 static unsigned checks,set_calls,native_calls,captures,applies,last_cells,last_writes;
 static DWORD callback_thread;
 static bool in_callback,expect_work;

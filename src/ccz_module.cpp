@@ -15,7 +15,13 @@ static void ccz_log(const char *kind,unsigned a=0,unsigned b=0,unsigned c=0) {if
 #define log_event(...) ccz_log(__VA_ARGS__)
 #define COST_SCOPE(name) do {} while(0)
 static void overlay_install() {if(overlay_hook)overlay_hook();}
+#ifdef CCZ_NATIVE_FIXTURE
+static void *ccz_fixture_function(unsigned);
+static unsigned ccz_fixture_roll();
+template<class T> static T fn(unsigned rva) {return reinterpret_cast<T>(ccz_fixture_function(rva));}
+#else
 template<class T> static T fn(unsigned rva) {return reinterpret_cast<T>(image+rva);}
+#endif
 static unsigned short word(Obj p,unsigned off) {return *reinterpret_cast<unsigned short *>(p+off);}
 static unsigned dword(Obj p,unsigned off) {return *reinterpret_cast<unsigned *>(p+off);}
 static Obj pointer(Obj p,unsigned off) {return *reinterpret_cast<Obj *>(p+off);}
@@ -46,9 +52,9 @@ static void restore_pointer(unsigned rva,unsigned original,void *replacement) {
 }
 #include "native_ccz_sprites.inl"
 namespace ccz_exports {
-static void __cdecl initialize(Obj base,CczLog log,void (__cdecl *overlay)()) {image=base;log_sink=log;overlay_hook=overlay;}
+static void __cdecl initialize(Obj base,CczLog log,void (__cdecl *overlay)()) {image=base;log_sink=log;overlay_hook=overlay;ccz_sprites::reload_appearance();}
 static bool __cdecl sprites_guards() {return image && ccz_sprites::guards_match();}
-static bool __cdecl install_sprites(bool hide,bool depth) {return image && ccz_sprites::install(hide,depth);}
+static bool __cdecl install_sprites(bool hide,bool depth,bool far_keep) {return image && ccz_sprites::install(hide,depth,far_keep);}
 static bool __cdecl needs_present() {return ccz_sprites::needs_present();}
 static void __cdecl on_present(ID3D11Device *d,ID3D11DeviceContext *c,ID3D11Texture2D *back,const D3D11_TEXTURE2D_DESC &desc) {ccz_sprites::on_present(d,c,back,desc);}
 static void __cdecl configure_combat(bool block,bool critical) {ccz_combat::configure(block,critical);}

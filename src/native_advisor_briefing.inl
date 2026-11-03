@@ -90,6 +90,9 @@ static bool detail=false,rendered_detail=false;
 static Obj report_state,simple_state;
 static std::vector<Obj> simple_states;
 static bool report_deferred;
+static bool report_headless;
+static CallLink report_results_call;
+static thread_local Obj replay_results;
 static unsigned rendered_generation=~0u,rendered_page=~0u;
 static bool rendered_open=false;
 static bool rendered_collecting=false;
@@ -303,7 +306,7 @@ static void reset() {
     clear_scene_pending();
     restore_speech();briefing_overlay::mask_report(false);
     move(old_log,false);move(old_advice,false);old_log={};old_advice={};
-    inbox.reset(0,0);open=false;detail=false;page=0;report_state=simple_state=nullptr;simple_states.clear();pictures.clear();report_deferred=false;
+    inbox.reset(0,0);open=false;detail=false;page=0;report_state=simple_state=nullptr;simple_states.clear();pictures.clear();report_deferred=false;report_headless=false;
     last_adviser=nullptr;last_art=~0u;++portrait_serial;briefing_overlay::forget();
 #ifndef NO_RUNTIME_LOG
     stalls.clear();
@@ -848,7 +851,7 @@ static bool pending_world_reports(std::vector<Event> &batch) {
     return true;
 }
 struct Text {Obj root;int id,x,y;std::wstring value;};
-struct TextCapture {std::vector<Text> text;bool valid=true;};
+struct TextCapture {std::vector<Text> text;bool valid=true;Obj headless_root=nullptr;};
 static thread_local TextCapture *capturing;
 struct CaptureScope {
     TextCapture *previous;
@@ -900,13 +903,13 @@ static void __fastcall set_text(Obj root,int id,const wchar_t *text,unsigned lon
     if(capturing && capturing->valid) {
         std::wstring value;
         if(!copy(text,value) || capturing->text.size()>=2048)capturing->valid=false;
-        else if(!value.empty()) {
+        else if(!value.empty() || root==capturing->headless_root) {
             auto &v=capturing->text;auto it=std::find_if(v.begin(),v.end(),[&](const Text &t){return t.root==root && t.id==id;});
             if(it!=v.end())it->value=std::move(value);
-            else {int pos[2]{};fn<void(__fastcall *)(Obj,int *,int)>(0x92CB10)(root,pos,id);v.push_back({root,id,pos[0],pos[1],std::move(value)});}
+            else {int pos[2]{0,id};if(root!=capturing->headless_root)fn<void(__fastcall *)(Obj,int *,int)>(0x92CB10)(root,pos,id);v.push_back({root,id,pos[0],pos[1],std::move(value)});}
         }
     }
-    original_text(root,id,text,flags);
+    if(!capturing || root!=capturing->headless_root)original_text(root,id,text,flags);
 }
 static void __fastcall diplomatic_speech(Obj owner,int slot,Obj person,const wchar_t *text,Obj extra) {
     bool capture=dialogue_ready(true) && owner==diplomatic_parent(true) && (slot==3 || slot==4);
@@ -966,7 +969,172 @@ static void __fastcall diplomatic_wait(Obj state) {
 #endif
     if(advance && serial==speech_serial && top_state()!=state)speech_waiting=false;
 }
+// Only the 676870 -> 67AE80 call is redirected. A native UI fallback replays
+// the prepared scalar/string payload, rather than applying report results twice.
+static void __fastcall report_results(Obj action) {
+    if(!replay_results){fn<void(__fastcall *)(Obj)>(0x67AE80)(action);return;}
+    for(unsigned i=0;i<262;++i) {
+        unsigned offset=i<261?0x1B00+i*0x140:0x16140;
+        memcpy(action+offset+0x10,replay_results+offset+0x10,0x130);
+    }
+    memcpy(action+0x16280,replay_results+0x16280,8);
+}
+struct ReportRecords {
+    std::vector<unsigned char> bytes;
+    ReportRecords():bytes(0x16290) {
+        for(unsigned i=0;i<262;++i)fn<Obj(__fastcall *)(Obj)>(0x2213C0)(bytes.data()+(i<261?0x1B00+i*0x140:0x16140));
+    }
+    ~ReportRecords(){for(unsigned i=262;i;) {--i;fn<void(__fastcall *)(Obj)>(0x2220A0)(bytes.data()+(i<261?0x1B00+i*0x140:0x16140));}}
+};
+#ifndef NO_RUNTIME_LOG
+struct ReportTiming {
+    unsigned phase;LARGE_INTEGER start{},frequency{};FILETIME created{},exited{},kernel{},user{};bool cpu_valid;
+    explicit ReportTiming(unsigned p):phase(p) {
+        QueryPerformanceCounter(&start);QueryPerformanceFrequency(&frequency);
+        cpu_valid=GetThreadTimes(GetCurrentThread(),&created,&exited,&kernel,&user)!=FALSE;
+    }
+    static unsigned long long ticks(FILETIME t){return (static_cast<unsigned long long>(t.dwHighDateTime)<<32)|t.dwLowDateTime;}
+    ~ReportTiming() {
+        LARGE_INTEGER end{};FILETIME k{},u{};QueryPerformanceCounter(&end);
+        bool valid=cpu_valid && GetThreadTimes(GetCurrentThread(),&created,&exited,&k,&u);
+        unsigned wall=frequency.QuadPart?static_cast<unsigned>((end.QuadPart-start.QuadPart)*1000000/frequency.QuadPart):0;
+        unsigned cpu=valid?static_cast<unsigned>((ticks(k)+ticks(u)-ticks(kernel)-ticks(user))/10):0;
+        // phase 1=Enter, 2=headless completion, 3=Leave/callback;
+        // value/hex are wall/CPU us. Nested phases must not be summed.
+        // Thread CPU is quantized; valid=1 with zero still means < one tick.
+        log_event("advisor_report_cost",phase,wall,cpu);
+        log_event("advisor_report_cpu_valid",phase,valid?1:0,0);
+    }
+};
+#endif
+static bool report_districts(std::vector<Obj> &districts) {
+    Obj root=world(),context=pointer(root,0x871E8);
+    Obj force=fn<Obj(__fastcall *)(Obj)>(0x32E910)(context);
+    if(!force)return false;
+    for(unsigned i=0;i<52;++i) {
+        Obj district=pointer(root,0xE0D0+i*8);
+        if(!district || !fn<int(__fastcall *)(Obj)>(0x32F500)(district))continue;
+        unsigned owner=district[0x10];
+        if(owner>=52 || pointer(root,0xDF30+owner*8)!=force)continue;
+        if(district[0x11]>=sizeof(district_labels)/sizeof(*district_labels))return false;
+        districts.push_back(district);
+    }
+    if(districts.empty() || districts.size()>8)return false;
+    std::sort(districts.begin(),districts.end(),[](Obj a,Obj b){return a[0x11]<b[0x11];});
+    for(size_t i=1;i<districts.size();++i)if(districts[i-1][0x11]==districts[i][0x11])return false;
+    return true;
+}
+static bool headless_income(std::vector<Event> &batch,const std::vector<Obj> &districts) {
+    // 67D1F0 uses only +378 of its UI owner. The zero-node layout makes its
+    // optional 92EF10 visibility update a no-op (92CEE0's count guard).
+    // Text setters are captured without creating nodes, querying coordinates,
+    // updating textures or forwarding to the real UI setter.
+    alignas(8) unsigned char income[0x380]{},child[0x178]{};
+    *reinterpret_cast<Obj *>(income+0x378)=child;
+    for(Obj district:districts) {
+        TextCapture values;values.headless_root=child+0x130;
+        {CaptureScope scope(values);fn<void(__fastcall *)(Obj,Obj)>(0x67D1F0)(income,district);}
+        if(!values.valid)return false;
+        std::vector<std::pair<int,std::wstring>> cells;
+        for(const auto &t:values.text)if(t.root==values.headless_root)cells.push_back({t.id,t.value});
+        // Native 67E32E explicitly clears military delta (38) when not
+        // applicable. Retain that setter call and its empty final value;
+        // a missing call or an empty balance is still a collection failure.
+        for(int base:{10,19,28,37})for(int j=0;j<4;++j) {
+            int id=base+j;
+            auto cell=std::find_if(cells.begin(),cells.end(),[&](const auto &c){return c.first==id;});
+            if(cell==cells.end() || (cell->second.empty() && id!=38)) {
+#ifndef NO_RUNTIME_LOG
+                log_event("advisor_report_income_missing",district[0x11],id,static_cast<unsigned>(cells.size()));
+#endif
+                return false;
+            }
+        }
+        Event e;e.kind=Kind::Income;e.day=day();
+        if(!copy(fn<const wchar_t *(__fastcall *)(unsigned)>(0x30CF80)(district_labels[district[0x11]]),e.text,100) || e.text.empty())return false;
+        e.report=income_summary(e.text,cells);
+        // Preserve the original formatted cell strings in their row order for
+        // detail view, without exposing internal control IDs in the report.
+        std::stable_sort(cells.begin(),cells.end(),[](const auto &a,const auto &b){return a.first<b.first;});
+        for(const auto &c:cells)e.text+=L"\n"+c.second;
+        if(e.text.size()>Inbox::text_limit || e.report.size()>Inbox::text_limit)return false;
+        batch.push_back(std::move(e));
+    }
+    return true;
+}
+static bool headless_gate(unsigned reason) {
+#ifndef NO_RUNTIME_LOG
+    log_event("advisor_report_headless_gate",reason,inbox.generation);
+#endif
+    (void)reason;return false;
+}
+static bool try_headless_report(Obj state,unsigned long long &result) {
+    if(!report_results_call.published)return headless_gate(1);
+    if(!defer(true))return headless_gate(2);
+    // 671950 initializes phase=4 and background=null. It does NOT initialize
+    // +488/+490; those belong to the skipped UI phases. Do not interpret
+    // allocator bytes there as owned controls on a freshly constructed state.
+    if(dword(state,0x470)!=4 || pointer(state,0x480))return headless_gate(3);
+    std::vector<Event> batch;std::vector<Obj> districts;
+    if(!pending_world_reports(batch))return headless_gate(4);
+    if(!report_districts(districts))return headless_gate(5);
+    // Reserve a full native result array before any result-producing call.
+    if(inbox.events.size()+batch.size()+districts.size()+262>Inbox::limit)return headless_gate(6);
+#ifndef NO_RUNTIME_LOG
+    if(stored_event_bytes!=static_cast<LONG>(sizeof(Event)))return false;
+    LARGE_INTEGER started{},frequency{};QueryPerformanceCounter(&started);QueryPerformanceFrequency(&frequency);
+#endif
+    ReportRecords records;Obj action=records.bytes.data();
+    // Native 676870 consumes pending report bits before generating results.
+    // Preserve that ordering, and undo only those bits for native UI fallback.
+    std::vector<std::pair<Obj,unsigned char>> consumed;Obj root=world();
+    for(unsigned i=0;i<2001;++i) {
+        Obj r=pointer(root,0x79E90+i*8);
+        if(r && !(r[0x82]&4) && (r[0x82]&2)) {
+            consumed.push_back({r,r[0x82]});r[0x82]=(r[0x82]&0xFD)|4;
+        }
+    }
+    fn<void(__fastcall *)(Obj)>(0x67AE80)(action); // original result/flag writers, exactly once
+    unsigned n=dword(action,0x16280);bool ok=n<=261;
+    for(unsigned i=0;ok && i<n;++i)ok=record(action+0x1B00+i*0x140,batch);
+    if(ok && dword(action,0x16284))ok=record(action+0x16140,batch);
+    // Income is calculated AFTER the original result writers, just as native
+    // phase 1 does; pre-result balances must never appear in the inbox.
+    unsigned failed_stage=ok?0:1;
+    if(ok){ok=headless_income(batch,districts);if(!ok)failed_stage=2;}
+    if(!ok || !store(std::move(batch),true)) {
+        // Keep native controls and completion semantics on unknown data. The
+        // caller-local replay protects irreversible result writers on retry.
+        for(const auto &r:consumed)r.first[0x82]=(r.first[0x82]&0xF9)|(r.second&6);
+        fallback();replay_results=action;
+        result=fn<unsigned long long(__fastcall *)(Obj)>(0x67B420)(state);
+        replay_results=nullptr;report_state=state;report_deferred=false;
+#ifndef NO_RUNTIME_LOG
+        log_event("advisor_report_collect_fail",failed_stage?failed_stage:3,n,static_cast<unsigned>(districts.size()));
+        log_event("advisor_report_headless_fallback",n);
+#endif
+        (void)failed_stage;
+        return true;
+    }
+    *reinterpret_cast<Obj *>(state+0x488)=nullptr;
+    *reinterpret_cast<Obj *>(state+0x490)=nullptr;
+    report_state=state;report_headless=true;report_deferred=false;
+    *reinterpret_cast<unsigned *>(state+0x478)=0xFF; // no camera/audio transition was started
+    *reinterpret_cast<unsigned *>(state+0x470)=3;
+    *reinterpret_cast<unsigned *>(state+0x474)=3;
+    result=1; // native Enter succeeds; manager finishes pushing before first frame
+#ifndef NO_RUNTIME_LOG
+    LARGE_INTEGER ended{};QueryPerformanceCounter(&ended);
+    log_event("advisor_report_headless",n,static_cast<unsigned>(inbox.events.size()),frequency.QuadPart?static_cast<unsigned>((ended.QuadPart-started.QuadPart)*1000000/frequency.QuadPart):0);
+#endif
+    return true;
+}
 static unsigned long long __fastcall report_enter(Obj state) {
+#ifndef NO_RUNTIME_LOG
+    ReportTiming timing(1);
+#endif
+    unsigned long long headless_result=0;
+    if(try_headless_report(state,headless_result))return headless_result;
     // Native reports are pushed after CUserStrategyState has already entered.
     // Accept only this final native report into the completed cycle.
     std::vector<Event> batch;bool capture=defer(true) && pending_world_reports(batch);
@@ -987,6 +1155,19 @@ static void __fastcall report_frame(Obj state) {
 #ifndef NO_RUNTIME_LOG
     hook_called(8);
 #endif
+    if(state==report_state && report_headless) {
+        if(top_state()!=state)return;
+#ifndef NO_RUNTIME_LOG
+        ReportTiming timing(2);
+#endif
+        // Original phase 3 owns final audio cleanup, manager pop, Leave and
+        // the bound parent callback. Never pop/reenter the manager from Enter.
+        report_headless=false;
+#ifndef NO_RUNTIME_LOG
+        log_event("advisor_report_headless_finish",inbox.generation);
+#endif
+        fn<void(__fastcall *)(Obj)>(0x67B600)(state);return;
+    }
     if(state==report_state && report_deferred) {
         if(top_state()!=state)return;
         if(!defer(true)){report_deferred=false;fallback();fn<void(__fastcall *)(Obj)>(0x67B600)(state);return;}
@@ -1036,8 +1217,11 @@ static void __fastcall report_frame(Obj state) {
     fn<void(__fastcall *)(Obj)>(0x67B600)(state);
 }
 static void __fastcall report_leave(Obj state,Obj context) {
+#ifndef NO_RUNTIME_LOG
+    ReportTiming timing(3);
+#endif
     bool owned=state==report_state;
-    if(owned){report_state=nullptr;report_deferred=false;}
+    if(owned){report_state=nullptr;report_deferred=false;report_headless=false;}
     fn<void(__fastcall *)(Obj,Obj)>(0x67B1E0)(state,context);
     if(owned && !report_state)briefing_overlay::mask_report(false);
 }
@@ -1153,7 +1337,9 @@ static bool install() {
         prepare_link(text_link,0x930D20,0xE9,relay) && prepare_link(speech_link,0x841660,0xE9,relay+128);
     original_time_wait=reinterpret_cast<TimeWait>(relay+800);
     prepare_scene_calls(relay);
-    if(!prepared || !VirtualProtect(relay,4096,PAGE_EXECUTE_READ,&old) || !FlushInstructionCache(GetCurrentProcess(),relay,832+scene_site_count*16)){VirtualFree(relay,0,MEM_RELEASE);return false;}
+    absolute_jump(relay+1024,reinterpret_cast<void *>(&report_results));
+    prepared=prepared && call_prepare(report_results_call,0x676D0D,relay+1024);
+    if(!prepared || !VirtualProtect(relay,4096,PAGE_EXECUTE_READ,&old) || !FlushInstructionCache(GetCurrentProcess(),relay,1040)){VirtualFree(relay,0,MEM_RELEASE);return false;}
     unsigned n=0;
     bool published=publish_link(text_link) && publish_link(speech_link);
     for(unsigned i=0;i<3 && published;++i)published=publish_link(message_links[i]);
@@ -1161,10 +1347,11 @@ static bool install() {
     for(unsigned i=0;i<3 && published;++i)published=publish_link(scene_links[i]);
     for(unsigned i=0;i<2 && published;++i)published=publish_link(picture_links[i]);
     published=published && publish_link(time_wait_link);
+    published=published && scene_call_publish(report_results_call);
     if(published)publish_scene_calls();
     if(published)for(;n<sizeof(slots)/sizeof(*slots);++n)if(!patch_pointer(slots[n].rva,slots[n].original,replacements[n]))break;
     if(n!=sizeof(slots)/sizeof(*slots)) {
-        restore_scene_calls();
+        call_restore(report_results_call);restore_scene_calls();
         while(n){--n;restore_pointer(slots[n].rva,slots[n].original,replacements[n]);}restore_link(time_wait_link);for(unsigned i=2;i;)restore_link(picture_links[--i]);for(unsigned i=3;i;)restore_link(scene_links[--i]);restore_link(event_link);for(unsigned i=3;i;)restore_link(message_links[--i]);restore_link(speech_link);restore_link(text_link);return false;
     }
 #ifndef NO_RUNTIME_LOG

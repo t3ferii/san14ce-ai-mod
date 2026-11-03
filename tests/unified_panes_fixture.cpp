@@ -79,8 +79,14 @@ static unsigned __fastcall initialize_list(Obj p,int x,int y,int width,int heigh
 }
 static void __fastcall initialize_checks(Obj p,Link **begin,Link **end) {auto d=find(p);check(!*end,"native initial checks have a bounded end iterator");for(Link *l=*begin;l;l=l->next)d->checked.push_back(l->value);}
 static unsigned __fastcall initialize_scrollbar(Obj p,int x,int y,int height,Obj parent){move_dialog(p,x,y);size_dialog(p,24,height);find(p)->parent=parent;return 1;}
-static void __fastcall attach_scrollbar(Obj body){check(find(body)!=nullptr,"scrollbar attaches to its own native list body");}
-static void __fastcall bind_event(Obj p,unsigned event,Obj callback){check(find(p) && event==0x514 && find(pointer(callback,8)) && pointer(callback,0)==image+0x13AEFA0,"native check-change delegate keeps the one main dialog as owner");}
+// User 2026-11-03: the one-argument mock hid the real CCZ settings crash.
+static void __fastcall attach_scrollbar(Obj body,Obj scrollbar){
+    auto list=find(body),bar=find(scrollbar);
+    check(list && bar && body==list->body && scrollbar==bar->object,"both native scrollbar attachment arguments are valid objects");
+    check(pointer(list->object,0x138)==scrollbar && list->parent==bar->parent,"native body receives the scrollbar created for its own list and host");
+    put(body,0x178,scrollbar);
+}
+static void __fastcall bind_event(Obj p,unsigned event,Obj callback){check(find(p) && event==0x514 && find(pointer(callback,8)) && pointer(callback,0)==image+0x13ADFA0,"verified native check-change delegate keeps the one main dialog as owner");}
 static void __fastcall count_refresh(Obj){}
 static void __fastcall frame_dialog(Obj p){++find(p)->frames;}
 static void __fastcall controls_dialog(Obj p){++find(p)->controls;}

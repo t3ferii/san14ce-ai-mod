@@ -1,6 +1,8 @@
 #pragma once
 // Original decoded 1fbe6be7..., confirmed against retained runtime .text.
 namespace diplomacy_intel {
+constexpr unsigned final_tail=0x816756,final_resume=0x81675B,final_cleanup=0x816806;
+static const unsigned char final_tail_bytes[]={0xBA,1,0,0,0}; // one whole MOV EDX,1
 struct Guard {unsigned rva,size;unsigned long long hash;};
 static const Guard guards[]={
     {0x810CA0,0x4AA,0xF93E4D48ACB7A0FBull},

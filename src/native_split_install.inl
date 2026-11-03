@@ -75,7 +75,7 @@ static CallLink links[2];
 static Obj relay;
 using Create=Obj(__fastcall *)(Obj,Obj);
 template<unsigned I> static Obj __fastcall create(Obj source,Obj allocator) { COST_SCOPE(I==0?"terrain_height_create_0":"terrain_height_create_1");
-    Obj object=fn<Create>(0xA07B70)(source,allocator);
+    Obj object=terrain_profile::invoke(terrain_profile::Id::HeightNative,fn<Create>(0xA07B70),source,allocator);
     terrain_render::heightfield_created(I,object,image+0x14D22F0);
     return object;
 }
@@ -87,7 +87,8 @@ static bool guards() {
 }
 // split_activate, before any map load reaches BC2380.
 static void install() {
-    if(relay || !mod_features.terrain_edit || !guards())return;
+    // B/C deliberately keep the edit UI and trees but do not capture collision-height objects.
+    if(relay || !mod_features.terrain_edit || (mod_features.terrain_diag_mode & 2u) || !guards())return;
     relay=allocate_near(image+kSites[0]);if(!relay)return;
     absolute_jump(relay,reinterpret_cast<void *>(&create<0>));absolute_jump(relay+32,reinterpret_cast<void *>(&create<1>));
     DWORD old=0;
@@ -404,6 +405,7 @@ static bool split_pointer_enabled(const SplitPointer &p) {
 #else
     if(!mod_features.convenience || mod_features.trace_original)return false;
     if(p.slot==terrain_trees::Slot)return mod_features.terrain_edit && terrain_trees::permitted;
+    if(p.slot==0x13AC588 || p.slot==0x13AC5B0 || p.slot==0x13AC578)return mod_features.unified || mod_features.ccz_sprites;
     return p.owner==kPointerUnified?mod_features.unified:p.owner==kPointerDomestic?mod_features.domestic:
         p.owner==kPointerHud?(mod_features.unified || mod_features.advisor_briefing):
         p.owner==kPointerTerrain?mod_features.terrain_edit:true;
@@ -465,6 +467,11 @@ static void split_activate() { COST_SCOPE("split_activate");
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
     if(mod_features.trace_original) {ai_trace::install(true); return;} // original AI, observed only
 #endif
+#if !defined(NO_RUNTIME_LOG) && !defined(SPLIT_MODULE_FIXTURE)
+    // Focused terrain CPU candidate: use the existing log switch, not broad AI/CSV profiling.
+    terrain_profile::initialize(mod_features.terrain_edit && diagnostic_logging && dev_group(),
+        +[](const char *kind,unsigned a,unsigned b,unsigned c){log_event(kind,a,b,c);});
+#endif
     terrain_render::install_early();
 #ifdef SAN14_TERRAIN_FOAM_INCLUDED
     terrain_foam::install();
@@ -472,13 +479,21 @@ static void split_activate() { COST_SCOPE("split_activate");
 #ifndef SPLIT_MODULE_FIXTURE
     terrain_height_link::install();
 #endif
+#ifndef NO_RUNTIME_LOG
+    // Report the hooks actually published at activation, not just the requested A/B/C bits.
+    unsigned terrain_foam_active=0;
+#ifdef SAN14_TERRAIN_FOAM_INCLUDED
+    terrain_foam_active=terrain_foam::active()?1u:0u;
+#endif
+    log_event("terrain_diag_mode",mod_features.terrain_diag_mode,terrain_foam_active,
+        terrain_render::hooks_active()?1u:0u);
+#endif
     if(mod_features.distance)install_progress_native();
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
     if(mod_features.name_lookup)install_name_lookup(); // optional; rejection keeps the original E09910
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
     if(mod_features.speed_buttons)speed_buttons::install(); // optional; needs the ScreenLayout patch for its buttons
-    layout_wait::install(); // layout_keep (default on) and/or [diagnostics] layout_wait
     gpu_profile_start(self_module); // [diagnostics] gpu_profile=1 only; observation-only GPU timers
     if(mod_features.fast_save)save_codec_hook::install(); // falls back to the original encoder per save
     if(mod_features.occupy_fast)occupy_fast::install(); // auto-capture presentation waits about halved
@@ -500,7 +515,9 @@ static void split_activate() { COST_SCOPE("split_activate");
     if(mod_features.drag_learn)drag_learn::install(); // several books x officers per learning command
     if(mod_features.lord_change)lord_change::install(); // new game: force select footer button 「세력내 군주교체」 (needs the ScreenLayout patch)
     if(mod_features.region_officers)region_officers::install(); // read-only native map portraits
-    if(mod_features.ccz_sprites && !ccz_sprites::install(mod_features.ccz_hide_model,mod_features.ccz_depth))split_disable(mod_features.ccz_sprites,32); // 조조전 병종 그림
+    if(mod_features.ccz_sprites && !ccz_sprites::install(mod_features.ccz_hide_model,mod_features.ccz_depth,mod_features.ccz_far_keep))split_disable(mod_features.ccz_sprites,32); // 조조전 병종 그림
+    if(mod_features.ccz_sprites)ccz_title::install(); // title-only appearance editor; renderer stays on if its menu guard fails
+    layout_wait::install(); // after ccz_title: it patches 86E0C0, which title guards require as original
     if((mod_features.ccz_block || mod_features.ccz_critical) && !ccz_combat::install(mod_features.ccz_block,mod_features.ccz_critical)) {
         split_disable(mod_features.ccz_block,33);split_disable(mod_features.ccz_critical,33);   // 16FDD0 call at 169F8B
     }

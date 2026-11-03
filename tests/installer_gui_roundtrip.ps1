@@ -49,6 +49,20 @@ $taskAfter=$taskLoad.Invoke($null,[object[]]@($taskIni.psobject.BaseObject))
 foreach($f in $taskItems){Check ($taskAfter.Value($f) -eq $taskValues[$f.Id]) ('value kept after manager rewrite: '+$f.Id)}
 Check (([IO.File]::ReadAllText($taskIni)) -match 'layout_wait=1') 'unowned section kept'
 Check (([IO.File]::ReadAllText($taskIni)) -match 'recruit_ai=0') 'split key written explicitly'
+# v15.1: terrain_diag_mode alone is a four-value diagnostic setting; ordinary switches stay binary.
+[string]$taskTerrainIni=Join-Path $Fixture 'terrain-diag.ini'
+foreach($taskMode in 0..3){
+    [IO.File]::WriteAllText($taskTerrainIni,"[diagnostics]`r`nterrain_diag_mode=$taskMode`r`nenabled=7`r`nextra_key=keep`r`n[real_estate]`r`nterrain_edit=-2`r`n",[Text.Encoding]::Unicode)
+    $taskTerrainDoc=$taskLoad.Invoke($null,[object[]]@($taskTerrainIni.psobject.BaseObject))
+    $taskTerrainValues=New-Object 'System.Collections.Generic.Dictionary[string,int]'
+    foreach($f in $taskItems){$taskTerrainValues[$f.Id]=$taskTerrainDoc.Value($f)}
+    Check ($taskTerrainValues['diagnostics.terrain_diag_mode'] -eq $taskMode) ('GUI loads terrain mode '+$taskMode)
+    Check ($taskTerrainValues['diagnostics.enabled'] -eq 1 -and $taskTerrainValues['real_estate.terrain_edit'] -eq 1) ('GUI keeps binary normalization '+$taskMode)
+    $taskTerrainDoc.Save($taskTerrainIni,$taskTerrainValues)
+    $taskTerrainRaw=[IO.File]::ReadAllText($taskTerrainIni)
+    Check (([regex]::Matches($taskTerrainRaw,'(?m)^\[diagnostics\]\r?$')).Count -eq 1 -and ([regex]::Matches($taskTerrainRaw,'(?m)^terrain_diag_mode=')).Count -eq 1) ('GUI avoids duplicate terrain key/section '+$taskMode)
+    Check ($taskTerrainRaw -match ('(?m)^terrain_diag_mode='+$taskMode+'\r?$') -and $taskTerrainRaw -match '(?m)^extra_key=keep\r?$') ('GUI saves mode and preserves user key '+$taskMode)
+}
 # 사용자 결정 2026-10-28: 충돌 옵션 사용 중지. Legacy 1 and injected values must save as 0.
 $taskRetired=@('combat.departures','combat.group_advance','combat.support')
 [string]$taskRetiredIni=Join-Path $Fixture 'retired.ini'
@@ -65,6 +79,43 @@ foreach($key in @('departures','group_advance','support')){Check ($taskRaw -matc
 $taskForm=[Activator]::CreateInstance($taskAsm.GetType('AiTacticsInstaller.MainForm'),[object[]]@([string]$taskPkg.psobject.BaseObject,[string]$taskGame.psobject.BaseObject))
 $taskForm.Show();[Windows.Forms.Application]::DoEvents()
 $taskFlags=[Reflection.BindingFlags]'NonPublic,Instance'
+# User 2026-11-02: local/public status comparisons are deterministic and never need GitHub.
+$taskUpdates=$taskAsm.GetType('AiTacticsInstaller.Updates').GetMethod('StatusText')
+foreach($taskCase in @(
+    @('v15.1',$true,'v15','로컬 개발판 v15.1 · 공개 v15'),
+    @('v15',$false,'v15','공개 최신판 v15'),
+    @('v15.1',$true,'v15.2','● 업데이트 가능 · 공개 v15.2'),
+    @('v15.1',$true,'v15.1','로컬 개발판 v15.1 · 공개 v15.1'),
+    @('v15.1',$false,'v15','설치판 v15.1 · 공개 v15'),
+    @('v15.1',$true,$null,'로컬 개발판 · 공개판 확인 불가')
+)){
+    $taskStatusInstalled=[string]$taskCase[0];$taskStatusPublic=if($null -eq $taskCase[2]){$null}else{[string]$taskCase[2]}
+    Check ($taskUpdates.Invoke($null,[object[]]@($taskStatusInstalled.psobject.BaseObject,[bool]$taskCase[1],$(if($null -eq $taskStatusPublic){$null}else{$taskStatusPublic.psobject.BaseObject}))) -eq $taskCase[3]) ('update status '+$taskCase[3])
+}
+$taskManifest=Join-Path $taskGame 'AI_TacticsMod\build\input_package\manifest.json'
+$taskOriginalManifest=[IO.File]::ReadAllText($taskManifest)
+try {
+    foreach($taskCase in @(@('v15.1',$true,$true),@('v15',$true,$false),@('v15.1',$false,$false))){
+        [IO.File]::WriteAllText($taskManifest,('{"release_version":"'+$taskCase[0]+'","local_diagnostic_only":'+([string]$taskCase[1]).ToLowerInvariant()+'}'))
+        Check ($taskForm.GetType().GetMethod('InstalledLocalDiagnostic',$taskFlags).Invoke($taskForm,[object[]]@('v15.1')) -eq $taskCase[2]) 'local diagnostic metadata must match installed version'
+    }
+} finally {[IO.File]::WriteAllText($taskManifest,$taskOriginalManifest)}
+$taskFar=@($taskItems|Where-Object {$_.Id -eq 'ccz.ccz_far_keep'})[0]
+Check ($taskFar.Default -eq 0 -and $taskFar.Tab -eq '조조전' -and $taskFar.Requires -eq 'ccz.ccz_sprites') 'far keep opt-in catalog'
+foreach($taskFarValue in @(0,1)){
+    $taskFarIni=Join-Path $Fixture 'far-keep.ini'
+    [IO.File]::WriteAllText($taskFarIni,"[ccz]`r`nccz_far_keep=$taskFarValue`r`nccz_depth=1`r`ncustom=kept`r`n",[Text.Encoding]::Unicode)
+    $taskFarDoc=$taskLoad.Invoke($null,[object[]]@($taskFarIni.psobject.BaseObject))
+    $taskFarValues=New-Object 'System.Collections.Generic.Dictionary[string,int]'
+    foreach($f in $taskItems){$taskFarValues[$f.Id]=$taskFarDoc.Value($f)}
+    $taskFarDoc.Save($taskFarIni,$taskFarValues)
+    . (Join-Path $taskProject 'distribution\FeatureSelect.ps1')
+    $taskFarPS=Get-FeatureValues (Read-FeatureIni $taskFarIni)
+    Check ($taskFarPS['ccz.ccz_far_keep'] -eq $taskFarValue -and $taskFarPS['ccz.ccz_depth'] -eq 1) 'far keep GUI to PS roundtrip preserves depth'
+    Write-FeatureIni $taskFarIni $taskFarPS (Read-FeatureIni $taskFarIni)
+    $taskFarReload=$taskLoad.Invoke($null,[object[]]@($taskFarIni.psobject.BaseObject))
+    Check ($taskFarReload.Value($taskFar) -eq $taskFarValue -and [IO.File]::ReadAllText($taskFarIni).Contains('custom=kept')) 'far keep PS to GUI roundtrip preserves custom key'
+}
 $taskState=$taskForm.GetType().GetField('values',$taskFlags).GetValue($taskForm)
 $taskState['groups.convenience']=0;$taskState['personnel.awards']=0;$taskState['personnel.awards_ai']=0
 $taskChild=$taskAsm.GetType('AiTacticsInstaller.Catalog').GetMethod('ById').Invoke($null,[object[]]@('personnel.awards_ai'))
@@ -117,6 +168,9 @@ foreach($taskSize in @((New-Object Drawing.Size 800,580),(New-Object Drawing.Siz
 $taskShow.Invoke($taskForm.psobject.BaseObject,[object[]]@('편의성'));[Windows.Forms.Application]::DoEvents()
 $taskRows=$taskForm.GetType().GetField('rows',$taskFlags).GetValue($taskForm)
 $taskSync=$taskForm.GetType().GetMethod('SyncRows',$taskFlags)
+$taskTerrainRow=@($taskRows | Where-Object {$_.Item.Id -eq 'diagnostics.terrain_diag_mode'})
+Check ($taskTerrainRow.Count -eq 1 -and $taskTerrainRow[0].Choice.Items.Count -eq 4) 'GUI terrain diagnostic row has four choices'
+foreach($taskMode in 0..3){$taskState['diagnostics.terrain_diag_mode']=$taskMode;$taskSync.Invoke($taskForm.psobject.BaseObject,$null);Check ($taskTerrainRow[0].Choice.SelectedIndex -eq $taskMode) ('GUI terrain choice reload '+$taskMode)}
 $taskTabs=$taskForm.GetType().GetField('tabButtons',$taskFlags).GetValue($taskForm)
 $taskShow.Invoke($taskForm.psobject.BaseObject,[object[]]@('전투'))
 foreach($mission in @(0,1)){foreach($master in @(0,1)){
@@ -148,7 +202,7 @@ foreach($label in @('모두 켜기','배포 기본값')){
     $taskAction.GetType().GetMethod('OnClick',$taskFlags).Invoke($taskAction.psobject.BaseObject,[object[]]@([EventArgs]::Empty))
     foreach($id in $taskRetired){Check ($taskState[$id] -eq 0) ('GUI bulk action stays OFF: '+$label+'/'+$id)}
     foreach($f in $taskItems | Where-Object {$_.Id -notin $taskRetired}){
-        $taskExpected=if($label -eq '모두 켜기'){1}else{$f.Default}
+        $taskExpected=if($label -eq '모두 켜기' -and $f.Id -ne 'diagnostics.terrain_diag_mode'){1}else{$f.Default}
         Check ($taskState[$f.Id] -eq $taskExpected) ('GUI bulk action preserves other feature: '+$f.Id)
     }
 }
@@ -178,6 +232,16 @@ foreach($taskSource in @('distribution\FeatureSelect.ps1','FeatureSelect.ps1')){
     $taskMenuScript=Join-Path $Fixture 'retired-menu.ps1'
     Copy-Script (Join-Path $taskProject $taskSource) $taskMenuScript
     . $taskMenuScript
+    foreach($taskMode in 0..3){
+        [IO.File]::WriteAllText($taskTerrainIni,"[diagnostics]`r`nterrain_diag_mode=$taskMode`r`nenabled=7`r`nextra_key=keep`r`n[real_estate]`r`nterrain_edit=-2`r`n",[Text.Encoding]::Unicode)
+        $taskPSValues=Get-FeatureValues (Read-FeatureIni $taskTerrainIni)
+        Check ($taskPSValues['diagnostics.terrain_diag_mode'] -eq $taskMode) ('PS loads terrain mode '+$taskSource+'/'+$taskMode)
+        Check ($taskPSValues['diagnostics.enabled'] -eq 1 -and $taskPSValues['real_estate.terrain_edit'] -eq 1) ('PS keeps binary normalization '+$taskSource+'/'+$taskMode)
+        Write-FeatureIni $taskTerrainIni $taskPSValues (Read-FeatureIni $taskTerrainIni)
+        $taskTerrainRaw=[IO.File]::ReadAllText($taskTerrainIni)
+        Check (([regex]::Matches($taskTerrainRaw,'(?m)^\[diagnostics\]\r?$')).Count -eq 1 -and ([regex]::Matches($taskTerrainRaw,'(?m)^terrain_diag_mode=')).Count -eq 1) ('PS avoids duplicate terrain key/section '+$taskSource+'/'+$taskMode)
+        Check ($taskTerrainRaw -match ('(?m)^terrain_diag_mode='+$taskMode+'\r?$') -and $taskTerrainRaw -match '(?m)^extra_key=keep\r?$') ('PS saves mode and preserves user key '+$taskSource+'/'+$taskMode)
+    }
     foreach($mission in @(0,1)){
         $taskPSValues=Get-FeatureValues (Read-FeatureIni $taskRetiredIni)
         $taskPSValues['combat.mission_v2']=$mission
@@ -198,6 +262,28 @@ foreach($taskSource in @('distribution\FeatureSelect.ps1','FeatureSelect.ps1')){
         $taskRaw=[IO.File]::ReadAllText($taskRetiredIni)
         foreach($key in @('departures','group_advance','support')){Check ($taskRaw -match ('(?m)^'+$key+'=0\r?$')) ('PS raw save forces 0: '+$key)}
     }
+}
+# User 2026-11-02: game-menu appearance profile is raw structured data, never a checkbox.
+$taskAppearanceIni=Join-Path $Fixture 'ccz-appearance.ini'
+$taskAppearanceProfile=(@(2,70,90,8209)+@(0..67)+@(1..92|ForEach-Object {255})) -join ','
+[IO.File]::WriteAllText($taskAppearanceIni,"[ccz]`r`nccz_depth=0`r`nccz_far_keep=1`r`n[ccz_appearance]`r`nprofile=older`r`n[custom]`r`ntoken=keep`r`n[ccz_appearance]`r`nprofile=$taskAppearanceProfile`r`n",[Text.Encoding]::Unicode)
+$taskRawCatalog=$taskAsm.GetType('AiTacticsInstaller.Catalog').GetField('RawSettings').GetValue($null)
+Check ($taskRawCatalog -contains 'ccz_appearance.profile') 'GUI registers raw appearance schema'
+for($taskRound=0;$taskRound -lt 3;$taskRound++){
+    $taskAppearanceDoc=$taskLoad.Invoke($null,[object[]]@($taskAppearanceIni.psobject.BaseObject))
+    $taskAppearanceValues=New-Object 'System.Collections.Generic.Dictionary[string,int]'
+    foreach($f in $taskItems){$taskAppearanceValues[$f.Id]=$taskAppearanceDoc.Value($f)}
+    $taskAppearanceDoc.Save($taskAppearanceIni,$taskAppearanceValues)
+    $taskAppearanceRead=Read-FeatureIni $taskAppearanceIni
+    Check ($taskAppearanceRead['ccz_appearance']['profile'] -ceq $taskAppearanceProfile) 'GUI preserves full raw profile'
+    Check ($taskRawSettings -contains 'ccz_appearance.profile') 'PowerShell registers same raw schema'
+    $taskAppearancePS=Get-FeatureValues $taskAppearanceRead
+    Write-FeatureIni $taskAppearanceIni $taskAppearancePS $taskAppearanceRead
+    $taskAppearanceRead=Read-FeatureIni $taskAppearanceIni
+    Check ($taskAppearanceRead['ccz_appearance']['profile'] -ceq $taskAppearanceProfile -and $taskAppearanceRead['custom']['token'] -eq 'keep') 'PS preserves appearance and unrelated user keys'
+    Check ($taskAppearanceRead['ccz']['ccz_depth'] -eq '0' -and $taskAppearanceRead['ccz']['ccz_far_keep'] -eq '1') 'appearance save keeps ordinary 0/1 switches'
+    $taskAppearanceRaw=[IO.File]::ReadAllText($taskAppearanceIni)
+    Check (([regex]::Matches($taskAppearanceRaw,'(?m)^\[ccz_appearance\]\r?$').Count -eq 1) -and ([regex]::Matches($taskAppearanceRaw,'(?m)^profile=2,70,90,8209,').Count -eq 1)) 'appearance section and key not duplicated; full source-cell code preserved'
 }
 Remove-Item Function:\Read-Host
 '{"status":"installer_gui_roundtrip_passed","checks":'+$taskChecks+',"ui_clicked":false}'

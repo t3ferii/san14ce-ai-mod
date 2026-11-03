@@ -2,6 +2,7 @@
 // Evidence and state/ABI map: docs/DIPLOMACY_INTEL.md.
 #include "diplomacy_intel.h"
 #include "diplomacy_intel_profile.h"
+#include <cstddef>
 namespace diplomacy_intel {
 // Same-mod patches inside guarded ranges (user 2026-10-28, live PID9808: both
 // failed the guard and disabled overinvest/counterturn). Each window must hold
@@ -24,6 +25,7 @@ static unsigned char guarded_byte(unsigned rva,bool &ok) {
     return image[rva];
 }
 static bool guards_match() {
+    if(memcmp(image+final_tail,final_tail_bytes,sizeof(final_tail_bytes)))return false;
     for(const auto &g:guards) {
         unsigned long long h=0xcbf29ce484222325ull;bool ok=true;
         for(unsigned i=0;i<g.size;++i)h=(h^guarded_byte(g.rva+i,ok))*0x100000001b3ull;
@@ -40,6 +42,20 @@ using Resolve=int(__fastcall *)(Obj,Obj,Obj,int,Obj,int,int);
 struct FinalArgs {Obj force=nullptr,person=nullptr,target=nullptr,object=nullptr;int kind=0;};
 struct Pending {Obj state=nullptr;Round round;FinalArgs args;} ;
 static Pending pending;
+static CodeLink final_tail_link;
+// Native 815EA0 has already consumed the resolver result at this point. RAX
+// and flags are dead; RSI is the state. No call, stack change, or native local
+// is introduced. Always retain the original container cleanup at 816806.
+static void build_final_tail_gate(Obj at,Obj resume,Obj cleanup) {
+    constexpr size_t deferred=offsetof(Pending,round)+offsetof(Round,deferred);
+    static_assert(deferred<128,"short field displacement");
+    const unsigned char code[]={0x48,0xB8,0,0,0,0,0,0,0,0,
+        0x48,0x39,0x30,0x75,0x14,0x80,0x78,static_cast<unsigned char>(deferred),0,0x74,0x0E};
+    memcpy(at,code,sizeof(code));Obj owner=reinterpret_cast<Obj>(&pending);memcpy(at+2,&owner,8);
+    absolute_jump(at+21,cleanup);
+    memcpy(at+35,final_tail_bytes,sizeof(final_tail_bytes));
+    absolute_jump(at+40,resume);
+}
 static thread_local Obj final_scope;
 static Obj view() {return pending.state?pointer(pending.state,0x4C0):nullptr;}
 static Obj window() {Obj v=view();return v?pointer(v,0x188):nullptr;}
@@ -123,8 +139,9 @@ static void rearm(Obj state) {
     // Same user-side setup as native phase 7 -> 8; resources have already been
     // debited by phase 11. No refund, duplicated debit, new AI move or save data.
     if(Obj button=pointer(w,0x1F8)) {
-        number(button,0x40)&=~2;
-        if(Obj child=pointer(button,0x180))number(child,0x40)&=~2;
+        // Native 814380 ORs this bit in both objects before phase 8.
+        number(button,0x40)|=2;
+        if(Obj child=pointer(button,0x180))number(child,0x40)|=2;
     }
     show(v,1);show(w,1);
     fn<void(__fastcall *)(Obj,int)>(0x824880)(state,1);
@@ -197,16 +214,21 @@ static bool install() {
         reinterpret_cast<void *>(&rate),reinterpret_cast<void *>(&ai_response),reinterpret_cast<void *>(&resolve),reinterpret_cast<void *>(&final_phase)};
     bool ok=true;
     for(unsigned i=0;i<7 && ok;++i) {absolute_jump(relay+32*i,targets[i]);ok=call_prepare(links[i],sites[i].rva,relay+32*i);}
+    build_final_tail_gate(relay+256,image+final_resume,image+final_cleanup);
+    ok=ok && prepare_link(final_tail_link,final_tail,0xE9,relay+256);
+    if(ok)ok=memcmp(final_tail_link.original+(final_tail-final_tail_link.block),final_tail_bytes,sizeof(final_tail_bytes))==0;
     DWORD old;
-    if(!ok || !VirtualProtect(relay,4096,PAGE_EXECUTE_READ,&old) || !FlushInstructionCache(GetCurrentProcess(),relay,224)) {
+    if(!ok || !VirtualProtect(relay,4096,PAGE_EXECUTE_READ,&old) || !FlushInstructionCache(GetCurrentProcess(),relay,310)) {
         VirtualFree(relay,0,MEM_RELEASE);return false;
     }
     unsigned nc=0,np=0;
+    if(!publish_link(final_tail_link)){VirtualFree(relay,0,MEM_RELEASE);log_event("diplomacy_intel_publish_rejected");return false;}
     for(;nc<7;++nc)if(!call_publish(links[nc]))break;
     if(nc==7)for(;np<11;++np)if(!patch_pointer(slots[np].rva,slots[np].original,replacements[np]))break;
     if(nc!=7 || np!=11) {
         while(np) {--np;restore_pointer(slots[np].rva,slots[np].original,replacements[np]);}
         while(nc)call_restore(links[--nc]);
+        restore_link(final_tail_link);
         log_event("diplomacy_intel_publish_rejected");return false;
     }
     log_event("diplomacy_intel_installed",mod_features.diplomacy_overinvest,mod_features.diplomacy_counterturn);return true;

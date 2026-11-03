@@ -11,7 +11,8 @@ import sys
 REPORT=Path(sys.argv[1]) if len(sys.argv)>1 else PROJECT/'build/share_package.json'
 SHARE=json.loads(REPORT.read_text(encoding='utf-8'))
 package=Path(SHARE['zip']).resolve()
-assert package.is_relative_to((PROJECT/'dist').resolve()) and package.suffix=='.zip'
+package_root=PROJECT/'build/local_candidates' if SHARE.get('local_diagnostic_only') else PROJECT/'dist'
+assert package.is_relative_to(package_root.resolve()) and package.suffix=='.zip'
 fixture=Path(tempfile.mkdtemp(prefix='share_verify_',dir=PROJECT/'build')).resolve()
 assert fixture.is_relative_to((PROJECT/'build').resolve()) and fixture.name.startswith('share_verify_')
 checks=0
@@ -57,6 +58,9 @@ try:
         combat=game/'SAN14_CombatAI.dll';combat_payload=game/'AI_TacticsMod/build/input_package/SAN14_CombatAI.dll'
         combat_bytes=combat_payload.read_bytes() if split else None
         combat_hash=sha(combat_payload) if split else None
+        ccz=game/'SAN14_CCZ.dll';ccz_payload=game/'AI_TacticsMod/build/input_package/SAN14_CCZ.dll'
+        ccz_bytes=ccz_payload.read_bytes() if split and 'SAN14_CCZ.dll' in split.get('files',{}) else None
+        ccz_hash=sha(ccz_payload) if ccz_bytes is not None else None
         previous_hash=hashlib.sha256(provider).hexdigest() if provider is not None else None
         if provider is not None:target.write_bytes(provider)
         for name,digest in packaged_manifest.get('asset_originals',{}).items():
@@ -75,6 +79,17 @@ try:
             # Reported case: a same-named reference text from another mod/older copy must not block a fresh install.
             for name in optional:(game/name).write_bytes(b'other mod text')
         invoke(game,'Apply');check(sha(target)==new_hash and sha(chain)==previous_hash,'initial apply and provider preservation')
+        if ccz_bytes is not None:
+            check(sha(ccz)==ccz_hash,'CCZ DLL installed separately')
+            if packaged_manifest['release_version']=='v15.1':
+                proof=json.loads((PROJECT/'build/v15_1_installation.json').read_text(encoding='utf-8'))
+                local14=Path(proof['stage_backup'])/'files/SAN14_CCZ.dll'
+                check(sha(local14)=='553ae296eabe73cc911cb79de0bf9bf11e594dbb4f2a63515ca8e8eb5fecb937','known local14 migration input hash')
+                saved=json.loads(state.read_text(encoding='utf-8'));saved['release_version']='v15'
+                saved['modules']['SAN14_CCZ.dll']='6482ac9e978cb09509a5f1b1b7081afe670ec81abd45eea7fd4ef020063e9484'
+                state.write_text(json.dumps(saved),encoding='utf-8');ccz.write_bytes(local14.read_bytes())
+                invoke(game,'Apply');check(sha(ccz)==ccz_hash and json.loads(state.read_text(encoding='utf-8'))['release_version']=='v15.1',
+                    'known manual local14 CCZ upgrades to v15.1 through guarded manager')
         if index==1:
             for name in optional:
                 owned=json.loads((game/'AI_TacticsMod/backup/input_state.json').read_text(encoding='utf-8'))['modules']

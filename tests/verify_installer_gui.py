@@ -8,6 +8,7 @@ P=Path(__file__).resolve().parents[1]
 gui=(P/'installer/InstallerGui.cs').read_text(encoding='utf-8')
 menu=(P/'distribution/FeatureSelect.ps1').read_text(encoding='utf-8-sig')
 adapter=(P/'src/native_adapter.cpp').read_text(encoding='utf-8')
+split_manage=(P/'distribution/SplitManage.ps1').read_text(encoding='utf-8-sig')
 fail=[];checks=0
 def ok(cond,what):
     global checks;checks+=1
@@ -26,12 +27,21 @@ ok(retired_body is not None and set(re.findall(r'"([\w.]+)"',retired_body[1]))==
 ps_retired={s+'.'+k for s,k in re.findall(r"Section='(\w+)'; Key='(\w+)';[^\r\n]*Retired=\$true",menu)}
 ok(ps_retired==retired,'PS retired set equals GUI')
 ok((P/'FeatureSelect.ps1').read_text(encoding='utf-8-sig')==menu,'game-folder PS catalog equals distribution')
+ok((P/'SplitManage.ps1').read_text(encoding='utf-8-sig')==split_manage,'game-folder guarded manager equals distribution')
+ok("$taskInstalledHash -eq '553ae296eabe73cc911cb79de0bf9bf11e594dbb4f2a63515ca8e8eb5fecb937'" in split_manage and
+   "$taskState.release_version -like 'v15*'" in split_manage and "$taskManifest.release_version -eq 'v15.1'" in split_manage,
+   'v15.1 accepts only the exact known local14 CCZ override')
 ok('f.departures = f.group_advance = f.support = false;' in adapter and
    'if (f.mission_v2) { f.departures = false;' not in adapter,'DLL retired switches unconditionally OFF')
 ok('user 2026-10-28: retired, conflicts with mission_v2' in adapter,'DLL retirement decision recorded')
 ok('!f.IsMaster && !Catalog.Retired.Contains(f.Id)' in gui,'tab denominator excludes retired rows')
 ok('임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.' in gui and
    menu.count("Retired=$true;")==3 and menu.count("Note='임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.'")==3,'retirement explanations')
+ok(cs.get(('diagnostics','terrain_diag_mode'))==('diagnostics',0,'','','기타(개발용)'),'terrain diagnostic mode catalog/default/group/tab')
+ok('Math.Max(0, Math.Min(3, n))' in gui and "[Math]::Max(0, [Math]::Min(3, $taskNumber))" in menu,'terrain diagnostic mode keeps 0..3')
+ok('0 — 기준: foam ON / renderer ON' in gui and '[0 기준]' in menu and '번호=값' in menu,'GUI/PS expose four terrain diagnostic choices')
+ok('A/B/C는 진단 전용입니다.' in gui and '실제 지형 편집·저장에는 사용하지 마세요.' in menu,'terrain diagnostic warning')
+ok('AssemblyVersion("15.1.0.0")' in gui,'installer assembly version 15.1.0.0')
 tabs=('전투','편의성','성능','게임성','조조전','기타(개발용)')
 for (s,k),(g,d,r,i,t) in cs.items():
     ok(t in tabs,'unknown tab %s'%t)

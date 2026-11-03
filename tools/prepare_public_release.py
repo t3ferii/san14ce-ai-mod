@@ -53,7 +53,8 @@ def main():
     m['split_modules'].update(files=files,source_sha256=inputs,source_sha256_by_module={n:inputs for n in expected},
         runtime_log_writers_compiled_out=True,gameplay_verified=False,startup_verified=False)
     m['gui_installer'].update(sha256=sha(stage/gui))
-    m['ccz_assets']={'assets/ccz/ccz_units.bin':sha(P/'assets/ccz/ccz_units.bin')}   # SAN14_CCZ.dll sprite atlas
+    # The title editor needs the complete lazy-loaded gallery as well as the battle atlas.
+    m['ccz_assets']={n:sha(P/n) for n in ('assets/ccz/ccz_units.bin','assets/ccz/ccz_catalog.bin')}
     m['feature_switches']['count']=(P/'distribution/FeatureSelect.ps1').read_text(encoding='utf-8-sig').count('@{Group=')
     m['layout_patch'].update(bank_sha256=j['bank_sha256'],json_sha256=sha(stage/'traits9_layout.json'),merge=str(len(j['records']))+' ktid entries')
     m['progress_native']['profile_logging_compiled_out']=True

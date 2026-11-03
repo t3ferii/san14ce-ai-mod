@@ -21,6 +21,7 @@ namespace log_perf {alignas(8) static volatile LONG64 calls,total_us,max_us;}
 static void log_event(const char *,unsigned,unsigned,unsigned) {}
 #endif
 #include "../src/native_unified_overlay.inl"
+#include "../src/native_ccz_preview.inl"
 static unsigned checks;
 static void check(bool ok,const char *label){++checks;if(!ok){fprintf(stderr,"%s\n",label);ExitProcess(1);}}
 int main() {

@@ -46,8 +46,15 @@ def main():
     # User 2026-10-30: release feature (terrain_edit); no diagnostic-only guard, no reserve pool.
     assert "#pragma once\n#ifndef SPLIT_COMBAT\n#define SAN14_TERRAIN_FOAM_INCLUDED" in source and "NO_RUNTIME_LOG" not in source
     assert not any(word in source for word in ("B30F70", "B34350", "B31250", "early_parser", "foam_test", "PoolCount", "bcrypt"))
+    # User 2026-11-02: eliminate the 222-call zoom probe burst, preserving fault/identity guards.
+    assert "VirtualQuery" not in re.sub(r"//[^\n]*", "", source)
+    assert "capture_fields(handle,fields)" in source and "__except(EXCEPTION_EXECUTE_HANDLER)" in source
+    assert "pointer(p,0)!=image+0x16DA140" in source
     for name in ("time_update", "render"):
         body = re.search(r"static uint64_t __fastcall " + name + r"\([^;]+?\) \{([^}]+)\}", source).group(1)
+        # User 2026-11-02: timing scopes may surround the unchanged observe -> native call.
+        # Strip only the explicit accounting statements; retain ABI/order/one-call assertions.
+        body = re.sub(r"\s*TERRAIN_SCOPE\(\w+\);", "", body)
         assert body.strip().startswith("if(watch)observe(a,")
         assert body.count("fn<Callback>") == 1
         assert "find_locked" not in body and "readable" not in body

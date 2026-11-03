@@ -1,6 +1,7 @@
 // 조조전 탭 (2026-11-01 사용자: 조조전 기능은 별도 DLL). Sole owner of the Present hook and of the 169F8B
 // CALL publication stays SAN14_Convenience; SAN14_CCZ.dll (ccz_module.cpp) draws and decides. It is
 // loaded here, on the install worker, only when a [ccz] feature is on. Missing DLL -> those features off.
+#ifndef CCZ_GUARD_FIXTURE
 #include "ccz_module_api.h"
 namespace ccz_module {
 static const CczApi *api;
@@ -26,12 +27,20 @@ static bool load() {
 #endif
     api=found;return true;
 }
+static void reload_appearance() {
+    if(!api)return;
+#ifndef NO_RUNTIME_LOG
+    api->initialize(image,&log_sink,&overlay_install);
+#else
+    api->initialize(image,nullptr,&overlay_install);
+#endif
+}
 }
 namespace ccz_sprites {
 static volatile LONG published;
 static bool guards_match() {return ccz_module::load() && ccz_module::api->sprites_guards();}
-static bool install(bool hide,bool depth) {
-    if(!ccz_module::load() || !ccz_module::api->install_sprites(hide,depth))return false;
+static bool install(bool hide,bool depth,bool far_keep) {
+    if(!ccz_module::load() || !ccz_module::api->install_sprites(hide,depth,far_keep))return false;
     InterlockedExchange(&published,1);return true;
 }
 static bool needs_present() {return InterlockedCompareExchange(&published,0,0) && ccz_module::api->needs_present();}
@@ -40,15 +49,25 @@ static void on_present(ID3D11Device *d,ID3D11DeviceContext *c,ID3D11Texture2D *b
 }
 }
 static bool ccz_sprites_guards_match() {return ccz_sprites::guards_match();}
+#endif
 // 조조전식 막기·회심. 일반 공격 처리 169C50의 6단계 CALL 16FDD0(manager,pair,output) at 169F8B (유일한 호출자).
 namespace ccz_combat {
 constexpr unsigned kSite=0x169F8B,kFix=0x16FDD0;
 static CallLink link;
 static bool guards_match() {
     // lea r8,[rsp+30]; mov rdx,rbx; mov rcx,r15; call 16FDD0 (169C50 case 6)
+    // User 2026-11-02: original army-force and hostile-relation ABI.
+    static const struct {unsigned rva;unsigned long long hash;} relations[]={
+        {0x22CC40,0x777A504FBF698C1Cull},{0x2CA280,0x7221823C76F2F29Full}};
+    for(const auto &g:relations) {
+        unsigned long long h=0xCBF29CE484222325ull;
+        for(unsigned i=0;i<0x30;++i)h=(h^image[g.rva+i])*0x100000001B3ull;
+        if(h!=g.hash)return false;
+    }
     static const unsigned char before[]={0x4C,0x8D,0x44,0x24,0x30,0x48,0x8B,0xD3,0x49,0x8B,0xCF};
     return image[kSite]==0xE8 && kSite+5+*reinterpret_cast<int *>(image+kSite+1)==kFix && !memcmp(image+kSite-11,before,11);
 }
+#ifndef CCZ_GUARD_FIXTURE
 static bool install(bool block,bool critical) {
     if(!guards_match()){log_event("ccz_combat_guard_rejected");return false;}
     if(!ccz_module::load())return false;
@@ -60,4 +79,5 @@ static bool install(bool block,bool critical) {
     if(!call_publish(link)){log_event("ccz_combat_publish_rejected");return false;}
     return true;
 }
+#endif
 }

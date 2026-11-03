@@ -2,6 +2,7 @@
 // Reference: martial tournament v30's Present/cached-texture/input separation.
 #include <d3d11.h>
 #include <dxgi1_2.h>
+#include "terrain_call_profile.h"
 #include "unified_overlay_policy.h"
 namespace unified_overlay {
 // perf-begin
@@ -89,6 +90,10 @@ static bool is_visible();
 namespace ccz_sprites {   // 조조전 병종 그림 (native_ccz_sprites.inl)
 static bool needs_present();
 static void on_present(ID3D11Device *d,ID3D11DeviceContext *c,ID3D11Texture2D *back,const D3D11_TEXTURE2D_DESC &desc);
+}
+namespace ccz_preview {
+static bool needs_draw();
+static void draw(ID3D11Device *,ID3D11DeviceContext *,ID3D11Texture2D *,const D3D11_TEXTURE2D_DESC &,bool);
 }
 #include "native_advisor_overlay.inl"
 namespace unified_overlay {
@@ -195,6 +200,7 @@ static bool draw_locked(IDXGISwapChain *chain) {
 #endif
 // perf-end
     if(context)ccz_sprites::on_present(device,context,back,desc);   // world sprites before any UI overlay
+    if(context)ccz_preview::draw(device,context,back,desc,rgba);
     Bounds next=bounds(static_cast<int>(desc.Width),static_cast<int>(desc.Height));
     bool success=false;
     if(context && briefing_overlay::needs_draw() && bind(swap.OutputWindow)) {
@@ -229,7 +235,7 @@ static bool draw_locked(IDXGISwapChain *chain) {
     back->Release();return success;
 }
 static void draw(IDXGISwapChain *chain,UINT flags) {
-    if((flags&DXGI_PRESENT_TEST) || (!read_flag(&visible) && !officer_panel::is_visible() && !briefing_overlay::needs_draw() && !terrain_render::needs_present() && !ccz_sprites::needs_present()))return;
+    if((flags&DXGI_PRESENT_TEST) || (!read_flag(&visible) && !officer_panel::is_visible() && !briefing_overlay::needs_draw() && !terrain_render::needs_present() && !ccz_sprites::needs_present() && !ccz_preview::needs_draw()))return;
     if(TryAcquireSRWLockExclusive(&draw_lock)) {
         InterlockedExchange(&ready,draw_locked(chain)?1:0);ReleaseSRWLockExclusive(&draw_lock);
     }
@@ -249,17 +255,33 @@ static HRESULT STDMETHODCALLTYPE present(IDXGISwapChain *chain,UINT sync,UINT fl
 // perf-begin
 #ifndef NO_RUNTIME_LOG
     COST_SCOPE("unified_overlay_present");
+    terrain_profile::Frame terrain_frame((flags&DXGI_PRESENT_TEST)==0);
+    TERRAIN_SCOPE(PresentHook);
 #endif
 // perf-end
-    draw(chain,flags);return original_present(chain,sync,flags);
+    draw(chain,flags);
+// perf-begin
+#ifndef NO_RUNTIME_LOG
+    TERRAIN_SCOPE(PresentNative);
+#endif
+// perf-end
+    return original_present(chain,sync,flags);
 }
 static HRESULT STDMETHODCALLTYPE present1(IDXGISwapChain1 *chain,UINT sync,UINT flags,const DXGI_PRESENT_PARAMETERS *parameters) {
 // perf-begin
 #ifndef NO_RUNTIME_LOG
     COST_SCOPE("unified_overlay_present1");
+    terrain_profile::Frame terrain_frame((flags&DXGI_PRESENT_TEST)==0);
+    TERRAIN_SCOPE(PresentHook);
 #endif
 // perf-end
-    draw(chain,flags);return original_present1(chain,sync,flags,parameters);
+    draw(chain,flags);
+// perf-begin
+#ifndef NO_RUNTIME_LOG
+    TERRAIN_SCOPE(PresentNative);
+#endif
+// perf-end
+    return original_present1(chain,sync,flags,parameters);
 }
 // perf-begin
 #ifndef NO_RUNTIME_LOG

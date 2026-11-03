@@ -1,6 +1,6 @@
 # 기능별 켜기/끄기
 
-개발 설치기 목록은 아래 표와 기능 카탈로그를 따른다. 설치·배포본의 기능 수는 [CURRENT](../development/CURRENT.md)를 따른다. 기준은 `distribution/FeatureSelect.ps1`의 `$taskFeatureCatalog`, DLL 해석은 `src/native_adapter.cpp::load_mod_features`, 로더 해석은 `src/module_loader.cpp`다. 배포 기본값과 현재 사용자 INI 값은 다르다.
+개발 설치기 목록은 아래 표와 기능 카탈로그를 따른다. 설치·배포본의 기능 수는 CURRENT를 따른다. 기준은 `distribution/FeatureSelect.ps1`의 `$taskFeatureCatalog`, DLL 해석은 `src/native_adapter.cpp::load_mod_features`, 로더 해석은 `src/module_loader.cpp`다. 배포 기본값과 현재 사용자 INI 값은 다르다.
 
 게임 시작 때 한 번 읽으므로 변경 후 재시작한다. `AI모드_설치관리자.exe`의 설정만 저장 또는 `optional_tools/AI모드_기능선택.cmd`를 사용한다. 설치기는 `관리.ps1 -NonInteractive`에 적용/복구를 위임한다. 메뉴 밖 설정은 보존한다.
 
@@ -8,7 +8,7 @@
 
 | 탭 | 섹션.키 | 기본값 | 묶음 / 필요 기능 | 기능 |
 |---|---|---:|---|---|
-| 편의성 | game_flow.advisor_briefing | 1 | groups.convenience | 군사의 열흘 보고(시험, v14부터 기본 ON). 통지·보고를 알림함에 모음. 선택 창 유지, 다음 진행 때 초기화. [설명](ADVISOR_BRIEFING.md) |
+| 편의성 | game_flow.advisor_briefing | 1 | groups.convenience | 군사의 열흘 보고(시험, v14부터 기본 ON). 통지·보고를 알림함에 모음. 선택 창 유지, 다음 진행 때 초기화. 설명 |
 | 게임성 | real_estate.terrain_edit | 1 | groups.convenience | 부동산 계획: 지역내정에서 도시권 칸 지형 변경(무료·무제한). 바닥 재질·높이·부대 높이·나무·절벽·수면 즉시 반영, `.terrain` 보조 저장. 격류 흰 물살 미반영, 급류 이동불가 테두리는 재로드 후 표시 |
 | 게임성 | diplomacy.diplomacy_overinvest | 1 | groups.convenience | 컴퓨터가 시작한 외교 교섭에서 보유 군정까지(100% 초과) 방어 투입 |
 | 게임성 | diplomacy.diplomacy_counterturn | 1 | groups.convenience | 컴퓨터의 마지막 응답 뒤 플레이어 추가 군정 대응 1회 |

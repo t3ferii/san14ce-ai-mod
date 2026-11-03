@@ -1,6 +1,6 @@
 # Restore must return the traits9/speed-button ScreenLayout entries to the original index even
 # when the install record has no (or a stale) layout entry. Works on copies in build/ only.
-param([string]$Report)
+param([string]$Report,[string]$Payload)
 $ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot
 $taskRoot=Split-Path -Parent $taskProject
@@ -11,8 +11,10 @@ $checks=0
 function Check([bool]$Value,[string]$Label){if(-not $Value){throw ('FAIL: '+$Label)};$script:checks++}
 $taskGame=Join-Path $taskProject ('build\layout_restore_'+[Guid]::NewGuid().ToString('N').Substring(0,8))
 . (Join-Path $taskProject 'distribution\SplitManage.ps1')
-$patch=Get-Content (Join-Path $taskProject 'build\input_package\traits9_layout.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-$patch | Add-Member -NotePropertyName Bytes -NotePropertyValue ([IO.File]::ReadAllBytes((Join-Path $taskProject 'build\input_package\traits9_layout.bin')))
+# User 2026-11-02: verify a new title-menu layout before it touches the installed package.
+if(-not $Payload){$Payload=Join-Path $taskProject 'build\input_package'}
+$patch=Get-Content (Join-Path $Payload 'traits9_layout.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$patch | Add-Member -NotePropertyName Bytes -NotePropertyValue ([IO.File]::ReadAllBytes((Join-Path $Payload 'traits9_layout.bin')))
 $patch | Add-Member -NotePropertyName Hash -NotePropertyValue $patch.bank_sha256
 function Write-Plan($Plan){foreach($p in $Plan.Writes.Keys){[IO.File]::WriteAllBytes($p,$Plan.Writes[$p])};foreach($p in $Plan.Deletes){[IO.File]::Delete($p)}}
 try {

@@ -3,8 +3,12 @@
 #include "../src/native_adapter.cpp"
 #include <map>
 #include <string>
+#include <fstream>
 using namespace diplomacy_intel;
 static unsigned checks,phase_calls,resolves,events,paints,shows,ai_calls;
+static unsigned cleanups;static bool actors_live;
+static bool simulate_ai;static int simulated_spent;
+static unsigned (__fastcall *tail_gate)(Obj);
 static bool last_player=true;
 static int command_kind=8,last_resolve=-1,slider_max=-1,slider_total=-1,slider_value=-1,last_lookup=-1;
 static std::map<int,std::wstring> labels;
@@ -37,12 +41,15 @@ static int __fastcall mock_resolve(Obj f,Obj p,Obj t,int k,Obj o,int chance,int 
 static void __fastcall mock_event(Obj v,int value) {check(v==view_mem && value==0x7FFFFFFD,"close event arguments preserved");++events;}
 static void __fastcall mock_visibility(Obj,int) {}
 static void __fastcall mock_cursor(Obj) {}
-static void __fastcall mock_cleanup(Obj) {}
+static void __fastcall mock_cleanup(Obj) {++cleanups;actors_live=false;}
 static void __fastcall mock_phase(Obj s) {
     ++phase_calls;
+    number(button_mem,0x40)&=~2;number(child_mem,0x40)&=~2;
+    if(simulate_ai){int raw=number(s,0x594);simulated_spent+=ai_response(11,cmd_mem,0,&raw);number(s,0x594)=raw;}
     const int result=resolve(force_mem,person_mem,target_mem,command_kind,cmd_mem,number(s,0x594),0);
     number(s,0x4F8)=result;number(s,0x4D8)=result?12:13;
-    event(view_mem,0x7FFFFFFD);
+    // Actual generated machine gate, followed by the native UI teardown model.
+    if(tail_gate(s)==1){event(view_mem,0x7FFFFFFD);mock_cleanup(s);}
 }
 static void *fixture_function(unsigned rva) {
     switch(rva) {
@@ -70,6 +77,7 @@ static void *fixture_function(unsigned rva) {
     }
 }
 static void setup() {
+    actors_live=true;cleanups=0;simulate_ai=false;simulated_spent=0;
     pending={};final_scope=nullptr;mod_features.diplomacy_overinvest=true;mod_features.diplomacy_counterturn=true;
     memset(state_mem,0,sizeof(state_mem));memset(window_mem,0,sizeof(window_mem));
     pending.state=state_mem;last_player=true;command_kind=8;
@@ -90,8 +98,19 @@ static void setup() {
     }
     for(unsigned a:{0x27D2564u,0x27D257Cu,0x27D2568u,0x27D2574u})number(image,a)=0;
 }
-int main() {
+int main(int argc,char **argv) {
     image=static_cast<Obj>(VirtualAlloc(nullptr,0x29FF000,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));check(image!=nullptr,"synthetic image");
+    Obj gate=static_cast<Obj>(VirtualAlloc(nullptr,4096,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));check(gate!=nullptr,"tail gate memory");
+    // Save RSI, pass the native state in RSI, then jump into the real gate.
+    gate[0]=0x56;gate[1]=0x48;gate[2]=0x89;gate[3]=0xCE;absolute_jump(gate+4,gate+64);
+    const unsigned char normal[]={0x89,0xD0,0x5E,0xC3},skip[]={0xB8,2,0,0,0,0x5E,0xC3};
+    memcpy(gate+128,normal,sizeof(normal));memcpy(gate+160,skip,sizeof(skip));
+    build_final_tail_gate(gate+64,gate+128,gate+160);
+    DWORD prior;check(VirtualProtect(gate,4096,PAGE_EXECUTE_READ,&prior)!=0 && FlushInstructionCache(GetCurrentProcess(),gate,4096)!=0,"executable gate protected/flushed");
+    tail_gate=reinterpret_cast<unsigned(__fastcall *)(Obj)>(gate);
+    setup();check(tail_gate(state_mem)==1,"normal gate restores displaced MOV EDX,1");
+    pending.round.deferred=true;check(tail_gate(state_mem)==2,"only the deferred current state skips UI teardown");
+    check(tail_gate(window_mem)==1,"another state cannot skip native teardown");pending.round.deferred=false;
     Coefficients c{100,100,100,1,100,0};
     check(score(50,150,true,c)==-50,"150 points produce a 50-point defense reserve");
     check(score(-50,100,true,c)==-150,"second user investment accumulates reserve");
@@ -131,15 +150,42 @@ int main() {
     final_phase(state_mem);
     check(phase_calls==1 && resolves==0 && events==0,"first final AI phase defers both RNG and close event");
     check(pending.round.extra && number(state_mem,0x4D8)==8 && number(window_mem,0x224)==0,"extra player input restored");
+    check(actors_live && !cleanups && (number(button_mem,0x40)&2) && (number(child_mem,0x40)&2),"extra turn preserves both negotiators and native decision-button visibility");
     check(number(window_mem,0x210)==0 && number(window_mem,0x214)==60,"new investment starts at zero with latest probability");
     number(state_mem,0x594)=-20;number(state_mem,0x4D8)=11;final_phase(state_mem);
     check(phase_calls==1 && resolves==1 && events==1 && last_resolve==0,"extra reply has one final RNG and no further AI move");
     check(number(state_mem,0x4D8)==13 && pending.round.done,"final outcome awaits original failure application");
+    check(!actors_live && cleanups==1,"actors close once after the player's final decision");
+    for(int k:{4,5,8,9}) {
+        setup();command_kind=k;simulate_ai=true;number(state_mem,0x594)=-80;
+        phase_calls=resolves=events=ai_calls=0;
+        final_phase(state_mem);
+        check(ai_calls==1 && simulated_spent==100 && number(state_mem,0x594)==-55,"AI spends once and absorbs only part of the 180-percent defense reserve");
+        check(pending.round.extra && actors_live && (number(button_mem,0x40)&2) && number(window_mem,0x214)==-55,"all four incoming negotiation kinds retain actors, decision button and excess on the extra turn");
+        number(state_mem,0x594)=-155;number(state_mem,0x4D8)=11;final_phase(state_mem);
+        check(phase_calls==1 && ai_calls==1 && simulated_spent==100 && resolves==1 && last_resolve==0,"extra overinvestment resolves once with bounded probability and no repeated AI spend");
+        check(cleanups==1 && events==1 && !actors_live && pending.round.done,"each negotiation completes its UI exactly once after the player's decision");
+    }
     setup();mod_features.diplomacy_counterturn=false;phase_calls=resolves=events=0;number(state_mem,0x594)=60;
     final_phase(state_mem);check(phase_calls==1 && resolves==1 && events==1 && !pending.round.extra,"counterturn off preserves native final stage");
+    check(!actors_live && cleanups==1,"disabled counterturn retains ordinary native UI teardown");
     setup();number(window_mem,0x220)=1;phase_calls=resolves=events=0;final_phase(state_mem);
     check(resolves==1 && !pending.round.extra,"fixed diplomacy result gets no extra turn");
     setup();pending.round.extra=true;leave(state_mem,force_mem,target_mem);check(pending.state==nullptr && !pending.round.extra,"leave discards session state before original teardown");
-    VirtualFree(image,0,MEM_RELEASE);
+    check(argc==2,"retained original text argument");
+    std::ifstream input(argv[1],std::ios::binary|std::ios::ate);check(static_cast<bool>(input),"retained text opens");
+    auto size=input.tellg();check(size>0 && size<0x133F000,"retained text size");input.seekg(0);input.read(reinterpret_cast<char *>(image+0x1000),size);check(static_cast<bool>(input),"retained native text loaded");
+    for(const auto &slot:slots)point(image,slot.rva,image+slot.original);
+    check(guards_match(),"real native functions, callers, tail and slots match before installation");
+    image[final_tail]^=1;check(!diplomacy_intel::install() && !final_tail_link.published,"foreign tail prevents every hook publication");image[final_tail]^=1;
+    check(diplomacy_intel::install() && final_tail_link.published && image[final_tail]==0xE9,"actual native tail gate and existing hooks publish together");
+    Obj installed_relay=image+sites[0].rva+5+links[0].redirected;
+    for(unsigned i=0;i<16;++i)if(i<final_tail-final_tail_link.block || i>=final_tail-final_tail_link.block+5)
+        check(final_tail_link.original[i]==final_tail_link.modified[i],"tail publication preserves adjacent native instructions");
+    for(unsigned i=0;i<11;++i)restore_pointer(slots[i].rva,slots[i].original,replacements[i]);
+    for(unsigned i=7;i;)call_restore(links[--i]);restore_link(final_tail_link);
+    check(guards_match() && !memcmp(image+final_tail,final_tail_bytes,sizeof(final_tail_bytes)),"restoring hooks restores full native fingerprints and UI tail");
+    VirtualFree(installed_relay,0,MEM_RELEASE);
+    VirtualFree(gate,0,MEM_RELEASE);VirtualFree(image,0,MEM_RELEASE);
     printf("{\"status\":\"diplomacy_intel_fixture_verified\",\"checks\":%u,\"live_game\":false}\n",checks);
 }

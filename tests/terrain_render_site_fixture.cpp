@@ -12,7 +12,7 @@
 #include <wchar.h>
 #include <initializer_list>
 static bool enabled=true;
-static struct {bool convenience=true,terrain_edit=true;} mod_features;
+static struct {bool convenience=true,terrain_edit=true;unsigned terrain_diag_mode=0;} mod_features;
 #ifndef NO_RUNTIME_LOG
 static void log_event(const char *,unsigned,unsigned,unsigned) {}
 #endif

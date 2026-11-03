@@ -5,8 +5,13 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include "terrain_call_profile.h"
 namespace terrain_render {
 using CreateTexture2D=HRESULT(STDMETHODCALLTYPE *)(ID3D11Device *,const D3D11_TEXTURE2D_DESC *,const D3D11_SUBRESOURCE_DATA *,ID3D11Texture2D **);
+static void profile_upload(ID3D11DeviceContext *context,ID3D11Resource *resource,UINT subresource,
+    const D3D11_BOX *box,const void *data,UINT pitch,UINT depth) {
+    TERRAIN_SCOPE(UploadNative);context->UpdateSubresource(resource,subresource,box,data,pitch,depth);
+}
 static constexpr unsigned CreateTexture2DSlot=5,MaxTables=4,MaxTextures=64,MaxBCTextures=4;
 static SRWLOCK slot_lock=SRWLOCK_INIT,record_lock=SRWLOCK_INIT;
 static bool permitted=true,stopping=false;
@@ -48,7 +53,7 @@ static bool target(const D3D11_TEXTURE2D_DESC &d) {
     return d.Width>=1024 && d.Height>=1024 && (!bc_format(d.Format) || d.Width>=4096);
 }
 #endif
-static bool active() {return enabled && mod_features.convenience && mod_features.terrain_edit;}
+static bool active() {return enabled && mod_features.convenience && mod_features.terrain_edit && !(mod_features.terrain_diag_mode & 2u);}
 static constexpr unsigned CtrlSize=2049,CtrlPitch=CtrlSize*4,HexCount=48400,FrameLimit=256;
 static constexpr int RestoreOriginal=-1;
 static constexpr double RowHeight=810.5997779422346; // sqrt(3)*468
@@ -294,6 +299,7 @@ static void use_mask_fit(const MaskFit &fit) {
     mask_offset_x=fit.dx;mask_offset_z=fit.dz;mask_scale=fit.scale;mask_model=fit.model;
 }
 static bool fit_mask_locked(WaterMask &m,const float *uv,unsigned &error,MaskFit *result=nullptr) {
+    TERRAIN_SCOPE(MaskFit);
     (void)uv;error=0xffffffffu;
     if(original_height.size()!=static_cast<size_t>(CtrlSize)*CtrlSize ||
        m.original.size()!=static_cast<size_t>(MaskSize)*MaskSize)return false;
@@ -404,8 +410,8 @@ static void restore_mask_writes_locked(ID3D11DeviceContext *context) {
         at=static_cast<size_t>(z)*MaskSize+start;
         memcpy(m.shadow.data()+at,m.original.data()+at,(x-start)*4);
         D3D11_BOX row={start,z,0,x,z+1,1};
-        context->UpdateSubresource(m.texture,0,&row,m.original.data()+at,(x-start)*4,0);
-        for(unsigned i=0;i<mask_work_count;++i)context->UpdateSubresource(mask_work[i],0,&row,m.original.data()+at,(x-start)*4,0);
+        profile_upload(context,m.texture,0,&row,m.original.data()+at,(x-start)*4,0);
+        for(unsigned i=0;i<mask_work_count;++i)profile_upload(context,mask_work[i],0,&row,m.original.data()+at,(x-start)*4,0);
     }
 }
 static void confirm_release_masks_locked(ID3D11DeviceContext *context) {
@@ -478,7 +484,7 @@ static void mirror_cell_locked(ID3D11DeviceContext *context,unsigned hex) {
             unsigned start=x,count=0;
             while(x<box.right && count<16 && owns_pixel(hex,x,z))run[count++]=to_rgba(shadow_ctrl[static_cast<size_t>(z)*CtrlSize+x++]);
             D3D11_BOX row={start,z,0,start+count,z+1,1};
-            for(unsigned i=0;i<ctrl_work_count;++i)context->UpdateSubresource(ctrl_work[i],0,&row,run,count*4,0);
+            for(unsigned i=0;i<ctrl_work_count;++i)profile_upload(context,ctrl_work[i],0,&row,run,count*4,0);
         }
     }
 }
@@ -595,6 +601,7 @@ static bool heightfield_ok(const unsigned char *o) {
 // UI/load threads, ctrl_lock held exclusively. Offsets only where we changed heights,
 // so engine-side CPU edits elsewhere stay intact.
 static void cpu_cell_locked(unsigned hex) {
+    TERRAIN_SCOPE(CpuCell);
     if(original_height.empty())return;
     if(cpu_touched.empty()) {try {cpu_touched.assign(static_cast<size_t>(CtrlSize)*CtrlSize,0);} catch(...) {return;}}
     Center c=center(hex);int px=static_cast<int>(std::floor(c.x/100+0.5)),pz=static_cast<int>(std::floor(c.z/100+0.5));
@@ -618,6 +625,7 @@ static void cpu_cell_locked(unsigned hex) {
 }
 // Called on the loading thread right after A07B70 returns, before the owner publishes it.
 static void heightfield_created(unsigned index,unsigned char *object,const void *vtable) {
+    TERRAIN_SCOPE(HeightCapture);
     if(index>=MaxHeightfields || !active())return;
     AcquireSRWLockExclusive(&ctrl_lock);
     heightfield_vtable=vtable;heightfields[index]=heightfield_ok(object)?object:nullptr;
@@ -662,14 +670,15 @@ static unsigned mask_cell_locked(ID3D11DeviceContext *context,const D3D11_BOX &g
             }
             if(!count)continue;
             D3D11_BOX row={start,static_cast<UINT>(z),0,start+count,static_cast<UINT>(z)+1,1};
-            context->UpdateSubresource(m.texture,0,&row,run,count*4,0);
-            for(unsigned i=0;i<mask_work_count;++i)context->UpdateSubresource(mask_work[i],0,&row,run,count*4,0);
+            profile_upload(context,m.texture,0,&row,run,count*4,0);
+            for(unsigned i=0;i<mask_work_count;++i)profile_upload(context,mask_work[i],0,&row,run,count*4,0);
             pixels+=count;
         }
     }
     return pixels;
 }
 static unsigned height_cell_locked(ID3D11DeviceContext *context,unsigned hex) {
+    TERRAIN_SCOPE(HeightCell);
     confirm_release_masks_locked(context);
     if(!height_texture || shadow_height.empty())return 0;
     // The field reaches about one neighbour beyond the edited cell.
@@ -683,7 +692,7 @@ static unsigned height_cell_locked(ID3D11DeviceContext *context,unsigned hex) {
         // Work textures may carry engine edits: write only pixels we offset now or before.
         touched[(z-box.top)*width+(x-box.left)]=before!=original_height[at] || shadow_height[at]!=original_height[at];
     }
-    context->UpdateSubresource(height_texture,0,&box,shadow_height.data()+static_cast<size_t>(box.top)*CtrlSize+box.left,CtrlPitch,0);
+    profile_upload(context,height_texture,0,&box,shadow_height.data()+static_cast<size_t>(box.top)*CtrlSize+box.left,CtrlPitch,0);
     if(!height_work_count)return mask_cell_locked(context,box);
     for(unsigned z=box.top;z<box.bottom;++z) {
         for(unsigned x=box.left;x<box.right;) {
@@ -691,7 +700,7 @@ static unsigned height_cell_locked(ID3D11DeviceContext *context,unsigned hex) {
             unsigned start=x,count=0;
             while(x<box.right && touched[(z-box.top)*width+(x-box.left)])run[count++]=shadow_height[static_cast<size_t>(z)*CtrlSize+x++];
             D3D11_BOX row={start,z,0,start+count,z+1,1};
-            for(unsigned i=0;i<height_work_count;++i)context->UpdateSubresource(height_work[i],0,&row,run,count*4,0);
+            for(unsigned i=0;i<height_work_count;++i)profile_upload(context,height_work[i],0,&row,run,count*4,0);
         }
     }
     return mask_cell_locked(context,box);
@@ -700,13 +709,15 @@ static unsigned height_cell_locked(ID3D11DeviceContext *context,unsigned hex) {
 // Diagnostic only, one synchronous pixel per uploading Present. Keeping Map's
 // flags at zero avoids a pending readback extending the dirty-only Present gate.
 static void readback_locked(ID3D11DeviceContext *context,unsigned hex) {
+    TERRAIN_SCOPE(Readback);
     if(readback_failed || !ctrl_create)return;
     if(!readback_texture) {
         D3D11_TEXTURE2D_DESC d={};d.Width=d.Height=d.MipLevels=d.ArraySize=d.SampleDesc.Count=1;
         d.Format=DXGI_FORMAT_B8G8R8A8_TYPELESS;d.Usage=D3D11_USAGE_STAGING;d.CPUAccessFlags=D3D11_CPU_ACCESS_READ;
         // Use the saved system implementation, avoiding slot_lock re-entry
         // while ctrl_lock is held (restore acquires slot_lock then ctrl_lock).
-        HRESULT hr=ctrl_create(ctrl_device,&d,nullptr,&readback_texture);
+        terrain_profile::Function<CreateTexture2D,terrain_profile::Id::TextureNative> native_create{ctrl_create};
+        HRESULT hr=native_create(ctrl_device,&d,nullptr,&readback_texture);
         if(FAILED(hr) || !readback_texture) {
             readback_failed=true;log_event("terrain_render_readback_error",static_cast<unsigned>(hr),1,0);return;
         }
@@ -714,8 +725,9 @@ static void readback_locked(ID3D11DeviceContext *context,unsigned hex) {
     Center c=center(hex);unsigned x=static_cast<unsigned>(std::floor(c.x/100+0.5)),z=static_cast<unsigned>(std::floor(c.z/100+0.5));
     D3D11_BOX pixel={x,z,0,x+1,z+1,1};
     unsigned expected=shadow_ctrl[static_cast<size_t>(z)*CtrlSize+x];
-    context->CopySubresourceRegion(readback_texture,0,0,0,0,ctrl_texture,0,&pixel);
-    D3D11_MAPPED_SUBRESOURCE mapped={};HRESULT hr=context->Map(readback_texture,0,D3D11_MAP_READ,0,&mapped);
+    {TERRAIN_SCOPE(CopyNative);context->CopySubresourceRegion(readback_texture,0,0,0,0,ctrl_texture,0,&pixel);}
+    D3D11_MAPPED_SUBRESOURCE mapped={};HRESULT hr;
+    {TERRAIN_SCOPE(MapNative);hr=context->Map(readback_texture,0,D3D11_MAP_READ,0,&mapped);}
     if(SUCCEEDED(hr)) {
         unsigned value=0;memcpy(&value,mapped.pData,sizeof(value));context->Unmap(readback_texture,0);
         log_event("terrain_render_readback",hex,value,expected);
@@ -723,6 +735,7 @@ static void readback_locked(ID3D11DeviceContext *context,unsigned hex) {
 }
 #endif
 static void on_present(ID3D11DeviceContext *context) {
+    TERRAIN_SCOPE(RenderUpload);
     if(!context || !active())return;
 #ifndef NO_RUNTIME_LOG
     if(InterlockedCompareExchange(&present_reported,1,0)==0)log_event("terrain_render_present",1,0,0);
@@ -735,7 +748,7 @@ static void on_present(ID3D11DeviceContext *context) {
             unsigned hex=dirty_hex[dirty_head];dirty_head=(dirty_head+1)%HexCount;--dirty_count;queued[hex]=false;
             D3D11_BOX box=hex_box(hex);unsigned written=write_cell(shadow_ctrl,original_ctrl,hex,goals[hex]);
             if(written) {
-                context->UpdateSubresource(ctrl_texture,0,&box,shadow_ctrl.data()+static_cast<size_t>(box.top)*CtrlSize+box.left,CtrlPitch,0);
+                profile_upload(context,ctrl_texture,0,&box,shadow_ctrl.data()+static_cast<size_t>(box.top)*CtrlSize+box.left,CtrlPitch,0);
                 mirror_cell_locked(context,hex);
                 unsigned updated=height_cell_locked(context,hex);
                 if(updated){++mask_cells;mask_pixels+=updated;}
@@ -784,7 +797,8 @@ static bool original_site(void **table,CreateTexture2D original) {
 }
 static HRESULT STDMETHODCALLTYPE create_texture_2d(ID3D11Device *dev,const D3D11_TEXTURE2D_DESC *desc,
     const D3D11_SUBRESOURCE_DATA *initial,ID3D11Texture2D **out) { COST_SCOPE("terrain_render::create_texture_2d");
-    CreateTexture2D original=nullptr;
+    TERRAIN_SCOPE(TextureHook);
+    terrain_profile::Function<CreateTexture2D,terrain_profile::Id::TextureNative> original{nullptr};
     bool observing=false;
     auto table=*reinterpret_cast<void ***>(dev);
     AcquireSRWLockShared(&slot_lock);
@@ -1005,6 +1019,11 @@ static bool guards_locked() {
 static bool guards_match() {
     AcquireSRWLockShared(&slot_lock);bool ok=guards_locked();ReleaseSRWLockShared(&slot_lock);return ok;
 }
+static bool hooks_active() {
+    AcquireSRWLockShared(&slot_lock);
+    bool active=false;for(const auto &s:slots)if(s.published){active=true;break;}
+    ReleaseSRWLockShared(&slot_lock);return active;
+}
 static bool install_device(ID3D11Device *dev,bool early) {
     bool installed=false,rejected=false,usable=false;
     AcquireSRWLockExclusive(&slot_lock);
@@ -1078,6 +1097,7 @@ static void install_early() {
     if(!installed)FreeLibrary(library);
 }
 static void on_device(ID3D11Device *dev) {
+    TERRAIN_SCOPE(RenderDevice);
 #ifdef SAN14_WATER_DIAG_INCLUDED
     water_diag::mask_sample=&confirm_mask;
     water_diag::on_device(dev);

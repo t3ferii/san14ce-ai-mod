@@ -1,6 +1,7 @@
 // Convenience engine only. Call on the native UI/save host caller thread.
 // Menu binding is separate in native_terrain_edit_ui.inl. No worker is used.
 #include "terrain_edit_policy.h"
+#include "terrain_call_profile.h"
 #if defined(SPLIT_BASE)
 namespace unified_overlay {static void install();}
 #endif
@@ -56,6 +57,7 @@ static void clear_cost_cache() {
 #endif
 }
 static void sync_render() {
+    TERRAIN_SCOPE(TerrainSync);
 #ifdef SAN14_TERRAIN_RENDER_INCLUDED
     bool install_present=false;
     bool resync=terrain_render::take_ui_work(install_present);
@@ -77,6 +79,7 @@ static void sync_render() {
 #endif
 }
 static void check_world() {
+    TERRAIN_SCOPE(TerrainWorld);
     Obj current=world();
     if(changed_world!=current) {
 #ifdef SAN14_TERRAIN_FOAM_INCLUDED

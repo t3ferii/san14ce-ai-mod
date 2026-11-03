@@ -28,6 +28,7 @@ namespace unified_overlay {static void install(){}}
 using namespace advisor_briefing;
 static unsigned checks,pops,original_notices,original_enters,original_leaves,report_enters,report_ticks,camera_restores,report_completions,text_calls;
 static int calendar_day=1000;static bool income_numbers=true;
+static bool income_blank_military=false,income_omit_delta=false,income_blank_balance=false;
 static bool second_district=false;
 static unsigned tutorial_flag=0;
 static int native_message_mode=0;
@@ -85,6 +86,10 @@ static bool wait_ready=true,wait_reenter=false;
 static unsigned native_pages=0,native_speeches=0,native_waits=0;
 static unsigned native_recruit_speeches=0;
 static bool mask_seen_before_native_report=false;
+static unsigned result_applications,record_constructions,record_destructions;
+static unsigned income_after_application;
+static bool results_saw_consumed;
+static bool invalid_report_record;
 static unsigned long long recruitment_flags=0;static const wchar_t *recruitment_extra=nullptr;static unsigned recruitment_style=0;
 static std::array<unsigned char,0x40> manager_mem;
 static Obj manager_stack[4];
@@ -144,12 +149,19 @@ static void __fastcall mock_wait(Obj state) {
         if(wait_reenter){wait_reenter=false;diplomatic_speech(state_b.data(),4,nullptr,L"다음 교섭을 기약하겠소.",nullptr);}
     }
 }
+static void __fastcall mock_report_results(Obj action) {
+    results_saw_consumed=(world_report[0x82]&6)==4;
+    ++result_applications;number(action,0x16280,1);number(action,0x16284,0);
+    if(invalid_report_record)std::fill(action+0x1B00+0x8A,action+0x1B00+0x136,static_cast<unsigned char>(0x41));
+    else wcscpy_s(reinterpret_cast<wchar_t *>(action+0x1B00+0x8A),0x55,L"조운이 금 500을 발견했습니다.");
+}
+static Obj __fastcall mock_record_construct(Obj record){++record_constructions;memset(record,0,0x140);return record;}
+static void __fastcall mock_record_destroy(Obj){++record_destructions;}
 static unsigned long long __fastcall mock_report_enter(Obj p) {
     mask_seen_before_native_report=briefing_overlay::report_mask;
     ++report_enters;point(p,0x480,background_mem.data());point(p,0x488,action_mem.data());
     number(p,0x470,0);number(p,0x474,0);world_report[0x82]|=4;
-    number(action_mem.data(),0x16280,1);
-    wcscpy_s(reinterpret_cast<wchar_t *>(action_mem.data()+0x1B00+0x8A),0x55,L"조운이 금 500을 발견했습니다.");
+    report_results(action_mem.data());
     return 7;
 }
 static void __fastcall mock_original_text(Obj,int,const wchar_t *,unsigned long long){++text_calls;}
@@ -169,13 +181,21 @@ static void __fastcall mock_phase(Obj p,int phase) {
 static void __fastcall mock_report_tick(Obj p){++report_ticks;if(dword(p,0x470)==3)++pops;}
 static const wchar_t *__fastcall mock_name(Obj person){return person==own_person.data()?L"조조":person==other_person.data()?L"유도":L"제갈량";}
 static const wchar_t *__fastcall mock_label(unsigned id){return id==916?L"제8군단":L"제1군단";}
-static void __fastcall mock_income_values(Obj,Obj district) {
+static void __fastcall mock_income_values(Obj income,Obj district) {
+    income_after_application=result_applications;
+    Obj target=pointer(income,0x378)+0x130;
     if(income_numbers){
-        set_text(income_child.data()+0x130,10,L"2000",1);set_text(income_child.data()+0x130,10,district==second_district_mem.data()?L"750":L"2500",1);
+        set_text(target,10,L"2000",1);set_text(target,10,district==second_district_mem.data()?L"750":L"2500",1);
         for(int base:{10,19,28,37}) {
-            if(base!=10)set_text(income_child.data()+0x130,base,L"110000",1);
-            set_text(income_child.data()+0x130,base+1,L"(^03-3655^00)",1);set_text(income_child.data()+0x130,base+2,L"0",1);set_text(income_child.data()+0x130,base+3,L"3655",1);
+            if(base!=10)set_text(target,base,L"110000",1);
+            if(base!=37 || !income_omit_delta)set_text(target,base+1,L"(^03-3655^00)",1);
+            set_text(target,base+2,L"0",1);set_text(target,base+3,L"3655",1);
         }
+        if(income_blank_military) {
+            // Native 67E32E branch: blank delta, localized N/A income/cost.
+            set_text(target,38,L"",1);set_text(target,39,L"해당 없음",1);set_text(target,40,L"해당 없음",1);
+        }
+        if(income_blank_balance)set_text(target,10,L"",1);
     }
 }
 static void *fixture_function(unsigned rva) {
@@ -203,6 +223,9 @@ static void *fixture_function(unsigned rva) {
     case 0x1F15F0:case 0x8108C0:return reinterpret_cast<void *>(&mock_simple_enter);
     case 0x874650:return reinterpret_cast<void *>(&mock_move);
     case 0x67B420:return reinterpret_cast<void *>(&mock_report_enter);
+    case 0x67AE80:return reinterpret_cast<void *>(&mock_report_results);
+    case 0x2213C0:return reinterpret_cast<void *>(&mock_record_construct);
+    case 0x2220A0:return reinterpret_cast<void *>(&mock_record_destroy);
     case 0x67C990:return reinterpret_cast<void *>(&mock_phase);
     case 0x67D1F0:return reinterpret_cast<void *>(&mock_income_values);
     case 0x30CF80:return reinterpret_cast<void *>(&mock_label);
@@ -609,7 +632,7 @@ int main(int argc,char **argv) {
     }
     for(unsigned n=0;n<sizeof(slots)/sizeof(*slots);++n)restore_pointer(slots[n].rva,slots[n].original,replacements[n]);
     restore_link(time_wait_link);for(unsigned i=2;i;)restore_link(picture_links[--i]);for(unsigned i=3;i;)restore_link(scene_links[--i]);restore_link(event_link);for(unsigned i=3;i;)restore_link(message_links[--i]);
-    restore_link(speech_link);restore_link(text_link);
+    call_restore(report_results_call);restore_link(speech_link);restore_link(text_link);
     check(guards_match(),"rollback restores both full entry functions, five-byte links and native slots");
     // A publication conflict on the second entry must roll the first one back.
     CodeLink pair[2]{};
@@ -738,6 +761,66 @@ int main(int argc,char **argv) {
     log_frame(dialog_mem.data());check(!briefing_overlay::shown && !briefing_overlay::scene_clean,"diplomacy log frame hides bubble and forbids clean scene capture");
     manager_stack[0]=state_a.data();*reinterpret_cast<unsigned long long *>(manager_mem.data()+0x10)=1;
     log_frame(dialog_mem.data());check(briefing_overlay::shown && briefing_overlay::scene_clean,"next log frame restores visibility and clean flag without another store");
+    // User 2026-11-02: final reports collect without building/hiding native UI.
+    {
+        cycle();for(unsigned offset:{0x480u,0x488u,0x490u})point(state_a.data(),offset,nullptr);number(state_a.data(),0x470,4);
+        point(state_a.data(),0x488,reinterpret_cast<Obj>(static_cast<std::uintptr_t>(0xDEADBEEF)));point(state_a.data(),0x490,reinterpret_cast<Obj>(static_cast<std::uintptr_t>(1)));
+        point(root.data(),0xDF30+8,force_mem.data());point(root.data(),0xE0D0+8,district_mem.data());
+        point(root.data(),0xE0D0+16,second_district_mem.data());
+        district_mem[0x10]=second_district_mem[0x10]=1;district_mem[0x11]=0;second_district_mem[0x11]=8;
+        point(root.data(),0x79E90,world_report.data());world_report[0x82]=3;world_report[0x86]=1;
+        wcscpy_s(reinterpret_cast<wchar_t *>(world_report.data()+0x14),0x37,L"홍수가 발생했습니다.");
+        wcscpy_s(reinterpret_cast<wchar_t *>(world_report.data()+0x8A),0x55,L"군량 피해가 발생했습니다.");
+        report_results_call.published=true;user_enter(state_a.data(),nullptr);
+        unsigned builds=report_enters,applied=result_applications,setters=text_calls,constructed=record_constructions,destroyed=record_destructions;
+        unsigned cameras=camera_restores;briefing_overlay::mask_report(false);
+        check(report_enter(state_a.data())==1 && report_enters==builds && report_headless,"headless Enter succeeds without native report construction");
+        check(result_applications==applied+1 && record_constructions==constructed+262 && record_destructions==destroyed+262,"native result generation once and all initialized record lifetimes balanced");
+        check(results_saw_consumed && income_after_application==applied+1,"pending flags are consumed before native result writers and income reads their resulting state");
+        check(text_calls==setters && !briefing_overlay::report_mask && !pointer(state_a.data(),0x480) && !pointer(state_a.data(),0x488) && !pointer(state_a.data(),0x490),"headless numeric formatter creates no controls, forwards no setters and needs no render mask");
+        check((world_report[0x82]&7)==5 && std::count_if(inbox.events.begin(),inbox.events.end(),[](const Event &e){return e.kind==Kind::Income;})==2,"native report consumption bits and both districts preserved");
+        check(std::any_of(inbox.events.begin(),inbox.events.end(),[](const Event &e){return e.kind==Kind::Income && has(e.report,L"금\t2,500\t(-3,655)\t0\t3,655");}),"headless numeric values agree with UI capture formatting");
+        manager_stack[0]=state_b.data();unsigned ticks=report_ticks;report_frame(state_a.data());
+        check(report_ticks==ticks && report_headless,"covered headless state cannot finish another modal");
+        manager_stack[0]=state_a.data();unsigned popped=pops;report_frame(state_a.data());
+        check(pops==popped+1 && !report_headless && camera_restores==cameras,"first active frame uses native completion without camera restoration or a second report phase");
+        report_leave(state_a.data(),nullptr);check(!report_state,"headless Leave retains original lifecycle");
+        // User live failure 2026-11-02: native non-applicable military delta
+        // is explicitly empty. A previous numeric setter must be cleared.
+        cycle();for(unsigned offset:{0x480u,0x488u,0x490u})point(state_a.data(),offset,nullptr);number(state_a.data(),0x470,4);
+        world_report[0x82]=3;income_blank_military=true;builds=report_enters;applied=result_applications;
+        check(report_enter(state_a.data())==1 && report_headless && !inbox.fallback && report_enters==builds && result_applications==applied+1,"native blank military delta keeps the UI-free route and applies results once");
+        check(std::count_if(inbox.events.begin(),inbox.events.end(),[](const Event &e){return e.kind==Kind::Income;})==2 && std::any_of(inbox.events.begin(),inbox.events.end(),[](const Event &e){return e.kind==Kind::Gold;}) && std::any_of(inbox.events.begin(),inbox.events.end(),[](const Event &e){return e.kind==Kind::Disaster;}),"blank military cell cannot discard final mission, world report or multi-district income");
+        check(std::all_of(inbox.events.begin(),inbox.events.end(),[](const Event &e){return e.kind!=Kind::Income || has(e.report,L"군정\t110,000\t\t해당 없음\t해당 없음");}),"explicit blank overwrites stale numeric delta and preserves localized N/A strings without invented zero");
+        report_frame(state_a.data());report_leave(state_a.data(),nullptr);income_blank_military=false;
+        for(unsigned invalid=0;invalid<2;++invalid) {
+            cycle();for(unsigned offset:{0x480u,0x488u,0x490u})point(state_a.data(),offset,nullptr);number(state_a.data(),0x470,4);
+            income_omit_delta=invalid==0;income_blank_balance=invalid==1;builds=report_enters;applied=result_applications;
+            check(report_enter(state_a.data())==7 && inbox.fallback && report_enters==builds+1 && result_applications==applied+1,"missing setter or explicitly emptied balance still restores native UI without repeated effects");
+            report_leave(state_a.data(),nullptr);income_omit_delta=income_blank_balance=false;
+        }
+        for(unsigned mode=0;mode<5;++mode) {
+            cycle();for(unsigned offset:{0x480u,0x488u,0x490u})point(state_a.data(),offset,nullptr);number(state_a.data(),0x470,4);
+            if(mode==0)second_district_mem[0x11]=0;
+            if(mode==1)briefing_overlay::gpu_ready=false;
+            if(mode==2)tutorial_flag=1;
+            if(mode==3)strcpy_s(reinterpret_cast<char *>(state_a.data()+0x70),128,"CDiplomacyState");
+            if(mode==4)report_results_call.published=false;
+            applied=result_applications;unsigned long long answer=0;
+            check(!try_headless_report(state_a.data(),answer) && result_applications==applied,"unsafe/unsupported headless preflight performs no result writes");
+            second_district_mem[0x11]=8;briefing_overlay::gpu_ready=true;tutorial_flag=0;report_results_call.published=true;
+        }
+        cycle();for(unsigned offset:{0x480u,0x488u,0x490u})point(state_a.data(),offset,nullptr);number(state_a.data(),0x470,4);
+        invalid_report_record=true;applied=result_applications;builds=report_enters;action_mem[0x1B00]=0x7E;
+        check(report_enter(state_a.data())==7 && result_applications==applied+1 && report_enters==builds+1 && inbox.fallback && !replay_results,"bad generated text restores native UI with one result application through caller-local replay");
+        check(action_mem[0x1B00]==0x7E,"fallback replay preserves each native record header and reference ownership");
+        invalid_report_record=false;report_leave(state_a.data(),nullptr);
+        cycle();for(unsigned offset:{0x480u,0x488u,0x490u})point(state_a.data(),offset,nullptr);number(state_a.data(),0x470,4);
+        income_numbers=false;applied=result_applications;builds=report_enters;
+        check(report_enter(state_a.data())==7 && result_applications==applied+1 && report_enters==builds+1 && inbox.fallback,"unknown numeric format restores native UI without repeating result writers");
+        income_numbers=true;report_leave(state_a.data(),nullptr);
+        report_results_call.published=false;point(root.data(),0xE0D0+16,nullptr);
+    }
     Inbox merge;merge.begin(1,1);Event early;early.day=1;early.text=L"건물파괴에 성공한 것 같군. 진창에 있는 진의 내구를 줄였군.";
     Event report;report.day=10;report.text=L"가후, 진창에서 건물파괴 성공";merge.append({early});merge.append({report},true);
     check(merge.events.size()==1 && merge.events[0].day==1 && has(merge.events[0].text,early.text.c_str()) && has(merge.events[0].text,report.text.c_str()),"same-cycle mission and location merge with earliest day and both originals");

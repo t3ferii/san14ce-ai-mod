@@ -325,8 +325,19 @@ function Invoke-SplitPackage {
     }
     if($taskWasInstalled) {
         if($taskCurrent -ne $taskState.installed_sha256 -or (Get-Digest $taskChain) -ne $taskState.previous_sha256){throw '설치된 입력 DLL 또는 보존 DLL이 변경되었습니다.'}
-        foreach($taskName in $taskOwned.Keys) {
-            if((Get-Digest (Join-Path $taskGame $taskName)) -ne $taskOwned[$taskName]){throw ('설치된 '+$taskName+'이 변경되었습니다.')}
+        foreach($taskName in @($taskOwned.Keys)) {
+            $taskInstalledHash=Get-Digest (Join-Path $taskGame $taskName)
+            if($taskInstalledHash -ne $taskOwned[$taskName]) {
+                # v15.1 migration: the user-tested local14 CCZ DLL was installed manually over
+                # v15, so the old state owns a different hash. Accept only that exact known DLL,
+                # only while upgrading a v15-family state to v15.1; arbitrary changes still fail.
+                $taskKnownLocal14=$taskName -eq 'SAN14_CCZ.dll' -and
+                    $taskInstalledHash -eq '553ae296eabe73cc911cb79de0bf9bf11e594dbb4f2a63515ca8e8eb5fecb937' -and
+                    $taskState.release_version -like 'v15*' -and $taskManifest.release_version -eq 'v15.1'
+                if(-not $taskKnownLocal14){throw ('설치된 '+$taskName+'이 변경되었습니다.')}
+                $taskOwned[$taskName]=$taskInstalledHash
+                Write-Host '확인된 조조전 local14 DLL을 백업하고 v15.1로 전환합니다.'
+            }
             if($taskNames -notcontains $taskName){throw '현재 모듈을 누락한 패키지로 업데이트할 수 없습니다.'}
         }
         $taskPrevious=$taskState.previous_sha256

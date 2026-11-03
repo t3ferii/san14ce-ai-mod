@@ -49,7 +49,19 @@ def prepare(a):
     state=read(P/'backup/input_state.json'); manifest=read(P/'build/input_package/manifest.json')
     assert state['installed'] and state['release_version']==manifest['release_version']
     # 2026-11-01: SAN14_CCZ.dll is new; a baseline without it is installed with it once 'ccz' is listed.
-    assert all(sha(G/n)==manifest['split_modules']['files'][n] for n in NAMES.values() if n in manifest['split_modules']['files']),'Installed DLLs differ from Apply package'
+    # A user may have manually installed a newer local DLL (2026-11-01 local14 CCZ). Never
+    # treat it as the package baseline: only a module explicitly selected for replacement may
+    # differ, its expected export surface must still match, and its exact bytes are backed up
+    # and recorded for failure/user rollback. Every unselected module remains hash-strict.
+    selected_overrides={}
+    for key,name in NAMES.items():
+        expected=manifest['split_modules']['files'].get(name)
+        if expected is None: continue
+        actual=sha(G/name)
+        if actual==expected: continue
+        assert key in modules,'Installed DLL differs from Apply package: '+name
+        assert exports(G/name)==EXPORTS[key],'Modified selected DLL has unexpected exports: '+name
+        selected_overrides[name]={'sha256':actual,'package_sha256':expected,'size':(G/name).stat().st_size}
     assert all(n in manifest['split_modules']['files'] or k in modules for k,n in NAMES.items()),'Add the new module: --modules ...,ccz'
     settings()
     backup=P/'backup'/('local_install_'+uuid.uuid4().hex); backup.mkdir()
@@ -78,8 +90,10 @@ def prepare(a):
         layout=dict(source=a.layout,bank_sha256=j['bank_sha256'],records=len(j['records']))
     save(proof,dict(status='prepared',version=a.version,baseline_version=manifest['release_version'],modules=modules,
         gui=a.gui,note=a.note,layout=layout,stage=str(stage),stage_backup=str(backup),before_hashes=hashes,sources=sources(),
-        settings_before=settings(),installed=False,code_signed=False,gameplay_verified=False))
-    print(json.dumps(dict(status='prepared',version=a.version,modules=modules,gui=a.gui,backup=str(backup)),ensure_ascii=False))
+        settings_before=settings(),preexisting_selected_overrides=selected_overrides,
+        installed=False,code_signed=False,gameplay_verified=False))
+    print(json.dumps(dict(status='prepared',version=a.version,modules=modules,gui=a.gui,backup=str(backup),
+        preexisting_selected_overrides=selected_overrides),ensure_ascii=False))
 def install(a):
     proof=proof_path(a.version); p=read(proof); assert p['status']=='prepared'; unchanged(p)
     stage=Path(p['stage']); manifest=read(stage/'manifest.json'); gui=manifest['gui_installer']['file']
@@ -100,6 +114,11 @@ def install(a):
     for m in p['modules']: by_module[NAMES[m]]=p['sources']
     manifest['gui_installer']['sha256']=sha(stage/gui)
     manifest['feature_switches']['count']=(P/'distribution/FeatureSelect.ps1').read_text(encoding='utf-8-sig').count('@{Group=')
+    # Native CCZ editor ships both-source catalog; directory/lazy reads keep game memory bounded.
+    if 'ccz' in p['modules'] and (P/'assets/ccz/ccz_catalog.bin').exists():
+        catalog=read(P/'assets/ccz/ccz_catalog.json')
+        assert sha(P/'assets/ccz/ccz_catalog.bin')==catalog['sha256'],'CCZ catalog hash mismatch'
+        manifest.setdefault('ccz_assets',{})['assets/ccz/ccz_catalog.bin']=catalog['sha256']
     manifest.setdefault('local_changes',[]).append(dict(version=a.version,modules=p['modules'],gui=p['gui'],note=p['note'],
         date=datetime.now(timezone.utc).isoformat()))
     manifest['region_officers']['release_proof']=proof.relative_to(P).as_posix()
@@ -110,6 +129,18 @@ def install(a):
             if q.is_file(): atomic_write(P/'build/input_package'/q.name,q.read_bytes())
         for target,source in (('관리.ps1','Manage.ps1'),('SplitManage.ps1','SplitManage.ps1'),('FeatureSelect.ps1','FeatureSelect.ps1')):
             windows_script(P/'distribution'/source,P/target)
+        # Hand a validated manual local override to the guarded manager without relaxing its
+        # ownership check. The original state file is already in the transaction backup and is
+        # restored by the exception path; only explicitly selected/replaced modules are adopted.
+        overrides=p.get('preexisting_selected_overrides',{})
+        if overrides:
+            state_file=P/'backup/input_state.json'; owned=read(state_file)
+            assert owned['release_version']==p['baseline_version'] and owned['installed']
+            for name,info in overrides.items():
+                assert name in [NAMES[m] for m in p['modules']]
+                assert owned['modules'][name]==info['package_sha256'] and sha(G/name)==info['sha256']
+                owned['modules'][name]=info['sha256']
+            save(state_file,owned)
         no_game()
         r=subprocess.run(['powershell.exe','-NoProfile','-STA','-ExecutionPolicy','Bypass','-File',str(P/'관리.ps1'),
             '-Action','Apply','-NonInteractive'],cwd=G,capture_output=True)
@@ -171,7 +202,10 @@ def recover_prepared(proof,p):
         for name,data in contents.items():atomic_write(G/name,data);written.append(name)
         old=read(P/'build/input_package/manifest.json');old_state=read(P/'backup/input_state.json')
         assert old['release_version']==old_state['release_version']==p['baseline_version']
-        assert all(sha(G/n)==sha(P/'build/input_package'/n)==h for n,h in old['split_modules']['files'].items())
+        overrides=p.get('preexisting_selected_overrides',{})
+        assert all(sha(P/'build/input_package'/n)==h and
+            sha(G/n)==(p['before_hashes'][n] if n in overrides else h)
+            for n,h in old['split_modules']['files'].items())
         assert settings()==saved_settings
     except BaseException:
         for name in reversed(written):atomic_write(G/name,before[name])
@@ -214,7 +248,10 @@ def rollback(a):
         for name in added: (G/name).unlink()
         old=read(P/'build/input_package/manifest.json'); old_state=read(P/'backup/input_state.json')
         assert old['release_version']==old_state['release_version']==p['baseline_version']
-        assert all(sha(G/n)==sha(P/'build/input_package'/n)==h for n,h in old['split_modules']['files'].items())
+        overrides=p.get('preexisting_selected_overrides',{})
+        assert all(sha(P/'build/input_package'/n)==h and
+            sha(G/n)==(p['before_hashes'][n] if n in overrides else h)
+            for n,h in old['split_modules']['files'].items())
         assert settings()==settings_before
         assert all(sha(G/n)==h for n,h in protected.items())
         assert sha(G/'SAN14CE_KO.exe')==ORIGINAL_SHA
@@ -236,7 +273,8 @@ def rollback(a):
         rollback_settings_preserved=True,rollback_protected_modules=protected)
     save(proof,p)
     print(json.dumps({'status':p['status'],'restored_version':p['baseline_version'],
-        'settings_preserved':True,'other_modules_preserved':True,'layout_restored':bool(p.get('layout'))}))
+        'settings_preserved':True,'other_modules_preserved':True,'layout_restored':bool(p.get('layout')),
+        'local_overrides_restored':sorted(p.get('preexisting_selected_overrides',{}))}))
 
 if __name__=='__main__':
     ap=argparse.ArgumentParser(); ap.add_argument('action',choices=('prepare','install','rollback')); ap.add_argument('version')

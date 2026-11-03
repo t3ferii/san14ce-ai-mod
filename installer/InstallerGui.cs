@@ -1,4 +1,4 @@
-﻿// AI 모드 설치 관리자 (WinForms, .NET Framework 4.x — Windows 10/11 기본 포함).
+// AI 모드 설치 관리자 (WinForms, .NET Framework 4.x — Windows 10/11 기본 포함).
 // 기능 선택은 <게임>\AI_TacticsMod\기능설정.ini만 바꾸고, 파일 설치·해제는 기존 guarded
 // 설치기(AI_TacticsMod\관리.ps1 -NonInteractive)에 맡긴다. 해시·백업·원본 검사 로직을
 // 이 EXE에 복제하지 않는다. 게임 폴더가 패키지(이 EXE가 있는 곳)와 다르면
@@ -23,7 +23,7 @@ using System.Windows.Forms;
 
 [assembly: System.Reflection.AssemblyTitle("SAN14 AI 모드 설치 관리자")]
 [assembly: System.Reflection.AssemblyProduct("AI_TacticsMod")]
-[assembly: System.Reflection.AssemblyVersion("12.10.0.0")]
+[assembly: System.Reflection.AssemblyVersion("15.1.0.0")]
 
 namespace AiTacticsInstaller {
 
@@ -51,7 +51,8 @@ static class Catalog {
         new Feature("전투", "combat", "combat", "stationary_retreat", 1, "", "", "같은 자리 40일 정지 부대 퇴각", "4턴 동안 움직이지 못한 부대를 귀환시킵니다."),
         new Feature("전투", "combat", "combat", "morale", 1, "", "", "사기 회복 우선", "사기가 낮은 군세가 공격보다 회복을 먼저 합니다."),
         new Feature("전투", "combat", "combat", "support", 1, "", "", "호위·동행 지원 요청", "경로 위 거점 호위와 공성 동행 부대를 다른 아군 부대에 요청합니다."),
-        new Feature("전투", "combat", "combat", "mission_v2", 1, "", "", "임무 일관성 v2 (공성 시설만·대기 없음·원작 공격 우선)", "공성 목표 성 8칸 안에서만 공성 시설 1개를 짓고 건설 대기로 세우지 않습니다. 원작이 목표 성을 공격 중이면 모드 공성 진행이 끼어들지 않고, 공성 중인 부대는 40일 정지 퇴각에서 제외합니다. 경로상 적 지역을 원작 군세 작업 목록에 넣고, 최대 병력 90%·여유 4만 이상 도시는 연결된 적 성으로 대열 출진합니다."),
+        new Feature("전투", "combat", "combat", "mission_v2", 1, "", "", "임무 일관성 v2 (공성 시설만·대기 없음·원작 공격 우선)", "공성 목표 성 10칸 안 자기 땅에서, 성에서 3~6칸(성 공격 범위 밖) 지점에만 공성 시설 1개를 짓고 건설 대기로 세우지 않습니다. 원작이 목표 성을 공격 중이면 모드 공성 진행이 끼어들지 않고, 공성 중인 부대는 40일 정지 퇴각에서 제외합니다. 경로상 적 지역을 원작 군세 작업 목록에 넣고, 최대 병력 90%·여유 4만 이상 도시는 연결된 적 성으로 대열 출진합니다."),
+        new Feature("전투", "combat", "combat", "builder_ruler_fill", 0, "combat.mission_v2", "", "건설 성향 군주(내면 건설 5)의 시설 채우기", "켜면 내면 건설이 5인 컴퓨터 군주의 부대가 공성지 제한 없이 지역이 가득 찰 때까지 시설을 짓습니다(이전 동작). 끄면 다른 군주처럼 공성 목표 근처에 1개만 짓습니다. 임무 일관성 v2가 켜져 있어야 동작합니다."),
         new Feature("전투", "combat", "combat", "ai_max_aggression", 1, "", "", "AI 호전성 최대 (궁극과 같은 공격 검토)", "원작 판단표의 AI 설정 단계를 궁극(4)으로 읽게 하고, 군단 진행 검사의 단계별 턴 건너뛰기를 없앱니다. 다른 원작 판단은 그대로 둡니다. 플레이어 위임 군단에도 적용됩니다."),
         new Feature("전투", "combat", "combat", "ai_wall_block", 1, "", "", "컴퓨터 세력 방벽 건설 금지", "컴퓨터 세력이 방벽·관문을 짓지 않습니다."),
         new Feature("전투", "combat", "combat", "ai_catapult_block", 0, "", "", "플레이어 성 주변 컴퓨터 투석대 건설 불가", "켜면 플레이어 성·관문이 있는 지역과 바로 붙은 지역(점령자 상관없음)에서 컴퓨터 세력이 투석대를 지을 수 없습니다. 그곳에서는 시정 Lv7처럼 요새가 최고 시설이 되어, 컴퓨터 부대는 요새 등 다른 시설을 짓거나 공성을 계속합니다. 그 밖의 지역, 컴퓨터끼리의 전투, 플레이어의 투석대는 원작 그대로입니다."),
@@ -102,9 +103,10 @@ static class Catalog {
 
         // 게임성: 원작 규칙·결과가 달라지는 기능.
         new Feature("게임성", "convenience", "stratagem", "building_destruction_all", 0, "", "", "건물파괴 지역 전체 피해", "건물파괴 성공 시 선택 지역의 모든 적 군사시설·장애물·함정에 원작에서 계산된 피해량을 각각 적용합니다. 성·관문·아군·동맹·중립 건물은 제외하며, 실패 시에는 원작 처리를 유지합니다. 플레이어와 컴퓨터 모두 적용됩니다."),
-        new Feature("조조전", "convenience", "ccz", "ccz_sprites", 1, "", "", "조조전 병종 그림 (필드 부대)", "필드의 부대를 조조전 병종 그림으로 그립니다. 옷만 세력색(파랑·초록·보라 같은 차가운 색은 빨강~주황 대비색)으로 칠하고 말·얼굴은 원래 색이며, 대비되는 테두리를 두르고 이동·공격·대기 동작과 방향이 바뀝니다. 신조조전 장수 92명(전용 병종 17명: 조조=위무제·여포=무신·관우=군신 등, 나머지 75명은 신조조전 개인 그림)은 군주·군사 병종보다 먼저 그 그림으로 고정됩니다. 그림 출처: 조조전(KOEI) 6.6·신조조전 7.0. 실험 기능입니다."),
+        new Feature("조조전", "convenience", "ccz", "ccz_sprites", 1, "", "", "조조전 병종 그림 (필드 부대)", "필드의 부대를 조조전 병종 그림으로 그립니다. 옷만 세력색(파랑·초록·보라 같은 차가운 색은 빨강~주황 대비색)으로 칠하고 말·얼굴은 원래 색이며, 대비되는 테두리를 두르고 이동·공격·대기 동작과 방향이 바뀝니다. 신조조전 장수 92명(전용 병종 17명: 조조=위무제·여포=무신·관우=군신 등, 나머지 75명은 신조조전 개인 그림)은 기본값은 군주·군사 병종보다 고유 그림 우선입니다. 게임 첫 메뉴의 「조조전」에서 진형별 병종·통솔 경계·무장별 고유 그림 적용 진형을 바꿀 수 있습니다. 그림 출처: 조조전(KOEI) 6.6·신조조전 7.0. 실험 기능입니다."),
         new Feature("조조전", "convenience", "ccz", "ccz_hide_model", 1, "ccz.ccz_sprites", "", "조조전 그림 부대의 원래 3D 모형 숨김", "조조전 그림으로 그린 부대의 원래 3D 병사 모형을 그리지 않습니다. 끄면 원래 모형과 그림이 함께 보입니다(위치 확인용). 깃발은 그대로 남습니다."),
         new Feature("조조전", "convenience", "ccz", "ccz_depth", 1, "ccz.ccz_sprites", "", "조조전 그림 지형 가림 처리", "산·건물 뒤의 부대 그림을 장면 깊이로 가립니다. 그림이 보이지 않으면 끄십시오(항상 맨 앞에 그림)."),
+        new Feature("조조전", "convenience", "ccz", "ccz_far_keep", 0, "ccz.ccz_sprites", "", "원거리 부대 그림 유지 (시험용)", "원작이 원거리 부대 표시 제출을 멈춘 뒤에도 최근 부대의 위치를 읽어 그림을 유지합니다. 기본 OFF. local14 줌 전환 렌더링 복구는 이 설정과 관계없이 유지됩니다."),
         new Feature("조조전", "convenience", "ccz", "ccz_block", 1, "", "", "조조전식 막기", "막기: 맞는 장수의 무력이 높을수록 일반 공격을 완전히 막아 1명만 잃습니다(5% + 무력 차 x 0.4, 1~10%). 한 번 발동하면 그 공격을 포함해 받는 일반 공격 5번을 막습니다. 하루 동안 일반 공격을 주고받지 않으면 상태가 끝납니다. 일반 공격만 대상이며 예상 피해 표시에는 반영되지 않습니다. 조조전 그림을 켜면 막기 자세·섬광이 보입니다."),
         new Feature("조조전", "convenience", "ccz", "ccz_critical", 1, "", "", "조조전식 회심의 일격", "회심의 일격: 공격 장수의 무력·부대 사기가 높을수록 일반 공격 피해가 1.5배가 됩니다(5% + 무력 차 x 0.3 + 사기 차 x 0.2, 1~10%). 한 번 발동하면 그 공격을 포함해 다음 일반 공격 5번이 모두 회심이 됩니다. 하루 동안 일반 공격을 주고받지 않으면 상태가 끝납니다. 일반 공격만 대상이며 예상 피해 표시에는 반영되지 않습니다. 조조전 그림을 켜면 막기 자세·섬광이 보입니다."),
         new Feature("게임성", "convenience", "combat", "district_intercept_block", 1, "", "", "지원·내정 군단 출진 제한 (플레이어 2군단~)", "플레이어가 위임한 군단의 방침이 지원이면 수송 출진만, 내정이면 요격·지역 점령·공격 출진을 막습니다(수송·건설은 허용). 컴퓨터 군단·직할 1군단·공격 방침·직접 명령·이미 출전한 부대는 그대로입니다. 전투 AI 교정 없이도 적용됩니다."),
@@ -122,6 +124,7 @@ static class Catalog {
         new Feature("게임성", "convenience", "extensions", "stats200_growth", 1, "extensions.stats200", "", "능력치 100 이후 자연 성장", ""),
         new Feature("기타(개발용)", "", "groups", "diagnostics", 1, "", "", "개발용 기능 전체", "진단 로그·추적·시간 기록 같은 개발용 기능의 묶음입니다. 끄면 아래 항목이 모두 꺼집니다. 일반 플레이에는 필요 없습니다."),
         new Feature("기타(개발용)", "diagnostics", "diagnostics", "enabled", 0, "", "", "진단 로그 기록 (SAN14_*.log)", "모드 판단과 오류를 게임 폴더 로그 파일에 남깁니다. 배포용(로그 제외) DLL에서는 효과가 없습니다."),
+        new Feature("기타(개발용)", "diagnostics", "diagnostics", "terrain_diag_mode", 0, "", "", "지형 편집 렉 분리 A/B/C", "0=기준(물살·렌더러 ON), 1=A(물살 OFF), 2=B(렌더러·높이 캡처 OFF), 3=C(둘 다 OFF). A/B/C는 진단 전용입니다. terrain_edit=1에서 줌 렉 비교만 하고 실제 지형 편집·저장에는 사용하지 마세요."),
         new Feature("기타(개발용)", "diagnostics", "diagnostics", "reuse_handle", 1, "", "", "로그 파일 핸들 재사용", "로그를 쓸 때 파일을 매번 다시 열지 않아 기록 비용을 줄입니다."),
         new Feature("기타(개발용)", "diagnostics", "diagnostics", "ai_trace", 0, "", "", "원작 AI 행동 추적 (CSV)", "원작 AI 판단 노드가 부대·군세 목표를 바꾸는 과정을 data/ai_trace에 기록합니다. 기록량이 많습니다."),
         new Feature("기타(개발용)", "diagnostics", "diagnostics", "ai_trace_original", 0, "", "", "원작만 추적 (모드 훅 연결 안 함)", "모드 기능을 연결하지 않고 원작 AI만 기록합니다. 이 상태로 기존 세이브에 덮어쓰지 마세요."),
@@ -135,6 +138,9 @@ static class Catalog {
         new Feature("기타(개발용)", "diagnostics", "progress_native", "profile", 0, "", "", "AI 진행 함수 시간 기록", "원작 AI 진행 함수별 호출 시간을 진단 로그에 남깁니다."),
     };
     public static Feature ById(string id) { return Items.First(f => f.Id == id); }
+    // Structured game-menu settings, deliberately outside the integer/checkbox catalogue.
+    // Empty/missing = current default art. FeatureIni preserves this raw string verbatim.
+    public static readonly string[] RawSettings = { "ccz_appearance.profile" };
     // user 2026-10-28: retired, conflicts with mission_v2; independent of its current value.
     public static readonly HashSet<string> Retired = new HashSet<string> {
         "combat.departures", "combat.group_advance", "combat.support"
@@ -190,7 +196,8 @@ sealed class FeatureIni {
         foreach (var source in new[] { Get("features", f.Key), Get(f.Section, f.Key) }) {
             int n;
             if (source != null && int.TryParse(source, out n))
-                value = f.Id == "diagnostics.path_fast_verify" ? Math.Max(0, n) : (n != 0 ? 1 : 0);
+                value = f.Id == "diagnostics.path_fast_verify" ? Math.Max(0, n) :
+                    f.Id == "diagnostics.terrain_diag_mode" ? Math.Max(0, Math.Min(3, n)) : (n != 0 ? 1 : 0);
         }
         return value;
     }
@@ -360,6 +367,7 @@ sealed class FlatButton : Button {
 sealed class FeatureRow : Panel {
     public readonly Feature Item;
     public readonly CheckBox Box;
+    public readonly ComboBox Choice;
     public readonly LinkLabel Fix;
     readonly Label tag, note;
     bool hasNote; // Control.Visible은 숨은 탭 안에서 항상 false라 높이 계산에 쓰지 않는다.
@@ -381,16 +389,25 @@ sealed class FeatureRow : Panel {
             Font = Theme.Ui(item.IsMaster ? 11.5f : 10.5f, item.IsMaster ? FontStyle.Bold : FontStyle.Regular),
             Location = new Point(Padding.Left, Padding.Top), BackColor = Color.Transparent
         };
+        Choice = new ComboBox {
+            DropDownStyle = ComboBoxStyle.DropDownList, Font = Theme.Ui(10f),
+            Location = new Point(Padding.Left, Padding.Top), Width = 430, Visible = item.Id == "diagnostics.terrain_diag_mode"
+        };
+        Choice.Items.AddRange(new object[] {
+            "0 — 기준: foam ON / renderer ON", "1 — A: foam OFF / renderer ON",
+            "2 — B: foam ON / renderer OFF", "3 — C: foam OFF / renderer OFF"
+        });
+        if (Choice.Visible) Box.Visible = false;
         Fix = new LinkLabel {
             AutoSize = true, Font = Theme.Ui(9f, FontStyle.Bold), LinkColor = Theme.Link, ActiveLinkColor = Theme.AccentDark,
             Visible = false, BackColor = Color.Transparent
         };
         note = new Label {
             AutoSize = false, ForeColor = Theme.Muted, Font = Theme.Ui(9f),
-            Location = new Point(Padding.Left + 20, Box.Bottom + 2), BackColor = Color.Transparent
+            Location = new Point(Padding.Left + (Choice.Visible ? 4 : 20), (Choice.Visible ? Choice.Bottom : Box.Bottom) + 2), BackColor = Color.Transparent
         };
         tag.Click += (s, e) => { if (Box.Enabled) Box.Checked = !Box.Checked; }; // 표시를 눌러도 같은 항목이 바뀐다
-        Controls.Add(tag); Controls.Add(Box); Controls.Add(Fix); Controls.Add(note);
+        Controls.Add(tag); Controls.Add(Box); Controls.Add(Choice); Controls.Add(Fix); Controls.Add(note);
         SetState(true, item.Note, null);
         Paint += (s, e) => {
             using (var pen = new Pen(Theme.Border)) e.Graphics.DrawLine(pen, 0, Height - 1, Width, Height - 1);
@@ -417,12 +434,13 @@ sealed class FeatureRow : Panel {
         Relayout();
     }
     void Relayout() {
-        Fix.Location = new Point(Box.Right + 10, Box.Top + 3);
+        Control primary = Choice.Visible ? (Control)Choice : Box;
+        Fix.Location = new Point(primary.Right + 10, primary.Top + 3);
         int width = Math.Max(200, Width - note.Left - 24);
         var size = TextRenderer.MeasureText(note.Text, note.Font, new Size(width - 8, 0), TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl);
         note.Size = new Size(width, size.Height);
-        note.Top = Box.Bottom + 2;
-        Height = (hasNote ? note.Bottom : Box.Bottom) + Padding.Bottom;
+        note.Top = primary.Bottom + 2;
+        Height = (hasNote ? note.Bottom : primary.Bottom) + Padding.Bottom;
     }
 }
 
@@ -471,6 +489,16 @@ static class Updates {
         return result;
     }
     public static string DownloadText(string url) { using (var web = Client()) return web.DownloadString(url); }
+    // User 2026-11-02: a newer local candidate is not the latest public release.
+    public static string StatusText(string installed, bool localDiagnostic, string latest) {
+        if (latest == null) return localDiagnostic ? "로컬 개발판 · 공개판 확인 불가" : "공개판 확인 불가";
+        if (installed == null) return "설치 가능 · 공개 " + latest;
+        int compare = Compare(latest, installed);
+        if (compare > 0) return "● 업데이트 가능 · 공개 " + latest;
+        if (localDiagnostic) return "로컬 개발판 " + installed + " · 공개 " + latest;
+        if (compare == 0) return "공개 최신판 " + latest;
+        return "설치판 " + installed + " · 공개 " + latest;
+    }
     // v15 > v14.2 > v14.2-rc5 > v14.1. 접미사가 있으면 같은 번호의 정식판보다 앞선 버전이다.
     public static int Compare(string a, string b) {
         Func<string, int[]> nums = v => Regex.Match(v ?? "", @"^v?(\d+(?:\.\d+)*)").Groups[1].Value.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToArray();
@@ -588,6 +616,7 @@ sealed class MainForm : Form {
         Text = "삼국지14 CE AI 모드 설치 관리자";
         Font = Theme.Ui(10f); BackColor = Theme.Page; StartPosition = FormStartPosition.CenterScreen;
         AutoScaleMode = AutoScaleMode.Dpi; ClientSize = new Size(900, 720); MinimumSize = new Size(800, 580);
+        WindowState = FormWindowState.Maximized;   // 2026-11-01 사용자: 최대 화면으로 연다(복원 시 900×720)
 
         BuildFooter(); BuildBody(); BuildTabs(); BuildHeader();
         content.BringToFront(); // Fill는 마지막에 배치되어야 머리/탭/하단을 침범하지 않는다.
@@ -628,6 +657,16 @@ sealed class MainForm : Form {
             return installed.Success && previous.Success && installed.Groups[1].Value == InstalledVersion() ? previous.Groups[1].Value : null;
         } catch { return null; }
     }
+    bool InstalledLocalDiagnostic(string installed) {
+        if (installed == null) return false;
+        try {
+            var file = Path.Combine(project, @"build\input_package\manifest.json");
+            var manifest = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(File.ReadAllText(file));
+            object version, local;
+            return manifest.TryGetValue("release_version", out version) && (version as string) == installed &&
+                manifest.TryGetValue("local_diagnostic_only", out local) && local is bool && (bool)local;
+        } catch { return false; }
+    }
     void LoadHistory() {
         history = History.Load(Path.Combine(project, "release_features.json")) ?? new History();
         if (package != null) history.Merge(History.Load(Path.Combine(package, @"AI_TacticsMod\release_features.json")));
@@ -659,17 +698,24 @@ sealed class MainForm : Form {
         var installed = InstalledVersion();
         latest = found.FirstOrDefault(r => !Regex.IsMatch(r.Version, @"-rc\d*$"));
         bool newer = latest != null && (installed == null || Updates.Compare(latest.Version, installed) > 0);
-        updateButton.Text = newer ? "● 업데이트가 있어요 (" + latest.Version + ")" : "최신 버전입니다";
+        bool localDiagnostic = InstalledLocalDiagnostic(installed);
+        string updateStatus = Updates.StatusText(installed, localDiagnostic, latest != null ? latest.Version : null);
+        updateButton.Text = localDiagnostic && !newer ? "로컬 개발판 · 공개 " + (latest != null ? latest.Version : "미확인") : updateStatus;
         updateButton.BackColor = newer ? Theme.Accent : Theme.Header;
         updateButton.ForeColor = newer ? Color.White : Theme.HeaderText;
-        versionInfo.Text = "현재 설치: " + (installed ?? "없음") + "    ·    GitHub 최신: " + (latest != null ? latest.Version : "-");
+        versionInfo.Text = "현재 설치: " + (installed ?? "없음") + (localDiagnostic ? " (로컬 개발판)" : "") + "    ·    공개 최신: " + (latest != null ? latest.Version : "-");
         versionList.Items.Clear();
         foreach (var r in found.Where(r => Updates.Supported(r.Version))) {
-            string mark = installed != null && history.Known(installed) == r.Version || r.Version == installed ? "  (현재)" : r == latest ? "  (최신)" : "";
+            string mark = !localDiagnostic && r.Version == installed ? "  (현재 공개판)" : r == latest ? "  (공개 최신)" : "";
             versionList.Items.Add(new ReleaseItem { Release = r, Text = r.Version + "   " + r.Published + mark });
         }
+        // 가장 긴 항목(예: "v15   2026-11-01  (현재)")이 잘리지 않게 목록 폭을 맞춘다(2026-11-01 사용자).
+        int listWidth = versionList.Width;
+        foreach (ReleaseItem item in versionList.Items)
+            listWidth = Math.Max(listWidth, TextRenderer.MeasureText(item.Text, versionList.Font).Width + SystemInformation.VerticalScrollBarWidth + 24);
+        versionList.Width = listWidth;
         if (versionList.Items.Count > 0) versionList.SelectedIndex = 0;
-        if (manual && !newer) Append("최신 버전입니다: " + (latest != null ? latest.Version : "-"));
+        if (manual) Append(updateStatus);
         ApplyDefaultChanges();
     }
     void OnUpdateButton() {
@@ -936,6 +982,7 @@ sealed class MainForm : Form {
             for (int i = order.Count - 1; i >= 0; --i) {
                 var row = new FeatureRow(order[i].Key, order[i].Value);
                 row.Box.CheckedChanged += (s, e) => OnToggle(row);
+                row.Choice.SelectedIndexChanged += (s, e) => OnChoice(row);
                 row.Fix.LinkClicked += (s, e) => EnableChain(row.Item, true);
                 rows.Add(row); card.Controls.Add(row);
             }
@@ -975,7 +1022,7 @@ sealed class MainForm : Form {
         var updatePage = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Page, Visible = false };
         versionInfo.Dock = DockStyle.Top; versionInfo.Height = 30; versionInfo.Font = Theme.Ui(10.5f, FontStyle.Bold); versionInfo.ForeColor = Theme.Text;
         versionInfo.Text = "배포 목록을 불러오는 중…";
-        versionList.Dock = DockStyle.Left; versionList.Width = 230; versionList.Font = Theme.Ui(10.5f); versionList.IntegralHeight = false;
+        versionList.Dock = DockStyle.Left; versionList.Width = 340; versionList.Font = Theme.Ui(10.5f); versionList.IntegralHeight = false;
         versionList.SelectedIndexChanged += (s, e) => OnVersionSelected();
         notesBox.Multiline = true; notesBox.ReadOnly = true; notesBox.ScrollBars = ScrollBars.Vertical; notesBox.Dock = DockStyle.Fill;
         notesBox.Font = Theme.Ui(9.5f); notesBox.BackColor = Theme.Card; notesBox.BorderStyle = BorderStyle.FixedSingle;
@@ -1010,7 +1057,7 @@ sealed class MainForm : Form {
         var save = new FlatButton("설정만 저장", false);
         var apply = new FlatButton("설치 / 적용", true);
         defaults.Click += (s, e) => SetAll(f => f.Default);
-        allOn.Click += (s, e) => SetAll(f => 1);
+        allOn.Click += (s, e) => SetAll(f => f.Id == "diagnostics.terrain_diag_mode" ? f.Default : 1);
         save.Click += (s, e) => Run("Select", "기능 설정 저장");
         apply.Click += (s, e) => Run("Apply", "모드 설치·적용");
         restore.Click += (s, e) => {
@@ -1100,6 +1147,14 @@ sealed class MainForm : Form {
         dirty = true; SyncRows(); UpdateSummary();
     }
 
+    void OnChoice(FeatureRow row) {
+        if (syncing || row.Item.Id != "diagnostics.terrain_diag_mode" || row.Choice.SelectedIndex < 0) return;
+        values[row.Item.Id] = row.Choice.SelectedIndex;
+        if (row.Choice.SelectedIndex != 0 && values["groups.diagnostics"] == 0) values["groups.diagnostics"] = 1;
+        lastLinked = row.Choice.SelectedIndex == 0 ? "" : "A/B/C 진단 모드 — 지형 편집·저장 금지";
+        dirty = true; SyncRows(); UpdateSummary();
+    }
+
     void SyncRows() {
         syncing = true;
         foreach (var row in rows) {
@@ -1108,8 +1163,15 @@ sealed class MainForm : Form {
                 values[f.Id] = 0; row.Box.Checked = false; row.Box.Enabled = false;
                 row.SetState(false, Catalog.RetiredNote, null); continue;
             }
+            if (f.Id == "diagnostics.terrain_diag_mode") {
+                int selected = Math.Max(0, Math.Min(3, values[f.Id]));
+                if (row.Choice.SelectedIndex != selected) row.Choice.SelectedIndex = selected;
+                row.Choice.Enabled = !busy; row.Box.Checked = selected != 0; row.Box.Enabled = false;
+            }
+            else {
             row.Box.Checked = values[f.Id] != 0;
             row.Box.Enabled = !busy;
+            }
             if (f.IsMaster) { row.SetState(values[f.Id] != 0, f.Note, null); continue; }
             var master = Catalog.Master(f.Group);
             var parent = f.IsChild ? Catalog.ById(f.Requires) : null;

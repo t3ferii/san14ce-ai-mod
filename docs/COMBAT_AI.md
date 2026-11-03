@@ -30,4 +30,4 @@ v12.22-rc2는 임무 일관성 v2에서 출진 성→목표 성의 회랑 점령
 
 직접 플레이어 명령과 원작 요격·원군 판단을 보존한다. 숫자만 바꾸기 전에 모든 경쟁 명령 작성자와 호출 순서를 확인한다. action/target-kind, 목표 점령, 같은 날 재호출, 부대 식별 재사용, 퇴각·이동 범위 해제를 함께 검증한다.
 
-검사: `check_feature.ps1 -Feature ai -List`, `campaign-revision`, `sortie`, 경계 변경은 `dll-split`. 과거 v11.10/v11.11 경로 충돌판은 재설치 금지다. v12.9 종료 보고는 별도 미해결이며 전투 AI 원인으로 확정되지 않았다. 함수 주소·ABI는 [NATIVE_FUNCTIONS](NATIVE_FUNCTIONS.md), 당시 수정 경위는 역사 보관 ZIP를 참고한다.
+검사: `check_feature.ps1 -Feature ai -List`, `campaign-revision`, `sortie`, 경계 변경은 `dll-split`. 과거 v11.10/v11.11 경로 충돌판은 재설치 금지다. v12.9 종료 보고는 별도 미해결이며 전투 AI 원인으로 확정되지 않았다. 함수 주소·ABI는 NATIVE_FUNCTIONS, 당시 수정 경위는 역사 보관 ZIP를 참고한다.

@@ -113,6 +113,29 @@ check(read(0x4F7190,1)==b'\xe8' and 0x4F7195+struct.unpack('<i',read(0x4F7191,4)
 check(read(0x4F71A3,6)==bytes.fromhex('ff9098010000') and read(0x4F71B6,3)==bytes.fromhex('ff5028') and read(0x4F71CD,2)==bytes.fromhex('ff10'),'Leave closes layout and invokes deleting destructor before parent callback')
 check(struct.unpack('<8I',read(0x14311A0,32))==(909,909,910,911,912,913,914,915),'income district headings match native label table')
 cache=P/'research/decomp_cache/1fbe6be7466a6646'
+code=(P/'src/native_advisor_briefing.inl').read_text(encoding='utf-8')
+# User 2026-11-02: skip final report UI, retain result writers and parent Leave.
+check(read(0x676D0D,5)==bytes.fromhex('e86e410000'),'headless replay owns exactly the native result-generation caller')
+check(read(0x676D0D,5)==capture[0x676D0D-0x1000:0x676D0D-0x1000+5],'independent result caller capture')
+ctor=read(0x671950,0xB5)
+check(bytes.fromhex('48c7837004000004000000') in ctor and bytes.fromhex('4889b380040000') in ctor,'fresh report constructor initializes phase four and null background')
+check(bytes.fromhex('88040000') not in ctor and bytes.fromhex('90040000') not in ctor,'skipped UI phase pointers are not initialized by the native constructor')
+formatter=(cache/'0067D1F0_c.txt').read_text(encoding='utf-8')
+empty_string=struct.unpack('<Q',read(0x1A47B98,8))[0]-0x140000000
+check(read(empty_string,2)==b'\0\0','native PTR_DAT_141a47b98 really points to an empty UTF-16 string')
+check('uVar7 = 0x26;' in formatter and 'puVar10 = PTR_DAT_141a47b98;' in formatter,'native non-applicable military branch explicitly clears delta 38')
+check(set(re.findall(r'param_1 \+ (0x[0-9a-f]+)',formatter))=={'0x378'},'income formatter accesses only the supplied text layout pointer')
+lookup=(cache/'0092CEE0_c.txt').read_text(encoding='utf-8')
+check('*(int *)(param_1 + 0x10) <= param_2' in lookup and 'return 0;' in lookup,'zero-node layout rejects lookup before accessing nodes')
+visibility=(cache/'0092EF10_c.txt').read_text(encoding='utf-8')
+check('param_2 < (int)param_1[2]' in visibility and '(lVar1 != 0)' in visibility,'optional visibility update handles an empty layout without dereferencing nodes')
+check('call_restore(report_results_call)' in code and 'scene_call_publish(report_results_call)' in code,'result replay caller participates in guarded publication and rollback')
+headless=code.split('static bool try_headless_report(',1)[1].split('static unsigned long long __fastcall report_enter(',1)[0]
+check(headless.index('consumed.push_back')<headless.index('0x67AE80')<headless.index('headless_income(batch,districts)'), 'native consumption, result writers and income calculation retain original order')
+check('replay_results=action' in headless and 'r.second&6' in headless,'fallback restores pending bits and reuses applied results')
+for token in ('ReportTiming','advisor_report_cost','advisor_report_cpu_valid'):
+    # Added below to the existing release preprocessing/binary checks as well.
+    check(token in code,'headless diagnostic wall/CPU timing exists '+token)
 for a,fragments in {
     '00862E40':['140862e74 MOV R8,qword ptr [RCX + 0x4b0]','140862e92 CALL 0x140842380','140862ea3 JMP 0x140012540'],
     '0067B420':['0x480','0x470','FUN_14067c990(param_1,0)'],
@@ -154,7 +177,6 @@ for c in classes:
 for rel in ['installer/InstallerGui.cs','distribution/FeatureSelect.ps1','FeatureSelect.ps1','기능설정.ini']:
     raw=(P/rel).read_bytes();encoding='utf-16' if raw.startswith((b'\xff\xfe',b'\xfe\xff')) else 'utf-8-sig'
     check('advisor_briefing' in raw.decode(encoding),'single candidate switch '+rel)
-code=(P/'src/native_advisor_briefing.inl').read_text(encoding='utf-8')
 picture_prepare=code.split('static bool prepare_picture_link(',1)[1].split('static void pop()',1)[0]
 check('memcpy' not in picture_prepare and 'absolute_jump(at,hook)' in picture_prepare,'picture replacement never relocates native relative tail jumps')
 check('fn<void(__fastcall *)(Obj,int,int)>(0x842A90)(pointer(object,0x1B8),id,0)' in code and
@@ -265,7 +287,9 @@ diagnostic_tokens=('frame_metrics','layout_move_calls','FrameTiming','measured_f
                    'present_thread_id','present_tick_ms','wndproc_thread_id','wndproc_tick_ms','lock_thread_id','lock_tick_ms',
                    'di_install_attempted','di_install_success','di_patched_table','di_interface_kind','di_install_details','di_provider_stage','di_interface_mask',
                    'di_owner_paths','di_owner_checks','di_restore_counts','outside_click_counts','context_resets','time_wait_counts','player_context_counts',
-                   'advisor_portrait_sample','portrait_sample_logs','portrait_accept_logs')
+                   'advisor_portrait_sample','portrait_sample_logs','portrait_accept_logs',
+                   'ReportTiming','advisor_report_cost','advisor_report_cpu_valid','advisor_report_headless',
+                   'advisor_report_income_missing','advisor_report_collect_fail')
 for fixture in ('advisor_briefing_fixture','advisor_overlay_fixture'):
     pp=subprocess.run([str(vc/'bin/Hostx64/x64/cl.exe'),'/nologo','/utf-8','/std:c++17','/EP','/DNO_RUNTIME_LOG',str(P/'tests'/f'{fixture}.cpp')],cwd=out,env=env,capture_output=True)
     check(pp.returncode==0,'NO_RUNTIME_LOG preprocess '+fixture+': '+pp.stderr.decode('utf-8','replace')[-2000:])

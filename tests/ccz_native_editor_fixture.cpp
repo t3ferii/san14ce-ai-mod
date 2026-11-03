@@ -1,0 +1,83 @@
+// Native editor state machine with intercepted native requests; real catalog, INI and WARP preview.
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <d3d11.h>
+#include <array>
+#include <vector>
+#include <set>
+#include <string>
+#include <functional>
+#include <memory>
+#include <cstdio>
+#include <cstdlib>
+#include <algorithm>
+#include "../src/ccz_appearance.h"
+using Obj=unsigned char *;
+static Obj image;static wchar_t settings_path[MAX_PATH],catalog_path[MAX_PATH];static unsigned checks,reloads,layout_calls;static DWORD ui_thread;
+static void check(bool ok,const char *why){++checks;if(!ok){std::fprintf(stderr,"%s\n",why);std::exit(1);}}
+static void log_event(const char *,unsigned=0,unsigned=0,unsigned=0){}
+static bool mod_ini_path(wchar_t *out,const wchar_t *name){return wcscpy_s(out,MAX_PATH,wcsstr(name,L"catalog.bin")?catalog_path:settings_path)==0;}
+static Obj pointer(Obj p,unsigned off){Obj v;memcpy(&v,p+off,8);return v;}
+static void __fastcall position(Obj p,int x,int y){check(GetCurrentThreadId()==ui_thread && ((x==0 && y==0)||(x==80 && y==150)||((x==1096 || x==1144) && y==230)),"native scrollbar remains inside the left content pane");memcpy(p+0x20,&x,4);memcpy(p+0x24,&y,4);++layout_calls;}
+static void __fastcall width(Obj p,int value){check(value==1920 || value==1000 || value==1048,"body viewport width follows column width and optional checkbox gutter");memcpy(p+0x28,&value,4);}
+static void __fastcall height(Obj p,int value){check(value==1080 || value==740 || value==660,"existing control height stays inside viewport");memcpy(p+0x2C,&value,4);}
+static void __fastcall redraw(Obj){}
+static int __fastcall ready(Obj){return 1;}
+template<class T>static T fn(unsigned rva){void *p=nullptr;switch(rva){case 0x874650:p=reinterpret_cast<void *>(&position);break;case 0x875F00:p=reinterpret_cast<void *>(&width);break;case 0x8740F0:p=reinterpret_cast<void *>(&height);break;case 0x2FC280:p=reinterpret_cast<void *>(&redraw);break;case 0x56FE10:p=reinterpret_cast<void *>(&ready);break;default:check(false,"CCZ frame must not allocate, construct, delete, or rebind native controls");}return reinterpret_cast<T>(p);}
+struct Link {Link *next=nullptr;Obj value=nullptr;};struct GameList {std::vector<Link> links;};static Link *list_first(GameList &v){return v.links.empty()?nullptr:v.links.data();}
+namespace ccz_module {static void reload_appearance(){++reloads;}}
+namespace unified_overlay {static void install(){}}
+namespace unified_dialogs {
+static constexpr unsigned kChangeDelegateRva=0x13ADFA0;
+using PickDone=std::function<void(bool,const std::vector<unsigned>&)>;
+struct Row {unsigned id;std::wstring label;};struct List {GameList value;};
+struct Dialog {std::array<unsigned char,0x300> memory{},native_list{},native_bar{};unsigned char config[0x400]={};Obj object=memory.data();unsigned char column[0x60]={};std::vector<Row> rows;PickDone done;std::function<void(Dialog &,bool)> on_frame;std::function<void(unsigned)> command;std::array<std::wstring,3> button_names;bool completed=false;};
+struct PaneBounds {int x,y,width,height;};
+static Dialog *active;static std::vector<std::unique_ptr<Dialog>> retained;static std::vector<unsigned> selection;static std::function<void(bool,int)> number_done;static bool number_open;
+static std::unique_ptr<Dialog> choices(const std::wstring &,const std::vector<std::wstring>&names,const std::vector<unsigned>&ids,bool multiple,const std::set<unsigned>&initial,PickDone done){auto r=std::make_unique<Dialog>();*reinterpret_cast<unsigned *>(r->config+0x18)=multiple?2:1;*reinterpret_cast<unsigned *>(r->config+0xA0)=1;*reinterpret_cast<unsigned *>(r->config+0x100)=1;for(size_t i=0;i<ids.size();++i)r->rows.push_back({ids[i],names[i]});r->done=std::move(done);selection.assign(initial.begin(),initial.end());return r;}
+static bool open(std::unique_ptr<Dialog> r){check(!active && !number_open,"no dialog reentrancy from native close callback");check(*reinterpret_cast<unsigned *>(r->config+0xA4)==1 && *reinterpret_cast<unsigned *>(r->column+0x10)==1000,"internal viewport configured before original constructor (not a later outer resize)");Obj list=r->native_list.data(),bar=r->native_bar.data(),cfg=r->config;memcpy(r->object+0x180,&list,8);memcpy(r->object+0x198,&bar,8);memcpy(r->object+0x1A8,&cfg,8);active=r.get();retained.push_back(std::move(r));return true;}
+static void collect(Dialog &d,GameList &out){for(unsigned id:selection)for(auto &row:d.rows)if(row.id==id)out.links.push_back({nullptr,reinterpret_cast<Obj>(&row)});for(size_t i=1;i<out.links.size();++i)out.links[i-1].next=&out.links[i];}
+static void close(Dialog &d,bool ok){check(&d==active,"close only own native dialog");active=nullptr;d.completed=true;auto callback=d.done;callback(ok,selection);}
+static void release_closed(){check(!active && !number_open,"release only after native resume");retained.clear();}
+static void abandon(){active=nullptr;number_open=false;number_done={};retained.clear();}
+static bool number(int,int minimum,int maximum,std::function<void(bool,int)> done){check(minimum==0 && maximum==255,"native number input bounds");number_done=std::move(done);number_open=true;return true;}
+// No make/dispose helpers: frame-time replacement must fail at compilation.
+}
+#include "../src/native_ccz_preview.inl"
+#include "../src/native_ccz_editor.inl"
+static void frame(){if(auto d=unified_dialogs::active){d->on_frame(*d,true);check(pointer(d->object,0x180)==d->native_list.data() && pointer(d->object,0x198)==d->native_bar.data(),"every frame retains both original native-owned control identities");int x=0,w=0;memcpy(&x,d->native_bar.data()+0x20,4);memcpy(&w,d->native_list.data()+0x28,4);check(80+w+16==x && x+24<1232,"paint/hit viewport and scrollbar are entirely left of preview gutter");}}
+static void click_rows(std::vector<unsigned> ids){unified_dialogs::selection=std::move(ids);frame();auto d=unified_dialogs::active;if(d && !unified_dialogs::selection.empty() && *reinterpret_cast<unsigned *>(d->config+0x18)==1 && *reinterpret_cast<unsigned *>(d->config+0xA0))unified_dialogs::close(*d,true);}
+static void select(std::vector<unsigned> ids,bool accept=true){if(accept){click_rows(std::move(ids));if(auto d=unified_dialogs::active){if(d->button_names[0]==L"결정")d->command(0);else unified_dialogs::close(*d,true);}}else{unified_dialogs::selection=std::move(ids);frame();unified_dialogs::close(*unified_dialogs::active,false);}check(!unified_dialogs::active,"next list is deferred until title resumes");ccz_settings::tick(nullptr);}
+static void save_bmp(const wchar_t *path,unsigned w,unsigned h,const std::vector<unsigned> &pixels){FILE *f=nullptr;_wfopen_s(&f,path,L"wb");check(f!=nullptr,"preview output");BITMAPFILEHEADER fh={};fh.bfType=0x4D42;fh.bfOffBits=54;fh.bfSize=54+w*h*4;BITMAPINFOHEADER ih={};ih.biSize=40;ih.biWidth=w;ih.biHeight=-static_cast<LONG>(h);ih.biPlanes=1;ih.biBitCount=32;fwrite(&fh,sizeof(fh),1,f);fwrite(&ih,sizeof(ih),1,f);fwrite(pixels.data(),4,pixels.size(),f);fclose(f);}
+int wmain(int argc,wchar_t **argv){
+    check(argc==4,"catalog, isolated INI, preview bitmap");wcscpy_s(catalog_path,argv[1]);wcscpy_s(settings_path,argv[2]);ui_thread=GetCurrentThreadId();image=static_cast<Obj>(VirtualAlloc(nullptr,0x1400000,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));
+    ccz_catalog::Reader catalog;check(catalog.open(catalog_path) && catalog.entries.size()==1078 && catalog.resident_bytes()<32768,"catalog keeps directory only, not all animations");
+    unsigned original=0,newer=0;for(auto &e:catalog.entries){std::array<unsigned char,2304> icon{};std::vector<unsigned char> raw;check(catalog.preview(e.cell,icon) && std::any_of(icon.begin(),icon.end(),[](unsigned char b){return b!=0;}),"all selectable shapes have visible representative");check(catalog.decode(e.cell,raw) && raw.size()==ccz_catalog::raw_size,"full animation lazily decodes");if(e.source)++original;else ++newer;}
+    check(original==392 && newer==686,"both complete source sets selectable");
+    FILE *f=nullptr;_wfopen_s(&f,settings_path,L"wb");const wchar_t seed[]=L"\xFEFF[ccz]\r\nccz_sprites=1\r\nccz_far_keep=0\r\n[custom]\r\nname=사용자 값\r\n";fwrite(seed,2,(sizeof(seed)/2)-1,f);fclose(f);
+    check(ccz_settings::show(),"native editor opens");ccz_settings::tick(nullptr);frame();check(layout_calls==3 && ccz_preview::needs_draw(),"original native controls resized without replacement; representative panel visible");
+    check(!wcscmp(reinterpret_cast<const wchar_t *>(pointer(unified_dialogs::active->column,8)),L"진형별 병종"),"compact contextual native list header");
+    for(auto &row:unified_dialogs::active->rows)check(row.label.size()<=52 && row.label.find(L"신조조전")==std::wstring::npos,"main rows fit without repeated source and ID details");
+    check(ccz_preview::pictures.size()==3 && ccz_preview::pictures[0].badge==L"통솔 0 ~ 69" && ccz_preview::pictures[2].badge==L"통솔 90 이상","preview keeps exact leadership ranges outside the cramped native title");
+    select({4});select({2});check(unified_dialogs::active->rows.size()==1079,"all extracted shapes plus native model in picker");
+    unsigned original_code=ccz_appearance::code(catalog.entries.back().cell);auto gallery=unified_dialogs::active;unsigned before_pick=ccz_settings::session->value.mapping[4][2];
+    click_rows({original_code});check(unified_dialogs::active==gallery && !gallery->completed && ccz_settings::session->value.mapping[4][2]==before_pick,"gallery click updates preview without closing or changing draft mapping");
+    check(gallery->button_names[0]==L"결정" && gallery->command,"gallery has an explicit native confirm command");gallery->command(0);check(!unified_dialogs::active,"only confirm closes the gallery");ccz_settings::tick(nullptr);
+    check(ccz_settings::session->value.mapping[4][2]==original_code,"confirm applies exact source cell without 0/1 normalization");
+    select({2});click_rows({255});select({},false);
+    check(ccz_settings::session->value.mapping[4][2]==original_code,"gallery cancel after selecting another shape preserves confirmed draft mapping");
+    select({},false);select({100});check(unified_dialogs::number_open,"threshold uses native numeric dialog");auto number=unified_dialogs::number_done;unified_dialogs::number_open=false;number(true,65);ccz_settings::tick(nullptr);check(ccz_settings::session->value.low==65,"native number accepted");
+    select({105});check(ccz_settings::session->value.forms[ccz_appearance::general_index(663)]==6,"Zhang Liao example applies only requested formations");
+    select({102});select({663});select({1,2});select({},false);select({104});check(!ccz_settings::session && reloads==1,"save closes and reloads runtime profile once");
+    auto text=ccz_appearance::read_profile(settings_path);ccz_appearance::Settings loaded;check(ccz_appearance::decode(text.c_str(),loaded) && loaded.low==65 && loaded.mapping[4][2]==original_code,"version 2 save/reload exact source cell");
+    check(ccz_settings::show(),"reopen native editor");ccz_settings::tick(nullptr);select({103});select({},false);check(ccz_appearance::read_profile(settings_path)==text,"reset then cancel preserves saved settings");
+    wchar_t custom[64]={};GetPrivateProfileStringW(L"custom",L"name",L"",custom,64,settings_path);check(!wcscmp(custom,L"사용자 값"),"unrelated Unicode settings preserved");
+    ID3D11Device *device=nullptr;ID3D11DeviceContext *context=nullptr;D3D_FEATURE_LEVEL level;check(SUCCEEDED(D3D11CreateDevice(nullptr,D3D_DRIVER_TYPE_WARP,nullptr,0,nullptr,0,D3D11_SDK_VERSION,&device,&level,&context)),"real WARP preview device");
+    D3D11_TEXTURE2D_DESC d={};d.Width=1920;d.Height=1080;d.MipLevels=d.ArraySize=1;d.Format=DXGI_FORMAT_B8G8R8A8_UNORM;d.SampleDesc.Count=1;d.Usage=D3D11_USAGE_DEFAULT;ID3D11Texture2D *back=nullptr;check(SUCCEEDED(device->CreateTexture2D(&d,nullptr,&back)),"preview target");
+    ccz_settings::Session model;check(model.catalog.open(catalog_path),"preview layout uses real catalog and editor card builder");ccz_settings::preview(model,0);
+    check(ccz_preview::sprite_size(144,405.0/608)==96,"1280px viewport rounding retains 2x sprites instead of accidentally dropping to 1x");
+    ccz_preview::draw(device,context,back,d,false);check(ccz_preview::texture && ccz_preview::pixels.size()==608*740,"preview aligns with list height and has a separate gutter");save_bmp(argv[3],608,740,ccz_preview::pixels);
+    model.step=ccz_settings::Gallery;ccz_settings::preview(model,original_code);ccz_preview::draw(device,context,back,d,false);check(ccz_preview::pictures.size()==1 && !ccz_preview::pictures[0].detail.empty(),"single-shape card retains its source and numeric identity");
+    ccz_preview::hide();ccz_preview::draw(device,context,back,d,false);check(!ccz_preview::texture && ccz_preview::pixels.empty() && !ccz_preview::needs_draw(),"editor preview GPU/CPU memory released before gameplay");
+    back->Release();context->Release();device->Release();VirtualFree(image,0,MEM_RELEASE);std::printf("{\"status\":\"ccz_native_editor_passed\",\"checks\":%u,\"warp_preview\":true,\"live_game\":false}\n",checks);return 0;
+}

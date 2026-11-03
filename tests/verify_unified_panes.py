@@ -21,6 +21,32 @@ for at,table in [(0x2504E8,0x13ACF30),(0x84B338,0x146C440)]:
 check(pe.read(0x875F08,3)==bytes.fromhex('895128'),'width setter writes width+28')
 check(pe.read(0x8740F8,3)==bytes.fromhex('89512c'),'height setter writes height+2C; not absolute-position vcall+88')
 source=(project/'src/native_unified_dialogs.inl').read_text(encoding='utf-8')
+# User 2026-11-03: verify the missing RDX against real instructions, not the mock.
+check(pe.read(0x867930,5)==bytes.fromhex('4885d27456'),'scrollbar attachment tests its second argument RDX')
+check(pe.read(0x86794A,7)==bytes.fromhex('48899178010000'),'scrollbar attachment stores RDX at body+178')
+call=pe.read(0x867979,5)
+check(call[0]==0xE8 and 0x867979+5+struct.unpack_from('<i',call,1)[0]==0x1A3CB0,'scrollbar argument receives the original event delegate')
+check('ui_call_trace::BarBind,0x867930,fn<void(__fastcall *)(Obj,Obj)>(0x867930),body,object' in source,'production wrapper forwards body and its actual scrollbar')
+# User 2026-11-03 second crash: the old mock accepted a null native vtable.
+delegate=int(re.search(r'kChangeDelegateRva=0x([0-9A-F]+)',source)[1],16)
+lea=pe.read(0x2C1381,7)
+check(lea[:3]==bytes.fromhex('488d05') and 0x2C1388+struct.unpack_from('<i',lea,3)[0]==delegate,'delegate address derives independently from original CDataSelectDlg constructor LEA')
+for slot,target in enumerate((0x3056E0,0x3056E0,0x65E490,0x306A40,0x90B5D0,0x7FEB90)):virtual(delegate,slot*8,target)
+copy=pe.read(0x3056E5,7)
+check(copy[:3]==bytes.fromhex('488d05') and 0x3056EC+struct.unpack_from('<i',copy,3)[0]==delegate,'native delegate copy constructor publishes the same complete vtable')
+check(struct.unpack('<Q',pe.read(0x13AEFA0,8))[0]==0,'old delegate address is null in actual executable; negative regression control')
+editor=(project/'src/native_ccz_editor.inl').read_text(encoding='utf-8')
+check('image+kChangeDelegateRva' in source,'shared panes use the verified native delegate address')
+layout=editor.split('static bool layout_existing_list(',1)[1].split('static void queue(',1)[0]
+check('pointer(r.object,0x180)' in layout and 'pointer(r.object,0x198)' in layout,'CCZ uses controls already owned by CDataSelectDlg')
+check(not any(t in layout for t in ('make_data_list','make_scrollbar','dispose_control','0x1A3CB0','3F6BC0')),'CCZ frame neither replaces/deletes native controls nor rebinds their delegates')
+# User 2026-11-03: separate the actual list viewport and require explicit gallery confirmation.
+check(pe.read(0x2C0ED6,7)==bytes.fromhex('418b8aa4000000'),'native constructor reads viewport column count from config+A4')
+check(pe.read(0x2F0B25,9)==bytes.fromhex('83b8a000000000741c'),'native single-choice auto-close is skipped when config+A0 is zero')
+pick=editor.split('static bool pick(',1)[1].split('static void ',1)[0]
+check('r->config+0xA4)=1' in pick and 'r->column+0x10)=1000' in pick,'CCZ configures internal column viewport before native open')
+check('if(session->step==Gallery)' in pick and 'r->config+0xA0)=0' in pick and 'L"결정"' in pick and 'unified_dialogs::close(*dialog,true)' in pick,'gallery uses original deferred acceptance plus an explicit confirmation command')
+check(80+1048<1232 and 80+1048+16+24<1232,'list and scrollbar including checkbox gutter end before preview starts')
 bounds={name:tuple(map(int,re.search(name+r'_bounds\{([^}]+)\}',source)[1].split(','))) for name in ('roster','condition')}
 for name,(x,y,w,h) in bounds.items():check(x>=0 and y>=0 and x+w+32<=1920 and y+h<=1080 and w>0 and h>80,name+' and its scrollbar stay inside the shared viewport')
 left,right=bounds['roster'],bounds['condition']

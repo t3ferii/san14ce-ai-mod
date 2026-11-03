@@ -14,6 +14,7 @@ struct ID3D11Device;
 struct ID3D11DeviceContext;
 namespace terrain_render {static void on_device(ID3D11Device *){} static void on_present(ID3D11DeviceContext *){} static bool needs_present(){return false;}}
 #include "../src/native_unified_overlay.inl"
+#include "../src/native_ccz_preview.inl"
 // User 2026-10-31: 조조전 병종 그림 draws from the same Present hook; no-op here.
 namespace ccz_sprites {static bool needs_present(){return false;} static void on_present(ID3D11Device *,ID3D11DeviceContext *,ID3D11Texture2D *,const D3D11_TEXTURE2D_DESC &){}}
 static unsigned checks;

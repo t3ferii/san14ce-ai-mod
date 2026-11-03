@@ -11,7 +11,7 @@
 using Obj=unsigned char *;
 static Obj image;
 static bool enabled=true;
-static struct {bool convenience=true,terrain_edit=true;} mod_features;
+static struct {bool convenience=true,terrain_edit=true;unsigned terrain_diag_mode=0;} mod_features;
 static unsigned checks,lookups,native_calls,set_calls,consumer_time,consumer_render,ready_logs,creates,destroys;
 static bool in_callback=false,native_reached=false,ready_success=true,ready_runtime=true;
 static Obj create_object;
@@ -92,6 +92,27 @@ int main(int argc,char **argv) {
     using namespace terrain_foam;
     require(argc==2 && argv[1],"KIDS evidence path");
     image=static_cast<Obj>(VirtualAlloc(nullptr,0x1800000,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));require(image!=nullptr,"synthetic image allocation");
+    // User 2026-11-02: zoom fix replaces per-constructor VirtualQuery with a fault-guarded snapshot.
+    {
+        CaptureFields sample={};unsigned char handle[0x28]={},object[0xF0]={};
+        require(!capture_fields(nullptr,sample),"null handle rejected");
+        require(!capture_fields(handle,sample),"null object rejected");
+        put(handle,0x20,object);
+        require(!capture_fields(handle,sample),"foreign object vtable rejected");
+        put(object,0,image+0x16DA140);
+        memcpy(object+0x18,sources[0].pos,12);memcpy(object+0x24,sources[0].quat,16);memcpy(object+0x34,sources[0].scale,12);
+        require(capture_fields(handle,sample) && sample.object==object,"valid native-created identity retained");
+        require(!memcmp(sample.pos,sources[0].pos,12) && !memcmp(sample.quat,sources[0].quat,16) && !memcmp(sample.scale,sources[0].scale,12),"all original transforms snapshotted exactly");
+        SYSTEM_INFO info={};GetSystemInfo(&info);
+        Obj pages=static_cast<Obj>(VirtualAlloc(nullptr,info.dwPageSize*2,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));
+        require(pages!=nullptr,"protected-memory fixture allocated");
+        DWORD old=0;require(VirtualProtect(pages+info.dwPageSize,info.dwPageSize,PAGE_NOACCESS,&old)!=0,"second page inaccessible");
+        require(!capture_fields(pages+info.dwPageSize,sample),"inaccessible handle rejected without crash");
+        put(handle,0x20,pages+info.dwPageSize);require(!capture_fields(handle,sample),"inaccessible object rejected without crash");
+        Obj truncated=pages+info.dwPageSize-0x24;put(truncated,0,image+0x16DA140);
+        put(handle,0x20,truncated);require(!capture_fields(handle,sample),"readable identity with inaccessible transform rejected");
+        require(VirtualFree(pages,0,MEM_RELEASE)!=0,"protected-memory fixture released");
+    }
     for(auto &h:hooks){put(image,h.slot,image+h.rva);memcpy(image+h.rva,h.bytes,16);}
     for(unsigned i=0;i<3;++i)memcpy(image+SetterRvas[i],SetterBytes[i],16);
     require(guards_match(),"all original qwords and function bytes match");

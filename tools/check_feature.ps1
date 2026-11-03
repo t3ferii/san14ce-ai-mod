@@ -10,7 +10,7 @@ $taskRegistry=Get-Content -LiteralPath (Join-Path $taskProject 'development\feat
 if($taskRegistry.modules.PSObject.Properties.Name -notcontains $Feature) {throw "Unknown feature: $Feature"}
 $taskEntry=$taskRegistry.modules.$Feature
 $taskRoutes=@($taskEntry.tests)
-if($Feature -eq 'terrain-edit'){$taskRoutes+='terrain-foam'}
+if($Feature -eq 'terrain-edit'){$taskRoutes+=@('terrain-foam','terrain-diag')}
 if($taskRoutes.Count -eq 0) {throw "No checks registered for: $Feature"}
 if($List) {
     [PSCustomObject]@{feature=$Feature;tests=$taskRoutes;build=$Build.IsPresent;installs=$false;output='build/development'} | ConvertTo-Json
@@ -18,8 +18,10 @@ if($List) {
 }
 foreach($taskRoute in $taskRoutes) {
     switch($taskRoute) {
+        'terrain-profile' { & (Join-Path $taskProject 'tests\terrain_call_profile_build.ps1') }
         'terrain-edit' { & (Join-Path $taskProject 'tests\build_terrain_edit_fixture.ps1') }
         'terrain-foam' { & (Join-Path $taskProject 'tests\terrain_foam_build.ps1') }
+        'terrain-diag' { & python -B -X utf8 (Join-Path $taskProject 'tests\verify_terrain_diag.py') }
         'terrain-edit-ui' { & (Join-Path $taskProject 'tests\terrain_edit_build.ps1') }
         'terrain-render' { & (Join-Path $taskProject 'tests\terrain_render_build.ps1') }
         'water-diag' { & (Join-Path $taskProject 'tests\water_diag_build.ps1') }
@@ -37,6 +39,14 @@ foreach($taskRoute in $taskRoutes) {
             # 2026-10-31 user: 조조전 병종 그림. Guards vs analysis EXE/running .text, asset decode, wiring.
             & python -B -X utf8 (Join-Path $taskProject 'tests\verify_ccz_sprites.py')
             if($LASTEXITCODE -ne 0){throw 'CCZ sprite static check failed.'}
+            & (Join-Path $taskProject 'tests\ccz_battle_build.ps1')
+            if($LASTEXITCODE -ne 0){throw 'CCZ battle fixture failed.'}
+            & python -B -X utf8 (Join-Path $taskProject 'tests\verify_ccz_settings.py')
+            if($LASTEXITCODE -ne 0){throw 'CCZ title/settings native check failed.'}
+            & (Join-Path $taskProject 'tests\ccz_settings_build.ps1')
+            if($LASTEXITCODE -ne 0){throw 'CCZ title fixture failed.'}
+            & (Join-Path $taskProject 'tests\ccz_native_editor_build.ps1')
+            if($LASTEXITCODE -ne 0){throw 'CCZ native editor/preview fixture failed.'}
         }
         'district-intercept' {
             & python -B -X utf8 (Join-Path $taskProject 'tests\verify_district_intercept.py')

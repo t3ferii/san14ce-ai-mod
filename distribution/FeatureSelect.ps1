@@ -2,6 +2,9 @@
 # Dot-sourced by 관리.ps1. Each DLL reads [section] key, then the legacy [features] key,
 # then its default, so files written by older installers keep their values.
 # Items that share game code are one switch (see each note); they cannot be split.
+# Registered raw settings (not 0/1 switches): edited by the game's first-menu 「조조전」 dialog.
+# Missing/empty profile keeps current art, 70/90 thresholds and all existing personal formations.
+$taskRawSettings = @('ccz_appearance.profile')
 # v12.8: Requires = parent feature that must also be on (DLL ANDs it); Inherit = the switch an
 # older file's missing key falls back to. Tab is the GUI installer tab (installer/InstallerGui.cs).
 $taskFeatureCatalog = @(
@@ -15,7 +18,8 @@ $taskFeatureCatalog = @(
     @{Group='combat'; Section='combat'; Key='stationary_retreat'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='같은 자리 40일 정지 부대 퇴각'; Note='4턴 동안 움직이지 못한 부대를 귀환시킵니다.'}
     @{Group='combat'; Section='combat'; Key='morale'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='사기 회복 우선'; Note='사기가 낮은 군세가 공격보다 회복을 먼저 합니다.'}
     @{Group='combat'; Section='combat'; Key='support'; Default=1; Requires=''; Inherit=''; Tab='전투'; Retired=$true; Label='호위·동행 지원 요청'; Note='임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.'}
-    @{Group='combat'; Section='combat'; Key='mission_v2'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='임무 일관성 v2 (공성 시설만·대기 없음·원작 공격 우선)'; Note='공성 목표 성 8칸 안에서만 공성 시설 1개를 짓고 건설 대기로 세우지 않습니다. 원작이 목표 성을 공격 중이면 모드 공성 진행이 끼어들지 않고, 공성 중인 부대는 40일 정지 퇴각에서 제외합니다. 경로상 적 지역을 원작 군세 작업 목록에 넣고, 최대 병력 90%·여유 4만 이상 도시는 연결된 적 성으로 대열 출진합니다.'}
+    @{Group='combat'; Section='combat'; Key='mission_v2'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='임무 일관성 v2 (공성 시설만·대기 없음·원작 공격 우선)'; Note='공성 목표 성 10칸 안 자기 땅에서, 성에서 3~6칸(성 공격 범위 밖) 지점에만 공성 시설 1개를 짓고 건설 대기로 세우지 않습니다. 원작이 목표 성을 공격 중이면 모드 공성 진행이 끼어들지 않고, 공성 중인 부대는 40일 정지 퇴각에서 제외합니다. 경로상 적 지역을 원작 군세 작업 목록에 넣고, 최대 병력 90%·여유 4만 이상 도시는 연결된 적 성으로 대열 출진합니다.'}
+    @{Group='combat'; Section='combat'; Key='builder_ruler_fill'; Default=0; Requires='combat.mission_v2'; Inherit=''; Tab='전투'; Label='건설 성향 군주(내면 건설 5)의 시설 채우기'; Note='켜면 내면 건설이 5인 컴퓨터 군주의 부대가 공성지 제한 없이 지역이 가득 찰 때까지 시설을 짓습니다(이전 동작). 끄면 다른 군주처럼 공성 목표 근처에 1개만 짓습니다. 임무 일관성 v2가 켜져 있어야 동작합니다.'}
     @{Group='combat'; Section='combat'; Key='ai_max_aggression'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='AI 호전성 최대 (궁극과 같은 공격 검토)'; Note='원작 판단표의 AI 설정 단계를 궁극(4)으로 읽게 하고, 군단 진행 검사의 단계별 턴 건너뛰기를 없앱니다. 다른 원작 판단은 그대로 둡니다. 플레이어 위임 군단에도 적용됩니다.'}
     @{Group='combat'; Section='combat'; Key='ai_wall_block'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='컴퓨터 세력 방벽 건설 금지'; Note='컴퓨터 세력이 방벽·관문을 짓지 않습니다.'}
     @{Group='combat'; Section='combat'; Key='ai_catapult_block'; Default=0; Requires=''; Inherit=''; Tab='전투'; Label='플레이어 성 주변 컴퓨터 투석대 건설 불가'; Note='켜면 플레이어 성·관문이 있는 지역과 바로 붙은 지역(점령자 상관없음)에서 컴퓨터 세력이 투석대를 지을 수 없습니다. 그곳에서는 시정 Lv7처럼 요새가 최고 시설이 되어, 컴퓨터 부대는 요새 등 다른 시설을 짓거나 공성을 계속합니다. 그 밖의 지역, 컴퓨터끼리의 전투, 플레이어의 투석대는 원작 그대로입니다.'}
@@ -58,9 +62,10 @@ $taskFeatureCatalog = @(
     @{Group='convenience'; Section='game_flow'; Key='fast_save'; Default=1; Requires=''; Inherit=''; Tab='성능'; Label='빠른 자동저장 압축'; Note='원작 형식 그대로 저장하며, 실패 시 원작 압축을 사용합니다. 편의 DLL이 담당합니다.'}
     @{Group='performance'; Section='progress_native'; Key='geometry'; Default=1; Requires=''; Inherit=''; Tab='성능'; Label='거리 계산 세부 가속'; Note='거리·AI 진입 가속 안에서 기하 계산을 같은 결과로 더 빠르게 처리합니다.'}
     @{Group='convenience'; Section='stratagem'; Key='building_destruction_all'; Default=0; Requires=''; Inherit=''; Tab='게임성'; Label='건물파괴 지역 전체 피해'; Note='건물파괴 성공 시 선택 지역의 모든 적 군사시설·장애물·함정에 원작에서 계산된 피해량을 각각 적용합니다. 성·관문·아군·동맹·중립 건물은 제외하며, 실패 시에는 원작 처리를 유지합니다. 플레이어와 컴퓨터 모두 적용됩니다.'}
-    @{Group='convenience'; Section='ccz'; Key='ccz_sprites'; Default=1; Requires=''; Inherit=''; Tab='조조전'; Label='조조전 병종 그림 (필드 부대)'; Note='필드의 부대를 조조전 병종 그림으로 그립니다. 옷만 세력색(파랑·초록·보라 같은 차가운 색은 빨강~주황 대비색)으로 칠하고 말·얼굴은 원래 색이며, 대비되는 테두리를 두르고 이동·공격·대기 동작과 방향이 바뀝니다. 신조조전 장수 92명(전용 병종 17명: 조조=위무제·여포=무신·관우=군신 등, 나머지 75명은 신조조전 개인 그림)은 군주·군사 병종보다 먼저 그 그림으로 고정됩니다. 그림 출처: 조조전(KOEI) 6.6·신조조전 7.0. 실험 기능입니다.'}
+    @{Group='convenience'; Section='ccz'; Key='ccz_sprites'; Default=1; Requires=''; Inherit=''; Tab='조조전'; Label='조조전 병종 그림 (필드 부대)'; Note='필드의 부대를 조조전 병종 그림으로 그립니다. 옷만 세력색(파랑·초록·보라 같은 차가운 색은 빨강~주황 대비색)으로 칠하고 말·얼굴은 원래 색이며, 대비되는 테두리를 두르고 이동·공격·대기 동작과 방향이 바뀝니다. 신조조전 장수 92명(전용 병종 17명: 조조=위무제·여포=무신·관우=군신 등, 나머지 75명은 신조조전 개인 그림)은 기본값은 군주·군사 병종보다 고유 그림 우선입니다. 게임 첫 메뉴의 「조조전」에서 진형별 병종·통솔 경계·무장별 고유 그림 적용 진형을 바꿀 수 있습니다. 그림 출처: 조조전(KOEI) 6.6·신조조전 7.0. 실험 기능입니다.'}
     @{Group='convenience'; Section='ccz'; Key='ccz_hide_model'; Default=1; Requires='ccz.ccz_sprites'; Inherit=''; Tab='조조전'; Label='조조전 그림 부대의 원래 3D 모형 숨김'; Note='조조전 그림으로 그린 부대의 원래 3D 병사 모형을 그리지 않습니다. 끄면 원래 모형과 그림이 함께 보입니다(위치 확인용). 깃발은 그대로 남습니다.'}
     @{Group='convenience'; Section='ccz'; Key='ccz_depth'; Default=1; Requires='ccz.ccz_sprites'; Inherit=''; Tab='조조전'; Label='조조전 그림 지형 가림 처리'; Note='산·건물 뒤의 부대 그림을 장면 깊이로 가립니다. 그림이 보이지 않으면 끄십시오(항상 맨 앞에 그림).'}
+    @{Group='convenience'; Section='ccz'; Key='ccz_far_keep'; Default=0; Requires='ccz.ccz_sprites'; Inherit=''; Tab='조조전'; Label='원거리 부대 그림 유지 (시험용)'; Note='원작이 원거리 부대 표시 제출을 멈춘 뒤에도 최근 부대의 위치를 읽어 그림을 유지합니다. 기본 OFF. local14 줌 전환 렌더링 복구는 이 설정과 관계없이 유지됩니다.'}
     @{Group='convenience'; Section='ccz'; Key='ccz_block'; Default=1; Requires=''; Inherit=''; Tab='조조전'; Label='조조전식 막기'; Note='막기: 맞는 장수의 무력이 높을수록 일반 공격을 완전히 막아 1명만 잃습니다(5% + 무력 차 x 0.4, 1~10%). 한 번 발동하면 그 공격을 포함해 받는 일반 공격 5번을 막습니다. 하루 동안 일반 공격을 주고받지 않으면 상태가 끝납니다. 일반 공격만 대상이며 예상 피해 표시에는 반영되지 않습니다. 조조전 그림을 켜면 막기 자세·섬광이 보입니다.'}
     @{Group='convenience'; Section='ccz'; Key='ccz_critical'; Default=1; Requires=''; Inherit=''; Tab='조조전'; Label='조조전식 회심의 일격'; Note='회심의 일격: 공격 장수의 무력·부대 사기가 높을수록 일반 공격 피해가 1.5배가 됩니다(5% + 무력 차 x 0.3 + 사기 차 x 0.2, 1~10%). 한 번 발동하면 그 공격을 포함해 다음 일반 공격 5번이 모두 회심이 됩니다. 하루 동안 일반 공격을 주고받지 않으면 상태가 끝납니다. 일반 공격만 대상이며 예상 피해 표시에는 반영되지 않습니다. 조조전 그림을 켜면 막기 자세·섬광이 보입니다.'}
     @{Group='convenience'; Section='combat'; Key='district_intercept_block'; Default=1; Requires=''; Inherit=''; Tab='게임성'; Label='지원·내정 군단 출진 제한 (플레이어 2군단~)'; Note='플레이어가 위임한 군단의 방침이 지원이면 수송 출진만, 내정이면 요격·지역 점령·공격 출진을 막습니다(수송·건설은 허용). 컴퓨터 군단·직할 1군단·공격 방침·직접 명령·이미 출전한 부대는 그대로입니다. 전투 AI 교정 없이도 적용됩니다.'}
@@ -78,6 +83,7 @@ $taskFeatureCatalog = @(
     @{Group='convenience'; Section='extensions'; Key='stats200_growth'; Default=1; Requires='extensions.stats200'; Inherit=''; Tab='게임성'; Label='능력치 100 이후 자연 성장'; Note=''}
     @{Group=''; Section='groups'; Key='diagnostics'; Default=1; Requires=''; Inherit=''; Tab='기타(개발용)'; Label='개발용 기능 전체'; Note='진단 로그·추적·시간 기록 같은 개발용 기능의 묶음입니다. 끄면 아래 항목이 모두 꺼집니다. 일반 플레이에는 필요 없습니다.'}
     @{Group='diagnostics'; Section='diagnostics'; Key='enabled'; Default=0; Requires=''; Inherit=''; Tab='기타(개발용)'; Label='진단 로그 기록 (SAN14_*.log)'; Note='모드 판단과 오류를 게임 폴더 로그 파일에 남깁니다. 배포용(로그 제외) DLL에서는 효과가 없습니다.'}
+    @{Group='diagnostics'; Section='diagnostics'; Key='terrain_diag_mode'; Default=0; Requires=''; Inherit=''; Tab='기타(개발용)'; Label='지형 편집 렉 분리 A/B/C'; Note='0=기준(물살·렌더러 ON), 1=A(물살 OFF), 2=B(렌더러·높이 캡처 OFF), 3=C(둘 다 OFF). A/B/C는 진단 전용입니다. terrain_edit=1에서 줌 렉 비교만 하고 실제 지형 편집·저장에는 사용하지 마세요.'}
     @{Group='diagnostics'; Section='diagnostics'; Key='reuse_handle'; Default=1; Requires=''; Inherit=''; Tab='기타(개발용)'; Label='로그 파일 핸들 재사용'; Note='로그를 쓸 때 파일을 매번 다시 열지 않아 기록 비용을 줄입니다.'}
     @{Group='diagnostics'; Section='diagnostics'; Key='ai_trace'; Default=0; Requires=''; Inherit=''; Tab='기타(개발용)'; Label='원작 AI 행동 추적 (CSV)'; Note='원작 AI 판단 노드가 부대·군세 목표를 바꾸는 과정을 data/ai_trace에 기록합니다. 기록량이 많습니다.'}
     @{Group='diagnostics'; Section='diagnostics'; Key='ai_trace_original'; Default=0; Requires=''; Inherit=''; Tab='기타(개발용)'; Label='원작만 추적 (모드 훅 연결 안 함)'; Note='모드 기능을 연결하지 않고 원작 AI만 기록합니다. 이 상태로 기존 세이브에 덮어쓰지 마세요.'}
@@ -112,7 +118,7 @@ function Get-FeatureValues($Ini) {
         foreach ($taskSource in @(@('features',$taskItem.Key), @($taskItem.Section,$taskItem.Key))) {
             if ($Ini.ContainsKey($taskSource[0]) -and $Ini[$taskSource[0]].Contains($taskSource[1])) {
                 $taskNumber = 0
-                if ([int]::TryParse($Ini[$taskSource[0]][$taskSource[1]], [ref]$taskNumber)) { $taskValue = if ($taskItem.Key -eq 'path_fast_verify') { [Math]::Max(0, $taskNumber) } else { [int]($taskNumber -ne 0) } }
+                if ([int]::TryParse($Ini[$taskSource[0]][$taskSource[1]], [ref]$taskNumber)) { $taskValue = if ($taskItem.Key -eq 'path_fast_verify') { [Math]::Max(0, $taskNumber) } elseif ($taskItem.Key -eq 'terrain_diag_mode') { [Math]::Max(0, [Math]::Min(3, $taskNumber)) } else { [int]($taskNumber -ne 0) } }
             }
         }
         $taskValues[$taskItem.Section + '.' + $taskItem.Key] = if ($taskItem.Retired) { 0 } else { $taskValue }
@@ -126,6 +132,7 @@ function Write-FeatureIni([string]$Path, $Values, $Ini) {
     $taskLines.Add('; 함께 묶인 항목은 같은 게임 코드를 공유하므로 따로 끌 수 없습니다.')
     $taskSections = New-Object Collections.Generic.List[string]
     foreach ($taskItem in $taskFeatureCatalog) { if (-not $taskSections.Contains($taskItem.Section)) { $taskSections.Add($taskItem.Section) } }
+    $taskOwned = @{}; foreach ($taskItem in $taskFeatureCatalog) { $taskOwned[$taskItem.Section + '.' + $taskItem.Key] = $true }
     foreach ($taskSection in $taskSections) {
         $taskLines.Add(''); $taskLines.Add('[' + $taskSection + ']')
         foreach ($taskItem in ($taskFeatureCatalog | Where-Object { $_.Section -eq $taskSection })) {
@@ -135,11 +142,15 @@ function Write-FeatureIni([string]$Path, $Values, $Ini) {
             if ($taskItem.Retired) { $Values[$taskItem.Section + '.' + $taskItem.Key] = 0 }
             $taskLines.Add($taskItem.Key + '=' + $Values[$taskItem.Section + '.' + $taskItem.Key])
         }
+        # Hidden/newer keys of an owned section stay inside it: the DLL reads only the first
+        # [section] of a name, so a second header would silently lose them (2026-11-01).
+        if ($Ini.Contains($taskSection)) {
+            foreach ($taskKey in @($Ini[$taskSection].Keys | Where-Object { -not $taskOwned.ContainsKey($taskSection + '.' + $_) })) { $taskLines.Add($taskKey + '=' + $Ini[$taskSection][$taskKey]) }
+        }
     }
     # Sections the menu does not own (diagnostics, hidden keys) are kept as they were.
-    $taskOwned = @{}; foreach ($taskItem in $taskFeatureCatalog) { $taskOwned[$taskItem.Section + '.' + $taskItem.Key] = $true }
     foreach ($taskSection in $Ini.Keys) {
-        if ($taskSection -eq 'features') { continue }
+        if ($taskSection -eq 'features' -or $taskSections.Contains($taskSection)) { continue }
         $taskExtra = @($Ini[$taskSection].Keys | Where-Object { -not $taskOwned.ContainsKey($taskSection + '.' + $_) })
         if ($taskExtra.Count -eq 0) { continue }
         $taskLines.Add(''); $taskLines.Add('[' + $taskSection + ']')
@@ -159,9 +170,10 @@ function Show-FeatureMenu($Values) {
     $taskNumber = 0
     foreach ($taskItem in $taskFeatureCatalog) {
         $taskNumber++
-        $taskOn = $Values[$taskItem.Section + '.' + $taskItem.Key] -ne 0
+        $taskValue = $Values[$taskItem.Section + '.' + $taskItem.Key]
+        $taskOn = $taskValue -ne 0
         $taskParentOff = $taskItem.Group -and $Values['groups.' + $taskItem.Group] -eq 0
-        $taskMark = if ($taskItem.Retired) { '[사용 중지]' } elseif ($taskOn) { '[켬]' } else { '[끔]' }
+        $taskMark = if ($taskItem.Retired) { '[사용 중지]' } elseif ($taskItem.Key -eq 'terrain_diag_mode') { @('[0 기준]','[1 A]','[2 B]','[3 C]')[$taskValue] } elseif ($taskOn) { '[켬]' } else { '[끔]' }
         $taskIndent = if ($taskItem.Group) { '    ' } else { '' }
         $taskColor = if ($taskItem.Retired -or $taskParentOff) { 'DarkGray' } elseif (-not $taskItem.Group) { 'Yellow' } elseif ($taskOn) { 'Green' } else { 'Gray' }
         if (-not $taskItem.Group) { Write-Host '' }
@@ -169,7 +181,8 @@ function Show-FeatureMenu($Values) {
         if ($taskItem.Note) { Write-Host ('{0}       {1}' -f $taskIndent, $taskItem.Note) -ForegroundColor DarkGray }
     }
     Write-Host ''
-    Write-Host '번호를 입력하면 켬/끔이 바뀝니다 (여러 개: 4 7 12). 사용 중지 항목은 선택할 수 없고, 묶음이 꺼진 회색 항목은 동작하지 않습니다.'
+    Write-Host '번호를 입력하면 켬/끔이 바뀝니다 (여러 개: 4 7 12). 지형 A/B/C 항목은 번호를 누를 때 0→1→2→3으로 순환하며 번호=값으로 바로 지정할 수 있습니다.'
+    Write-Host '사용 중지 항목은 선택할 수 없고, 묶음이 꺼진 회색 항목은 동작하지 않습니다.'
     Write-Host 'Enter = 이대로 저장   A = 모두 켜기   D = 배포 기본값   Q = 바꾸지 않고 진행'
 }
 # Returns $null when the user keeps the current file unchanged (Q), otherwise the values.
@@ -181,14 +194,22 @@ function Select-Features($Values) {
         $taskInput = $taskInput.Trim()
         if ($taskInput -eq '') { return $Values }
         if ($taskInput -ieq 'q') { return $null }
-        if ($taskInput -ieq 'a') { foreach ($taskItem in $taskFeatureCatalog) { $Values[$taskItem.Section + '.' + $taskItem.Key] = if ($taskItem.Retired) { 0 } else { 1 } }; continue }
+        if ($taskInput -ieq 'a') { foreach ($taskItem in $taskFeatureCatalog) { $Values[$taskItem.Section + '.' + $taskItem.Key] = if ($taskItem.Retired -or $taskItem.Key -eq 'terrain_diag_mode') { 0 } else { 1 } }; continue }
         if ($taskInput -ieq 'd') { foreach ($taskItem in $taskFeatureCatalog) { $Values[$taskItem.Section + '.' + $taskItem.Key] = if ($taskItem.Retired) { 0 } else { $taskItem.Default } }; continue }
         foreach ($taskToken in ($taskInput -split '[\s,]+')) {
             $taskIndex = 0
-            if ([int]::TryParse($taskToken, [ref]$taskIndex) -and $taskIndex -ge 1 -and $taskIndex -le $taskFeatureCatalog.Count) {
+            $taskMode = 0; $taskHasMode = $false
+            if ($taskToken -match '^(\d+)=(\d+)$') { $taskIndex=[int]$Matches[1]; $taskMode=[int]$Matches[2]; $taskHasMode=$true }
+            elseif (-not [int]::TryParse($taskToken, [ref]$taskIndex)) { $taskIndex=0 }
+            if ($taskIndex -ge 1 -and $taskIndex -le $taskFeatureCatalog.Count) {
                 $taskItem = $taskFeatureCatalog[$taskIndex-1]; $taskName = $taskItem.Section + '.' + $taskItem.Key
                 if ($taskItem.Retired) { $Values[$taskName] = 0; Write-Host ($taskItem.Label + ': 사용 중지') -ForegroundColor DarkGray; continue }
-                $Values[$taskName] = [int]($Values[$taskName] -eq 0)
+                if ($taskItem.Key -eq 'terrain_diag_mode') {
+                    if ($taskHasMode -and ($taskMode -lt 0 -or $taskMode -gt 3)) { Write-Host 'terrain_diag_mode는 0~3만 가능합니다.' -ForegroundColor Red; continue }
+                    $Values[$taskName] = if ($taskHasMode) { $taskMode } else { ($Values[$taskName]+1)%4 }
+                    if ($Values[$taskName] -ne 0) { $Values['groups.diagnostics']=1 }
+                } elseif ($taskHasMode) { Write-Host ('0~3 직접 지정은 지형 A/B/C 항목만 지원합니다: ' + $taskToken) -ForegroundColor Red }
+                else { $Values[$taskName] = [int]($Values[$taskName] -eq 0) }
             } elseif ($taskToken) { Write-Host ('알 수 없는 입력: ' + $taskToken) -ForegroundColor Red }
         }
     }
