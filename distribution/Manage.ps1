@@ -130,6 +130,21 @@ try {
         . (Join-Path $PSScriptRoot 'FeatureSelect.ps1')
         if($Mode -eq 'Select') {
             [void](Invoke-FeatureSelection (Join-Path $taskProject '기능설정.ini') (-not $NonInteractive))
+            # Resource-backed CCZ switches also need an index transaction. Reuse
+            # guarded Apply only when it cannot upgrade/change installed DLL bytes.
+            $taskSelectedState=if([IO.File]::Exists($taskStateFile)){Get-Content -LiteralPath $taskStateFile -Raw -Encoding UTF8 | ConvertFrom-Json}else{$null}
+            if($null -ne $taskSelectedState -and $taskSelectedState.installed) {
+                $taskSamePackage=$taskSelectedState.release_version -eq $taskSplitManifest.release_version
+                foreach($taskFile in $taskSplitManifest.split_modules.files.PSObject.Properties){
+                    if((Get-Digest (Join-Path $taskGame $taskFile.Name)) -ne $taskFile.Value){$taskSamePackage=$false}
+                }
+                if($taskSamePackage -and -not (Get-Process -Name SAN14CE_KO,SAN14CE -ErrorAction SilentlyContinue)) {
+                    $Mode='Apply';$NonInteractive=$true
+                    Invoke-SplitPackage
+                } else {
+                    Write-Host '설정은 저장했습니다. 조조전 화면 배치는 게임 종료 후 설치 / 적용을 실행해야 반영됩니다.'
+                }
+            }
             exit 0
         }
         Invoke-SplitPackage

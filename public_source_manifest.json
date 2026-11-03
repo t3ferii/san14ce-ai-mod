@@ -1,6 +1,6 @@
 {
-  "snapshot": "v15.3 unsigned public build source",
-  "files": 405,
+  "snapshot": "v15.4 UI resource installer source; native DLL source unchanged from v15.3",
+  "files": 408,
   "ai_contracts": 20,
   "cpp_executable_tokens_unchanged": true,
   "excluded": [
@@ -33,14 +33,14 @@
     },
     {
       "path": "distribution/FeatureSelect.ps1",
-      "original_sha256": "3f80c0b568974931d42b97a029ab96463f5773c7d43c7f2ff9d764ad570cf9e3",
-      "published_sha256": "486ddf2a4f6032ed13bb756299b759ec158879f9258cc06d6fa0480d2339ea80",
+      "original_sha256": "4f94208f18856ffd4aa6573ca95d2bd92a02fa6bcfb33981f8bf1cc5b436f98f",
+      "published_sha256": "d23e924409fb812d584c5b968e20155a3194039b306df9a404cceee37f28e2dc",
       "ai_contracts": 0
     },
     {
       "path": "distribution/Manage.ps1",
-      "original_sha256": "31e6917568318d98e0f04968fbe9a92304c1a2e4c922c545fc10a7c41fb66b04",
-      "published_sha256": "31e6917568318d98e0f04968fbe9a92304c1a2e4c922c545fc10a7c41fb66b04",
+      "original_sha256": "e4a3d039d76c6fc97ba9743b76b1d6ef4bd0e702f7c60a0273894e9c0c7f692d",
+      "published_sha256": "ed325c7bdbbaecbb44c1a829000c40adc6dd721c2942e3696281869d9d7a3f9f",
       "ai_contracts": 0
     },
     {
@@ -69,8 +69,8 @@
     },
     {
       "path": "distribution/SplitManage.ps1",
-      "original_sha256": "5d78b355c56867fc3d3f39375e6253f883c9d79b20bedfd2c036836c773628fd",
-      "published_sha256": "5d78b355c56867fc3d3f39375e6253f883c9d79b20bedfd2c036836c773628fd",
+      "original_sha256": "3c5422c920842f5058d3bb76cf20141ad840e5a7cf38c0be0b2da53227d4d47c",
+      "published_sha256": "7e528354c29aef9dee90462820afcdc5255b859bc3a943b130d6cba01a50d036",
       "ai_contracts": 0
     },
     {
@@ -147,8 +147,8 @@
     },
     {
       "path": "docs/FEATURE_SWITCHES.md",
-      "original_sha256": "bc30daa4125c1f6741f07f2336dcdb1159fa3840e4534e16d46da90bf077b668",
-      "published_sha256": "bc30daa4125c1f6741f07f2336dcdb1159fa3840e4534e16d46da90bf077b668",
+      "original_sha256": "0bb656e8d4eb95e34614e6648f71948ed605aa4df86fa18243fc06afdafa53a4",
+      "published_sha256": "47975ef804356469072952f9a070940d6c8cc805d786f3f0f3c918aa7cabd743",
       "ai_contracts": 0
     },
     {
@@ -165,8 +165,8 @@
     },
     {
       "path": "docs/PUBLISH.md",
-      "original_sha256": "67d35a26b3dec8f802761e92794b453179938e1b00aff39deba56fe573cb4ac5",
-      "published_sha256": "cce063a2792d70e278773cbf7cfcc19c00d1bfad98f6eaadf84eec011e2bcd6c",
+      "original_sha256": "e4d60c12431aba1ee4d63b9c0cb7796c866aca7e0f31015b265c12229a0821aa",
+      "published_sha256": "fce904ca76fdb3d56d988be2ed5b3470c46f97b314f85190547680319d0f2f73",
       "ai_contracts": 0
     },
     {
@@ -195,8 +195,8 @@
     },
     {
       "path": "installer/InstallerGui.cs",
-      "original_sha256": "e3ddc9dcc2f762ec791943405b87957b2909b2a25c30f5eedf952f49a5a7c7bb",
-      "published_sha256": "e3ddc9dcc2f762ec791943405b87957b2909b2a25c30f5eedf952f49a5a7c7bb",
+      "original_sha256": "3cdbf257c886582d51aca137886be6b47b9211625f84f856b2f987d762cea6c9",
+      "published_sha256": "3cdbf257c886582d51aca137886be6b47b9211625f84f856b2f987d762cea6c9",
       "ai_contracts": 0
     },
     {
@@ -213,8 +213,8 @@
     },
     {
       "path": "README.md",
-      "original_sha256": "95ea36b43e1b781ab48c00b01368c358f998aa4ed9c00fd4c56b7b5613e9a6b1",
-      "published_sha256": "95ea36b43e1b781ab48c00b01368c358f998aa4ed9c00fd4c56b7b5613e9a6b1",
+      "original_sha256": "6c6ed75e99f25e8b0b944a3328b555be3b7429c6a7c396ae60bcfc3e9328d58f",
+      "published_sha256": "6c6ed75e99f25e8b0b944a3328b555be3b7429c6a7c396ae60bcfc3e9328d58f",
       "ai_contracts": 0
     },
     {
@@ -1832,6 +1832,18 @@
       "ai_contracts": 0
     },
     {
+      "path": "tests/verify_ccz_layout_switch.ps1",
+      "original_sha256": "83d5da8a2ec86f16dd47ef48b525f4664a957c0a312b514453118e56b831c5fc",
+      "published_sha256": "54487a0f7ed62b9a93107ad142d8ed090cdb5714fc56a9d6abc5e49f8218cfa7",
+      "ai_contracts": 0
+    },
+    {
+      "path": "tests/verify_ccz_select.py",
+      "original_sha256": "80e4254e800332ebcc43050ee1a769b0b0a1fae838b1e2b3d77e0334cef2827a",
+      "published_sha256": "80e4254e800332ebcc43050ee1a769b0b0a1fae838b1e2b3d77e0334cef2827a",
+      "ai_contracts": 0
+    },
+    {
       "path": "tests/verify_ccz_settings.py",
       "original_sha256": "4ace3621a9ba06074a9fd4c698f2e004981250d575ec5284091232205f0a6a45",
       "published_sha256": "4ace3621a9ba06074a9fd4c698f2e004981250d575ec5284091232205f0a6a45",
@@ -1874,6 +1886,12 @@
       "ai_contracts": 0
     },
     {
+      "path": "tests/verify_feature_migration.ps1",
+      "original_sha256": "5a668f0e109d52f385e891e5dd67c408debc455a92a0f0a2d5c292c34a94f079",
+      "published_sha256": "09277fff6a4067515fafa0143eacf8bea645c3502ec826d1633ac57ac9411a9a",
+      "ai_contracts": 0
+    },
+    {
       "path": "tests/verify_feature_switches.py",
       "original_sha256": "f43a5b86ba0b64b0fd15b9a396a3aca885d65455d960ed04dd81281eb0435230",
       "published_sha256": "f43a5b86ba0b64b0fd15b9a396a3aca885d65455d960ed04dd81281eb0435230",
@@ -1893,8 +1911,8 @@
     },
     {
       "path": "tests/verify_installer_gui.py",
-      "original_sha256": "c83fac49ba2c1e85a5904714cd431f0acc594fb4b0c9581d7b84459cde72a128",
-      "published_sha256": "c83fac49ba2c1e85a5904714cd431f0acc594fb4b0c9581d7b84459cde72a128",
+      "original_sha256": "9bde2d94753a4855d137a37bab1db36be2a3a17b50841308e0c5b49cfbfbdc1b",
+      "published_sha256": "9bde2d94753a4855d137a37bab1db36be2a3a17b50841308e0c5b49cfbfbdc1b",
       "ai_contracts": 0
     },
     {
@@ -2283,8 +2301,8 @@
     },
     {
       "path": "tools/install_local.py",
-      "original_sha256": "543f8a459798834f7596d0870d764aa5910b760fc2b976cfb4798acacb4ff044",
-      "published_sha256": "543f8a459798834f7596d0870d764aa5910b760fc2b976cfb4798acacb4ff044",
+      "original_sha256": "1c3898749c7600619491bc92a439915456dc465a90a0ccaae0b89c0d326a64bd",
+      "published_sha256": "1c3898749c7600619491bc92a439915456dc465a90a0ccaae0b89c0d326a64bd",
       "ai_contracts": 0
     },
     {
@@ -2337,8 +2355,8 @@
     },
     {
       "path": "tools/release_features.py",
-      "original_sha256": "ea4ca95803888001a55249179b3be0f93aa9cc9032630558d16c72db199d2027",
-      "published_sha256": "ea4ca95803888001a55249179b3be0f93aa9cc9032630558d16c72db199d2027",
+      "original_sha256": "6fcf813365b08d391c3fad4f04cc8a45417f563952f9c05251cdb9ab8b10d701",
+      "published_sha256": "6fcf813365b08d391c3fad4f04cc8a45417f563952f9c05251cdb9ab8b10d701",
       "ai_contracts": 0
     },
     {

@@ -9,5 +9,8 @@
 - [개성·능력치·연출](EXTENSIONS.md) · [시험 기능: 통합 인사](UNIFIED_PERSONNEL.md)
 - [예상 피해량](DAMAGE_PREVIEW.md) · [건물파괴 전체 피해](BUILDING_DESTRUCTION.md)
 - [함수·주소별 변경 근거](GITHUB_기능상세.md) · [변경 이력](CHANGES_ALL.md)
+- [개발: UI 실패 기록과 해결 방식](UI_FAILURES_AND_RECIPES.md) — 버튼 실종·선택 잠김·저장 누락·경계 돌출·외교 퇴장 문제의 재발 방지
 
 패키지의 버전은 `build/input_package/manifest.json`이 기준입니다. 개발 도구·원작 실행 파일·세이브·백업·원시 추적 로그는 배포하지 않습니다.
+
+- [개발: UI 리소스 적용·OFF·해제 기준](UI_RESOURCE_LIFECYCLE.md)

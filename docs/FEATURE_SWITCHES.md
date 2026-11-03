@@ -1,10 +1,12 @@
-# 기능별 켜기/끄기
+﻿# 기능별 켜기/끄기
 
 개발 설치기 목록은 아래 표와 기능 카탈로그를 따른다. 설치·배포본의 기능 수는 CURRENT를 따른다. 기준은 `distribution/FeatureSelect.ps1`의 `$taskFeatureCatalog`, DLL 해석은 `src/native_adapter.cpp::load_mod_features`, 로더 해석은 `src/module_loader.cpp`다. 배포 기본값과 현재 사용자 INI 값은 다르다.
 
 게임 시작 때 한 번 읽으므로 변경 후 재시작한다. `AI모드_설치관리자.exe`의 설정만 저장 또는 `optional_tools/AI모드_기능선택.cmd`를 사용한다. 설치기는 `관리.ps1 -NonInteractive`에 적용/복구를 위임한다. 메뉴 밖 설정은 보존한다.
 
 ## 전체 목록
+
+조조전 부대 UI 배치는 디스크의 화면 자료도 사용한다. INI를 직접 바꾸면 게임 종료 후 ‘설치 / 적용’을 실행한다. GUI의 설정만 저장은 설치된 동일 패키지·게임 종료 상태에서 배치도 동기화한다. [OFF·해제 복원 및 구형 INI 키 정리](CCZ_LAYOUT_SWITCH.md)를 참고한다.
 
 | 탭 | 섹션.키 | 기본값 | 묶음 / 필요 기능 | 기능 |
 |---|---|---:|---|---|

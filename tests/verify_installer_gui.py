@@ -41,7 +41,7 @@ ok(cs.get(('diagnostics','terrain_diag_mode'))==('diagnostics',0,'','','기타(�
 ok('Math.Max(0, Math.Min(3, n))' in gui and "[Math]::Max(0, [Math]::Min(3, $taskNumber))" in menu,'terrain diagnostic mode keeps 0..3')
 ok('0 — 기준: foam ON / renderer ON' in gui and '[0 기준]' in menu and '번호=값' in menu,'GUI/PS expose four terrain diagnostic choices')
 ok('A/B/C는 진단 전용입니다.' in gui and '실제 지형 편집·저장에는 사용하지 마세요.' in menu,'terrain diagnostic warning')
-ok('AssemblyVersion("15.3.0.0")' in gui,'installer assembly version 15.3.0.0')
+ok('AssemblyVersion("15.4.0.0")' in gui,'installer assembly version 15.4.0.0')
 tabs=('전투','편의성','성능','게임성','조조전','기타(개발용)')
 for (s,k),(g,d,r,i,t) in cs.items():
     ok(t in tabs,'unknown tab %s'%t)

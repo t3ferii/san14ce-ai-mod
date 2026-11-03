@@ -35,7 +35,13 @@ def settings():
     for sec in ('combat','diagnostics','groups'):
         assert text.count('['+sec+']')<=1,'Duplicate ['+sec+'] section in 기능설정.ini'
     c=configparser.ConfigParser(interpolation=None,strict=False);c.read_string(text)
-    return {s+'.'+k:v for s in c.sections() for k,v in c.items(s)}
+    values={s+'.'+k:v for s in c.sections() for k,v in c.items(s)}
+    # user 2026-11-03: compare preservation semantically across the explicit
+    # installer migration. The original INI bytes remain in the transaction backup.
+    legacy=values.pop('game_flow.fast_menu',None)
+    if legacy is not None: values.setdefault('performance.fast_menu',legacy)
+    values.pop('performance.strategy_batch',None)
+    return values
 def unchanged(p):
     no_game(); assert sha(G/'SAN14CE_KO.exe')==ORIGINAL_SHA
     assert sources()==p['sources'],'Source changed after preparation; rebuild and prepare again'
@@ -109,7 +115,8 @@ def install(a):
     shutil.copyfile(GUI_BUILD/gui if p['gui'] else G/gui,stage/gui)
     hashes={n:sha(stage/n) for n in NAMES.values()}
     manifest.update(release_version=a.version,local_diagnostic_only=True,dll_sha256=hashes['dinput8.dll'])
-    manifest['split_modules'].update(files=hashes,runtime_log_writers_compiled_out=False)
+    manifest['split_modules'].update(files=hashes)
+    if p['modules']: manifest['split_modules']['runtime_log_writers_compiled_out']=False
     by_module=manifest['split_modules'].setdefault('source_sha256_by_module',{})
     for m in p['modules']: by_module[NAMES[m]]=p['sources']
     manifest['gui_installer']['sha256']=sha(stage/gui)

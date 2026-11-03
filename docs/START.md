@@ -1,5 +1,39 @@
-# 공개 소스 시작
+# 작업 시작
 
-[소스 빌드](SOURCE_BUILD.md) → [AI 수정 지침](AI_EDITING.md) → [MODULES](MODULES.md)의 해당 기능 → 소스·[원작 함수 기록](NATIVE_FUNCTIONS.md) 순서로 읽는다. [기능 등록부](../development/features.json)가 검사 경로를 정한다.
+작업 전에 반드시 [세션 공통 규칙](SESSION_RULES.md)을 읽고 그대로 따른다. 이어서 [현재 설치·배포 상태](../development/CURRENT.md)를 읽는다. 버전·해시의 기준은 해당 파일과 manifest다. 일반 사용자는 [모드 전체 설명](../README.md)을 읽는다.
 
-[CURRENT](../development/CURRENT.md)는 공개 스냅샷의 성격만 기록한다. 개인 PC의 설치 manifest·로그·백업은 공개하지 않는다. 실제 사용 버전은 릴리스를 확인한다.
+## 개발 시 읽을 순서
+
+UI 자료를 바꾸거나 OFF/해제 후 버튼이 남으면 [UI 리소스 복원 기준](UI_RESOURCE_LIFECYCLE.md)을 먼저 확인한다. DLL OFF와 디스크 리소스 복원은 별개다.
+
+UI를 수정할 때는 [UI 실패 기록과 해결 방식](UI_FAILURES_AND_RECIPES.md)의 증상표에서 해당 항목부터 확인한다. 버튼 생성 시점·선택 모드·전체 저장·내부 클리핑·외교 퇴장 처리를 이미 실패한 방식으로 되돌리지 않는다.
+
+1. [SESSION_RULES](SESSION_RULES.md) → CURRENT → [MODULES](MODULES.md)의 관련 행 → 해당 소스·[NATIVE_FUNCTIONS](NATIVE_FUNCTIONS.md).
+2. 이번 기능 조사 범위와 정의 후보는 [FUNCTION_AUDIT](../development/FUNCTION_AUDIT.md). 자동 색인은 개별 함수 검증 완료를 뜻하지 않는다.
+3. 외부 근거는 [REFERENCE_MODS](REFERENCE_MODS.md)의 관련 자료 하나부터 선택한다. research와 원시 추적 자료는 미래 기능 개발 근거로 보존한다.
+4. 검사·배포는 [WORKFLOW](WORKFLOW.md). 오래된 승격 도구를 현재 빌드에 재사용하지 않는다.
+5. 원작 전체 분석 저장본의 위치·자동분석 없는 함수 조회 명령은 [GHIDRA_PERSISTENT](GHIDRA_PERSISTENT.md). UI 조회 검증과 자동 함수 인식의 한계는 [GHIDRA_UI_CACHE_TEST](GHIDRA_UI_CACHE_TEST.md).
+
+## 작업 중 문서 갱신
+
+- 작업 시작 시 `CURRENT.md`에서 현재 설치·검증 경계를 확인하고, 작업 중 확인된 원인·결정·변경 파일·검사 결과·미확인 범위를 짧게 기록한다.
+- 구현 단계가 끝나면 같은 세션에서 `CURRENT.md`를 갱신한다. 실제 게임 실행·설치·배포를 하지 않았으면 반드시 그렇게 적고, fixture·정적 검사·빌드 결과를 실게임 검증과 구분한다.
+- `START.md`에는 장기 규칙과 읽기 순서만 둔다. 일시적인 버전·해시·진행 상태·다음 확인 작업은 `CURRENT.md`에만 기록한다.
+
+Luna Main Coder로 시작한 메인 세션만 [Luna–Sol 작업 흐름](LUNA_SOL_WORKFLOW.md)을 따른다. 기존 Claude 작업서로 시작된 Codex 작업과 일반 하위 에이전트는 [CODEX_WORKER](CODEX_WORKER.md) 또는 자신에게 주어진 작업서의 허용 범위와 반환 형식을 우선한다.
+
+## 현재 유지할 결정
+
+- 로더·전투·편의 세 DLL 경계 유지. 숙련 설정과 계수·툴팁은 편의 DLL 전용.
+- 원작 함수는 원래 UI/AI 호출 스레드에서만 실행. 외부 실시간 메모리 쓰기·원격 호출 금지.
+- Computer Use와 Codex Bridge 사용 금지. 게임 실행·입력·화면 확인은 사용자 직접 수행.
+- 공성 잠금은 실제 적 성/관문 피해와30일 정지 집단 진군 두 경로. 일반40일 정지 귀환 유지. 건설 횟수 제한·성 앞 공격 우선은 제거됨.
+- 사용자 결정(2026-10-21, `combat.mission_v2`): 적 성·관문을 공격 중인 부대는 40일 정지 퇴각에서 제외(최종 목표는 정지 퇴각 없이도 막히지 않는 AI). 건설은 목표 성 8칸 안 공성 시설 1개, 건설 대기 없음. 3천 이하 부대는 원작 퇴각. 출진은 원작 판단, 4만 이상만 대열 분할.
+- 현재 지원·내정 군단 출진 제한은 전투 DLL 없이도 사용 가능. 두 DLL의1EC890 소유권은 중복하지 않는다.
+- 구버전 dist 파일은 덮어쓰기·삭제 금지. 현재 패키지에는 전법 설명 TXT를 넣지 않는다.
+- 문서만 바뀌면 DLL 재빌드·설치 불필요. 배포 구성 변경 때만 새 버전 ZIP과 해당 설치 검사를 만든다.
+- 구버전 백업·후보·중복 작업본은 backup의 역사 보관 ZIP과 색인에 모았다. 필요한 원래 경로를 복원한 뒤 과거 조사 근거로만 사용한다.
+
+현재 로컬 설치 버전·진단 설정·백업·검사 기록은 [CURRENT](../development/CURRENT.md)를 따른다. 다른 채팅이 설치한 전투 DLL은 현재 manifest와 실제 해시로 확인하여 보존한다.
+
+v12.9 종료 보고의 원인은 미확정이다. 최신 속도×8·점령 연출·통합 인사 전체 조합과 장기 안정성은 자동 검사와 구별한다. 상태는 CURRENT에만 갱신한다.

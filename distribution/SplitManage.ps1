@@ -106,7 +106,7 @@ function Set-TraitLayout($Index,$Records,[long]$Bank) {
     return @{Applied=$taskApplied;Skipped=$taskSkipped}
 }
 function Get-LayoutBankPath([long]$Bank){return Join-Path $taskGame ('0002\ScreenLayout.rdb.bin'+$Bank)}
-function Get-TraitLayoutPlan($State,$Patch,[bool]$Install) {
+function Get-TraitLayoutPlan($State,$Patch,[bool]$Install,$FeatureValues=$null) {
     # Returns the index/bank writes. Nothing is written here.
     $taskIndexPath=Join-Path $taskGame '0002\ScreenLayout.rdb'
     $taskPlan=@{Writes=@{};Deletes=@();State=$null;Changed=$false;Messages=@()}
@@ -132,7 +132,14 @@ function Get-TraitLayoutPlan($State,$Patch,[bool]$Install) {
         [void](Reset-TraitLayout $taskIndex $taskRecords ([long]$taskPrevious.bank))
         $taskReleased+=@{Bank=[long]$taskPrevious.bank;Hash=$taskPrevious.bank_sha256}
     }
-    if(-not $Install -and $null -ne $taskRecords) {
+    # user 2026-11-03: these resource records belong to CCZ sprites, not merely
+    # to the installed convenience DLL. Restore old fixed-bank leftovers too.
+    $taskCczKeys=@([uint32]0x3DA1641D,[uint32]0x757F1A41,[uint32]0x5C046EA3)
+    # user 2026-11-03: speed owns atlas/table/popup/HUD, not just native hooks.
+    $taskSpeedKeys=@([uint32]0x301526D7,[uint32]0xFEA5F28CL,[uint32]0x40F993CE,[uint32]0x454A1BCC)
+    $taskSpeedOn=$null -eq $FeatureValues -or ($FeatureValues['groups.convenience'] -ne 0 -and (-not $FeatureValues.Contains('game_flow.speed_buttons') -or $FeatureValues['game_flow.speed_buttons'] -ne 0))
+    $taskCczOn=$null -eq $FeatureValues -or ($FeatureValues['groups.convenience'] -ne 0 -and $FeatureValues['ccz.ccz_sprites'] -ne 0)
+    if($null -ne $taskRecords) {
         # Restore without (or with a stale) layout record: our entries are recognised by
         # their exact patch locator (offset:size) in any mod bank 24..31. Other mods'
         # entries never carry these locators, so they stay byte-for-byte.
@@ -140,9 +147,22 @@ function Get-TraitLayoutPlan($State,$Patch,[bool]$Install) {
             $taskHit=$false
             foreach($taskRecord in $taskRecords) {
                 $taskKtid=[uint32]$taskRecord.ktid
+                if($Install -and $taskCczKeys -notcontains $taskKtid){continue}
                 if(-not $taskIndex.ByKtid.ContainsKey($taskKtid) -or $taskIndex.ByKtid[$taskKtid] -lt 0){continue}
                 $taskAt=$taskIndex.ByKtid[$taskKtid]
                 if((Get-LayoutLocator $taskIndex.Entries[$taskAt]) -eq (Get-LayoutTarget $taskRecord ([long]$taskCandidate))) {
+                    # An exact locator alone is insufficient evidence of ownership
+                    # for stale CCZ records. Compare the referenced payload bytes.
+                    if($taskCczKeys -contains $taskKtid) {
+                        $taskFile=Get-LayoutBankPath $taskCandidate
+                        if(-not [IO.File]::Exists($taskFile)){continue}
+                        $taskBankBytes=[IO.File]::ReadAllBytes($taskFile)
+                        $taskOffset=[int]$taskRecord.offset;$taskLength=[int]$taskRecord.size
+                        if($taskOffset -lt 0 -or $taskLength -le 0 -or $taskOffset+$taskLength -gt $taskBankBytes.Length){continue}
+                        $taskMatches=$true
+                        for($i=0;$i -lt $taskLength;$i++){if($taskBankBytes[$taskOffset+$i] -ne $Patch.Bytes[$taskOffset+$i]){$taskMatches=$false;break}}
+                        if(-not $taskMatches){continue}
+                    }
                     $taskIndex.Entries[$taskAt]=[Convert]::FromBase64String($taskRecord.original_entry);$taskHit=$true
                 }
             }
@@ -173,7 +193,8 @@ function Get-TraitLayoutPlan($State,$Patch,[bool]$Install) {
         if($null -eq $taskBank) {
             $taskPlan.Messages+='비어 있는 ScreenLayout 번호(24~30)가 없어 개성 9칸 화면 확장을 건너뜁니다.'
         } else {
-            $taskResult=Set-TraitLayout $taskIndex $taskRecords $taskBank
+            $taskSelected=@($taskRecords | Where-Object {($taskCczOn -or $taskCczKeys -notcontains [uint32]$_.ktid) -and ($taskSpeedOn -or $taskSpeedKeys -notcontains [uint32]$_.ktid)})
+            $taskResult=Set-TraitLayout $taskIndex $taskSelected $taskBank
             if($taskResult.Skipped.Count){$taskPlan.Messages+=('다른 모드가 바꾼 무장 화면 {0}개는 그대로 두었습니다. 해당 화면의 개성은 5칸으로 표시됩니다.' -f $taskResult.Skipped.Count)}
             if($taskResult.Applied.Count) {
                 $taskBankPath=Get-LayoutBankPath $taskBank
@@ -354,11 +375,12 @@ function Invoke-SplitPackage {
         if($taskHash -ne $taskHashes[$taskName]){$taskAllCurrent=$false}
         $taskOldFiles[$taskPath]=if($null -ne $taskHash){[IO.File]::ReadAllBytes($taskPath)}else{$null}
     }
-    $taskLayout=Get-TraitLayoutPlan $taskState $taskPatch $true
-    if($taskLayout.Changed -or $taskLayout.Writes.Count){$taskAllCurrent=$false}
     # Feature switches are chosen before any file changes (menu unless -NonInteractive).
     $taskSettings=Join-Path $taskProject '기능설정.ini'
     [void](Invoke-FeatureSelection $taskSettings (-not $NonInteractive))
+    $taskFeatures=Get-FeatureValues (Read-FeatureIni $taskSettings)
+    $taskLayout=Get-TraitLayoutPlan $taskState $taskPatch $true $taskFeatures
+    if($taskLayout.Changed -or $taskLayout.Writes.Count){$taskAllCurrent=$false}
     if($taskAllCurrent) {
         # Files are current; still record a new release number or a released optional file.
         $taskRecorded=@{};foreach($taskName in $taskNames){if($taskName -ne 'dinput8.dll'){$taskRecorded[$taskName]=$taskHashes[$taskName]}}

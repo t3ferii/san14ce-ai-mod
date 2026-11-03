@@ -38,7 +38,7 @@ $taskFeatureCatalog = @(
     @{Group='convenience'; Section='officer_ui'; Key='loyalty'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='숨겨진 충성도 숫자 표시'; Note=''}
     @{Group='convenience'; Section='officer_ui'; Key='damage_preview'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='전투력대체 예상 피해량'; Note='적 대상 선택 시 칼 등급 대신 양쪽의 1회 병사 피해를 표시합니다. 성·관문·시설의 내구 피해도 표시합니다. 현재 조건의 단일 교전 예상이며 전법·미래 상태 변화는 제외합니다. 전투 규칙은 바꾸지 않습니다.'}
     @{Group='convenience'; Section='extensions'; Key='tooltip_collab'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='개성·전법 툴팁 + 콜라보 개성/전법 해금'; Note='콜라보 해금이 툴팁 초기화에 실려 하나로 묶었습니다. 출처: 삼갤 통합패치(180.71·175.115 유동)'}
-    @{Group='convenience'; Section='game_flow'; Key='speed_buttons'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='진행 속도 버튼 >>>>(×4)·>>>>>(×8)'; Note='기존 >>> 대비 배수. 게임 옵션을 60fps로 두면 ×4는 매 프레임 진행, ×8은 하루 처리가 끝난 프레임에 한 번 더 진행합니다(30fps는 최대 ×4).'}
+    @{Group='convenience'; Section='game_flow'; Key='speed_buttons'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='진행 속도 버튼 >>>>(×4)·>>>>>(×8)'; Note='OFF이면 ×4·×8 버튼과 배치도 원작으로 복원합니다. 게임 종료 후 저장/적용하세요. 기존 >>> 대비 배수. 게임 옵션을 60fps로 두면 ×4는 매 프레임 진행, ×8은 하루 처리가 끝난 프레임에 한 번 더 진행합니다(30fps는 최대 ×4).'}
     @{Group='convenience'; Section='game_flow'; Key='occupy_fast'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='거점 자동점령 연출 단축 (원작의 약 1/4)'; Note=''}
     @{Group='convenience'; Section='game_flow'; Key='advisor_briefing'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='군사의 열흘 보고 (개발 후보)'; Note='지난 10일의 소식을 좌하단 군사 알림함에 모읍니다. 다음 진행 때 비워지며, 외교·처분 등 선택 창은 유지합니다. 시험 기능입니다.'}
     @{Group='convenience'; Section='game_flow'; Key='caravan_stay'; Default=1; Requires=''; Inherit=''; Tab='편의성'; Label='교역 무장 소재 고정 (원래 도시에 남고 각자 도시로 귀환)'; Note='출처: 삼갤 주딱'}
@@ -62,7 +62,7 @@ $taskFeatureCatalog = @(
     @{Group='convenience'; Section='game_flow'; Key='fast_save'; Default=1; Requires=''; Inherit=''; Tab='성능'; Label='빠른 자동저장 압축'; Note='원작 형식 그대로 저장하며, 실패 시 원작 압축을 사용합니다. 편의 DLL이 담당합니다.'}
     @{Group='performance'; Section='progress_native'; Key='geometry'; Default=1; Requires=''; Inherit=''; Tab='성능'; Label='거리 계산 세부 가속'; Note='거리·AI 진입 가속 안에서 기하 계산을 같은 결과로 더 빠르게 처리합니다.'}
     @{Group='convenience'; Section='stratagem'; Key='building_destruction_all'; Default=0; Requires=''; Inherit=''; Tab='게임성'; Label='건물파괴 지역 전체 피해'; Note='건물파괴 성공 시 선택 지역의 모든 적 군사시설·장애물·함정에 원작에서 계산된 피해량을 각각 적용합니다. 성·관문·아군·동맹·중립 건물은 제외하며, 실패 시에는 원작 처리를 유지합니다. 플레이어와 컴퓨터 모두 적용됩니다.'}
-    @{Group='convenience'; Section='ccz'; Key='ccz_sprites'; Default=1; Requires=''; Inherit=''; Tab='조조전'; Label='조조전 병종 그림 (필드 부대)'; Note='필드의 부대를 조조전 병종 그림으로 그립니다. 옷만 세력색(파랑·초록·보라 같은 차가운 색은 빨강~주황 대비색)으로 칠하고 말·얼굴은 원래 색이며, 대비되는 테두리를 두르고 이동·공격·대기 동작과 방향이 바뀝니다. 신조조전 장수 92명(전용 병종 17명: 조조=위무제·여포=무신·관우=군신 등, 나머지 75명은 신조조전 개인 그림)은 기본값은 군주·군사 병종보다 고유 그림 우선입니다. 게임 첫 메뉴의 「조조전」에서 진형별 병종·통솔 경계·무장별 고유 그림 적용 진형을 바꿀 수 있습니다. 그림 출처: 조조전(KOEI) 6.6·신조조전 7.0. 실험 기능입니다.'}
+    @{Group='convenience'; Section='ccz'; Key='ccz_sprites'; Default=1; Requires=''; Inherit=''; Tab='조조전'; Label='조조전 병종 그림 (필드 부대)'; Note='OFF이면 부대 UI 배치도 원작으로 복원합니다. 필드의 부대를 조조전 병종 그림으로 그립니다. 옷만 세력색(파랑·초록·보라 같은 차가운 색은 빨강~주황 대비색)으로 칠하고 말·얼굴은 원래 색이며, 대비되는 테두리를 두르고 이동·공격·대기 동작과 방향이 바뀝니다. 신조조전 장수 92명(전용 병종 17명: 조조=위무제·여포=무신·관우=군신 등, 나머지 75명은 신조조전 개인 그림)은 기본값은 군주·군사 병종보다 고유 그림 우선입니다. 게임 첫 메뉴의 「조조전」에서 진형별 병종·통솔 경계·무장별 고유 그림 적용 진형을 바꿀 수 있습니다. 그림 출처: 조조전(KOEI) 6.6·신조조전 7.0. 실험 기능입니다.'}
     @{Group='convenience'; Section='ccz'; Key='ccz_hide_model'; Default=1; Requires='ccz.ccz_sprites'; Inherit=''; Tab='조조전'; Label='조조전 그림 부대의 원래 3D 모형 숨김'; Note='조조전 그림으로 그린 부대의 원래 3D 병사 모형을 그리지 않습니다. 끄면 원래 모형과 그림이 함께 보입니다(위치 확인용). 깃발은 그대로 남습니다.'}
     @{Group='convenience'; Section='ccz'; Key='ccz_depth'; Default=1; Requires='ccz.ccz_sprites'; Inherit=''; Tab='조조전'; Label='조조전 그림 지형 가림 처리'; Note='산·건물 뒤의 부대 그림을 장면 깊이로 가립니다. 그림이 보이지 않으면 끄십시오(항상 맨 앞에 그림).'}
     @{Group='convenience'; Section='ccz'; Key='ccz_far_keep'; Default=0; Requires='ccz.ccz_sprites'; Inherit=''; Tab='조조전'; Label='원거리 부대 그림 유지 (시험용)'; Note='원작이 원거리 부대 표시 제출을 멈춘 뒤에도 최근 부대의 위치를 읽어 그림을 유지합니다. 기본 OFF. local14 줌 전환 렌더링 복구는 이 설정과 관계없이 유지됩니다.'}
@@ -115,7 +115,9 @@ function Get-FeatureValues($Ini) {
     foreach ($taskItem in (@($taskFeatureCatalog | Where-Object { -not $_.Inherit }) + @($taskFeatureCatalog | Where-Object { $_.Inherit }))) {
         $taskValue = $taskItem.Default
         if ($taskItem.Inherit -and $taskValues.Contains($taskItem.Inherit)) { $taskValue = $taskValues[$taskItem.Inherit] }
-        foreach ($taskSource in @(@('features',$taskItem.Key), @($taskItem.Section,$taskItem.Key))) {
+        $taskSources=@(@('features',$taskItem.Key), @($taskItem.Section,$taskItem.Key))
+        if($taskItem.Section -eq 'performance' -and $taskItem.Key -eq 'fast_menu'){$taskSources=@(@('game_flow','fast_menu'))+$taskSources}
+        foreach ($taskSource in $taskSources) {
             if ($Ini.ContainsKey($taskSource[0]) -and $Ini[$taskSource[0]].Contains($taskSource[1])) {
                 $taskNumber = 0
                 if ([int]::TryParse($Ini[$taskSource[0]][$taskSource[1]], [ref]$taskNumber)) { $taskValue = if ($taskItem.Key -eq 'path_fast_verify') { [Math]::Max(0, $taskNumber) } elseif ($taskItem.Key -eq 'terrain_diag_mode') { [Math]::Max(0, [Math]::Min(3, $taskNumber)) } else { [int]($taskNumber -ne 0) } }
@@ -126,6 +128,9 @@ function Get-FeatureValues($Ini) {
     return $taskValues
 }
 function Write-FeatureIni([string]$Path, $Values, $Ini) {
+    # user 2026-11-03: known obsolete keys only; preserve every unknown/raw key.
+    if($Ini.Contains('game_flow')){$Ini['game_flow'].Remove('fast_menu')}
+    if($Ini.Contains('performance')){$Ini['performance'].Remove('strategy_batch')}
     $taskLines = New-Object Collections.Generic.List[string]
     $taskLines.Add('; AI 모드 기능 켜기/끄기. 1 = 켜기, 0 = 끄기. 게임을 다시 시작하면 적용됩니다.')
     $taskLines.Add('; 관리 도구: optional_tools\AI모드_기능선택.cmd 또는 AI모드_적용.cmd 실행 중 선택 화면.')
