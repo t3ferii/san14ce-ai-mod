@@ -5,11 +5,12 @@
 // writes the same stream (save_codec.h) with bounded hash chains, then decodes it
 // and compares with the input; on any difference or failure the original
 // encoder runs instead. Saves stay readable by the unmodified game decoder.
+#include "game_addresses.h"
 #include "save_codec.h"
 namespace save_codec_hook {
-static const unsigned kEncoder=0x9321F0,kDecoder=0x9330A0,kCall=0x933C5B;
-static const unsigned long long kEncoderHash=0xb7d3b29eb8ff66acull,kDecoderHash=0xe8860c2d623774f0ull;
-static const unsigned kSrc=0x27DB9E8,kSrcSize=0x27DB9F0,kOut=0x27DBA00,kCursor=0x27DB9F8,kCoded=0x27DB9F4,kCap=0x27DBA08,kLimit=0x27DBA0C;
+static const unsigned kEncoder=GA(GA_9321F0),kDecoder=GA(GA_9330A0),kCall=GA(GA_933C5B);
+static const unsigned long long kEncoderHash=GH(0xb7d3b29eb8ff66acull),kDecoderHash=GH(0xe8860c2d623774f0ull);
+static const unsigned kSrc=GA(GA_27DB9E8),kSrcSize=GA(GA_27DB9F0),kOut=GA(GA_27DBA00),kCursor=GA(GA_27DB9F8),kCoded=GA(GA_27DB9F4),kCap=GA(GA_27DBA08),kLimit=GA(GA_27DBA0C);
 using Encoder=unsigned long long(__fastcall *)(uint8_t *,void *,unsigned,Obj);
 static volatile LONG used,fallbacks;
 static unsigned long long fingerprint(unsigned rva,unsigned size) {
@@ -46,7 +47,7 @@ static unsigned long long __fastcall encode(uint8_t *rank,void *notify,unsigned 
     global<uint8_t *>(kOut)=out;global<uint8_t *>(kCursor)=out+coded;global<int>(kCoded)=static_cast<int>(coded);
     if(static_cast<int>(coded)<global<int>(kLimit)) {
         // The original notifies its progress target once more on success (IAT 13408B0).
-        if(notify)reinterpret_cast<void(__stdcall *)(void *,unsigned,unsigned long long,long long)>(pointer(image,0x13408B0))(notify,wparam,0,0);
+        if(notify)reinterpret_cast<void(__stdcall *)(void *,unsigned,unsigned long long,long long)>(pointer(image,GA(GA_13408B0)))(notify,wparam,0,0);
         return 0;
     }
     return 1;

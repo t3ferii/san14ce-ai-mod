@@ -174,16 +174,32 @@ static void seed_pointers() {
     for(const auto &s:diplomacy_intel::slots)put(s.rva,s.original);
     for(const auto &s:advisor_briefing::slots)put(s.rva,s.original);
 }
-static bool unified_slots_native() {
+static void chained_pointer_tests(HMODULE base) {
+    (void)base;
+    const unsigned slots[]={0x13AC5B0,0x13A6BB0}, originals[]={0x258170,0x2390B0};
+    for(unsigned i=0;i<2;++i) {
+        auto slot=reinterpret_cast<void **>(image+slots[i]);void *foreign=image+originals[i]+0x10;
+        *slot=foreign;
+        check(!patch_pointer(slots[i],originals[i],image+0x100),"foreign owner rejects patch");
+        check(*slot==foreign,"rejection preserves foreign owner");
+        *slot=image+originals[i];
+    }
+}
+static bool shared_slots_native() {
     return pointer(image,0x1458848)==image+0x7DF540 && pointer(image,0x1458830)==image+0x7D9E50 &&
            pointer(image,0x14751D8)==image+0x894420 && pointer(image,0x14751C8)==image+0x87E3D0 && pointer(image,0x14751F0)==image+0x8782E0 &&
            pointer(image,0x13AC588)==image+0x2FB440 && pointer(image,0x13AC578)==image+0x256970 && pointer(image,0x13AC5B0)==image+0x258170 &&
            image[0x2C0820]==0x40 && !memcmp(image+0x8DF900,"\xE8\x1B\xC8\xCE\xFF",5);
 }
-static bool unified_slots_owned() {
-    return pointer(image,0x1458848)!=image+0x7DF540 && pointer(image,0x1458830)!=image+0x7D9E50 &&
-           pointer(image,0x14751D8)!=image+0x894420 && pointer(image,0x14751C8)==image+0x87E3D0 && pointer(image,0x14751F0)!=image+0x8782E0 &&
+static bool ccz_dialog_slots_owned() {
+    return pointer(image,0x1458848)==image+0x7DF540 && pointer(image,0x1458830)==image+0x7D9E50 &&
+           pointer(image,0x14751D8)==image+0x894420 && pointer(image,0x14751C8)==image+0x87E3D0 && pointer(image,0x14751F0)==image+0x8782E0 &&
            pointer(image,0x13AC588)!=image+0x2FB440 && pointer(image,0x13AC578)!=image+0x256970 && pointer(image,0x13AC5B0)!=image+0x258170;
+}
+static bool advisor_hud_owned() {
+    return pointer(image,0x1458848)==image+0x7DF540 && pointer(image,0x1458830)==image+0x7D9E50 &&
+           pointer(image,0x14751D8)!=image+0x894420 && pointer(image,0x14751F0)!=image+0x8782E0 &&
+           pointer(image,0x13AC588)==image+0x2FB440 && pointer(image,0x13AC578)==image+0x256970 && pointer(image,0x13AC5B0)==image+0x258170;
 }
 // User/Claude 2026-10-29: tree slot/start mismatches isolate only placement edits.
 static void terrain_trees_guard_tests() {
@@ -274,9 +290,12 @@ int main(int argc,char **argv) {
     // User 2026-11-02: headless report ABI and its caller must fail closed.
     for(const auto &g:advisor_briefing::guards)for(unsigned offset:{0u,g.size-1}) {
         image[g.rva+offset]^=1;
-        check(!advisor_briefing_guards_match(),"foreign adviser code rejects its feature");
+        bool yielded_scene=(offset==0 && (g.rva==0x6C43B0 || g.rva==0x6C4670));
+        check(advisor_briefing_guards_match()==yielded_scene,"only foreign scene-entry prologues yield; every other adviser guard remains strict");
+        if(yielded_scene)check(advisor_briefing::scene_yield,"foreign scene prologue sets the scoped yield flag");
         image[g.rva+offset]^=1;
     }
+    check(advisor_briefing_guards_match(),"scene guard mutation restores the original briefing guard state");
     for(const auto &g:diplomacy_intel::guards)for(unsigned offset:{0u,g.size-1}) {
         image[g.rva+offset]^=1;
         check(!diplomacy_intel_guards_match(),"foreign diplomacy code rejects its feature");
@@ -326,6 +345,7 @@ int main(int argc,char **argv) {
     terrain_render_early_real_tests();
     HMODULE base=LoadLibraryW(L"SplitBaseFixture.dll"),combat=LoadLibraryW(L"SplitCombatFixture.dll");
     check(base && combat,"both real fixture DLLs loaded");
+    chained_pointer_tests(base);
     terrain_render_owner_tests(base,combat);
     auto getter=reinterpret_cast<GetSplitCombatApi>(GetProcAddress(combat,"SAN14CombatGetApi"));
     check(getter && getter(99)==nullptr,"unknown cross-module ABI rejected");
@@ -335,10 +355,6 @@ int main(int argc,char **argv) {
     auto combat_get=reinterpret_cast<Getter>(GetProcAddress(combat,"SAN14SplitFixtureGetApi"));
     check(base_get && combat_get,"test-only fixture exports present");
     const SplitFixtureApi *base_api=base_get();combat_fixture=combat_get();
-    if(argc==3 && !strncmp(argv[2],"--callsite-",11)) {
-        callsite_info_tests(base_api,argv[2]);
-        printf("{\"status\":\"callsite_compat_passed\",\"case\":\"%s\",\"checks\":%u}\n",argv[2],checks);return 0;
-    }
     // User decision 2026-10-25: append compat coverage; retain every strict assertion below.
     if(argc==3 && strcmp(argv[2],"--failure")) {
         const char *mode=argv[2];
@@ -371,45 +387,94 @@ int main(int argc,char **argv) {
         auto features=reinterpret_cast<Features>(GetProcAddress(base,"SAN14SplitFixtureFeatures"));
         auto disable=reinterpret_cast<Disable>(GetProcAddress(base,"SAN14SplitFixtureDisable"));
         check(install_fixture && features && disable,"compat fixture controls found");
-        bool unified=!strcmp(mode,"--unified"),merit=!strcmp(mode,"--merit"),save=!strcmp(mode,"--save");
+        bool ccz=!strcmp(mode,"--ccz"),ccz_guard=!strcmp(mode,"--ccz-guard"),merit=!strcmp(mode,"--merit"),save=!strcmp(mode,"--save");
         bool off=!strcmp(mode,"--off"),empty=!strcmp(mode,"--empty"),combat_guard=!strcmp(mode,"--combat-guard");
         bool base_failure=!strcmp(mode,"--base-failure"),combat_failure=!strcmp(mode,"--combat-failure");
         bool base_prepare=!strcmp(mode,"--base-prepare"),both=!strcmp(mode,"--both-failure");
         bool recheck=!strcmp(mode,"--recheck");
-        bool briefing=!strcmp(mode,"--briefing"),briefing_guard=!strcmp(mode,"--briefing-guard");
+        // 2026-11-05 local3 (user: a refused optional feature switches only itself off): "--opt-<feature>" makes that ONE optional
+        // publication step fail after it really wrote its hooks (fail_after(2000+step), src/native_split_install.inl). The module
+        // must still publish, the failed feature must be taken back and off, every other feature must stay published and on.
+        // Core failures stay whole-module rollbacks (--base-failure above: fail_after(3) fails core link 3).
+        struct Optional {const char *mode;unsigned step,bit;};
+        static const Optional optionals[]={{"--opt-merit",3,2},{"--opt-recruit",4,64},{"--opt-recruit-ai",6,1024},{"--opt-injury",7,128},
+            {"--opt-awards",8,512},{"--opt-loyalty",9,256},{"--opt-expert",10,16}};
+        int optional=-1;
+        for(unsigned i=0;i<sizeof(optionals)/sizeof(optionals[0]);++i)if(!strcmp(mode,optionals[i].mode))optional=static_cast<int>(i);
+        unsigned char loyalty_before[4];memcpy(loyalty_before,image+0x34A8D6,sizeof(loyalty_before));
+        bool briefing=!strcmp(mode,"--briefing"),briefing_guard=!strcmp(mode,"--briefing-guard"),briefing_pointer_guard=!strcmp(mode,"--briefing-pointer-guard");
         if(briefing || briefing_guard)disable(1|8); // 2026-10-26: HUD can serve briefing with unified personnel OFF.
+        if(ccz || ccz_guard || recheck)disable(16);
         if(briefing_guard)image[0x930D20]^=1;
-        if(unified || off || recheck)*reinterpret_cast<Obj *>(image+0x1458848)=image+0x1234;
+        if(ccz_guard)*reinterpret_cast<Obj *>(image+0x13AC588)=image+0x1234;
+        if(briefing_pointer_guard){disable(8);*reinterpret_cast<Obj *>(image+0x14751D8)=image+0x1234;}
         if(merit || off)image[0x232EE0]^=1;
         if(save)image[0x3F7E32]^=1;
         if(off)disable(3);
         if(empty)disable(4);
         if(combat_guard || both)image[0xD2486]^=1;
         if(base_failure)base_api->fail_after(3);
+        if(optional>=0)base_api->fail_after(2000+optionals[optional].step);
         if(combat_failure)combat_fixture->fail_after(1);
         if(base_prepare || both)base_api->fail_after(1000);
         if(recheck) {
             // First prepare with native pointers, then change one owner before publication.
-            *reinterpret_cast<Obj *>(image+0x1458848)=image+0x7DF540;
+            *reinterpret_cast<Obj *>(image+0x13AC588)=image+0x2FB440;
             check(combat_fixture->prepare(image,nullptr) && base_api->prepare(image,api),"compat modules prepared for second guard pass");
-            *reinterpret_cast<Obj *>(image+0x1458848)=image+0x1234;
+            *reinterpret_cast<Obj *>(image+0x13AC588)=image+0x1234;
             check(combat_fixture->publish() && base_api->publish(),"publish-time mismatch only disables its feature");
         } else check(install_fixture(image,api)!=both,"independent coordinator returns success iff at least one owner succeeds");
         bool combat_owned=image[0x1749A0]==0xE9;
-        bool base_owned=image[0x2B07C0]==0xE9;
-        if(briefing || briefing_guard) {
-            check(!(features()&1),"briefing does not implicitly enable unified personnel");
-            check((pointer(image,0x14751D8)!=image+0x894420)==briefing,"shared HUD enabled only for a compatible briefing");
-            check(pointer(image,0x1458848)==image+0x7DF540 && pointer(image,0x13AC588)==image+0x2FB440,"briefing leaves unrelated personnel and tactic slots native");
+        // expert failure takes battle_rules (pair scope + adjacency, core link 1) back as one feature: its own marker is the domestic tick
+        bool base_owned=image[optional==6?0x295160:0x2B07C0]==0xE9;
+        if(briefing || briefing_guard || briefing_pointer_guard) {
+            check((features()&1)==0,"user decision 2026-11-03: removed unified diagnostic bit remains zero");
+            if(!briefing_pointer_guard)check((pointer(image,0x14751D8)!=image+0x894420)==briefing,"advisor HUD enabled only for a compatible briefing");
+            if(briefing)check(advisor_hud_owned(),"advisor briefing owns HUD slots without enabling CCZ dialogs or tactic selection");
+            else if(briefing_pointer_guard)check(pointer(image,0x14751D8)==image+0x1234 && (features()&32)==0,"user decision 2026-11-03: advisor HUD pointer mismatch preserves foreign owner and disables advisor only");
+            else if(briefing_guard)check(pointer(image,0x14751D8)==image+0x894420 && (features()&32)==0,"advisor byte guard disables only briefing and leaves HUD slots native");
+            check(pointer(image,0x1458848)==image+0x7DF540 && pointer(image,0x13AC588)==image+0x2FB440,"briefing leaves removed tactic and CCZ dialog slots native");
             check(base_owned && combat_owned,"briefing guard failure preserves independent convenience and combat features");
+        }
+        if(ccz || ccz_guard) {
+            check((features()&1)==0,"user decision 2026-11-03: removed unified diagnostic bit remains zero");
+            if(ccz)check(ccz_dialog_slots_owned(),"all CCZ shared dialog slots are owned only when ccz_sprites is enabled");
+            if(ccz_guard)check(pointer(image,0x13AC588)==image+0x1234 && (features()&1)==0,"CCZ foreign pointer is preserved and ccz_sprites alone is disabled");
+            check(pointer(image,0x14751D8)==image+0x894420 && pointer(image,0x14751F0)==image+0x8782E0,"CCZ dialog owner does not claim advisor HUD");
+            if(ccz_guard)check(base_owned && combat_owned,"CCZ pointer mismatch preserves independent convenience and combat features");
+        }
+        if(optional>=0) {
+            // published(0..6): merit, recruit, recruit_ai, injury, awards, loyalty, expert hooks of the synthetic image
+            auto published=[&](unsigned which)->bool {
+                switch(which) {
+                case 0:return image[0x232EE0]==0xE9;
+                case 1:return pointer(image,0x1440FE8)!=image+0x6F1D10;
+                case 2:return pointer(image,0x134CDF8)!=image+0x7B360;
+                case 3:return pointer(image,0x1346AF8)!=image+0x34F10;
+                case 4:return pointer(image,0x13491B0)!=image+0x535E0;
+                case 5:return memcmp(image+0x34A8D6,loyalty_before,sizeof(loyalty_before))!=0;
+                default:return image[0x6566E0]==0xE9;
+                }
+            };
+            const unsigned flags=features();
+            check(base_owned && combat_owned && image[0x302980]==0xE9,"optional feature failure keeps the shared core links and the combat module published");
+            for(unsigned which=0;which<7;++which) {
+                // merit failure also takes the awards warehouse sidecar dependency off (awards need the merit save hosts)
+                const bool expect_off=which==static_cast<unsigned>(optional) || (optional==0 && which==4);
+                check(published(which)==!expect_off,expect_off?"failed optional feature is taken back":"other optional features stay published");
+                check(((flags&optionals[which].bit)!=0)==!expect_off,expect_off?"failed optional feature is switched off":"other optional features stay on");
+            }
+            if(optional==0)check(pointer(image,0x13E69A0)==image+0x50B670,"failed merit takes its save sidecar host back");
+            if(optional==6)check(image[0x2B07C0]!=0xE9 && pointer(image,0x14296B8)==image+0x65E810,"failed expert takes its core link and UI slots back");
         }
         check(combat_owned==!(combat_guard || combat_failure || both),"combat failure affects combat ownership only");
         check(base_owned==!(empty || base_failure || base_prepare || both),"convenience failure or empty set leaves combat intact");
-        if(unified || off || recheck) {
-            check(!(features()&1) && pointer(image,0x1458848)==image+0x1234 && pointer(image,0x14751D8)==image+0x894420,"foreign unified slot preserved; other unified slots skipped");
+        if(base_failure)check(image[0x295160]!=0xE9 && pointer(image,0x1346E70)==image+0x36320,"core link failure rolls the whole convenience module back");
+        if(ccz_guard || off || recheck) {
+            check((features()&1)==0 && pointer(image,0x1458848)==image+0x7DF540 && pointer(image,0x14751D8)==image+0x894420,"removed tactic slots remain native and foreign CCZ/HUD owners are preserved");
         }
         if(merit || off || save)check(!(features()&2) && image[0x232EE0]!=0xE9,"merit mismatch/disabled switch skips merit hooks");
-        if(unified || merit || off || recheck)check((features()&28)==28 && base_owned && combat_owned,"unrelated convenience and combat features survive");
+        if(ccz || ccz_guard || merit || off || recheck)check((features()&28)==28 && base_owned && combat_owned,"unrelated convenience and combat features survive");
         if(merit || off)check(image[0x3F7E32]==0xE8 && pointer(image,0x13E69A0)!=image+0x50B670,"guarded save sidecar remains independent of disabled merit gameplay");
         if(save)check(image[0x3F7E32]!=0xE8 && pointer(image,0x13E69A0)==image+0x50B670 && base_owned && combat_owned,"bad save guard skips sidecar and preserves both owners");
         if(combat_failure || combat_guard)check(pointer(image,0x1344518)==image+0x201E0 && base_owned,"failed combat restores its own partial writes");
@@ -422,7 +487,7 @@ int main(int argc,char **argv) {
     check(combat_fixture->prepare(image,nullptr) && base_api->prepare(image,api),"both modules prepare against unchanged original code");
     check(code_ready(),"preparation does not mutate game code");
     check(combat_fixture->publish(),"combat hooks published");
-    check(unified_slots_native(),"combat leaves all personnel HUD and player tactic selection slots native");
+    check(shared_slots_native(),"combat leaves advisor HUD, CCZ dialogs and removed tactic slots native");
     check(pointer(image,0x1344518)!=image+0x201E0 && pointer(image,0x1346E70)==image+0x36320,"combat leaves domestic slots native");
     check(image[0x1749A0]==0xE9 && image[0x279190]==0xE9 && image[0x2B07C0]!=0xE9 && image[0x302980]!=0xE9,"combat owns damage observation and building, excludes adjacency and population");
     check(image[0x6566E0]==0x40 && image[0x2A8D40]==0x48 && image[0x173B44]==0xE8 &&
@@ -432,15 +497,13 @@ int main(int argc,char **argv) {
     if(argc==3) {
         base_api->fail_after(3);
         check(!base_api->publish(),"failure after partial base publication reported");
-        check(unified_slots_native(),"failed convenience publication restores personnel and tactic slots");
+        check(shared_slots_native(),"failed convenience publication restores advisor HUD, CCZ dialogs and removed tactic slots");
         check(image[0x2B07C0]!=0xE9 && image[0x295160]!=0xE9 && pointer(image,0x1346E70)==image+0x36320,"partially published base hooks rolled back");
         combat_fixture->rollback();check(code_ready(),"coordinated failure restores original complete code CRC");
         printf("{\"status\":\"split_module_failure_fixture_passed\",\"checks\":%u}\n",checks);return 0;
     }
     check(base_api->publish(),"other module publishes after combat without guard conflicts");
-    check(unified_slots_owned(),"convenience exclusively owns personnel HUD and player tactic selection");
-    // 사용자 결정 2026-10-30: 통합패치·발탁장수 공존을 위해 첫머리 훅을 호출 자리로 이동
-    check(image[0x8DF900]==0xE8 && memcmp(image+0x8DF900,"\xE8\x1B\xC8\xCE\xFF",5) && image[0x2C0820]==0x40 && image[0x5CC37E]==0xE8 && *reinterpret_cast<int *>(image+0x5CC37F)!=static_cast<int>(0x2C0820-0x5CC383),"2026-10-30 roster setup and list CALL published; native entry preserved");
+    check(shared_slots_native(),"default feature set leaves optional HUD and CCZ dialog slots native");
     check(pointer(image,0x1346E70)!=image+0x36320 && image[0x2B07C0]==0xE9 && image[0x302980]==0xE9,"other module owns domestic adjacency and population");
     check(image[0x1EC890]==0xE9 && image[0x295160]==0xE9 && pointer(image,0x1346AF8)!=image+0x34F10,"sortie plus independent injury protection coexist");
     check(image[0x6566E0]==0xE9 && image[0x6566E5]==0x90 && pointer(image,0x14296B8)!=image+0x65E810 &&
@@ -468,11 +531,11 @@ int main(int argc,char **argv) {
     memcpy(image+0x34F10,original,16);
     check(!base_api->publish() && !combat_fixture->publish(),"duplicate publication rejected");
     combat_fixture->rollback();
-    check(unified_slots_owned(),"combat rollback preserves convenience personnel and tactic selection");
+    check(shared_slots_native(),"combat rollback preserves convenience independence and removed feature slots");
     check(pointer(image,0x1344518)==image+0x201E0 && pointer(image,0x13512A0)==image+0x8E7C0 && pointer(image,0x134D248)==image+0x7DC00 && pointer(image,0x13517A8)==image+0x91030 && image[0x1EC890]!=0xE9,"combat rollback restores its owned sites");
     check(pointer(image,0x1346E70)!=image+0x36320 && image[0x2B07C0]==0xE9,"combat rollback preserves other module");
     base_api->rollback();check(code_ready(),"combined rollback restores exact original text CRC");
-    check(unified_slots_native(),"convenience rollback restores all four original personnel and tactic slots");
+    check(shared_slots_native(),"convenience rollback restores advisor HUD, CCZ dialogs and removed tactic slots");
     check(pointer(image,0x1346AF8)==image+0x34F10 && pointer(image,0x1346E70)==image+0x36320,"other rollback restores injury and domestic slots");
     check(pointer(image,0x141BE88)==image+0x5A73A0 && pointer(image,0x141BCC8)==image+0x5B9110 &&
           pointer(image,0x14296B8)==image+0x65E810 && pointer(image,0x14296F0)==image+0x65F890 &&

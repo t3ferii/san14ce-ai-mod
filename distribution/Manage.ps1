@@ -22,7 +22,9 @@ try {
     $taskTarget = Join-Path $taskGame 'dinput8.dll'
     $taskChain = Join-Path $taskGame 'SAN14_AI_PreviousInput.dll'
     $taskExe = Join-Path $taskGame 'SAN14CE_KO.exe'
-    $taskOriginalHash = '87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a'
+    # 2026-11-05 build table (user): the pre-update EXE and Steam buildid 25953386. Any other EXE hash is only informational here;
+    # the PE gate in Assert-GameBuild still rejects unsupported builds.
+    $taskOriginalHashes = @('87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a','782cf229a56cdde2b95399e0e7536740b3f5e96bea702679365e4dad061abdce')
     function Get-Digest([string]$Path) {
         if ([IO.File]::Exists($Path)) {
             $taskAlgorithm = [Security.Cryptography.SHA256]::Create()
@@ -49,12 +51,34 @@ try {
             $taskReader.BaseStream.Position = $taskPE + 8
             $taskTimestamp = $taskReader.ReadUInt32()
             if ($taskTimestamp -eq 0x6A6D9F72) { throw '롤백 게임 빌드(0x6A6D9F72)입니다. 현재 AI DLL은 0x6A983C25 빌드용입니다. 롤백판 함수 주소를 이식한 별도 DLL이 필요합니다.' }
-            if ($taskTimestamp -ne 0x6A983C25) { throw ('지원 대상과 다른 게임 빌드입니다. 현재 0x{0:X8}, 지원 0x6A983C25.' -f $taskTimestamp) }
+            if ($taskTimestamp -ne 0x6A983C25 -and $taskTimestamp -ne 0x6AD06F53) { throw ('지원 대상과 다른 게임 빌드입니다. 현재 0x{0:X8}, 지원 0x6A983C25(이전)·0x6AD06F53(Steam buildid 25953386).' -f $taskTimestamp) }
             $taskReader.BaseStream.Position = $taskPE + 24
             if ($taskReader.ReadUInt16() -ne 0x20B) { throw '64비트 PE32+ 실행 파일이 필요합니다.' }
             $taskReader.BaseStream.Position = $taskPE + 80
             $taskImageSize = $taskReader.ReadUInt32()
-            if ($taskImageSize -eq 0x029C5000) {
+            if ($taskTimestamp -eq 0x6AD06F53) {
+                # 2026-11-05 user: Steam buildid 25953386 (782cf229...). Exact image size and the ten sections incl. .bind.
+                if ($taskImageSize -ne 0x02A02000) { throw ('지원 대상과 다른 이미지 크기입니다. 현재 0x{0:X8}, 지원 0x02A02000.' -f $taskImageSize) }
+                $taskReader.BaseStream.Position = $taskPE + 6
+                $taskSections = $taskReader.ReadUInt16()
+                $taskReader.BaseStream.Position = $taskPE + 20
+                $taskOptional = $taskReader.ReadUInt16()
+                $taskExpected = @(@('.text',0x1000,0x134112E),@('.rdata',0x1343000,0x6DF78E),@('.data',0x1A23000,0xE03E1C),
+                    @('.pdata',0x2827000,0xDC590),@('.tls',0x2904000,0x15),@('.gfids',0x2905000,0x9FC),
+                    @('_RDATA',0x2906000,0x9950),@('.rsrc',0x2910000,0x530D0),@('.reloc',0x2964000,0x63DE4),
+                    @('.bind',0x29C8000,0x39248))
+                if ($taskSections -ne 10) { throw ('지원 대상과 다른 섹션 수입니다. 현재 {0}개, 지원 10개.' -f $taskSections) }
+                for ($taskIndex = 0; $taskIndex -lt 10; $taskIndex++) {
+                    $taskReader.BaseStream.Position = $taskPE + 24 + $taskOptional + 40 * $taskIndex
+                    $taskName = [Text.Encoding]::ASCII.GetString($taskReader.ReadBytes(8)).TrimEnd([char]0)
+                    $taskVirtualSize = $taskReader.ReadUInt32(); $taskAddress = $taskReader.ReadUInt32()
+                    $taskWant = $taskExpected[$taskIndex]
+                    if ($taskName -ne $taskWant[0] -or $taskAddress -ne $taskWant[1] -or $taskVirtualSize -ne $taskWant[2]) {
+                        throw ('지원 대상과 다른 섹션 구성입니다: {0} (지원 {1}).' -f $taskName,$taskWant[0])
+                    }
+                }
+            }
+            elseif ($taskImageSize -eq 0x029C5000) {
                 # 2026-10-25 user: same build with only the Steam stub section (.bind, 0x29C5000..0x29FF000)
                 # removed. Accept it only when the remaining nine sections are exactly the supported ones.
                 $taskReader.BaseStream.Position = $taskPE + 6
@@ -185,7 +209,7 @@ try {
         try { Assert-GameBuild $taskExe }
         catch { Write-CompatibilityDiagnostic; throw }
         $taskExeHash = Get-Digest $taskExe
-        if ($taskExeHash -ne $taskOriginalHash) {
+        if ($taskOriginalHashes -notcontains $taskExeHash) {
             Write-Host '지원 PE 빌드 지문이 일치합니다. EXE 전체 해시 차이는 설치 차단 사유가 아닙니다.'
             Write-Host ('현재 EXE SHA256: ' + $taskExeHash)
             Write-Host '게임 실행 시 DLL이 복호화된 코드 CRC와 후킹 원본 바이트를 다시 검사합니다.'

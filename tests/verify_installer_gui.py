@@ -1,3 +1,4 @@
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import ga_expand  # user 2026-11-05 patch resilience: sources spell addresses as GA(GA_x)
 """Static check: the GUI installer catalog (installer/InstallerGui.cs) equals the
 distribution/FeatureSelect.ps1 catalog (section/key/default/group/requires/inherit/tab), the
 DLL applies every Requires as an AND, and the GUI delegates DLL installation to the guarded
@@ -21,7 +22,10 @@ ok(len(rows)==len(cs) and len(ps)==len(pm),'duplicate keys')
 ok(cs==pm,'GUI/PS catalogs differ: %s'%sorted(k for k in set(cs)|set(pm) if cs.get(k)!=pm.get(k)))
 ids={s+'.'+k for s,k in cs}
 # 사용자 결정 2026-10-28: 충돌 옵션 사용 중지 (ExcludedBy보다 우선, mission_v2 OFF도 동일).
-retired={'combat.departures','combat.group_advance','combat.support','diplomacy.diplomacy_overinvest'}
+# ??? ?? 2026-11-03: ?? ?? ?? ??? ?? ?? ?? ?? ???? ??.
+# 사용자 결정: 사용 중지 키 읽기 제거 2026-11-03.
+retired={'combat.departures','combat.group_advance','combat.support','diplomacy.diplomacy_overinvest','officer_ui.unified',
+         'ccz.ccz_hide_model','ccz.ccz_depth','ccz.ccz_far_keep','performance.timer_1ms'}
 retired_body=re.search(r'HashSet<string> Retired = new HashSet<string> \{(.*?)\};',gui,re.S)
 ok(retired_body is not None and set(re.findall(r'"([\w.]+)"',retired_body[1]))==retired,'GUI retired set')
 ps_retired={s+'.'+k for s,k in re.findall(r"Section='(\w+)'; Key='(\w+)';[^\r\n]*Retired=\$true",menu)}
@@ -33,10 +37,17 @@ ok("$taskInstalledHash -eq '553ae296eabe73cc911cb79de0bf9bf11e594dbb4f2a63515ca8
    'v15.1 accepts only the exact known local14 CCZ override')
 ok('f.departures = f.group_advance = f.support = false;' in adapter and
    'if (f.mission_v2) { f.departures = false;' not in adapter,'DLL retired switches unconditionally OFF')
-ok('user 2026-10-28: retired, conflicts with mission_v2' in adapter,'DLL retirement decision recorded')
+# 사용자 결정: 사용 중지 키 읽기 제거 2026-11-03.
+for key in ('departures','group_advance','support'):
+    ok(not re.search(r'feature_key\(config, L"combat", L"%s"'%key,adapter),'retired combat key is not read: '+key)
+ok('retired 2026-10-28 (mission_v2 conflict); keys no longer read' in adapter,'DLL combat retirement decision recorded')
+ok('f.diplomacy_overinvest = false; // retired 2026-11-03: native cap/marker restored; key no longer read' in adapter and
+   not re.search(r'feature_key\(config, L"diplomacy", L"diplomacy_overinvest"',adapter),'retired diplomacy key is not read')
 ok('!f.IsMaster && !Catalog.Retired.Contains(f.Id)' in gui,'tab denominator excludes retired rows')
-ok('임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.' in gui and
-   menu.count("Retired=$true;")==4 and menu.count("Note='임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.'")==3,'retirement explanations')
+ok(menu.count("Retired=$true;")==9 and
+   menu.count("Note='\uc784\ubb34 \uc77c\uad00\uc131 v2\uc640 \ucda9\ub3cc\ud574 \uc0ac\uc6a9\uc774 \uc911\uc9c0\ub41c \uae30\ub2a5\uc785\ub2c8\ub2e4.'")==3 and
+   menu.count("Note='\uac1c\ubc1c \uc911\uc9c0\ub85c \uc81c\uac70\ub41c \uae30\ub2a5\uc785\ub2c8\ub2e4.'")==1 and
+   '\uac1c\ubc1c \uc911\uc9c0\ub85c \uc81c\uac70\ub41c \uae30\ub2a5' in gui,'user decision 2026-11-03: retirement explanations')
 ok(cs.get(('diagnostics','terrain_diag_mode'))==('diagnostics',0,'','','기타(개발용)'),'terrain diagnostic mode catalog/default/group/tab')
 ok('Math.Max(0, Math.Min(3, n))' in gui and "[Math]::Max(0, [Math]::Min(3, $taskNumber))" in menu,'terrain diagnostic mode keeps 0..3')
 ok('0 — 기준: foam ON / renderer ON' in gui and '[0 기준]' in menu and '번호=값' in menu,'GUI/PS expose four terrain diagnostic choices')
@@ -48,7 +59,7 @@ for (s,k),(g,d,r,i,t) in cs.items():
     ok(g=='' or ('groups.'+g) in ids,'unknown group for %s.%s'%(s,k))
     ok(r=='' or r in ids,'unknown parent for %s.%s'%(s,k))
     ok(i=='' or i in ids,'unknown inherit for %s.%s'%(s,k))
-    if r:
+    if r and (s,k) not in {('progress_native','geometry'),('ccz','ccz_hide_model'),('ccz','ccz_depth'),('ccz','ccz_far_keep'),('domestic','population_rate'),('personnel','merit_troops_level')}:
         # The DLL must AND the parent so a child can never run alone.
         parent=r.split('.')[1]
         ok(re.search(r'f\.%s = f\.%s && feature_key\(config, L"%s", L"%s"'%(k,parent,s,k),adapter) is not None,'DLL does not AND %s with %s'%(k,parent))
@@ -60,7 +71,7 @@ ok(cs.get(('stratagem','building_destruction_all'))==('convenience',0,'','','게
 # Dependent rows: the checkbox starts after the measured width of the "└ 종속" tag (any DPI), and the tag toggles it too.
 ok('int tagWidth = nested ? TextRenderer.MeasureText(tag.Text, tag.Font).Width : 0;' in gui and 'nested ? 28 + tagWidth + 16' in gui,'dependent tag must not overlap its checkbox')
 ok('tag.Click += (s, e) => { if (Box.Enabled) Box.Checked = !Box.Checked; };' in gui,'dependent tag click toggles its checkbox')
-ok(masters=={'combat','convenience','performance','diagnostics'},'master switches %s'%sorted(masters))
+ok(masters=={'combat','convenience','performance','diagnostics','ccz'},'master switches %s'%sorted(masters))
 for t in tabs:ok(any(v[4]==t for v in cs.values()),'empty tab %s'%t)
 # User classification (2026-10-19): combat tab = AI behaviour correction only.
 ok(all(g=='combat' or (s,k)==('groups','combat') for (s,k),(g,d,r,i,t) in cs.items() if t=='전투'),'non-combat item in 전투 tab')

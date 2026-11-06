@@ -14,7 +14,7 @@ try {
     $env:LIB="$taskVc\lib\x64;$taskSdk\Lib\$taskVersion\ucrt\x64;$taskSdk\Lib\$taskVersion\um\x64"
     Push-Location -LiteralPath $taskBuild
     try {
-        & python -B -X utf8 (Join-Path $taskProject 'tools\gen_ai_trace_nodes.py')
+        & python -B -X utf8 (Join-Path $taskProject 'tests\verify_ai_trace_nodes.py')
         if($LASTEXITCODE -ne 0){throw 'Node table generation failed.'}
         & cl.exe /nologo /W4 /WX /wd4505 /utf-8 /O2 /MT /std:c++17 /EHsc (Join-Path $taskProject 'tests\ai_trace_fixture.cpp') /Feai_trace_fixture.exe /link kernel32.lib
         if($LASTEXITCODE -ne 0){throw 'Trace fixture build failed.'}

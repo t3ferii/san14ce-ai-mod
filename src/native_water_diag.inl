@@ -19,7 +19,7 @@ static bool active() {return InterlockedCompareExchange(&observing,1,1) && enabl
 // User 2026-10-29: the per-bind VSSetShader observer cost frames once its
 // answer (one ocean plane, level 450) was known. Install only on request.
 #ifndef WATER_DIAG_WANTED
-#define WATER_DIAG_WANTED() (mod_setting(L"diagnostics",L"water_diag",0,L"diagnostics.ini")!=0)
+#define WATER_DIAG_WANTED() (dev_group() && mod_setting(L"diagnostics",L"water_diag",0,L"diagnostics.ini")!=0)
 #endif
 static bool wanted() {static const bool value=WATER_DIAG_WANTED();return value;}
 struct Site {void **table;unsigned slot;void *original,*replacement;unsigned char bytes[16];bool published;bool context_table;};
@@ -173,11 +173,11 @@ static unsigned shader_kind(ID3D11VertexShader *vs) {
 }
 using CreateVS=HRESULT(STDMETHODCALLTYPE *)(ID3D11Device *,const void *,SIZE_T,ID3D11ClassLinkage *,ID3D11VertexShader **);
 using CreatePS=HRESULT(STDMETHODCALLTYPE *)(ID3D11Device *,const void *,SIZE_T,ID3D11ClassLinkage *,ID3D11PixelShader **);
-static HRESULT STDMETHODCALLTYPE create_vs(ID3D11Device *d,const void *b,SIZE_T n,ID3D11ClassLinkage *l,ID3D11VertexShader **out) {
+static HRESULT STDMETHODCALLTYPE create_vs(ID3D11Device *d,const void *b,SIZE_T n,ID3D11ClassLinkage *l,ID3D11VertexShader **out) { COST_SCOPE("create_vs");
     auto call=reinterpret_cast<CreateVS>(original(d,12));HRESULT hr=call(d,b,n,l,out);
     if(SUCCEEDED(hr) && out)remember(false,b,n,*out);return hr;
 }
-static HRESULT STDMETHODCALLTYPE create_ps(ID3D11Device *d,const void *b,SIZE_T n,ID3D11ClassLinkage *l,ID3D11PixelShader **out) {
+static HRESULT STDMETHODCALLTYPE create_ps(ID3D11Device *d,const void *b,SIZE_T n,ID3D11ClassLinkage *l,ID3D11PixelShader **out) { COST_SCOPE("create_ps");
     auto call=reinterpret_cast<CreatePS>(original(d,15));HRESULT hr=call(d,b,n,l,out);
     if(SUCCEEDED(hr) && out)remember(true,b,n,*out);return hr;
 }
@@ -365,7 +365,7 @@ static void observe_bind(Context &c,ID3D11VertexShader *next) {
     report_binds(c,now);
 }
 using SetVS=void(STDMETHODCALLTYPE *)(ID3D11DeviceContext *,ID3D11VertexShader *,ID3D11ClassInstance *const *,UINT);
-static void STDMETHODCALLTYPE set_vs(ID3D11DeviceContext *c,ID3D11VertexShader *v,ID3D11ClassInstance *const *i,UINT n) {
+static void STDMETHODCALLTYPE set_vs(ID3D11DeviceContext *c,ID3D11VertexShader *v,ID3D11ClassInstance *const *i,UINT n) { COST_SCOPE("set_vs");
     auto call=reinterpret_cast<SetVS>(original(c,11));
     Context *state=find_context(c);
     if(active() && state && context_ready(*state))observe_bind(*state,v);

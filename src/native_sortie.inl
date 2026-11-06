@@ -1,3 +1,4 @@
+#include "game_addresses.h"
 #include "sortie_policy.h"
 using SortiePlanner=uint64_t(__fastcall *)(Obj,Obj,Obj);
 using SortieDispatch=Obj(__fastcall *)(unsigned *,int);
@@ -40,7 +41,7 @@ static int sortie_search_next(SortieSearch next,SortieNativePath *path,Obj conte
         campaign_native_trace->assign(path->data,path->data+path->count);
     return result;
 }
-static int __fastcall sortie_search(SortieNativePath *path,Obj context,unsigned from,unsigned *to,int a,int b,int c) {
+static int __fastcall sortie_search(SortieNativePath *path,Obj context,unsigned from,unsigned *to,int a,int b,int c) { COST_SCOPE_HOT("sortie_search");
     return sortie_search_next(original_sortie_search,path,context,from,to,a,b,c);
 }
 static __declspec(thread) Obj sortie_planner_node;
@@ -66,27 +67,27 @@ static bool sortie_auto_person(Obj person) {
     if(!valid(person) || !world())return false;
     Obj district=table(0xE0D0,person[0xE0],51),context=pointer(world(),0x871E8);
     return valid(district) && context &&
-        district!=fn<Obj(__fastcall *)(Obj)>(0x32E8D0)(context);
+        district!=fn<Obj(__fastcall *)(Obj)>(GA(GA_32E8D0))(context);
 }
 static bool sortie_controlled(Obj army) {
     return valid(army) && !army[0x140] && sortie_auto_person(table(0x158,word(army,0x12),6000));
 }
 static Obj sortie_goal(unsigned city) {
     if(!city || city>61)return nullptr;
-    Obj goal=fn<Obj(__fastcall *)(Obj,unsigned)>(0x32C130)(world(),city);
+    Obj goal=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32C130))(world(),city);
     return valid(goal) && word(goal,0x4E)==city?goal:nullptr;
 }
 static bool sortie_hostile(Obj army,unsigned city) {
-    Obj goal=sortie_goal(city),force=goal?fn<Obj(__fastcall *)(Obj)>(0x22C990)(goal):nullptr;
+    Obj goal=sortie_goal(city),force=goal?fn<Obj(__fastcall *)(Obj)>(GA(GA_22C990))(goal):nullptr;
     if(!valid(force))return false;
     auto id=*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(force,0)+0x60);
-    return fn<int(__fastcall *)(unsigned,unsigned)>(0x2CA280)(army_force(army),id(force))!=0;
+    return fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(army_force(army),id(force))!=0;
 }
 static void sortie_assault(Obj army,unsigned city,bool clear) {
     if(city<=51) {offensive_order(army,city,clear);return;}
-    if(clear)fn<void(__fastcall *)(Obj)>(0xA2410)(army);
-    fn<void(__fastcall *)(Obj,int)>(0x2EAAE0)(army,5);
-    fn<void(__fastcall *)(Obj,int,int)>(0x2EAB40)(army,6,static_cast<int>(city));
+    if(clear)fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(army,5);
+    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(army,6,static_cast<int>(city));
 }
 static unsigned sortie_support(Obj p);
 static unsigned sortie_facing(unsigned center,unsigned goal);
@@ -111,7 +112,7 @@ static bool sortie_recover(Obj army,Obj group,SortieGroup &g) {
     if(assigned!=count)return false;
     g.root=world();g.group=group;g.city=word(group,0x16);g.center=word(g.army[6],0x2A);
     Obj destination=sortie_goal(g.city);if(!valid(g.army[6]) || !destination)return false;
-    unsigned goal=fn<unsigned(__fastcall *)(Obj)>(0x22D740)(destination);
+    unsigned goal=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(destination);
     g.facing=sortie_facing(g.center,goal);g.destination=48400;g.site=48400;g.builder=7;
     g.day=-1;g.last_motion=game_day();g.motion_hex=g.center;g.battle_troops=total;g.active=true;
     return true;
@@ -167,19 +168,19 @@ static void sortie_command(Obj node,Obj target,Obj person,unsigned formation,uns
     for(unsigned i=8;i<=12;++i)cmd[i]=48400;
     cmd[14]=255;cmd[24]=48400;cmd[25]=48400;
     // Both vector/vtable words are native command defaults, not heap objects.
-    memcpy(cmd+20,image+0x13483B0,16);
-    fn<void(__fastcall *)(Obj,Obj,Obj,unsigned *,unsigned)>(0x42E70)(node,target,person,cmd,soldiers);
+    memcpy(cmd+20,image+GA(GA_13483B0),16);
+    fn<void(__fastcall *)(Obj,Obj,Obj,unsigned *,unsigned)>(GA(GA_42E70))(node,target,person,cmd,soldiers);
     if(gate_rear)formation=cmd[3];
     cmd[2]=soldiers;cmd[3]=formation;
-    fn<void(__fastcall *)(Obj,Obj,unsigned *)>(0xD0090)(person,table(0x77428,formation,20),cmd);
+    fn<void(__fastcall *)(Obj,Obj,unsigned *)>(GA(GA_D0090))(person,table(0x77428,formation,20),cmd);
 }
 static unsigned sortie_field_formation(Obj person) {
     for(unsigned f:{4u,1u,3u,2u,5u,6u,7u,14u})
-        if(fn<int(__fastcall *)(Obj,unsigned)>(0x232350)(person,f))return f;
+        if(fn<int(__fastcall *)(Obj,unsigned)>(GA(GA_232350))(person,f))return f;
     return 0;
 }
 static unsigned sortie_capture_formation(Obj person) {
-    if(fn<int(__fastcall *)(Obj,unsigned)>(0x232350)(person,7))return 7;
+    if(fn<int(__fastcall *)(Obj,unsigned)>(GA(GA_232350))(person,7))return 7;
     return sortie_field_formation(person);
 }
 static void sortie_escort_clear(unsigned id);
@@ -217,14 +218,14 @@ static Obj __fastcall sortie_dispatch(unsigned *command,int spend) {
         bool city=goal?valid(goal) && word(goal,0x4E)>0 && word(goal,0x4E)<=51:command[14]==5;
         if(city) {unsigned formation=sortie_field_formation(person);
             if(formation) {copy[3]=formation;
-                fn<void(__fastcall *)(Obj,Obj,unsigned *)>(0xD0090)(person,table(0x77428,formation,20),copy);
+                fn<void(__fastcall *)(Obj,Obj,unsigned *)>(GA(GA_D0090))(person,table(0x77428,formation,20),copy);
                 copy[2]=command[2];if(valid(source))copy[2]=(std::min)(copy[2],campaign::available(dword(source,0x3C)));}}
     }
     // [combat] ai_wall_block: a computer departure ordered to build an earthen/stone wall (facility 9/10,
     // command[23] -> Army+46) is refused before it leaves, instead of being cancelled a turn later.
     if(mod_features.ai_wall_block && (copy[13]==8 || copy[13]==9) && (copy[23]==9 || copy[23]==10)) {
         Obj d=table(0xE0D0,person[0xE0],51);
-        if(valid(d) && !fn<int(__fastcall *)(Obj)>(0x233750)(d)) {log_event("ai_wall_departure_blocked",copy[0],copy[23],copy[21]);return nullptr;}
+        if(valid(d) && !fn<int(__fastcall *)(Obj)>(GA(GA_233750))(d)) {log_event("ai_wall_departure_blocked",copy[0],copy[23],copy[21]);return nullptr;}
     }
     if(person[0xA9]==1)copy[2]=(std::min)(copy[2],1000u);
     if(copy[2]<1000 || person[0x161])return nullptr;
@@ -248,26 +249,26 @@ static Obj sortie_issue(unsigned *cmd,int spend) {
 static bool sortie_departure_from(Obj node,Obj target,const std::vector<Obj> &sources,unsigned cap=0) {
     COST_SCOPE("sortie_departure_from");
     if(!valid(target) || !word(target,0x4E) || word(target,0x4E)>61)return false;
-    Obj target_owner=fn<Obj(__fastcall *)(Obj)>(0x22C990)(target);if(!valid(target_owner))return false;
+    Obj target_owner=fn<Obj(__fastcall *)(Obj)>(GA(GA_22C990))(target);if(!valid(target_owner))return false;
     unsigned target_force=(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(target_owner,0)+0x60))(target_owner);
     for(Obj city:sources) {
         if(!valid(city))continue;
-        Obj owner=fn<Obj(__fastcall *)(Obj)>(0x22C990)(city);if(!valid(owner))continue;
+        Obj owner=fn<Obj(__fastcall *)(Obj)>(GA(GA_22C990))(city);if(!valid(owner))continue;
         unsigned source_force=(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(owner,0)+0x60))(owner);
-        if(!fn<int(__fastcall *)(unsigned,unsigned)>(0x2CA280)(source_force,target_force))continue;
+        if(!fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(source_force,target_force))continue;
         unsigned stock=campaign::available(dword(city,0x3C));
         if(cap) {if(stock<sortie_split_threshold)continue;if(stock>cap)stock=cap;}
         else if(!campaign::siege_departure(stock,dword(target,0x3C)))continue;
-        GameList people;list_init(people,0x13436B0);
-        fn<void(__fastcall *)(Obj,GameList *)>(0x2D7180)(city,&people);
-        fn<void(__fastcall *)(GameList *)>(0x2A0780)(&people);
-        fn<void(__fastcall *)(GameList *,int,int,int)>(0xD32C0)(&people,0,1,0);
+        GameList people;list_init(people,GA(GA_13436B0));
+        fn<void(__fastcall *)(Obj,GameList *)>(GA(GA_2D7180))(city,&people);
+        fn<void(__fastcall *)(GameList *)>(GA(GA_2A0780))(&people);
+        fn<void(__fastcall *)(GameList *,int,int,int)>(GA(GA_D32C0))(&people,0,1,0);
         sortie::Officer facts[128];Obj actors[128];unsigned count=0;
         for(Link *l=list_first(people);l && count<128;l=l->next) {
             Obj p=l->value;if(!sortie_auto_person(p) || p[0x161])continue;
-            int capacity=fn<int(__fastcall *)(Obj)>(0x2311A0)(p);
+            int capacity=fn<int(__fastcall *)(Obj)>(GA(GA_2311A0))(p);
             if(capacity<1000 || capacity>65535)continue;
-            int score=fn<int(__fastcall *)(Obj,unsigned,unsigned)>(0x22FCE0)(p,0,0xFFF);
+            int score=fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_22FCE0))(p,0,0xFFF);
             unsigned support=sortie_support(p);
             if(p[0xA9]==1) {if(!support)continue;capacity=1000;}
             facts[count]={word(p,0x10),dword(p,0x12C),static_cast<unsigned>(capacity),support,score+static_cast<int>(support*200),word(target,0x4E)>51};
@@ -329,11 +330,11 @@ static bool sortie_departure_from(Obj node,Obj target,const std::vector<Obj> &so
                 bool used=false;for(unsigned i=0;i<7;++i)if(capacities[i] && chosen[i]==k)used=true;
                 if(!used && !actors[k][0x161] && facts[k].capacity>=1000 && sortie_field_formation(actors[k]))spare=true;
             }
-            unsigned city_hex=fn<unsigned(__fastcall *)(Obj)>(0x22D740)(target),available_bases=0;
+            unsigned city_hex=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(target),available_bases=0;
             GameList nearby;list_init(nearby);Obj tile=table(0xE270,city_hex,48399);
-            if(valid(tile))fn<void(__fastcall *)(Obj,int,GameList *)>(0x2A7AA0)(tile,15,&nearby);
+            if(valid(tile))fn<void(__fastcall *)(Obj,int,GameList *)>(GA(GA_2A7AA0))(tile,15,&nearby);
             for(Link *l=list_first(nearby);l;l=l->next)if(valid(l->value)) {
-                unsigned id=campaign_area_id(fn<unsigned(__fastcall *)(Obj)>(0x22DDA0)(l->value));
+                unsigned id=campaign_area_id(fn<unsigned(__fastcall *)(Obj)>(GA(GA_22DDA0))(l->value));
                 Obj a=table(0x6CAF0,id,500);if(!id || !valid(a) || campaign_transit_region(id))continue;
                 unsigned h=word(a,0x3A);Obj base=table(0xE270,h,48399);if(!valid(base) || base[0x14]==(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(owner,0)+0x60))(owner))continue;
                 for(unsigned edge=0;edge<8;++edge) {
@@ -368,37 +369,37 @@ static bool sortie_departure_from(Obj node,Obj target,const std::vector<Obj> &so
             if(!list_add(created,army)) {issued=false;break;}
         }
         if(issued) {
-            g.group=fn<Obj(__fastcall *)(GameList *)>(0x2D9260)(&created);
+            g.group=fn<Obj(__fastcall *)(GameList *)>(GA(GA_2D9260))(&created);
             issued=valid(g.group);
         }
         if(!issued) {
             // Native cancellation owns soldier/resource bookkeeping.
-            if(valid(g.group))fn<void(__fastcall *)(Obj)>(0x9E900)(g.group);
+            if(valid(g.group))fn<void(__fastcall *)(Obj)>(GA(GA_9E900))(g.group);
             else for(unsigned i=0;i<7;++i)if(valid(g.army[i])) {
                 Obj old=table(0x7F8D8,word(g.army[i],0x58),500);
-                if(valid(old))fn<void(__fastcall *)(Obj)>(0x9E900)(old);
+                if(valid(old))fn<void(__fastcall *)(Obj)>(GA(GA_9E900))(old);
             }
             list_free(created);log_event("sortie_departure_failed",0,total,word(city,0x4E));return false;
         }
         list_free(created);
-        for(Obj old:temporary)if(valid(old) && old!=g.group)fn<void(__fastcall *)(Obj)>(0x282540)(old);
+        for(Obj old:temporary)if(valid(old) && old!=g.group)fn<void(__fastcall *)(Obj)>(GA(GA_282540))(old);
         *reinterpret_cast<unsigned short *>(g.group+0x14)=static_cast<unsigned short>(node?dword(node,0x4C):10);
         *reinterpret_cast<unsigned short *>(g.group+0x16)=word(target,0x4E);
         *reinterpret_cast<unsigned short *>(g.group+0x2C)=g.commander[6];
         if(node && !list_add(*reinterpret_cast<GameList *>(node+0x98),g.group)) {
-            fn<void(__fastcall *)(Obj)>(0x9E900)(g.group);return false;
+            fn<void(__fastcall *)(Obj)>(GA(GA_9E900))(g.group);return false;
         }
-        float power=0;for(Obj army:g.army)if(army)power+=fn<float(__fastcall *)(Obj)>(0xB5EC0)(army);
+        float power=0;for(Obj army:g.army)if(army)power+=fn<float(__fastcall *)(Obj)>(GA(GA_B5EC0))(army);
         if(node)*reinterpret_cast<int *>(node+0x84)-=static_cast<int>(power);
         // group_advance=0: the formation only shapes the departure; the original AI moves each army.
         g.active=mod_features.group_advance;g.root=world();g.city=word(target,0x4E);g.center=word(g.army[6],0x2A);
-        g.facing=sortie_facing(g.center,fn<unsigned(__fastcall *)(Obj)>(0x22D740)(target));
+        g.facing=sortie_facing(g.center,fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(target));
         g.destination=48400;g.site=48400;g.builder=7;g.day=-1;g.last_motion=game_day();g.motion_hex=g.center;g.battle_troops=total;
         sortie_commit(word(g.army[6],0x58),g);
         if(companion_budget) {
             Progress *lead=observe_capture(g.army[6]);if(lead) {
                 lead->city=g.city;lead->campaign=true;
-                unsigned h=fn<unsigned(__fastcall *)(Obj)>(0x22D740)(target);
+                unsigned h=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(target);
                 if(next_region(g.army[6],*lead,h,true)==1)campaign_request_companion(g.army[6],*lead,lead->region_target);
             }
         }
@@ -457,17 +458,17 @@ static void sortie_support_attach(Obj node,Obj group) {
     }
     if(!leader)return;
     if(!support) {
-        Obj city=fn<Obj(__fastcall *)(Obj)>(0x22A5A0)(leader);
+        Obj city=fn<Obj(__fastcall *)(Obj)>(GA(GA_22A5A0))(leader);
         if(!valid(city) || campaign::available(dword(city,0x3C))<1000)return;
-        GameList candidates;list_init(candidates,0x13436B0);
-        fn<void(__fastcall *)(Obj,GameList *)>(0x2D7180)(city,&candidates);
-        fn<void(__fastcall *)(GameList *)>(0x2A0780)(&candidates);
-        fn<void(__fastcall *)(GameList *,int,int,int)>(0xD32C0)(&candidates,0,1,0);
+        GameList candidates;list_init(candidates,GA(GA_13436B0));
+        fn<void(__fastcall *)(Obj,GameList *)>(GA(GA_2D7180))(city,&candidates);
+        fn<void(__fastcall *)(GameList *)>(GA(GA_2A0780))(&candidates);
+        fn<void(__fastcall *)(GameList *,int,int,int)>(GA(GA_D32C0))(&candidates,0,1,0);
         Obj chosen=nullptr;unsigned traits=0;
         for(Link *l=list_first(candidates);l;l=l->next) {
             Obj p=l->value;
             if(!sortie_auto_person(p) || p[0x161] || !sortie_field_formation(p) ||
-                fn<int(__fastcall *)(Obj)>(0x2311A0)(p)<1000)continue;
+                fn<int(__fastcall *)(Obj)>(GA(GA_2311A0))(p)<1000)continue;
             bool deployed=false;
             for(unsigned i=1;i<=500;++i) {
                 Obj a=table(0x7E838,i,500);if(valid(a) && word(a,0x12)==word(p,0x10)) {deployed=true;break;}
@@ -487,11 +488,11 @@ static void sortie_support_attach(Obj node,Obj group) {
         support=chosen[0x161]?nullptr:sortie_issue(command,1);if(!valid(support))return;
         Obj temporary=table(0x7F8D8,word(support,0x58),500);
         unsigned group_id=word(leader,0x58);
-        fn<void(__fastcall *)(Obj,unsigned)>(0x241C90)(support,group_id);
+        fn<void(__fastcall *)(Obj,unsigned)>(GA(GA_241C90))(support,group_id);
         if(word(support,0x58)!=group_id) {
-            if(valid(temporary))fn<void(__fastcall *)(Obj)>(0x9E900)(temporary);return;
+            if(valid(temporary))fn<void(__fastcall *)(Obj)>(GA(GA_9E900))(temporary);return;
         }
-        if(valid(temporary) && temporary!=group)fn<void(__fastcall *)(Obj)>(0x282540)(temporary);
+        if(valid(temporary) && temporary!=group)fn<void(__fastcall *)(Obj)>(GA(GA_282540))(temporary);
         log_event("sortie_support_departed",word(chosen,0x10),1000,word(group,0x16));
     }
     unsigned id=army_id(support);if(!id)return;
@@ -575,24 +576,24 @@ static float sortie_movement_next(SortieMovement next,Obj army,Obj formation,int
     // Existing native getter/ABI supplies neutral terrain, not foreign RVAs.
     for(Obj other:g.army)if(other) {
         float base;
-        {COST_SCOPE("native_sortie_movement");base=next(other,fn<Obj(__fastcall *)(Obj)>(0x22B090)(other),preview,modifier,neutral);}
+        {COST_SCOPE("native_sortie_movement");base=next(other,fn<Obj(__fastcall *)(Obj)>(GA(GA_22B090))(other),preview,modifier,neutral);}
         if(base>0)slowest=(std::min)(slowest,base);
     }
     // Impassable terrain still returns native zero before this branch.
     return slowest>0?slowest:native;
 }
-static float __fastcall sortie_movement(Obj army,Obj formation,int preview,int modifier,Obj tile) {
-    return sortie_movement_next(original_sortie_movement?original_sortie_movement:fn<SortieMovement>(0x2B0290),army,formation,preview,modifier,tile);
+static float __fastcall sortie_movement(Obj army,Obj formation,int preview,int modifier,Obj tile) { COST_SCOPE_HOT("sortie_movement");
+    return sortie_movement_next(original_sortie_movement?original_sortie_movement:fn<SortieMovement>(GA(GA_2B0290)),army,formation,preview,modifier,tile);
 }
 static void sortie_move(Obj army,unsigned hex) {
     if(campaign_castle_locked(army))return;
     if(native_search_depth)return;
     if(army[0x37]==1 && army[0x38]==9 && word(army,0x3A)==hex && word(army,0x2C)==hex)return;
-    fn<void(__fastcall *)(Obj)>(0xA2410)(army);
-    fn<void(__fastcall *)(Obj,int)>(0x2EAAE0)(army,1);
-    fn<void(__fastcall *)(Obj,int,int)>(0x2EAB40)(army,9,static_cast<int>(hex));
-    fn<void(__fastcall *)(Obj,int,unsigned)>(0x2EE1E0)(army,0,hex);
-    fn<void(__fastcall *)(Obj)>(0x26C940)(army);
+    fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(army,1);
+    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(army,9,static_cast<int>(hex));
+    fn<void(__fastcall *)(Obj,int,unsigned)>(GA(GA_2EE1E0))(army,0,hex);
+    fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);
 }
 struct SortieOrder {unsigned char bytes[0x34];unsigned flags;unsigned short future;};
 static SortieOrder sortie_order(Obj army) {SortieOrder o;memcpy(o.bytes,army+0x2C,sizeof(o.bytes));o.flags=dword(army,0x1F0);o.future=word(army,0x1F8);return o;}
@@ -600,7 +601,7 @@ static void sortie_restore(Obj army,const SortieOrder &o) {memcpy(army+0x2C,o.by
 static bool sortie_trace_path(Obj army,unsigned target,SortieTrace &trace) {
     if(native_search_depth)return false;
     trace={};SortieOrder saved=sortie_order(army);SortieTrace *previous=sortie_trace_output;
-    sortie_trace_output=&trace;sortie_move(army,target);fn<void(__fastcall *)(Obj)>(0x26C940)(army);
+    sortie_trace_output=&trace;sortie_move(army,target);fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);
     sortie_trace_output=previous;sortie_restore(army,saved);
     if(!trace.count || trace.cells[0]!=word(army,0x2A))return false;
     for(unsigned i=1;i<trace.count;++i)if(trace.cells[i]>=48400 || distance(trace.cells[i-1],trace.cells[i])!=1)return false;
@@ -618,15 +619,15 @@ static bool sortie_chain_order(Obj army,const unsigned *points,unsigned count) {
     for(unsigned i=0;i<5;++i)same=same && word(army,0x2C+i*2)==(i<count?points[i]:48400);
     if(!same || (word(army,0x2A)!=points[count-1] &&
         (word(army,0x48)>=48400 || distance(word(army,0x2A),word(army,0x48))!=1))) {
-        fn<void(__fastcall *)(Obj)>(0xA2410)(army);
-        fn<void(__fastcall *)(Obj,int)>(0x2EAAE0)(army,1);
-        fn<void(__fastcall *)(Obj,int,int)>(0x2EAB40)(army,9,static_cast<int>(points[count-1]));
-        for(unsigned i=0;i<count;++i)fn<void(__fastcall *)(Obj,int,unsigned)>(0x2EE1E0)(army,static_cast<int>(i),points[i]);
+        fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(army,1);
+        fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(army,9,static_cast<int>(points[count-1]));
+        for(unsigned i=0;i<count;++i)fn<void(__fastcall *)(Obj,int,unsigned)>(GA(GA_2EE1E0))(army,static_cast<int>(i),points[i]);
         std::vector<unsigned> trace;auto prior=campaign_native_trace;campaign_native_trace=&trace;
-        fn<void(__fastcall *)(Obj)>(0x26C940)(army);campaign_native_trace=prior;
+        fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);campaign_native_trace=prior;
         Obj group=table(0x7F8D8,word(army,0x58),500);
         Obj city=valid(group)?sortie_goal(word(group,0x16)):nullptr;
-        bool assault=city && distance(points[count-1],fn<unsigned(__fastcall *)(Obj)>(0x22D740)(city))<=2;
+        bool assault=city && distance(points[count-1],fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(city))<=2;
         for(unsigned h:trace)if(!campaign_region_open(army,campaign_area_id(h)) || (!assault && campaign_city_danger(army,h)))return false;
     }
     return word(army,0x2A)==points[count-1] ||
@@ -642,7 +643,7 @@ static bool sortie_short_move(Obj army,unsigned target) {
     // uses the same safe area corridor as ordinary capture movement.
     Obj group=table(0x7F8D8,word(army,0x58),500);
     Obj city=valid(group)?sortie_goal(word(group,0x16)):nullptr;
-    bool assault=city && distance(target,fn<unsigned(__fastcall *)(Obj)>(0x22D740)(city))<=2 &&
+    bool assault=city && distance(target,fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(city))<=2 &&
         progress[army_id(army)].region_target>=48400;
     if(!assault) {
         CampaignRoute route=campaign_safe_route(army,target,false,true);
@@ -722,7 +723,7 @@ static bool sortie_advance(SortieGroup &g,unsigned destination) {
 }
 static bool sortie_forced_group_march(Obj actor,SortieGroup &g,unsigned id) {
     struct MarchScope {MarchScope(){++campaign_group_march_depth;}~MarchScope(){--campaign_group_march_depth;}} scope;
-    unsigned goal=fn<unsigned(__fastcall *)(Obj)>(0x22D740)(sortie_goal(g.city));
+    unsigned goal=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(sortie_goal(g.city));
     if(goal>=48400)return false;
     int day=game_day();
     if(g.day!=day || word(g.army[6],0x2A)!=g.motion_hex || (g.route_count>1 && sortie_settled(g))) {
@@ -734,7 +735,7 @@ static bool sortie_forced_group_march(Obj actor,SortieGroup &g,unsigned id) {
         }
     } else if(g.route_count>1)for(unsigned i=0;i<7;++i)if(g.army[i]==actor) {sortie_route_issue(g,i);break;}
     for(unsigned i=0;i<7;++i)if(g.army[i] && sortie::role(i)==0 && distance(word(g.army[i],0x2A),goal)<=1) {
-        sortie_assault(g.army[i],g.city,true);fn<void(__fastcall *)(Obj)>(0x26C940)(g.army[i]);
+        sortie_assault(g.army[i],g.city,true);fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(g.army[i]);
     }
     sortie_commit(id,g);return true;
 }
@@ -743,7 +744,7 @@ static bool sortie_support_step(Obj army) {
     if(!enabled || !sortie_escort_member(army))return false;unsigned id=army_id(army);
     AcquireSRWLockShared(&sortie_state_lock);SortieEscort e=sortie_escorts[id];ReleaseSRWLockShared(&sortie_state_lock);
     Obj goal=campaign_goal(e.city);if(!goal)return false;
-    unsigned center=word(e.leader,0x2A),here=word(army,0x2A),goal_hex=fn<unsigned(__fastcall *)(Obj)>(0x22D740)(goal);
+    unsigned center=word(e.leader,0x2A),here=word(army,0x2A),goal_hex=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(goal);
     unsigned rear=sortie::neighbor(center,(sortie_facing(center,goal_hex)+3)%6);
     if(distance(here,center)<=3 && distance(here,goal_hex)>=distance(center,goal_hex)) {sortie_move(army,here);return true;}
     std::vector<unsigned> targets;
@@ -823,7 +824,7 @@ static bool sortie_step(Obj actor) {
     }
     Progress *capture=observe_capture(g.army[6]);
     if(capture && sortie_capture_work(g,id,capture))return true;
-    int day=game_day();unsigned goal_hex=fn<unsigned(__fastcall *)(Obj)>(0x22D740)(sortie_goal(g.city));
+    int day=game_day();unsigned goal_hex=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(sortie_goal(g.city));
     if(g.force_march)return sortie_forced_group_march(actor,g,id);
     if(!g.rallied && campaign_area_id(word(g.army[6],0x2A))==campaign_area_id(goal_hex)) {
         Obj standing=table(0xE270,word(g.army[6],0x2A),48399);bool together=valid(standing) && standing[0x14]==army_force(actor);
@@ -885,7 +886,7 @@ static bool sortie_step(Obj actor) {
         unsigned slot=0;while(slot<7 && g.army[slot]!=actor)++slot;
         if(slot<7) {
             if(!g.working && (g.route_count<2 || settled) && sortie::role(slot)==0 && distance(word(actor,0x2A),goal_hex)<=1) {
-                sortie_assault(actor,g.city,true);fn<void(__fastcall *)(Obj)>(0x26C940)(actor);
+                sortie_assault(actor,g.city,true);fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(actor);
             } else {
                 bool issued=g.route_count>1?sortie_route_issue(g,slot):sortie_short_move(actor,sortie::slot_hex(g.center,slot,g.facing));
                 if(!issued)sortie_move(actor,word(actor,0x2A));
@@ -943,7 +944,7 @@ static bool sortie_step(Obj actor) {
             Progress &p=progress[army_id(g.army[i])];
             if(p.forced_return || p.combat_target || p.combat_city || p.facility || p.morale_recovering)continue;
             if(sortie::role(i)==0 || (sortie::role(i)==1 && word(g.army[i],0x16)>=5000)) {
-                p.siege_city=g.city<=51?g.city:0;sortie_assault(g.army[i],g.city,true);fn<void(__fastcall *)(Obj)>(0x26C940)(g.army[i]);
+                p.siege_city=g.city<=51?g.city:0;sortie_assault(g.army[i],g.city,true);fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(g.army[i]);
             } else sortie_short_move(g.army[i],sortie::slot_hex(word(g.army[6],0x2A),i,g.facing));
         }
         return true;
@@ -954,7 +955,7 @@ static bool sortie_step(Obj actor) {
     // rear units and the support officer keep their assigned escort seats.
     for(unsigned i=0;i<7;++i)if(!g.working && (g.route_count<2 || sortie_settled(g)) && g.army[i] && sortie::role(i)==0 &&
         distance(word(g.army[i],0x2A),goal_hex)<=1) {
-        sortie_assault(g.army[i],g.city,true);fn<void(__fastcall *)(Obj)>(0x26C940)(g.army[i]);
+        sortie_assault(g.army[i],g.city,true);fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(g.army[i]);
     }
     if(lead->region_target<48400 && lead->region_target==g.destination)
         *reinterpret_cast<unsigned *>(g.army[6]+0x1F0)|=2;

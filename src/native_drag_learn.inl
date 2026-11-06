@@ -14,14 +14,15 @@
 //   source+120 u16[] book stock; 22E7E0(source)+14 orders, cost [1A48584].
 // A mode-2 limit (max > 1) turns the original list into a multi-select list; nothing else in the
 // dialogs changes. Names in the window still show the first selection.
+#include "game_addresses.h"
 namespace drag_learn {
-static const unsigned kBookOpen=0x7482E4,kBookClosed=0x748359,kOfficerOpen=0x74A338,kOfficerClosed=0x74A37A,
-    kGrey=0x748175,kLearnCall=0x740125,kLearn=0x1F0520;
+static const unsigned kBookOpen=GA(GA_7482E4),kBookClosed=GA(GA_748359),kOfficerOpen=GA(GA_74A338),kOfficerClosed=GA(GA_74A37A),
+    kGrey=GA(GA_748175),kLearnCall=GA(GA_740125),kLearn=GA(GA_1F0520);
 static const unsigned kMaxSelect=10;
 static Obj books[16],officers[16],book_officer;
 static unsigned book_count,officer_count;
 static Obj tactic_of(Obj book) {unsigned i=book[0x52];return pointer(world(),0x774D0+(i<=200?i:0)*8);}
-static unsigned slot_tactic(Obj person,unsigned i) {return fn<unsigned(__fastcall *)(Obj,unsigned)>(0x22A320)(person,i);}
+static unsigned slot_tactic(Obj person,unsigned i) {return fn<unsigned(__fastcall *)(Obj,unsigned)>(GA(GA_22A320))(person,i);}
 static unsigned slots_used(Obj person) {
     unsigned used=0;
     for(unsigned i=0;i<10;++i) {unsigned t=slot_tactic(person,i);if(valid(pointer(world(),0x774D0+(t<=200?t:0)*8)))++used;}
@@ -30,24 +31,24 @@ static unsigned slots_used(Obj person) {
 static bool can_learn(Obj person,Obj book) {
     if(!valid(person) || !book)return false;
     Obj tactic=tactic_of(book);if(!valid(tactic))return false;
-    unsigned id=fn<unsigned(__fastcall *)(Obj)>(0x22E0A0)(tactic);
+    unsigned id=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22E0A0))(tactic);
     for(unsigned i=0;i<10;++i)if(slot_tactic(person,i)==id)return false;
     for(unsigned at=0x77428;at<0x774D0;at+=8) {
         Obj form=pointer(world(),at);if(!valid(form))continue;
-        unsigned f=fn<unsigned(__fastcall *)(Obj)>(0x22DD10)(form);
+        unsigned f=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22DD10))(form);
         if(f>20 || !(dword(tactic,0x6C)>>f&1))continue;
-        if(form[0x7E]==2?fn<unsigned(__fastcall *)(Obj)>(0x42A80)(person)==f:fn<int(__fastcall *)(Obj,unsigned)>(0x232350)(person,f)!=0)return true;
+        if(form[0x7E]==2?fn<unsigned(__fastcall *)(Obj)>(GA(GA_42A80))(person)==f:fn<int(__fastcall *)(Obj,unsigned)>(GA(GA_232350))(person,f)!=0)return true;
     }
     return false;
 }
 static unsigned orders_for(Obj source) {
-    Obj o=source?fn<Obj(__fastcall *)(Obj)>(0x22E7E0)(source):nullptr;
-    unsigned cost=dword(image,0x1A48584);
+    Obj o=source?fn<Obj(__fastcall *)(Obj)>(GA(GA_22E7E0))(source):nullptr;
+    unsigned cost=dword(image,GA(GA_1A48584));
     return o?(cost?o[0x14]/cost:o[0x14]):0;
 }
 static unsigned collect(unsigned *handle,Obj *out,unsigned max) {
-    if(!handle || !pointer(image,0x27D10E8) || *handle>=dword(image,0x27D1120))return 0;
-    Obj heads=pointer(image,0x27D10F0);if(!heads)return 0;
+    if(!handle || !pointer(image,GA(GA_27D10E8)) || *handle>=dword(image,GA(GA_27D1120)))return 0;
+    Obj heads=pointer(image,GA(GA_27D10F0));if(!heads)return 0;
     unsigned n=0;
     for(Link *l=*reinterpret_cast<Link **>(heads+*handle*8);l && n<max;l=l->next)out[n++]=l->value;
     return n;
@@ -99,10 +100,10 @@ static unsigned long long __fastcall learn(Obj *args) { COST_SCOPE("drag_learn::
             Obj what=b?books[b]:book;
             if(!what || (b && (what==book || pointer(what,0)!=pointer(book,0))))continue;
             if(!can_learn(who,what))continue;
-            unsigned index=fn<unsigned(__fastcall *)(Obj)>(0x22DD70)(what);
+            unsigned index=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22DD70))(what);
             if(index<1 || index>30 || !word(source,0x120+index*2))continue;
-            Obj force=fn<Obj(__fastcall *)(Obj)>(0x22E7E0)(source);
-            if(!force || force[0x14]<dword(image,0x1A48584))goto done;
+            Obj force=fn<Obj(__fastcall *)(Obj)>(GA(GA_22E7E0))(source);
+            if(!force || force[0x14]<dword(image,GA(GA_1A48584)))goto done;
             if(slots_used(who)>=10)break;
             args[0]=who;args[1]=what;args[2]=nullptr;
             if(original(args))++learned;
@@ -135,11 +136,11 @@ static bool guards_match() {
     static const unsigned char oopen[]={0x48,0x89,0x74,0x24,0x5C,0xB9,0x2E,0x03,0,0};
     static const unsigned char oclosed[]={0x41,0xBE,0x00,0x40,0x01,0x00,0x48,0x8B,0x54,0x24,0x28};
     static const unsigned char grey[]={0x83,0x3D},grey2[]={0x74,0x0D,0x48,0x8D,0x0D},grey0[]={0x75,0x94};
-    return !memcmp(image+kBookOpen,open,sizeof(open)) && !memcmp(image+kBookClosed,closed,sizeof(closed)) &&
-        !memcmp(image+kOfficerOpen,oopen,sizeof(oopen)) && !memcmp(image+kOfficerClosed,oclosed,sizeof(oclosed)) &&
-        !memcmp(image+0x74816E,grey,2) && image[0x748174]==0 && !memcmp(image+kGrey,grey2,5) && !memcmp(image+0x74816C,grey0,2) &&
+    return !ga::mcmp_at(image,kBookOpen,open,sizeof(open)) && !ga::mcmp_at(image,kBookClosed,closed,sizeof(closed)) &&
+        !ga::mcmp_at(image,kOfficerOpen,oopen,sizeof(oopen)) && !ga::mcmp_at(image,kOfficerClosed,oclosed,sizeof(oclosed)) &&
+        !ga::mcmp(image,GA_74816E,0,grey,2) && image[GA(GA_748174)]==0 && !ga::mcmp_at(image,kGrey,grey2,5) && !ga::mcmp(image,GA_74816C,0,grey0,2) &&
         image[kLearnCall]==0xE8 && kLearnCall+5+*reinterpret_cast<int *>(image+kLearnCall+1)==kLearn &&
-        image[0x748156]==0x75 && image[0x748157]==0x73;
+        image[GA(GA_748156)]==0x75 && image[GA(GA_748157)]==0x73;
 }
 static void put(Obj at,unsigned offset,const void *value) {memcpy(at+offset,&value,8);}
 static bool jump_patch(CodeLink &link,unsigned rva,unsigned length,Obj target) {
@@ -154,15 +155,15 @@ static bool install() {
     if(!guards_match()) {log_event("drag_learn_guard_rejected");return false;}
     Obj relay=allocate_near(image+kBookOpen);if(!relay)return false;
     Obj s1=relay,s2=relay+0x60,s3=relay+0xC0,s4=relay+0x120,s5=relay+0x180,s6=relay+0x200;
-    memcpy(s1,kStubBookOpen,sizeof(kStubBookOpen));put(s1,25,reinterpret_cast<void *>(&book_open));put(s1,46,image+0x7482F0);
-    memcpy(s2,kStubBookClosed,sizeof(kStubBookClosed));put(s2,14,reinterpret_cast<void *>(&book_closed));put(s2,37,image+0x748360);
-    memcpy(s3,kStubOfficerOpen,sizeof(kStubOfficerOpen));put(s3,19,reinterpret_cast<void *>(&officer_open));put(s3,40,image+0x74A33D);
-    memcpy(s4,kStubOfficerClosed,sizeof(kStubOfficerClosed));put(s4,11,reinterpret_cast<void *>(&officer_closed));put(s4,33,image+0x74A380);
-    memcpy(s5,kStubGrey,sizeof(kStubGrey));put(s5,12,reinterpret_cast<void *>(&book_enabled));put(s5,32,image+0x7481CB);
-    put(s5,44,image+0x748175+*reinterpret_cast<int *>(image+0x748170));          // cmp [rip+disp],0 at 74816E
-    put(s5,59,image+0x748184);
-    put(s5,71,image+0x74817E+*reinterpret_cast<int *>(image+0x74817A));          // lea rcx,[rip+disp] at 748177
-    put(s5,81,image+0x74817E);
+    memcpy(s1,kStubBookOpen,sizeof(kStubBookOpen));put(s1,25,reinterpret_cast<void *>(&book_open));put(s1,46,image+GA(GA_7482F0));
+    memcpy(s2,kStubBookClosed,sizeof(kStubBookClosed));put(s2,14,reinterpret_cast<void *>(&book_closed));put(s2,37,image+GA(GA_748360));
+    memcpy(s3,kStubOfficerOpen,sizeof(kStubOfficerOpen));put(s3,19,reinterpret_cast<void *>(&officer_open));put(s3,40,image+GA(GA_74A33D));
+    memcpy(s4,kStubOfficerClosed,sizeof(kStubOfficerClosed));put(s4,11,reinterpret_cast<void *>(&officer_closed));put(s4,33,image+GA(GA_74A380));
+    memcpy(s5,kStubGrey,sizeof(kStubGrey));put(s5,12,reinterpret_cast<void *>(&book_enabled));put(s5,32,image+GA(GA_7481CB));
+    put(s5,44,image+GA(GA_748175)+*reinterpret_cast<int *>(image+GA(GA_748170)));          // cmp [rip+disp],0 at 74816E
+    put(s5,59,image+GA(GA_748184));
+    put(s5,71,image+GA(GA_74817E)+*reinterpret_cast<int *>(image+GA(GA_74817A)));          // lea rcx,[rip+disp] at 748177
+    put(s5,81,image+GA(GA_74817E));
     absolute_jump(s6,reinterpret_cast<void *>(&learn));
     bool ok=jump_patch(links[0],kBookOpen,12,s1) && jump_patch(links[1],kBookClosed,7,s2) && jump_patch(links[2],kOfficerOpen,5,s3) &&
         jump_patch(links[3],kOfficerClosed,6,s4) && jump_patch(links[4],kGrey,9,s5) && prepare_link(links[5],kLearnCall,0xE8,s6);

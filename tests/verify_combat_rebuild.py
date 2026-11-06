@@ -1,16 +1,11 @@
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import ga_expand  # user 2026-11-05 patch resilience: sources spell addresses as GA(GA_x)
 """Read-only separation audit. Does not load DLLs or access a game process."""
 from pathlib import Path
 import hashlib,json,re
 
 project=Path(__file__).resolve().parents[1]
 game=project.parent
-expected={
-    'dinput8.dll':'fe9f3bf05cd18a81120eb57a8a6181a18c984be7ceb8ec40fcc97fb65ee7a5ab',
-    'SAN14_CombatAI.dll':'f1960c39938195301cd7967e67e8b5c8d20812af597594a9bd4a565178ca35df',
-    'SAN14_Convenience.dll':'25d2ae326362621fa1efd74a5d8a855d9e5409aabff688f89bff24bf79adb7e5',
-    'SAN14CE_KO.exe':'87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a',
-    'AI_TacticsMod/dist/SAN14_AI_v11.7_integrated.zip':'d88a9870582df2e6571f01c4f4bbed9be50d0c2edaf4ab4f6d3d5e95907a6ec6',
-}
+expected=json.loads((project/'build/development/combat_v2/before_build_hashes.json').read_text(encoding='utf-8-sig'))
 checks=0
 def check(value,message):
     global checks
@@ -32,6 +27,8 @@ registry=json.loads((project/'development/features.json').read_text(encoding='ut
 for name in registry['modules']['combat-rebuild']['sources']:
     check((project/name).is_file(),f'Missing selected source: {name}')
 actual={}
+check(set(expected)=={'dinput8.dll','SAN14_CombatAI.dll','SAN14_Convenience.dll','SAN14CE_KO.exe',
+                      'AI_TacticsMod/dist/SAN14_AI_v11.7_integrated.zip'},'Protected artifact inventory differs')
 for name,digest in expected.items():
     actual[name]=hashlib.sha256((game/name).read_bytes()).hexdigest()
     check(actual[name]==digest,f'Installed/original/shared artifact changed: {name}')

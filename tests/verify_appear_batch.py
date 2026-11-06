@@ -1,3 +1,4 @@
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import ga_expand  # user 2026-11-05 patch resilience: sources spell addresses as GA(GA_x)
 """Independent check of appear_batch guard constants against the DRM-free analysis EXE and the
 captured running .text (2026-10-25 user: several armies per frame), plus the decoded behaviour the
 module relies on: one army per call, +480 rest, 22/11 ms budget, list +478, finish via 332E90."""

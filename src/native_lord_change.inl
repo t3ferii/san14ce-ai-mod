@@ -25,21 +25,24 @@
 // 2026-10-23: built after 5035C0 returned, the button was created (log) but never shown: 5035C0 then
 // registers the footer (570440) and starts its show; controls made later stay hidden (user screenshot).
 // The status fix runs on the map state's per-frame busy check (fast_menu slot), only for rulers made here.
+#include "game_addresses.h"
 namespace lord_change {
-static const unsigned kLastButtonCall=0x503C9C,kSetText=0x85FEF0,kClickSlot=0x13E5018+0x70,kClick=0x533570;
-static const unsigned kFooterVt=0x146AFE8,kFooterFunctorVt=0x146D8A0;
+static const unsigned kLastButtonCall=GA(GA_503C9C),kSetText=GA(GA_85FEF0),kClickSlot=GA(GA_13E5018)+0x70,kClick=GA(GA_533570);
+static const unsigned kFooterVt=GA(GA_146AFE8),kFooterFunctorVt=GA(GA_146D8A0);
 static const int kButton=0x18;
 static unsigned short made[16];static volatile LONG made_count;
 using SetText=void(__fastcall *)(Obj,int,const wchar_t *,int);
 using Click=void(__fastcall *)(Obj,Obj);
+static SetText next_set_text;   // Layout manager: next in the chain (original 85FEF0 unless another mod chained first)
+static Click next_click;        // 533570
 static Obj ruler_of(Obj force) {
     if(!valid(force))return nullptr;
     Obj r=table(0x158,word(force,0x10),6000);
-    return valid(r) && fn<Obj(__fastcall *)(Obj)>(0x22CA00)(r)==force?r:nullptr;
+    return valid(r) && fn<Obj(__fastcall *)(Obj)>(GA(GA_22CA00))(r)==force?r:nullptr;
 }
 static void change(Obj old,Obj person) {   // choosing him in the list (결정) is the confirmation
-    GameList list;list_init(list,0x13436B0);
-    fn<void(__fastcall *)(Obj,Obj,GameList *,int)>(0x28DB70)(old,person,&list,0);
+    GameList list;list_init(list,GA(GA_13436B0));
+    fn<void(__fastcall *)(Obj,Obj,GameList *,int)>(GA(GA_28DB70))(old,person,&list,0);
     list_free(list);
     LONG n=made_count;if(n<16) {made[n]=word(person,0x10);InterlockedExchange(&made_count,n+1);}
     log_event("lord_change_done",word(old,0x10),word(person,0x10));
@@ -50,7 +53,7 @@ struct Callable {void **vtable;void (*callback)(Obj);};
 static void *__fastcall callable_copy(Callable *self,Callable *where) { COST_SCOPE("lord_change::callable_copy");if(where)*where=*self;return where;}
 static void __fastcall callable_call(Callable *self,Obj *arg) { COST_SCOPE("lord_change::callable_call");self->callback(arg?*arg:nullptr);}
 static void *__fastcall callable_type(Callable *) { COST_SCOPE("lord_change::callable_type");return nullptr;}
-static void __fastcall callable_delete(Callable *self,bool heap) { COST_SCOPE("lord_change::callable_delete");if(heap)fn<void(__fastcall *)(void *)>(0x3F6C50)(self);}
+static void __fastcall callable_delete(Callable *self,bool heap) { COST_SCOPE("lord_change::callable_delete");if(heap)fn<void(__fastcall *)(void *)>(GA(GA_3F6C50))(self);}
 static void *__fastcall callable_get(Callable *self) { COST_SCOPE("lord_change::callable_get");return &self->callback;}
 static void *callable_vtable[6]={reinterpret_cast<void *>(&callable_copy),reinterpret_cast<void *>(&callable_copy),
     reinterpret_cast<void *>(&callable_call),reinterpret_cast<void *>(&callable_type),reinterpret_cast<void *>(&callable_delete),
@@ -63,18 +66,18 @@ static struct Pick {bool open,lists;GameList targets,selected;Obj force,old,stat
 // 554F00 highlight, ruler voice). The old ruler is replaced in the row list and both are redrawn.
 static void refresh(Obj state,Obj force,Obj old,Obj person) {
     Obj panel=pointer(state,0x480);
-    if(panel)if(Obj row=fn<Obj(__fastcall *)(Obj,int)>(0x92CEE0)(panel+0x130,0xC)) {
+    if(panel)if(Obj row=fn<Obj(__fastcall *)(Obj,int)>(GA(GA_92CEE0))(panel+0x130,0xC)) {
         for(Link *l=list_first(*reinterpret_cast<GameList *>(row+0x180));l;l=l->next)if(l->value==old)l->value=person;
-        fn<void(__fastcall *)(Obj)>(0x53F570)(row);
+        fn<void(__fastcall *)(Obj)>(GA(GA_53F570))(row);
     }
-    fn<void(__fastcall *)(Obj,Obj)>(0x522580)(state,force);
+    fn<void(__fastcall *)(Obj,Obj)>(GA(GA_522580))(state,force);
 }
 static void picked(Obj) {   // dialog closed (결정 or 뒤로), game UI thread
     if(!pending.open)return;
     pending.open=false;
     Link *first=list_first(pending.selected);Obj person=first?first->value:nullptr;
     Obj old=ruler_of(pending.force);
-    if(old && old==pending.old && valid(person) && person!=old && fn<Obj(__fastcall *)(Obj)>(0x22CA00)(person)==pending.force) {
+    if(old && old==pending.old && valid(person) && person!=old && fn<Obj(__fastcall *)(Obj)>(GA(GA_22CA00))(person)==pending.force) {
         change(old,person);
         if(ruler_of(pending.force)==person)refresh(pending.state,pending.force,old,person);
     }
@@ -88,38 +91,38 @@ static void pick(Obj state) {   // game UI thread (state click)
     Obj force=pointer(state,0x490),old=ruler_of(force);
     if(!old) {log_event("lord_change_no_ruler");return;}
     if(pending.lists) {list_free(pending.selected);list_free(pending.targets);pending.lists=false;}
-    list_init(pending.targets,0x13436B0);list_init(pending.selected,0x13436B0);pending.lists=true;
+    list_init(pending.targets,GA(GA_13436B0));list_init(pending.selected,GA(GA_13436B0));pending.lists=true;
     unsigned count=0;
     for(unsigned id=0;id<6000;++id) {
         Obj p=table(0x158,id,6000);
-        if(valid(p) && p!=old && fn<Obj(__fastcall *)(Obj)>(0x22CA00)(p)==force && list_add(pending.targets,p))++count;
+        if(valid(p) && p!=old && fn<Obj(__fastcall *)(Obj)>(GA(GA_22CA00))(p)==force && list_add(pending.targets,p))++count;
     }
     if(!count) {log_event("lord_change_no_officer",word(force,0x10));return;}
     alignas(8) unsigned char config[0x400]={};
-    fn<Obj(__fastcall *)(Obj)>(0x250EA0)(config);
+    fn<Obj(__fastcall *)(Obj)>(GA(GA_250EA0))(config);
     *reinterpret_cast<GameList **>(config)=&pending.targets;
-    *reinterpret_cast<Obj *>(config+8)=image+0x1A31330;
-    *reinterpret_cast<Obj *>(config+16)=image+0x1A2B850;
+    *reinterpret_cast<Obj *>(config+8)=image+GA(GA_1A31330);
+    *reinterpret_cast<Obj *>(config+16)=image+GA(GA_1A2B850);
     *reinterpret_cast<unsigned *>(config+0x18)=2;   // native multi-selection, limited to one
     *reinterpret_cast<unsigned *>(config+0x1C)=1;
     *reinterpret_cast<const wchar_t **>(config+0x28)=L"반란: 새 군주 선택";
     *reinterpret_cast<GameList **>(config+0x80)=&pending.selected;
-    fn<void(__fastcall *)(Obj,int)>(0x45B620)(config,0);   // builds the dialog in slot 27D3CA0[0]
-    Obj dialog=pointer(image,0x27D3CA0);
-    if(!dialog) {fn<void(__fastcall *)(Obj)>(0x251A10)(config);log_event("lord_change_no_dialog");return;}
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_45B620))(config,0);   // builds the dialog in slot 27D3CA0[0]
+    Obj dialog=pointer(image,GA(GA_27D3CA0));
+    if(!dialog) {fn<void(__fastcall *)(Obj)>(GA(GA_251A10))(config);log_event("lord_change_no_dialog");return;}
     // 45BE60 before its modal run: result list, then the two list resets it does when +30/+38 are empty.
     *reinterpret_cast<Obj *>(pointer(dialog,0x1A8)+0x80)=reinterpret_cast<Obj>(&pending.selected);
-    {GameList t;list_init(t,0x13436B0);
+    {GameList t;list_init(t,GA(GA_13436B0));
      reinterpret_cast<void(__fastcall *)(Obj,GameList *)>(pointer(pointer(dialog,0),0x200))(dialog,&t);list_free(t);}
-    {GameList t;list_init(t,0x13436B0);Link *first=list_first(t);Obj none=nullptr;
-     fn<void(__fastcall *)(Obj,Link **,Obj *)>(0x2ECE90)(pointer(dialog,0x180),&first,&none);list_free(t);}
-    fn<void(__fastcall *)(Obj)>(0x251A10)(config);
+    {GameList t;list_init(t,GA(GA_13436B0));Link *first=list_first(t);Obj none=nullptr;
+     fn<void(__fastcall *)(Obj,Link **,Obj *)>(GA(GA_2ECE90))(pointer(dialog,0x180),&first,&none);list_free(t);}
+    fn<void(__fastcall *)(Obj)>(GA(GA_251A10))(config);
     pending.force=force;pending.old=old;pending.state=state;pending.open=true;
     alignas(16) unsigned char local[0x40]={};
     *reinterpret_cast<void ***>(local)=callable_vtable;*reinterpret_cast<void (**)(Obj)>(local+8)=&picked;
     *reinterpret_cast<void **>(local+0x38)=local;
     Obj holder=dialog;
-    fn<void(__fastcall *)(Obj,const char *,Obj *,void *)>(0x45ED60)(fn<Obj(__fastcall *)()>(0x110E0)(),
+    fn<void(__fastcall *)(Obj,const char *,Obj *,void *)>(GA(GA_45ED60))(fn<Obj(__fastcall *)()>(GA(GA_110E0))(),
         "CDialogOpenStateBase<CDataSelectDlgBase<Data>>",&holder,local);
     log_event("lord_change_list_opened",count);
 }
@@ -128,27 +131,27 @@ static void add_button(Obj bar) {
     if(!bar || pointer(bar,0)!=image+kFooterVt)return;
     Obj table=bar+0x130;
     if(kButton>=static_cast<int>(dword(table,0x10))) {log_event("lord_change_no_layout_node");return;}
-    if(fn<Obj(__fastcall *)(Obj,int)>(0x92CEE0)(table,kButton))return;
-    Obj button=fn<Obj(__fastcall *)(Obj,int,int,int,int,int)>(0x92E430)(table,kButton,2,0,1,0);
+    if(fn<Obj(__fastcall *)(Obj,int)>(GA(GA_92CEE0))(table,kButton))return;
+    Obj button=fn<Obj(__fastcall *)(Obj,int,int,int,int,int)>(GA(GA_92E430))(table,kButton,2,0,1,0);
     if(!button)return;
     reinterpret_cast<void(__fastcall *)(Obj,const wchar_t *)>(pointer(pointer(button,0),0x1D8))(button,L"반란");
     *reinterpret_cast<unsigned *>(button+0x84)=1;*reinterpret_cast<int *>(button+0x80)=kButton;
     alignas(16) unsigned char local[0x40]={};
     *reinterpret_cast<Obj *>(local)=image+kFooterFunctorVt;*reinterpret_cast<Obj *>(local+8)=bar;*reinterpret_cast<void **>(local+0x38)=local;
-    fn<void(__fastcall *)(Obj,int,void *)>(0x1A3CB0)(button,0x7FFFFFFE,local);   // copies, then destroys local
-    if(Obj control=fn<Obj(__fastcall *)(Obj,int)>(0x92CEE0)(table,kButton))fn<void(__fastcall *)(Obj,int,int)>(0x92F810)(control+0x130,0x11,0);
-    fn<void(__fastcall *)(Obj,int,int)>(0x92F810)(table,0x15,1);
+    fn<void(__fastcall *)(Obj,int,void *)>(GA(GA_1A3CB0))(button,0x7FFFFFFE,local);   // copies, then destroys local
+    if(Obj control=fn<Obj(__fastcall *)(Obj,int)>(GA(GA_92CEE0))(table,kButton))fn<void(__fastcall *)(Obj,int,int)>(GA(GA_92F810))(control+0x130,0x11,0);
+    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_92F810))(table,0x15,1);
     // Stays enabled: 5035C0 enables 0x11/0x12 by the force at setup time, but a force may be chosen
     // later. The click checks the selected force and its ruler instead.
     log_event("lord_change_button_added");
 }
-static void __fastcall set_text(Obj bar,int index,const wchar_t *text,int flag) { COST_SCOPE("lord_change::set_text");   // only CALL 503C9C (휘하무장)
-    fn<SetText>(kSetText)(bar,index,text,flag);
+static void __fastcall set_text(Obj bar,int index,const wchar_t *text,int flag) { COST_SCOPE("lord_change::set_text"); COST_CRUMB("lord_change_bar",bar);   // only CALL 503C9C (휘하무장)
+    next_pick(next_set_text,kSetText)(bar,index,text,flag);
     if(mod_features.lord_change)add_button(bar);
 }
-static void __fastcall click(Obj state,Obj bar) { COST_SCOPE("lord_change::click");
+static void __fastcall click(Obj state,Obj bar) { COST_SCOPE("lord_change::click"); COST_CRUMB("lord_change_state",state);
     if(mod_features.lord_change && bar && dword(bar,0x80)==static_cast<unsigned>(kButton)) {pick(state);return;}
-    fn<Click>(kClick)(state,bar);
+    next_pick(next_click,kClick)(state,bar);
 }
 // Map per-frame (fast_menu's state slot): rulers made here get an active status after the start.
 static void map_tick() {
@@ -156,25 +159,25 @@ static void map_tick() {
     for(LONG i=0;i<n;++i) {
         Obj p=table(0x158,made[i],6000);if(!valid(p))continue;
         unsigned char status=p[0xE6];if(status!=9 && status!=4)continue;
-        Obj force=fn<Obj(__fastcall *)(Obj)>(0x22CA00)(p);
+        Obj force=fn<Obj(__fastcall *)(Obj)>(GA(GA_22CA00))(p);
         if(!valid(force) || word(force,0x10)!=made[i])continue;
         *reinterpret_cast<unsigned short *>(p+0xE6)=0x4901;
         log_event("lord_change_status_fixed",made[i],status);
     }
 }
-static CallLink link;
-static bool install() {
+static bool guards_match() {
     static const unsigned char before[]={0x41,0x8D,0x51,0x12,0x48,0x8B,0x8E,0xE0,0x04,0x00,0x00};   // lea edx,[r9+12h]; mov rcx,[rsi+4E0h]
-    if(image[kLastButtonCall]!=0xE8 || kLastButtonCall+5+*reinterpret_cast<int *>(image+kLastButtonCall+1)!=kSetText ||
-       memcmp(image+kLastButtonCall-sizeof(before),before,sizeof(before)) || pointer(image,kClickSlot)!=image+kClick ||
-       pointer(image,kFooterFunctorVt)!=image+0x8607D0) {log_event("lord_change_guard_rejected");return false;}
-    Obj relay=allocate_near(image+kLastButtonCall);if(!relay)return false;
-    absolute_jump(relay,reinterpret_cast<void *>(&set_text));
-    DWORD old;
-    if(!call_prepare(link,kLastButtonCall,relay) || !VirtualProtect(relay,4096,PAGE_EXECUTE_READ,&old) ||
-       !FlushInstructionCache(GetCurrentProcess(),relay,16)) {VirtualFree(relay,0,MEM_RELEASE);log_event("lord_change_prepare_rejected");return false;}
-    if(!patch_pointer(kClickSlot,kClick,reinterpret_cast<void *>(&click)))return false;
-    if(!call_publish(link)) {restore_pointer(kClickSlot,kClick,reinterpret_cast<void *>(&click));log_event("lord_change_publish_rejected");return false;}
-    log_event("lord_change_installed");return true;
+    // The CALL target and the 533570 slot are judged by the Layout hook manager (chain / yield / refuse).
+    return !ga::mcmp_at(image,kLastButtonCall-sizeof(before),before,sizeof(before)) &&
+        pointer(image,kFooterFunctorVt)==image+GA(GA_8607D0);
+}
+static bool install() {
+    if(!guards_match()) {log_event("lord_change_guard_rejected");return false;}
+    layout_client::Transaction tx;
+    if(!layout_client::call(kLastButtonCall,reinterpret_cast<void *>(&set_text),reinterpret_cast<void **>(&next_set_text)) ||
+       !layout_client::vt(kClickSlot,reinterpret_cast<void *>(&click),reinterpret_cast<void **>(&next_click))) {
+        log_event("lord_change_register_rejected");return false;
+    }
+    tx.done=true;log_event("lord_change_installed");return true;
 }
 }

@@ -16,9 +16,9 @@ PROJECT = Path(__file__).resolve().parents[1]
 DEST = Path(sys.argv[1]).resolve() / 'AI_TacticsMod' if len(sys.argv) > 1 else PROJECT / 'build/development/source_public_20261026_r3/AI_TacticsMod'
 LABEL = sys.argv[2] if len(sys.argv) > 2 else '2026-10-26 development source; not an exact v13.3 release reproduction'
 TEXT = {'.cpp', '.c', '.h', '.inl', '.asm', '.hlsl', '.py', '.ps1', '.psm1', '.manifest', '.ini', '.txt', '.wprp', '.cmd', '.cs'}
-EXTRA_TOOLS = '''check_feature.ps1 import_modpack_objects.py prepare_traits9.py traits9_layout.py
+EXTRA_TOOLS = '''check_feature.ps1 prepare_traits9.py traits9_layout.py
 install_local.py install_damage_preview.py package_mod.py package_input.py install_split.py
-generate_handoff.py audit_current_source.py generate_unified_labels.py prepare_modpack_tables.py
+generate_handoff.py audit_current_source.py prepare_modpack_tables.py
 prepare_public_release.py export_source_snapshot.py release_features.py'''.split()
 DOCS = '''MODULES.md NATIVE_FUNCTIONS.md FEATURE_SWITCHES.md WORKFLOW.md SESSION_RULES.md
 DAMAGE_PREVIEW.md BUILDING_DESTRUCTION.md COMBAT_AI.md DOMESTIC.md EXPERT_SETTINGS.md
@@ -40,7 +40,7 @@ COMMENTS = {
   ('static void split_feature_guards() {', 'AI-CONTRACT [compatibility]: New hook sites need feature-specific original-byte guards and a unique split_disable diagnostic ID. A mismatch disables that feature; do not replace these checks with a whole-image CRC requirement.')],
  'src/native_path_fast.inl': [
   ('static path_fast_core::Storage *volatile slot_storage[3];', 'AI-CONTRACT [lifetime]: Storage ownership is per native buffer slot, not per thread. Native force-AI threads are short-lived; thread_local heap ownership caused the v13.1/v13.2 leak. Preserve slot critical-section evidence before changing reuse.'),
-  ('static constexpr unsigned clear_site=0x184485;', 'AI-CONTRACT [hook boundary]: 183A30/184485 belong to convenience; 1843E0 entry belongs to combat. Preserve mutual exclusion with path_count and native-search reentrancy guards; delegation must restore native node state.')],
+  ('static const unsigned clear_site=GA(GA_184485);', 'AI-CONTRACT [hook boundary]: 183A30/184485 belong to convenience; 1843E0 entry belongs to combat. Preserve mutual exclusion with path_count and native-search reentrancy guards; delegation must restore native node state.')],
  'src/path_fast.h': [
   ('struct Node {', 'AI-CONTRACT [layout]: This is the x64 native node ABI, not a freely replaceable container. Keep offset/size assertions and signed-wrap semantics; validate clean waypoint segments, reopen behavior and bounded result assembly in path_fast_fixture.cpp.')],
  'src/native_campaign.inl': [
@@ -60,8 +60,6 @@ COMMENTS = {
   ('static thread_local Context *current;', 'AI-CONTRACT [nested calls]: This pointer is a borrowed per-call context, not persistent target ownership. Preserve restoration on nested/failed calls, native failure semantics and expansion only after successful primary completion; targets exclude cities/gates.')],
  'src/native_expert_settings.inl': [
   ('static std::map<Obj,std::array<ExpertRow,2>> expert_rows;', 'AI-CONTRACT [UI lifetime]: Map keys are native layout identities. Preserve lifecycle cleanup and commit/cancel/save semantics; row bytes and screen layout records must agree. Successful static checks do not prove rendering/click behavior.')],
- 'src/native_modpack.inl': [
-  ('static bool prepare_imported(const ImportedCode &code) {', 'AI-CONTRACT [external provenance]: Payload code is imported from fingerprinted third-party DLLs, not reconstructed C++. Keep exception-table registration, section protection and expected hashes; project permission does not relicense the external payload.')],
 }
 
 

@@ -14,14 +14,16 @@ struct Coefficients {double amount_scale,divisor,multiplier,offset,rate_divisor,
 inline bool usable(const Coefficients &c) {
     return c.amount_scale>0 && c.divisor>0 && c.multiplier>0 && c.offset>0 && c.rate_divisor>0 && c.floor>=0;
 }
-inline int score(int base,int amount,bool defending,const Coefficients &c) {
+inline int score(int base,int amount,bool defending,const Coefficients &c,double reduce_percent=0) {
     if(amount<=0 || !usable(c))return base;
     const int native_base=probability(base);
-    // 322B30 assembly: scale*amount/100 * multiplier/divisor /
+    // 322B30 assembly: scale*amount/100 [*reduce/100] * multiplier/divisor /
     // (max(floor,base)/rate_divisor+offset). Native rounds at 4 decimals, then
     // truncates to integer. Use double through the division, avoiding its int32
     // intermediate overflow when the newly exposed investment is very large.
     double delta=c.amount_scale*static_cast<double>(amount)/100.0;
+    // 1a4a447d 324BC0 8th argument (states 10/11): the amount term is scaled by [1A4B884]/100 (=70) right after weight*amount/100.
+    if(reduce_percent>0)delta=delta*reduce_percent/100.0;
     delta=c.multiplier*delta/c.divisor;
     delta/=((c.floor>native_base?c.floor:native_base)/c.rate_divisor+c.offset);
     const double result=native_base+(defending?-delta:delta);

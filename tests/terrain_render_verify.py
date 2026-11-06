@@ -1,3 +1,4 @@
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import ga_expand  # user 2026-11-05 patch resilience: sources spell addresses as GA(GA_x)
 """User 2026-10-29 R2: mutable control-map and two authorized overlay lines."""
 from pathlib import Path
 import hashlib
@@ -30,9 +31,10 @@ upload_line = b'    terrain_render::on_present(context);\n'
 gate = b' && !terrain_render::needs_present()'
 ok(overlay.count(upload_line) == 1 and overlay.count(gate) == 1, 'exactly two authorized R2 overlay changes')
 ok(line + upload_line in overlay, 'upload immediately follows device observation')
+# 사용자 결정 2026-11-03: 통합 인사 제거. The exact shared overlay hash excludes its removed officer panel.
 ok(hashlib.sha256(overlay.replace(upload_line, b'').replace(gate, b'').replace(line, b'')).hexdigest() ==
-   '5183055edf2a79d38830a4c894a345d896761bdaecafe0ff53e3786478bef12b',
-   'overlay preimage matches after undoing R1 observer and exactly two R2 lines')
+   '762b9f37bb5e734caa4374bc3a5010f3b5070fd6d245ada66fd908810d3dda7e',
+   'shared overlay source hash matches after undoing the R1 observer and two R2 lines')
 ok(b'} else current->Release();\n' + line in overlay, 'observer follows device acquisition')
 native = read('src/native_terrain_render.inl')
 adapter = read('src/native_adapter.cpp')
@@ -121,7 +123,6 @@ print(json.dumps({'terrain_render_source_checks': checks, 'failed': 0}))
 # Every panel keeps its original independent visibility gate in draw_locked.
 text = overlay.decode('utf-8-sig')
 for condition in ['if(context && briefing_overlay::needs_draw() && bind(swap.OutputWindow))',
-                  'if(context && officer_panel::is_visible() && bind(swap.OutputWindow))',
                   'if(context && read_flag(&visible) && next.width>0 && next.height>0)']:
     ok(condition in text, 'panel visibility guard preserved: ' + condition)
 ok('InterlockedCompareExchange(&present_pending,0,0)' in native,

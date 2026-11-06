@@ -8,6 +8,7 @@
 // is written, no thread is created, and the only native calls are the date getter 32BA50 and
 // the army force getter 22CC40, both on the calling AI thread. The original call holds no lock;
 // overlapping calls from other threads are marked conc=1 so analysis can discard them.
+#include "game_addresses.h"
 #include "ai_trace_nodes.h"
 #include <string>
 #include <utility>
@@ -59,7 +60,7 @@ static const Field troops_fields[]={{0x14,2,"mode",false},{0x16,2,"goal",false}}
 
 static int trace_day() {
     Obj root=world();Obj context=root?pointer(root,0x871E8):nullptr;
-    return context?fn<int(__fastcall *)(Obj)>(0x32BA50)(context+0x34):-1;
+    return context?fn<int(__fastcall *)(Obj)>(GA(GA_32BA50))(context+0x34):-1;
 }
 static void flush() {
     if(!buffer || buffer->empty())return;
@@ -176,7 +177,7 @@ static bool named_byte(unsigned off) {
     for(const auto &f:army_fields)if(off>=f.offset && off<f.offset+f.size)return true;
     return false;
 }
-static unsigned army_owner(Obj army) {return army?fn<unsigned(__fastcall *)(Obj)>(0x22CC40)(army):0;}
+static unsigned army_owner(Obj army) {return army?fn<unsigned(__fastcall *)(Obj)>(GA(GA_22CC40))(army):0;}
 static unsigned emit_army(const char *cause,unsigned node,unsigned next,long long result,unsigned id,
                           const Snapshot &old_state,const Snapshot &now) {
     const unsigned char *o=old_state.army[id],*n=now.army[id];
@@ -260,7 +261,7 @@ static void cities() {
     for(unsigned id=1;id<=61;++id) {
         Obj b=table(0x6DA98,id,3000);if(!b)continue;
         unsigned owner=b[0x13],garrison=0;
-        Obj city=fn<Obj(__fastcall *)(Obj,unsigned)>(0x32C130)(root,id);
+        Obj city=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32C130))(root,id);
         if(city && *reinterpret_cast<unsigned short *>(city+0x4E)==id)garrison=*reinterpret_cast<unsigned *>(city+0x3C);
         unsigned old_owner=city_owner[id],old_garrison=city_garrison[id];
         unsigned delta=garrison>old_garrison?garrison-old_garrison:old_garrison-garrison;
@@ -290,7 +291,7 @@ static void day_check() {
 }
 // Departure target of CCommandFootholdAttackDepatureNode: node+60 final city/gate (+4E id).
 static unsigned departure_target(unsigned index,Obj node) {
-    if(trace_nodes[index].execute!=0x2F2B0 || !node)return 0;
+    if(trace_nodes[index].execute!=GA(GA_2F2B0) || !node)return 0;
     Obj target=pointer(node,0x60);return target?*reinterpret_cast<unsigned short *>(target+0x4E):0;
 }
 static void before(unsigned index) {

@@ -1,3 +1,4 @@
+#include "game_addresses.h"
 /* Unpublished candidate bindings. Host callbacks run on the game thread;
  * only hashing native archive bytes runs on the native save/load worker.
  * No worker calls a gameplay getter, enumerates Person, or modifies relations. */
@@ -155,7 +156,7 @@ static bool merit_read_sidecar(const merit::SaveCoordinator::Completed &job,
 #endif
         merit::Store snapshot;std::string name;
         try {
-            name=merit_job_name(0x27D2A98);
+            name=merit_job_name(GA(GA_27D2A98));
             AcquireSRWLockExclusive(&merit_lock);
             try {merit_check_world();merit_bonds.prune(merit_context,nullptr,merit_remove_native_slot);snapshot=merit_bonds;}
             catch(...) {ReleaseSRWLockExclusive(&merit_lock);throw;}
@@ -166,12 +167,12 @@ static bool merit_read_sidecar(const merit::SaveCoordinator::Completed &job,
             ReleaseSRWLockExclusive(&merit_job_lock);
         } catch(...) {merit_save_epoch=0;log_event("merit_save_begin_failed");}
     }
-    {COST_SCOPE("native_save_host");fn<SaveHost>(0x50B670)(host);}
+    {COST_SCOPE("native_save_host");next_or<SaveHost>(next_merit_save_host,GA(GA_50B670))(host);}
     if(enabled && host==merit_save_host_object && phase==2 && dword(host,0x470)==3) {
         try {
             merit::SaveCoordinator::Completed job;bool ready;
             AcquireSRWLockExclusive(&merit_job_lock);
-            try {ready=merit_jobs.finish_save(merit_save_epoch,dword(image,0x27D2A20)==1,job);}
+            try {ready=merit_jobs.finish_save(merit_save_epoch,dword(image,GA(GA_27D2A20))==1,job);}
             catch(...) {ReleaseSRWLockExclusive(&merit_job_lock);throw;}
             ReleaseSRWLockExclusive(&merit_job_lock);merit_save_epoch=0;
 #ifndef SPLIT_COMBAT
@@ -205,15 +206,15 @@ static bool merit_read_sidecar(const merit::SaveCoordinator::Completed &job,
 #ifdef AWARD_WAREHOUSE
         award_sidecar_cache.clear();
 #endif
-        std::string name=merit_job_name(0x27D2A68);
+        std::string name=merit_job_name(GA(GA_27D2A68));
         AcquireSRWLockExclusive(&merit_job_lock);
         try {merit_load_epoch=merit_jobs.begin_load(name);merit_load_host_object=host;}
         catch(...) {ReleaseSRWLockExclusive(&merit_job_lock);throw;}
         ReleaseSRWLockExclusive(&merit_job_lock);
     } catch(...) {merit_load_epoch=0;merit_load_host_object=host;log_event("merit_load_begin_failed");}
-    {COST_SCOPE("native_load_host");fn<SaveHost>(0x509580)(host);}
+    {COST_SCOPE("native_load_host");next_or<SaveHost>(next_merit_load_host,GA(GA_509580))(host);}
     if(enabled && host==merit_load_host_object && phase==2 && dword(host,0x470)==3 &&
-       dword(image,0x27D2A50)!=0) {
+       dword(image,GA(GA_27D2A50))!=0) {
         // Successful native load always replaces the extras, even if the
         // sidecar is absent/corrupt or the world uses the same address.
         merit::Store replacement;bool restored=false;

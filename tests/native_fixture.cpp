@@ -14,6 +14,8 @@ static BOOL WINAPI fixture_flush(HANDLE process,LPCVOID address,SIZE_T size) {
 #define FlushInstructionCache fixture_flush
 #include "../src/native_adapter.cpp"
 #undef FlushInstructionCache
+namespace lord_change {static void map_tick() {}}
+#include "../src/native_fast_menu.inl"
 static std::map<unsigned, void *> functions;
 static std::map<Obj, unsigned> army_ids;
 static void *fixture_function(unsigned rva) {
@@ -389,8 +391,24 @@ static void recheck_tests() {
     }
     mod_features.attack_recheck_fix=false;
 }
+static unsigned long long __fastcall mock_map_busy(Obj) {return 1;}
+static void fast_menu_tests() {
+    auto saved=mod_features;
+    (void)&fast_menu::install;
+    mod_features.fast_menu=true;mod_features.lord_change=false;
+    BIND(0x56FF60,mock_map_busy);
+    Obj state=object(0);
+    for(unsigned i=0;i<3;++i) {
+        Obj table=image+fast_menu::kSlots[i]-0x30;putptr(state,0,table);
+        *reinterpret_cast<int *>(state+0x6C)=1;
+        if(i==0)fast_menu::busy<0>(state);else if(i==1)fast_menu::busy<1>(state);else fast_menu::busy<2>(state);   // 2026-11-05 Layout design 8: one body per slot (own next pointer)
+        check(dword(state,0x6C)==2,"fast menu skips original map wait");
+    }
+    mod_features=saved;free(state);
+}
 int main() {
     setup();
+    fast_menu_tests();
     crash_diagnostic_tests();
     Obj army = object(1); army[0x150] = 2; put16(army,0x12,1); put16(army,0x58,1); put16(army,0x2A,101); slot(0x7E838,1,army); current_army = army;
     put16(army,0x16,6000);
@@ -712,6 +730,74 @@ int main() {
     fort[0x13]=1;combat_pair_scores(pair,nullptr,nullptr);
     check(observed_adjacency==2.064f,"actual player facility opponent keeps configured adjacency");
     original_adjacency=mock_adjacency;
+    {   // build 25953386 conflict 1: native 2B2A90 applies the AI 16/24 percent rate in every mode. User 2026-11-05: AI-vs-AI fixed path stays 4 percent on both builds (intended design); adjacency_native_rate still gives the real native rate for player-battle subtraction.
+        put16(pair+8,0,2);*reinterpret_cast<unsigned *>(pair+12)=27;
+        Obj cfg=image+GA(GA_1A47AF8)-0xE58;unsigned saved_e58=dword(cfg,0xE58),saved_l134=dword(cfg,0x134),saved_l28=dword(cfg,0x28);
+        auto level=[&](unsigned v){*reinterpret_cast<unsigned *>(cfg+0x134)=v;};
+        adjacency_floor_mode=0;level(5);combat_pair_scores(pair,nullptr,nullptr);
+        check(observed_adjacency>1.119f && observed_adjacency<1.121f && adjacency_native_rate(2)==4,
+              "1fbe6be7 semantics: AI-vs-AI fixed rate stays 4 percent whatever the AI level");
+        adjacency_floor_mode=1;
+        level(3);combat_pair_scores(pair,nullptr,nullptr);
+        check(observed_adjacency>1.119f && observed_adjacency<1.121f && adjacency_native_rate(2)==16,
+              "1a4a447d semantics: AI level 3 (special): AI-vs-AI fixed path stays 4 percent (user 2026-11-05), native rate value is 16");
+        level(4);combat_pair_scores(pair,nullptr,nullptr);
+        check(observed_adjacency>1.119f && observed_adjacency<1.121f && adjacency_native_rate(2)==24,
+              "1a4a447d semantics: AI level 4 (ultimate): AI-vs-AI fixed path stays 4 percent (user 2026-11-05), native rate value is 24");
+        level(2);combat_pair_scores(pair,nullptr,nullptr);
+        check(observed_adjacency>1.119f && observed_adjacency<1.121f && adjacency_native_rate(2)==4,
+              "1a4a447d semantics: AI level 2 and below stay at 4 percent");
+        level(4);
+        check(adjacency_native_rate(player_force())==4,"1a4a447d semantics: the player force never gets the AI rate");
+        *reinterpret_cast<unsigned *>(cfg+0xE58)=1;*reinterpret_cast<unsigned *>(cfg+0x28)=3;level(0);
+        check(adjacency_native_rate(2)==16,"1a4a447d semantics: with the E58 flag set the level is read from cfg+0x28");
+        *reinterpret_cast<unsigned *>(cfg+0xE58)=saved_e58;*reinterpret_cast<unsigned *>(cfg+0x28)=saved_l28;level(saved_l134);
+        {   // User 2026-11-05 conditions (1)-(4): old/new build x expert mode on/off x own/other force.
+            // E58==0 is expert mode. Native model: old build raises AI 16/24 only when E58!=0, new build in every mode; player 4.
+            static int model_build;static Obj model_cfg;
+            struct M {static float __fastcall native(Obj,int force,int *score) {
+                *score=300;int rate=4;
+                if(static_cast<unsigned>(force)!=player_force() && (model_build==1 || dword(model_cfg,0xE58)!=0)) {
+                    int lvl=static_cast<int>(dword(model_cfg,0xE58)==0?dword(model_cfg,0x134):dword(model_cfg,0x28));
+                    rate=lvl==3?16:lvl>3?24:4;
+                }
+                return 1.0f+300.0f*static_cast<float>(rate)*0.0001f;}};
+            model_cfg=cfg;original_adjacency=M::native;
+            unsigned pf=player_force(),af=pf==2?3:2;Obj opt=image+GA(GA_1A46CA8);
+            unsigned saved4=dword(opt,0x24C),saved5=dword(opt,0x264);
+            auto setopt=[&](unsigned v){*reinterpret_cast<unsigned *>(opt+0x24C)=v;*reinterpret_cast<unsigned *>(opt+0x264)=v;};
+            expert_combat::Settings st;st.base=100;st.region=10;
+            CombatScope saved_scope=combat_scope;
+            for(int b=0;b<2;b++)for(int e58=0;e58<2;e58++)for(int own=0;own<2;own++) {
+                model_build=b;adjacency_floor_mode=b;
+                *reinterpret_cast<unsigned *>(cfg+0xE58)=e58;level(4);*reinterpret_cast<unsigned *>(cfg+0x28)=4;
+                unsigned force=own?pf:af;int sc=0;
+                combat_scope={pf,af,false,true,true,true};
+                setopt(expert_combat::encode(st));
+                float encoded_result=contextual_adjacency(center,static_cast<int>(force),&sc);
+                setopt(0);float default_result=contextual_adjacency(center,static_cast<int>(force),&sc);
+                float native_rate4=1.12f,native_ai=1.0f+300.0f*(own?4.0f:24.0f)*0.0001f;
+                if(e58==0) {   // expert mode
+                    check(encoded_result>1.2999f && encoded_result<1.3001f,
+                          "expert mode + our adjacency setting: final effect is exactly our setting (no native 16/24 on top), both builds and forces");
+                    check(default_result>native_rate4-0.0001f && default_result<native_rate4+0.0001f,
+                          "expert mode + default setting: same result as the old build (4 percent), both builds and forces");
+                } else {       // not expert mode: native untouched, old and new alike
+                    check(encoded_result>native_ai-0.0001f && encoded_result<native_ai+0.0001f &&
+                          default_result>native_ai-0.0001f && default_result<native_ai+0.0001f,
+                          "non-expert mode keeps the original result (old and new build identical)");
+                }
+                combat_scope={pf,af,true,false,false,false};
+                float fixed_result=contextual_adjacency(center,static_cast<int>(force),&sc);
+                check(fixed_result>native_rate4-0.0001f && fixed_result<native_rate4+0.0001f,
+                      "AI-vs-AI fixed path stays 4 percent in every build, mode and force");
+            }
+            *reinterpret_cast<unsigned *>(cfg+0xE58)=saved_e58;*reinterpret_cast<unsigned *>(cfg+0x28)=saved_l28;level(saved_l134);
+            combat_scope=saved_scope;*reinterpret_cast<unsigned *>(opt+0x24C)=saved4;*reinterpret_cast<unsigned *>(opt+0x264)=saved5;
+        }
+        adjacency_floor_mode=-1;
+        original_adjacency=mock_adjacency;
+    }
     // Demo has a loaded context with controlling-force byte 0. It still runs
     // computer construction/campaign work, but has no player logistics target.
     Obj saved_player=player,context=pointer(root,0x871E8);
@@ -782,6 +868,27 @@ int main() {
         if(hostile_city(recovery,9)) {campaign_individual_priority(recovery,*rp);
             check(!rp->forced_return && rp->motion_day==fixture_day,"mission_v2: a castle assault never triggers the forty-day stationary retreat");}
         recovery[0x37]=a37;recovery[0x38]=a38;put16(recovery,0x3A,a3a);*rp=siege_state;
+        {   // build 25953386 conflict 2: the original 27D490 sends a member against a hostile foothold/watchtower (action 6, kind 11).
+            Obj tr=table(0x7F8D8,word(recovery,0x58),500);unsigned short saved_mode=word(tr,0x14);put16(tr,0x14,8);
+            unsigned own=army_force(recovery),enemy=own==1?2:1;
+            Obj fortress=object(150);fortress[0x13]=static_cast<unsigned char>(enemy);slot(0x6DA98,150,fortress);
+            recovery[0x37]=6;recovery[0x38]=11;put16(recovery,0x3A,150);
+            check(native_fort_assault(recovery) && native_on_mission(recovery),"mission_v2: action 6 kind 11 against a hostile foothold is an original mission");
+            fortress[0x13]=static_cast<unsigned char>(own);
+            check(!native_fort_assault(recovery),"mission_v2: a friendly foothold is no mission");
+            fortress[0x13]=static_cast<unsigned char>(enemy);recovery[0x37]=9;
+            check(!native_fort_assault(recovery),"mission_v2: the mod's own destroy order (action 9) is not an original mission");
+            recovery[0x37]=6;put16(tr,0x14,1);
+            check(!native_fort_assault(recovery),"mission_v2: a non-attacking troop is not on mission");
+            put16(tr,0x14,8);put16(recovery,0x3A,0);
+            check(!native_fort_assault(recovery),"mission_v2: target zero is not a mission");
+            put16(recovery,0x3A,150);
+            Progress fort_state=*rp;rp->forced_return=false;rp->motion_day=fixture_day-60;
+            campaign_individual_priority(recovery,*rp);
+            check(!rp->forced_return && rp->motion_day==fixture_day,"mission_v2: a foothold assault never triggers the forty-day stationary retreat");
+            *rp=fort_state;slot(0x6DA98,150,nullptr);put16(tr,0x14,saved_mode);
+            recovery[0x37]=a37;recovery[0x38]=a38;put16(recovery,0x3A,a3a);
+        }
         mod_features.mission_v2=false;*rp=saved;
         // ai_max_aggression: the behaviour-tree "AI setting stage == n" condition answers as stage 4 only.
         mod_features.ai_max_aggression=true;int stage[1]={4},low[1]={1};

@@ -15,24 +15,27 @@
 //   6D0550 sworn (called 735035): same costs, writes the leader id to +BC of the 2-3 members.
 // Mod: every original check and command runs first; only what it rejects is re-judged by the extended
 // rules, and the sworn result is completed by moving the old group's other members to the new id.
+#include "game_addresses.h"
 namespace mediation_plus {
-static const unsigned kFilterCall=0x6D7D90,kPairCall=0x70EADC,kMarryCalls[2]={0x6BA697,0x7971B3},
-    kSwornCalls[2]={0x6BA69F,0x7971BB},kMarryExecCall=0x73502B,kSwornExecCall=0x735035;
-static const unsigned kFilter=0x70E9A0,kPair=0x711920,kMarryButton=0x796110,kSwornButton=0x78D920,
-    kMarryExec=0x6D1A50,kSwornExec=0x6D0550,kEnable=0x85AAD0;
+static const unsigned kPairCall=GA(GA_70EADC),kMarryCalls[2]={GA(GA_6BA697),GA(GA_7971B3)},
+    kSwornCalls[2]={GA(GA_6BA69F),GA(GA_7971BB)},kMarryExecCall=GA(GA_73502B),kSwornExecCall=GA(GA_735035);
+static const unsigned kBlock=GA(GA_70E9C1),kPair=GA(GA_711920),kMarryButton=GA(GA_796110),kSwornButton=GA(GA_78D920),
+    kMarryExec=GA(GA_6D1A50),kSwornExec=GA(GA_6D0550),kEnable=GA(GA_85AAD0);
 static bool call_to(unsigned site,unsigned target) {
     return image[site]==0xE8 && site+5+*reinterpret_cast<int *>(image+site+1)==target;
 }
+// The CALL targets are judged by the Layout hook manager (chain over other mods, refuse foreign bytes at 70E9C1);
+// here only the opcodes and the original 70E9C1 bytes are required before anything is registered.
 static bool guards_match() {
-    return call_to(kFilterCall,kFilter) && call_to(kPairCall,kPair) && call_to(kMarryCalls[0],kMarryButton) &&
-        call_to(kMarryCalls[1],kMarryButton) && call_to(kSwornCalls[0],kSwornButton) && call_to(kSwornCalls[1],kSwornButton) &&
-        call_to(kMarryExecCall,kMarryExec) && call_to(kSwornExecCall,kSwornExec);
+    for(unsigned site:{kPairCall,kMarryCalls[0],kMarryCalls[1],kSwornCalls[0],kSwornCalls[1],kMarryExecCall,kSwornExecCall})
+        if(image[site]!=0xE8)return false;
+    return !ga::mcmp_at(image,kBlock,layout_mediation_expect,sizeof(layout_mediation_expect));
 }
 static unsigned short id_of(Obj p) {return word(p,0x10);}
-static int age(Obj p) {return fn<int(__fastcall *)(Obj)>(0x2A5EA0)(p);}
-static bool adult(Obj p) {return age(p)>=static_cast<int>(dword(image,0x1A48D70));}
+static int age(Obj p) {return fn<int(__fastcall *)(Obj)>(GA(GA_2A5EA0))(p);}
+static bool adult(Obj p) {return age(p)>=static_cast<int>(dword(image,GA(GA_1A48D70)));}
 static bool related(Obj a,Obj b) {
-    auto check=fn<int(__fastcall *)(Obj,Obj)>(0x2C3A90);
+    auto check=fn<int(__fastcall *)(Obj,Obj)>(GA(GA_2C3A90));
     if(check(a,b) || check(b,a))return true;
     for(unsigned i=0;i<8;++i)if(word(a,0xD0+i*2)==id_of(b) || word(b,0xD0+i*2)==id_of(a))return true;
     return false;
@@ -70,59 +73,47 @@ static bool marry_ok(Obj a,Obj b) {
     Obj man=a[0xA9]==0?a:b,woman=man==a?b:a;
     return !word(woman,0xBA) && word(man,0xBA) && adult(man) && adult(woman) && !related(man,woman);
 }
+static unsigned long long (__fastcall *next_pair)(Obj,Obj,Obj,Obj);   // Layout manager: next of each site (original unless chained)
+static void (__fastcall *next_marry_button[2])(Obj);
+static void (__fastcall *next_sworn_button[2])(Obj);
+static unsigned long long (__fastcall *next_marry_exec)(Obj);
+static unsigned long long (__fastcall *next_sworn_exec)(Obj);
 static unsigned long long __fastcall pair(Obj view,Obj candidate,Obj a,Obj b) { COST_SCOPE("mediation_plus::pair");
-    unsigned long long r=fn<unsigned long long(__fastcall *)(Obj,Obj,Obj,Obj)>(kPair)(view,candidate,a,b);
+    unsigned long long r=next_pick(next_pair,kPair)(view,candidate,a,b);
     if(r || !candidate || !a)return r;
     if(b) {Obj p[3]={candidate,a,b};return sworn_ok(p,3);}
     if(candidate[0xA9]==a[0xA9]) {Obj p[2]={candidate,a};return sworn_ok(p,2);}
     return marry_ok(candidate,a);
 }
-static Obj ruler_of(Obj p) {
-    Obj force=fn<Obj(__fastcall *)(Obj)>(0x22CA00)(p);
-    return valid(force)?table(0x158,word(force,0x10),6000):nullptr;
-}
-static unsigned long long __fastcall filter(Obj view,Obj candidate,int slot) { COST_SCOPE("mediation_plus::filter");
-    unsigned long long r=fn<unsigned long long(__fastcall *)(Obj,Obj,int)>(kFilter)(view,candidate,slot);
-    // The original hides a person who is both married and sworn before any pair check.
-    if(r || !mod_features.mediation_plus || !candidate || !word(candidate,0xBA) || !word(candidate,0xBC))return r;
-    if(candidate[0xE8]<100 && candidate!=ruler_of(candidate))return 0;
-    short year=0;fn<void(__fastcall *)(short *,Obj)>(0x31ABE0)(&year,pointer(world(),0x871E8)+0x34);
-    if(year-static_cast<int>(word(candidate,0x166))<static_cast<int>(dword(image,0x1A485C0)) && candidate!=ruler_of(candidate))return 0;
-    Obj selection=pointer(view,0x4B8);if(!selection)return 0;
-    Obj s0=pointer(selection,0x1C0),s1=pointer(selection,0x1C8),s2=pointer(selection,0x1D0);
-    Obj a=s0,b=s2;
-    if(slot==0) {if(!valid(s1) && !valid(s2))return 1;a=s1;}
-    else if(slot==2)b=s1;
-    else if(slot!=1)return 1;
-    return pair(view,candidate,valid(a)?a:nullptr,valid(b)?b:nullptr)?1:0;
-}
+// 6D7D90 (the filter CALL) now belongs to batteki/yuga (design 8.4, 8.7); the one condition that differed from the
+// original filter -- married AND sworn candidates are hidden -- is lifted at 70E9C1 by a block hook instead (relay
+// below). The rest of 70E9A0 (loyalty, service years, only-the-ruler rule) is the original code; the pair rule is
+// still extended at 70EADC.
 static void selected(Obj state,Obj out[3]) {
     for(unsigned i=0;i<3;++i) {Obj p=pointer(state,0x1C0+i*8);out[i]=valid(p)?p:nullptr;}
 }
-static void __fastcall marry_button(Obj state) { COST_SCOPE("mediation_plus::marry_button");
-    fn<void(__fastcall *)(Obj)>(kMarryButton)(state);
+static void marry_button_after(Obj state) { COST_SCOPE("mediation_plus::marry_button");
     Obj s[3];selected(state,s);
     if(s[0] && s[1] && !s[2] && marry_ok(s[0],s[1]))fn<void(__fastcall *)(Obj,int,int)>(kEnable)(pointer(state,0x198),2,1);
 }
-static void __fastcall sworn_button(Obj state) { COST_SCOPE("mediation_plus::sworn_button");
-    fn<void(__fastcall *)(Obj)>(kSwornButton)(state);
+static void sworn_button_after(Obj state) { COST_SCOPE("mediation_plus::sworn_button");
     Obj s[3];selected(state,s);
     Obj p[3];unsigned n=0;for(Obj x:s)if(x)p[n++]=x;
     if(n>=2 && s[0] && s[1] && sworn_ok(p,n))fn<void(__fastcall *)(Obj,int,int)>(kEnable)(pointer(state,0x198),1,1);
 }
-static Obj player_force() {return fn<Obj(__fastcall *)(Obj)>(0x32E8D0)(pointer(world(),0x871E8));}
+static Obj player_force() {return fn<Obj(__fastcall *)(Obj)>(GA(GA_32E8D0))(pointer(world(),0x871E8));}
 static bool can_pay(Obj force) {
-    Obj res=valid(force)?fn<Obj(__fastcall *)(Obj)>(0x22D3A0)(force):nullptr;
+    Obj res=valid(force)?fn<Obj(__fastcall *)(Obj)>(GA(GA_22D3A0))(force):nullptr;
     if(!res)return false;
     int gold=(*reinterpret_cast<int(__fastcall **)(Obj)>(pointer(res,0)+0x90))(res);
-    return gold>=static_cast<int>(dword(image,0x1A485A8)) && force[0x14]>=dword(image,0x1A4859C);
+    return gold>=static_cast<int>(dword(image,GA(GA_1A485A8))) && force[0x14]>=dword(image,GA(GA_1A4859C));
 }
 static void pay(Obj force) {   // as 6D1A50 does
-    Obj res=fn<Obj(__fastcall *)(Obj)>(0x22D3A0)(force);
+    Obj res=fn<Obj(__fastcall *)(Obj)>(GA(GA_22D3A0))(force);
     int max=(*reinterpret_cast<int(__fastcall **)(Obj)>(pointer(res,0)+0xB8))(res);
-    int gold=(*reinterpret_cast<int(__fastcall **)(Obj)>(pointer(res,0)+0x90))(res)-static_cast<int>(dword(image,0x1A485A8));
+    int gold=(*reinterpret_cast<int(__fastcall **)(Obj)>(pointer(res,0)+0x90))(res)-static_cast<int>(dword(image,GA(GA_1A485A8)));
     (*reinterpret_cast<void(__fastcall **)(Obj,int)>(pointer(res,0)+0x98))(res,gold<0?0:gold>max?max:gold);
-    int orders=force[0x14]-static_cast<int>(dword(image,0x1A4859C));
+    int orders=force[0x14]-static_cast<int>(dword(image,GA(GA_1A4859C)));
     force[0x14]=static_cast<unsigned char>(orders<0?0:orders>200?200:orders);
 }
 static void divorce(Obj man,Obj woman) {
@@ -134,18 +125,18 @@ static void divorce(Obj man,Obj woman) {
     *reinterpret_cast<unsigned short *>(man+0xBA)=static_cast<unsigned short>(next);
 }
 static unsigned long long __fastcall marry_exec(Obj command) { COST_SCOPE("mediation_plus::marry_exec");
-    auto original=fn<unsigned long long(__fastcall *)(Obj)>(kMarryExec);
+    auto original=next_pick(next_marry_exec,kMarryExec);
     Obj state=pointer(command,0x4B8);Obj s[3];if(state)selected(state,s);
     if(!mod_features.mediation_plus || !state || !s[0] || !s[1] || s[2] || !married_pair(s[0],s[1]))return original(command);
     Obj man=s[0][0xA9]==0?s[0]:s[1],woman=man==s[0]?s[1]:s[0];
     Obj ui=pointer(state,0x198);
     if(ui)(*reinterpret_cast<void(__fastcall **)(Obj,int)>(pointer(ui,0)+200))(ui,0);
-    auto name=[](Obj p){const wchar_t *n=fn<const wchar_t *(__fastcall *)(Obj)>(0x22EEC0)(p);return n?n:L"";};
+    auto name=[](Obj p){const wchar_t *n=fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_22EEC0))(p);return n?n:L"";};
     wchar_t text[256];
     swprintf_s(text,L"%s과(와) %s을(를) 이혼시킵니다.\n금 %u, 명령서 %u 소모",
-        name(man),name(woman),dword(image,0x1A485A8),dword(image,0x1A4859C));
+        name(man),name(woman),dword(image,GA(GA_1A485A8)),dword(image,GA(GA_1A4859C)));
     // 216090 runs the CCmnYesNoState modally and returns the answer (as 6D1A50 reads it).
-    bool yes=fn<bool(__fastcall *)(const wchar_t *)>(0x216090)(text);
+    bool yes=fn<bool(__fastcall *)(const wchar_t *)>(GA(GA_216090))(text);
     Obj force=player_force();
     if(yes && can_pay(force)) {
         pay(force);divorce(man,woman);
@@ -158,7 +149,7 @@ static unsigned long long __fastcall marry_exec(Obj command) { COST_SCOPE("media
     return 0;
 }
 static unsigned long long __fastcall sworn_exec(Obj command) { COST_SCOPE("mediation_plus::sworn_exec");
-    auto original=fn<unsigned long long(__fastcall *)(Obj)>(kSwornExec);
+    auto original=next_pick(next_sworn_exec,kSwornExec);
     Obj state=pointer(command,0x4B8);Obj s[3]={};if(state)selected(state,s);
     unsigned short old[3]={};for(unsigned i=0;i<3;++i)if(s[i])old[i]=word(s[i],0xBC);
     unsigned long long r=original(command);
@@ -168,20 +159,37 @@ static unsigned long long __fastcall sworn_exec(Obj command) { COST_SCOPE("media
         for(unsigned id=1;id<=6000;++id) {Obj p=table(0x158,id,6000);if(valid(p) && word(p,0xBC)==g)*reinterpret_cast<unsigned short *>(p+0xBC)=static_cast<unsigned short>(now);}}
     return r;
 }
-static CallLink links[8];
+// Two call sites share each button body; every site keeps its own next.
+template<unsigned I> static void __fastcall marry_button(Obj state) { COST_SCOPE("mediation_plus::marry_button_site");next_pick(next_marry_button[I],kMarryButton)(state);marry_button_after(state);}
+template<unsigned I> static void __fastcall sworn_button(Obj state) { COST_SCOPE("mediation_plus::sworn_button_site");next_pick(next_sworn_button[I],kSwornButton)(state);sworn_button_after(state);}
+// Relay for the 70E9C1 block (design 8.4): `cmp byte [flag],0 ; jne pass ; cmp word [rdx+0BCh],0 ; jne reject ;
+// pass: jmp [70E9CB] ; reject: jmp [70EA11]`. RDX is the candidate person at 70E9B2 and stays untouched; the first
+// instruction of 70E9CB reads [rdx+0E8h] only. With the flag set a married and sworn candidate is no longer hidden.
+static Obj build_filter_relay() {
+    Obj relay=allocate_near(image+GA(GA_70E9C0));if(!relay)return nullptr;
+    layout_build_mediation_relay(relay,mod_features.mediation_plus,image+GA(GA_70E9CB),image+GA(GA_70EA11));
+    DWORD old=0;
+    if(!VirtualProtect(relay,4096,PAGE_EXECUTE_READ,&old) || !FlushInstructionCache(GetCurrentProcess(),relay,64)) {
+        VirtualFree(relay,0,MEM_RELEASE);return nullptr;
+    }
+    return relay;
+}
 static bool install() {
     if(!guards_match()) {log_event("mediation_plus_guard_rejected");return false;}
-    Obj relay=allocate_near(image+kPairCall);if(!relay)return false;
-    void *targets[6]={reinterpret_cast<void *>(&filter),reinterpret_cast<void *>(&pair),reinterpret_cast<void *>(&marry_button),
-        reinterpret_cast<void *>(&sworn_button),reinterpret_cast<void *>(&marry_exec),reinterpret_cast<void *>(&sworn_exec)};
-    for(unsigned i=0;i<6;++i)absolute_jump(relay+i*32,targets[i]);
-    const unsigned sites[8]={kFilterCall,kPairCall,kMarryCalls[0],kMarryCalls[1],kSwornCalls[0],kSwornCalls[1],kMarryExecCall,kSwornExecCall};
-    const unsigned stub[8]={0,1,2,2,3,3,4,5};
-    bool ok=true;for(unsigned i=0;ok && i<8;++i)ok=call_prepare(links[i],sites[i],relay+stub[i]*32);
-    DWORD old;
-    if(!ok || !VirtualProtect(relay,4096,PAGE_EXECUTE_READ,&old) || !FlushInstructionCache(GetCurrentProcess(),relay,192)) {
-        VirtualFree(relay,0,MEM_RELEASE);return false;}
-    for(unsigned i=0;i<8;++i)if(!call_publish(links[i])) {log_event("mediation_plus_publish_rejected",i);while(i)call_restore(links[--i]);return false;}
-    log_event("mediation_plus_installed");return true;
+    Obj relay=build_filter_relay();if(!relay)return false;
+    layout_client::Transaction tx;
+    // 70E9C1 first: foreign bytes there refuse the block and the manager rolls the whole owner back (REFUSE_IF_FOREIGN).
+    // 6D7D90 is left to batteki/yuga; the seven remaining E8 sites chain.
+    if(layout_client::block(layout_mediation_row.owner,layout_mediation_row.rva,layout_mediation_expect,layout_mediation_row.len,relay,layout_mediation_row.flags)<=0 ||
+       layout_client::call(kPairCall,reinterpret_cast<void *>(&pair),reinterpret_cast<void **>(&next_pair))<=0 ||
+       layout_client::call(kMarryCalls[0],reinterpret_cast<void *>(&marry_button<0>),reinterpret_cast<void **>(&next_marry_button[0]))<=0 ||
+       layout_client::call(kMarryCalls[1],reinterpret_cast<void *>(&marry_button<1>),reinterpret_cast<void **>(&next_marry_button[1]))<=0 ||
+       layout_client::call(kSwornCalls[0],reinterpret_cast<void *>(&sworn_button<0>),reinterpret_cast<void **>(&next_sworn_button[0]))<=0 ||
+       layout_client::call(kSwornCalls[1],reinterpret_cast<void *>(&sworn_button<1>),reinterpret_cast<void **>(&next_sworn_button[1]))<=0 ||
+       layout_client::call(kMarryExecCall,reinterpret_cast<void *>(&marry_exec),reinterpret_cast<void **>(&next_marry_exec))<=0 ||
+       layout_client::call(kSwornExecCall,reinterpret_cast<void *>(&sworn_exec),reinterpret_cast<void **>(&next_sworn_exec))<=0) {
+        log_event("mediation_plus_register_rejected");return false;
+    }
+    tx.done=true;log_event("mediation_plus_installed");return true;
 }
 }

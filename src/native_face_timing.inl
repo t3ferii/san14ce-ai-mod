@@ -6,8 +6,9 @@
 // 4.7 s in its 9307B0->930840->872170->8A6DE0->8AB113 path. Army flag panels reach it via 1B3523.
 // Sites (caller): 1990EF/199203 (198FA0), 199727 (1995E0), 19A0A1/19A0C1 (19A080), 1A95CB (1A957D
 // chunk), 1B3523 (1B3450). Args: RCX, RDX only (1B91E0 prologue); callers ignore RAX.
+#include "game_addresses.h"
 namespace face_timing {
-static const unsigned kFace=0x1B91E0,kSites[7]={0x1990EF,0x199203,0x199727,0x19A0A1,0x19A0C1,0x1A95CB,0x1B3523};
+static const unsigned kFace=GA(GA_1B91E0),kSites[7]={GA(GA_1990EF),GA(GA_199203),GA(GA_199727),GA(GA_19A0A1),GA(GA_19A0C1),GA(GA_1A95CB),GA(GA_1B3523)};
 using Face=void(__fastcall *)(Obj,Obj);
 static void __fastcall s0(Obj f,Obj p) {COST_SCOPE("face_1B91E0_1990EF");fn<Face>(kFace)(f,p);}
 static void __fastcall s1(Obj f,Obj p) {COST_SCOPE("face_1B91E0_199203");fn<Face>(kFace)(f,p);}

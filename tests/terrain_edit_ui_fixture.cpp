@@ -55,6 +55,7 @@ static unsigned cost_cache_clears=0;
 static void terrain_edit_fixture_cost_cache_clear() {++cost_cache_clears;}
 #define TERRAIN_EDIT_FIXTURE_COST_CACHE 1
 #include "../src/native_terrain_edit.inl"
+#define COST_CRUMB(name,value) do {} while(0)
 #include "../src/native_terrain_edit_ui.inl"
 using namespace terrain_edit;
 static constexpr unsigned expected_terrains[]={1,2,3,4,7,5,6,8,9,10,11,19,20,12,13,14,21,24};

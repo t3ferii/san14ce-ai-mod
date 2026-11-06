@@ -10,6 +10,7 @@
 #include <vector>
 #include <cstdio>
 #include <cstdlib>
+#define COST_SCOPE(name) do {} while(0)
 namespace unified_overlay {static int buffer_width=1920,buffer_height=1080;}
 #ifndef NO_RUNTIME_LOG
 static unsigned portrait_sample_logs,portrait_accept_logs;

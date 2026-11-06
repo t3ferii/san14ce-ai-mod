@@ -35,6 +35,12 @@ static void absolute_jump(Obj,void *){}
 static bool prepare_link(CodeLink &,unsigned,unsigned char,Obj){return false;}
 static bool publish_link(CodeLink &){return false;}
 static void log_event(const char *){}
+// 2026-11-05 user Layout compatibility design 8.3: refresh is registered at its two callers through the hook manager.
+template<class T> static T next_pick(T next,unsigned rva){return next?next:fn<T>(rva);}
+namespace layout_client {
+static int call(unsigned,void *,void **,unsigned=0){return 1;}
+struct Transaction {bool done=false;};
+}
 #include "../src/native_damage_preview.inl"
 struct Object {
     unsigned char bytes[0x800]={};Obj p(){return bytes;}
@@ -114,26 +120,26 @@ int main(int argc,char **argv){
     wcscpy_s(reinterpret_cast<wchar_t *>(city+0x10),16,L"적성");wcscpy_s(reinterpret_cast<wchar_t *>(towerdef.p()+0x10),5,L"망루");
     objects[ {0x158,1}]=leader1;objects[{0x158,2}]=leader2;objects[{0xdd38,1}]=city;objects[{0x6da98,1}]=castle.p();
     objects[{0x73958,1}]=citydef.p();objects[{0x73958,5}]=towerdef.p();objects[{0xdf30,1}]=force1;objects[{0xdf30,2}]=force2;
-    put(panel.p()+0x130,0x10,33u);damage_forecast::original_refresh=&native_refresh;
+    put(panel.p()+0x130,0x10,33u);damage_forecast::next_refresh[0]=&native_refresh;
     auto native_snapshot=[&](){std::vector<unsigned char> out;for(Obj o:{a,b,city,tower,castle.p()})out.insert(out.end(),o,o+0x200);return out;};
     const auto before=native_snapshot();
-    hover=b;damage_forecast::refresh(panel.p(),a,b);
+    hover=b;damage_forecast::refresh<0>(panel.p(),a,b);
     check(original_calls==1 && visible==1,"original callback retained");check(texts[31]==L"123명" && texts[32]==L"45명","directional damage, not remaining soldiers");
     for(int i=17;i<=26;++i)check(shown[i]==0,"swords hidden");
-    int old=damage_calls,faces=face_calls;damage_forecast::refresh(panel.p(),a,b);
+    int old=damage_calls,faces=face_calls;damage_forecast::refresh<0>(panel.p(),a,b);
     check(damage_calls==old && face_calls==faces,"unchanged pair throttled, no portrait reload");
-    hover=castle.p();damage_forecast::refresh(panel.p(),a,nullptr);
+    hover=castle.p();damage_forecast::refresh<0>(panel.p(),a,nullptr);
     check(visible==1 && texts[12]==L"적성" && texts[16]==L"내구 31","city hover with null native army target");
-    hover=tower;damage_forecast::refresh(panel.p(),a,nullptr);
+    hover=tower;damage_forecast::refresh<0>(panel.p(),a,nullptr);
     check(texts[31]==L"0명" && texts[32]==L"45명" && texts[16]==L"내구 31","facility attack and durability separated");
     tower[0x16]=0;check(damage_forecast::facility(damage_forecast::actor(tower),damage_forecast::actor(a))==0,"unfinished tower cannot shoot");tower[0x16]=1;
     check(native_snapshot()==before,"prediction preserves unit, city and building data");
-    hover=a;damage_forecast::refresh(panel.p(),a,a);check(visible==0,"friendly hover hides forecast");
-    hover=nullptr;damage_forecast::refresh(panel.p(),a,nullptr);check(visible==0,"empty target hides forecast");
-    hover=b;damage_forecast::refresh(panel.p(),a,b);check(visible==1,"returning hover is immediate after empty target");
-    faces=face_calls;put(b,0x12,static_cast<unsigned short>(1));damage_forecast::refresh(panel.p(),a,b);
+    hover=a;damage_forecast::refresh<0>(panel.p(),a,a);check(visible==0,"friendly hover hides forecast");
+    hover=nullptr;damage_forecast::refresh<0>(panel.p(),a,nullptr);check(visible==0,"empty target hides forecast");
+    hover=b;damage_forecast::refresh<0>(panel.p(),a,b);check(visible==1,"returning hover is immediate after empty target");
+    faces=face_calls;put(b,0x12,static_cast<unsigned short>(1));damage_forecast::refresh<0>(panel.p(),a,b);
     check(face_calls>faces,"reused enemy slot with a different leader refreshes identity");
-    old=original_calls;mod_features.damage_preview=false;damage_forecast::refresh(panel.p(),a,b);check(original_calls==old+1,"OFF uses original callback only");
+    old=original_calls;mod_features.damage_preview=false;damage_forecast::refresh<0>(panel.p(),a,b);check(original_calls==old+1,"OFF uses original callback only");
     using namespace damage_preview;
     check(breach(31,3000,1,0,0,true)==31,"castle base breach");check(breach(31,300,2,30,0,true)==40,"facility destruction policy");
     check(breach(31,20,1,0,0,false)==19 && breach(31,20,1,0,0,true)==20,"last durability restriction");

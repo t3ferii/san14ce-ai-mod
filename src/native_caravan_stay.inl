@@ -12,9 +12,10 @@
 // runs, then each member whose recorded home is still a city of the same force is moved back there
 // with the same 270ED0; a trade unit is not cancelled by the corps hand-over. Other dispatch kinds
 // and commands are unchanged; members who left before the switch return to the lord city (home = it).
+#include "game_addresses.h"
 namespace caravan_stay {
-static const unsigned kSendCall=0x1F479E,kArriveCall=0x1DA742,kCancelCall=0x29319E;
-static const unsigned kMove=0x270ED0,kArrive=0x32AAE0,kCancel=0x334780,kTradeKind=0x12;
+static const unsigned kSendCall=GA(GA_1F479E),kArriveCall=GA(GA_1DA742),kCancelCall=GA(GA_29319E);
+static const unsigned kMove=GA(GA_270ED0),kArrive=GA(GA_32AAE0),kCancel=GA(GA_334780),kTradeKind=0x12;
 static bool call_to(unsigned site,unsigned target) {
     return image[site]==0xE8 && site+5+*reinterpret_cast<int *>(image+site+1)==target;
 }
@@ -23,12 +24,12 @@ static bool guards_match() {
     static const unsigned char send[]={0x48,0x8D,0x4C,0x24,0x58},arrive[]={0x48,0x8B,0xD0,0x48,0x8B,0xCE},
         cancel[]={0x48,0x8B,0xCF};
     return call_to(kSendCall,kMove) && call_to(kArriveCall,kArrive) && call_to(kCancelCall,kCancel) &&
-        !memcmp(image+kSendCall-5,send,5) && !memcmp(image+kArriveCall-6,arrive,6) &&
-        !memcmp(image+kCancelCall-3,cancel,3);
+        !ga::mcmp_at(image,kSendCall-5,send,5) && !ga::mcmp_at(image,kArriveCall-6,arrive,6) &&
+        !ga::mcmp_at(image,kCancelCall-3,cancel,3);
 }
 static unsigned kind(Obj unit) {return valid(unit)?(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(unit,0)+0x98))(unit):0;}
 static unsigned base_owner(Obj base) {return valid(base)?(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(base,0)+0xB0))(base):0;}
-static Obj base(unsigned id) {return id<0x3E?fn<Obj(__fastcall *)(Obj,unsigned)>(0x32C130)(world(),id):nullptr;}
+static Obj base(unsigned id) {return id<0x3E?fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32C130))(world(),id):nullptr;}
 static int __fastcall send_move(Obj list,int city) { COST_SCOPE("caravan_stay::send_move");   // result unused at 1F479E
     if(!mod_features.caravan_stay)return fn<int(__fastcall *)(Obj,int)>(kMove)(list,city);
     log_event("caravan_stay_send_kept",0,static_cast<unsigned>(city));
@@ -38,8 +39,8 @@ static bool __fastcall arrive(Obj unit,Obj city) { COST_SCOPE("caravan_stay::arr
     using Arrive=bool(__fastcall *)(Obj,Obj);
     if(!mod_features.caravan_stay || kind(unit)!=kTradeKind || !valid(city))return fn<Arrive>(kArrive)(unit,city);
     struct Member {Obj person;unsigned short home;} members[16];unsigned count=0;
-    Obj pool=pointer(image,0x1B5C9A0);unsigned *handle=reinterpret_cast<unsigned *>(pointer(unit,0x20));
-    if(pool && handle && *handle<dword(image,0x1B5C9D0))
+    Obj pool=pointer(image,GA(GA_1B5C9A0));unsigned *handle=reinterpret_cast<unsigned *>(pointer(unit,0x20));
+    if(pool && handle && *handle<dword(image,GA(GA_1B5C9D0)))
         for(int *node=*reinterpret_cast<int **>(pool+*handle*8);node && count<16;node=*reinterpret_cast<int **>(node+2)) {
             int id=*node;if(id<1 || id>6000)continue;
             Obj person=table(0x158,static_cast<unsigned>(id),6000);
@@ -50,7 +51,7 @@ static bool __fastcall arrive(Obj unit,Obj city) { COST_SCOPE("caravan_stay::arr
     for(unsigned i=0;i<count;++i) {
         Obj home=base(members[i].home);
         if(members[i].home==lord || !home || base_owner(home)!=owner || word(members[i].person,0xE2)!=lord)continue;
-        GameList one;list_init(one,0x13436B0);
+        GameList one;list_init(one,GA(GA_13436B0));
         if(list_add(one,members[i].person))fn<int(__fastcall *)(Obj,int)>(kMove)(reinterpret_cast<Obj>(&one),members[i].home);
         list_free(one);
         log_event("caravan_stay_home",word(members[i].person,0x10),members[i].home,lord);

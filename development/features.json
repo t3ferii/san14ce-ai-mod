@@ -6,8 +6,16 @@
   ],
   "modules": {
     "terrain-profile": {
-      "sources": ["src/terrain_call_profile.h", "tests/terrain_call_profile_fixture.cpp", "tests/terrain_call_profile_build.ps1", "tools/analyze_terrain_profile.py", "tests/test_analyze_terrain_profile.py"],
-      "tests": ["terrain-profile"]
+      "sources": [
+        "src/terrain_call_profile.h",
+        "tests/terrain_call_profile_fixture.cpp",
+        "tests/terrain_call_profile_build.ps1",
+        "tools/analyze_terrain_profile.py",
+        "tests/test_analyze_terrain_profile.py"
+      ],
+      "tests": [
+        "terrain-profile"
+      ]
     },
     "terrain-edit": {
       "sources": [
@@ -69,7 +77,6 @@
         "src/native_adapter.cpp",
         "src/native_split_install.inl",
         "src/native_unified_overlay.inl",
-        "src/native_unified_personnel.inl",
         "tests/advisor_briefing_fixture.cpp",
         "tests/advisor_overlay_fixture.cpp",
         "tests/verify_advisor_briefing.py",
@@ -81,10 +88,13 @@
         "tools/generate_handoff.py",
         "installer/InstallerGui.cs",
         "distribution/FeatureSelect.ps1",
-        "FeatureSelect.ps1"
+        "FeatureSelect.ps1",
+        "tests/shared_overlay_fixture.cpp",
+        "tools/build_shared_overlay_fixture.ps1"
       ],
       "tests": [
-        "advisor-briefing"
+        "advisor-briefing",
+        "shared-overlay"
       ]
     },
     "diplomacy-intel": {
@@ -381,6 +391,31 @@
         "recruitment"
       ]
     },
+    "advisor_briefing": {
+      "sources": [
+        "src/native_advisor_briefing.inl",
+        "src/native_adapter.cpp",
+        "src/native_split_install.inl",
+        "tests/advisor_briefing_fixture.cpp",
+        "tools/build_advisor_briefing_fixture.ps1",
+        "tests/split_module_fixture.cpp"
+      ],
+      "tests": [
+        "advisor-briefing",
+        "split-module"
+      ]
+    },
+    "drag_learn": {
+      "sources": [
+        "src/native_drag_learn.inl",
+        "src/native_adapter.cpp",
+        "src/native_split_install.inl",
+        "tests/split_module_fixture.cpp"
+      ],
+      "tests": [
+        "split-module"
+      ]
+    },
     "merit": {
       "sources": [
         "src/native_merit.inl",
@@ -390,7 +425,8 @@
         "src/native_merit_scroll.inl"
       ],
       "tests": [
-        "merit"
+        "merit",
+        "split-module"
       ]
     },
     "ai": {
@@ -564,9 +600,29 @@
         "tests/loader_mock.cpp",
         "tests/verify_loader.py",
         "tests/verify_split_exports.py",
+        "src/layout_api.h",
+        "src/layout_main.cpp",
+        "src/native_layout_core.inl",
+        "src/native_layout_present.inl",
+        "tests/layout_fixture.cpp",
+        "tests/layout_loader_mock.cpp",
+        "tests/verify_layout_loader.py",
         "src/native_campaign_departures.inl",
         "tests/campaign_departure_fixture.inl",
-        "tests/campaign_priority_fixture.inl"
+        "tests/campaign_priority_fixture.inl",
+        "src/game_addresses.h",
+        "src/game_addresses_data.inl",
+        "src/game_addresses_gates.inl",
+        "tools/gen_signatures.py",
+        "tools/gen_emit.py",
+        "tools/addrlib.py",
+        "tools/rva_rebase.py",
+        "tools/guard_rebase.py",
+        "tools/check_addresses.py",
+        "tools/build_addr_fixtures.ps1",
+        "tests/addr_resolver_fixture.cpp",
+        "tests/address_guard_fixture.cpp",
+        "tests/ga_expand.py"
       ],
       "tests": [
         "split-module",
@@ -580,7 +636,28 @@
         "progress-native",
         "log",
         "progress-rollback",
-        "unified-personnel"
+        "address-table"
+      ]
+    },
+    "address-table": {
+      "sources": [
+        "src/game_addresses.h",
+        "src/game_addresses_data.inl",
+        "src/game_addresses_gates.inl",
+        "tools/gen_signatures.py",
+        "tools/gen_emit.py",
+        "tools/addrlib.py",
+        "tools/rva_rebase.py",
+        "tools/guard_rebase.py",
+        "tools/check_addresses.py",
+        "tools/build_addr_fixtures.ps1",
+        "tests/addr_resolver_fixture.cpp",
+        "tests/address_guard_fixture.cpp",
+        "tests/ga_expand.py",
+        "docs/PATCH_RESILIENCE.md"
+      ],
+      "tests": [
+        "address-table"
       ]
     },
     "field-io-revision": {
@@ -619,12 +696,13 @@
         "src/modpack_tables.h",
         "src/stat_growth.h",
         "src/native_split_install.inl",
-        "tools/import_modpack_objects.py",
         "tools/prepare_modpack_tables.py",
         "tests/modpack_fixture.cpp",
         "tests/verify_modpack_static.py"
       ],
       "tests": [
+        "trait-hover",
+        "battle-deaths",
         "split-module",
         "native"
       ]
@@ -640,36 +718,6 @@
       "tests": [
         "split-module",
         "traits9-save"
-      ]
-    },
-    "unified-personnel": {
-      "sources": [
-        "src/unified_personnel.h",
-        "src/unified_tactic_settings.h",
-        "src/native_unified_personnel.inl",
-        "src/native_unified_settings.inl",
-        "src/native_unified_actions.inl",
-        "src/native_unified_posts_trade.inl",
-        "src/native_tactic_priority.inl",
-        "tests/unified_personnel_fixture.cpp",
-        "tests/unified_native_fixture.cpp",
-        "tools/build_unified_fixture.ps1",
-        "src/unified_labels.h",
-        "tools/generate_unified_labels.py",
-        "src/native_unified_dialogs.inl",
-        "tests/unified_panes_fixture.cpp",
-        "tests/verify_unified_engine_ui.py",
-        "src/native_unified_overlay.inl",
-        "src/unified_overlay_policy.h",
-        "tests/unified_overlay_fixture.cpp",
-        "src/native_unified_relations.inl",
-        "tests/unified_relations_fixture.cpp",
-        "tests/verify_sortie_relation.py",
-        "tests/verify_unified_panes.py"
-      ],
-      "tests": [
-        "unified-personnel",
-        "split-module"
       ]
     },
     "name-lookup": {
@@ -740,32 +788,63 @@
         "split-module"
       ]
     },
+    "trait-hover": {
+      "sources": [
+        "src/native_trait_hover.inl",
+        "src/trait_hover_profile.h",
+        "src/layout_registry.h",
+        "src/native_layout_core.inl",
+        "src/native_layout_client.inl",
+        "tests/trait_hover_fixture.cpp",
+        "tools/build_trait_hover_fixture.ps1"
+      ],
+      "tests": [
+        "trait-hover",
+        "layout-registry",
+        "split-module"
+      ]
+    },
+    "battle-deaths": {
+      "sources": [
+        "src/battle_deaths_profile.h",
+        "src/native_battle_deaths.inl",
+        "src/layout_registry.h",
+        "src/native_layout_core.inl",
+        "tests/battle_deaths_fixture.cpp",
+        "tools/build_battle_deaths_fixture.ps1"
+      ],
+      "tests": [
+        "battle-deaths",
+        "layout-registry",
+        "split-module"
+      ]
+    },
     "ccz-sprites": {
       "sources": [
-          "src/ccz_appearance.h",
-          "src/ccz_appearance_io.h",
-          "src/ccz_appearance_labels.h",
-          "src/native_ccz_editor.inl",
+        "src/ccz_appearance.h",
+        "src/ccz_appearance_io.h",
+        "src/ccz_appearance_labels.h",
+        "src/native_ccz_editor.inl",
         "src/native_ui_call_trace.inl",
         "tests/ui_call_trace_fixture.cpp",
         "tools/inspect_ccz_ui_trace.py",
-          "src/native_ccz_preview.inl",
-          "src/ccz_catalog.h",
-          "src/ccz_preview_palette.h",
-          "tests/ccz_native_editor_fixture.cpp",
-          "tests/ccz_native_editor_build.ps1",
-          "tools/ccz_build_catalog.py",
-          "assets/ccz/ccz_catalog.bin",
-          "assets/ccz/ccz_catalog.json",
-          "src/native_ccz_title.inl",
-          "tests/ccz_settings_fixture.cpp",
-          "tests/ccz_settings_build.ps1",
-          "tests/verify_ccz_settings.py",
-          "tools/prepare_ccz_title_layout.py",
-          "src/ccz_module.cpp",
-          "src/native_ccz_bridge.inl",
-          "tests/ccz_battle_fixture.cpp",
-          "tests/ccz_battle_build.ps1",
+        "src/native_ccz_preview.inl",
+        "src/ccz_catalog.h",
+        "src/ccz_preview_palette.h",
+        "tests/ccz_native_editor_fixture.cpp",
+        "tests/ccz_native_editor_build.ps1",
+        "tools/ccz_build_catalog.py",
+        "assets/ccz/ccz_catalog.bin",
+        "assets/ccz/ccz_catalog.json",
+        "src/native_ccz_title.inl",
+        "tests/ccz_settings_fixture.cpp",
+        "tests/ccz_settings_build.ps1",
+        "tests/verify_ccz_settings.py",
+        "tools/prepare_ccz_title_layout.py",
+        "src/ccz_module.cpp",
+        "src/native_ccz_bridge.inl",
+        "tests/ccz_battle_fixture.cpp",
+        "tests/ccz_battle_build.ps1",
         "src/native_ccz_sprites.inl",
         "src/ccz_sprites.hlsl",
         "src/ccz_sprites_vs.h",
@@ -775,11 +854,67 @@
         "src/native_split_install.inl",
         "tools/ccz_extract_units.py",
         "assets/ccz/ccz_units.bin",
-        "tests/verify_ccz_sprites.py"
+        "tests/verify_ccz_sprites.py",
+        "tests/shared_overlay_fixture.cpp",
+        "tools/build_shared_overlay_fixture.ps1"
       ],
       "tests": [
         "ccz-sprites",
-        "split-module"
+        "split-module",
+        "shared-overlay"
+      ]
+    },
+    "shared-overlay": {
+      "sources": [
+        "src/native_unified_overlay.inl",
+        "src/unified_overlay_policy.h",
+        "src/native_advisor_overlay.inl",
+        "src/native_ccz_preview.inl",
+        "tests/shared_overlay_fixture.cpp",
+        "tools/build_shared_overlay_fixture.ps1"
+      ],
+      "tests": [
+        "shared-overlay"
+      ]
+    },
+    "layout": {
+      "sources": [
+        "src/layout_api.h",
+        "src/layout_registry.h",
+        "src/native_layout_client.inl",
+        "src/layout_main.cpp",
+        "src/native_layout_core.inl",
+        "src/native_layout_present.inl",
+        "src/native_layout_ui.inl",
+        "src/native_layout_wait.inl",
+        "src/native_unified_overlay.inl",
+        "src/native_split_install.inl",
+        "src/module_loader.cpp",
+        "src/input_proxy.cpp",
+        "tests/layout_fixture.cpp",
+        "tests/layout_p3_fixture.cpp",
+        "tests/layout_p4_fixture.cpp",
+        "tests/verify_hook_scopes.py",
+        "tests/verify_layout_registry.py",
+        "tests/layout_loader_mock.cpp",
+        "tests/verify_layout_loader.py",
+        "tests/verify_split_exports.py",
+        "tools/build_split.ps1",
+        "docs/LAYOUT_DLL_COMPAT_DESIGN.md"
+      ],
+      "tests": [
+        "split-module",
+        "shared-overlay",
+        "layout-registry"
+      ]
+    },
+    "layout-registry": {
+      "sources": [
+        "src/layout_registry.h",
+        "tests/verify_layout_registry.py"
+      ],
+      "tests": [
+        "layout-registry"
       ]
     }
   },

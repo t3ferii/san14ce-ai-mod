@@ -1,3 +1,4 @@
+#include "game_addresses.h"
 /* Logical storage retains native ruler ownership for capture/succession and
  * vanilla save compatibility. Equipped-item iterators hide stored items.
  * Storage flags are bound to the exact native archive hash, on host threads. */
@@ -49,7 +50,7 @@ static std::vector<Obj> award_items() {
     return result;
 }
 static unsigned award_mask(Obj item) {return awards::slots(item[0x45],item[0x46],item[0x47]);}
-static unsigned award_force_id(Obj person) {return valid(person)?fn<unsigned(__fastcall *)(Obj)>(0x22CE20)(person):0;}
+static unsigned award_force_id(Obj person) {return valid(person)?fn<unsigned(__fastcall *)(Obj)>(GA(GA_22CE20))(person):0;}
 static Obj award_ruler(unsigned force) {COST_SCOPE("award_ruler");Obj f=table(0xDF30,force,51);return valid(f)?table(0x158,word(f,0x10),6000):nullptr;}
 static bool award_stored(Obj item) {
     unsigned id=award_item_id(item);return id<awards::MaxItems && award_storage[id] &&
@@ -61,10 +62,10 @@ static void award_put_storage(Obj item,unsigned force) {
     unsigned owner=word(ruler,0x10);*reinterpret_cast<uint16_t *>(item+0x4A)=static_cast<uint16_t>(owner);
     award_storage[id]=award_observed[id]=static_cast<uint16_t>(owner);
 }
-static bool award_deployed(Obj p) {return valid(fn<Obj(__fastcall *)(Obj)>(0x22AA70)(p));}
+static bool award_deployed(Obj p) {return valid(fn<Obj(__fastcall *)(Obj)>(GA(GA_22AA70))(p));}
 static bool award_active(Obj p) {
-    return award_deployed(p) || fn<int(__fastcall *)(Obj,int)>(0x233110)(p,0)!=0 ||
-        fn<int(__fastcall *)(Obj)>(0x232240)(p)!=0 || (word(p,0x15E)&0x4001)!=0 || dword(p,0x1E8)!=0;
+    return award_deployed(p) || fn<int(__fastcall *)(Obj,int)>(GA(GA_233110))(p,0)!=0 ||
+        fn<int(__fastcall *)(Obj)>(GA(GA_232240))(p)!=0 || (word(p,0x15E)&0x4001)!=0 || dword(p,0x1E8)!=0;
 }
 static bool award_serving(Obj p,unsigned force) {
     return valid(p) && p[0xE6]>=1 && p[0xE6]<=4 && award_force_id(p)==force;
@@ -169,7 +170,7 @@ static void award_owned_items(Obj iterator,std::vector<Obj> &items) {
     items.clear();Link *l=reinterpret_cast<Link *>(pointer(iterator,8));Obj end=pointer(iterator,16);
     unsigned visited=0;
     for(;l && reinterpret_cast<Obj>(l)!=end && visited++<awards::MaxItems;l=l->next)
-        if(fn<int(__fastcall *)(Obj,Link *)>(0x333320)(iterator,l) && valid(l->value) &&
+        if(fn<int(__fastcall *)(Obj,Link *)>(GA(GA_333320))(iterator,l) && valid(l->value) &&
            award_item_id(l->value)<awards::MaxItems)items.push_back(l->value);
 }
 // Effect queries already have a native owner-filtered iterator. Reconcile only
@@ -238,10 +239,10 @@ static int __fastcall award_transfer(Obj *pair) { COST_SCOPE("awards_award_trans
     return result;
 }
 static int __fastcall award_equipment_predicate(Obj iterator,Link *link) { COST_SCOPE("awards_award_equipment_predicate");
-    return fn<int(__fastcall *)(Obj,Link *)>(0x333320)(iterator,link) && !award_stored(link->value);
+    return fn<int(__fastcall *)(Obj,Link *)>(GA(GA_333320))(iterator,link) && !award_stored(link->value);
 }
 static int __fastcall award_storage_predicate(Obj iterator,Link *link) { COST_SCOPE("awards_award_storage_predicate");
-    return fn<int(__fastcall *)(Obj,Link *)>(0x333320)(iterator,link) && award_stored(link->value);
+    return fn<int(__fastcall *)(Obj,Link *)>(GA(GA_333320))(iterator,link) && award_stored(link->value);
 }
 static void award_filter_iterator(Obj out,bool storage) {
     COST_SCOPE("award_filter_iterator");
@@ -256,9 +257,9 @@ static Obj __fastcall award_iterator(Obj person,Obj out) { COST_SCOPE("awards_aw
     uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-reinterpret_cast<uintptr_t>(image);
     // Only effect/personal views and diplomacy change. Native death, capture,
     // succession and force destruction retain the native ownership iterator.
-    bool storage=caller==0x6DB54B || caller==0x6DB6D5 || caller==0x6D9AAF;
-    bool equipped=caller==0x22D455 || caller==0x22FDAA || caller==0x230067 ||
-        caller==0x2B4D19 || caller==0x349B1F || caller==0x6E153B;
+    bool storage=caller==GA(GA_6DB54B) || caller==GA(GA_6DB6D5) || caller==GA(GA_6D9AAF);
+    bool equipped=caller==GA(GA_22D455) || caller==GA(GA_22FDAA) || caller==GA(GA_230067) ||
+        caller==GA(GA_2B4D19) || caller==GA(GA_349B1F) || caller==GA(GA_6E153B);
     Obj result;
     {COST_SCOPE("native_award_iterator");result=original_award_iterator(person,out);}
     if(enabled && (storage || equipped)) {
@@ -317,7 +318,7 @@ static void __fastcall award_ui(Obj state) { COST_SCOPE("awards_award_ui");
     Obj selected=layout?pointer(layout,0x188):nullptr;
     if(mode==2 && valid(person) && !pointer(layout,0x190) && valid(selected) && award_stored(selected) && person==award_ruler(award_force_id(person))) {
         *reinterpret_cast<Obj *>(layout+0x190)=person;
-        fn<void(__fastcall *)(Obj)>(0x79DFB0)(layout);
+        fn<void(__fastcall *)(Obj)>(GA(GA_79DFB0))(layout);
     }
     award_selected_item=previous;award_selected_person=previous_person;
 }
@@ -354,8 +355,8 @@ static Obj __fastcall award_post_picker(Obj state) { COST_SCOPE("award_post_pick
     if(!enabled || !state)return original_post_picker(state);
     Obj layout=pointer(state,0x4C0),post=layout?pointer(layout,0x1B8):nullptr;
     if(!valid(post))return original_post_picker(state);
-    unsigned id=fn<unsigned(__fastcall *)(Obj)>(0x22DF80)(post);
-    Obj occupant=fn<Obj(__fastcall *)(Obj)>(0x6DC0A0)(post),force=pointer(state,0x470);
+    unsigned id=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22DF80))(post);
+    Obj occupant=fn<Obj(__fastcall *)(Obj)>(GA(GA_6DC0A0))(post),force=pointer(state,0x470);
     // 74B120 copies +498 into modal config+38 (disabled rows), independently
     // of the initial command/AI candidate list handled by 1EDB40.
     auto &blocked=*reinterpret_cast<GameList *>(state+0x498);
@@ -373,8 +374,8 @@ static Obj __fastcall award_post_picker(Obj state) { COST_SCOPE("award_post_pick
 }
 static int __fastcall award_post_select(Obj state,Obj person,Obj post) { COST_SCOPE("award_post_select");
     if(enabled && valid(person) && valid(post)) {
-        unsigned id=fn<unsigned(__fastcall *)(Obj)>(0x22DF80)(post);
-        Obj occupant=fn<Obj(__fastcall *)(Obj)>(0x6DC0A0)(post);
+        unsigned id=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22DF80))(post);
+        Obj occupant=fn<Obj(__fastcall *)(Obj)>(GA(GA_6DC0A0))(post);
         if(!awards::may_post(award_active(person),award_deployed(person),id,award_post_capacity(id),award_post_capacity(person[0xE7])) ||
             (valid(occupant) && occupant!=person && award_deployed(occupant))) {
             native_ui::officer_notice(word(person,0x10),L"활동 중에는 지휘병사가 같거나 늘어나는 관직만 부여할 수 있습니다.");return 0;
@@ -403,7 +404,7 @@ static void __fastcall award_post_batch(Obj map) { COST_SCOPE("award_post_batch"
 }
 static uint64_t __fastcall award_native_ai_command(Obj node,Obj context,Obj subject) { COST_SCOPE("award_native_ai_command");
     if(enabled) {Obj item=personnel_context_object(node,context,0x3C);if(valid(item) && award_mask(item))return 2;}
-    return fn<Execute>(0x535E0)(node,context,subject);
+    return fn<Execute>(GA(GA_535E0))(node,context,subject);
 }
 static void award_ai_city(Obj city) {
     COST_SCOPE("award_ai_city");
@@ -421,7 +422,7 @@ static void award_ai_city(Obj city) {
         for(unsigned id=1;id<=6000;++id) {Obj p=table(0x158,id,6000);if(award_serving(p,force))people.push_back(p);}
         unsigned ability=slot<4?slot:0;
         std::sort(people.begin(),people.end(),[ability](Obj a,Obj b) {
-            int sa=fn<int(__fastcall *)(Obj,unsigned,unsigned)>(0x22FCE0)(a,ability,0xFFD),sb=fn<int(__fastcall *)(Obj,unsigned,unsigned)>(0x22FCE0)(b,ability,0xFFD);
+            int sa=fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_22FCE0))(a,ability,0xFFD),sb=fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_22FCE0))(b,ability,0xFFD);
             return sa!=sb?sa>sb:word(a,0x10)<word(b,0x10);
         });
         size_t next=0;
@@ -439,8 +440,8 @@ static void award_ai_city(Obj city) {
                 if(equipped)continue;
                 // Native 1F0300 spends the force's ruling district resources,
                 // not the recipient's physical/detachment district (40160).
-                Obj resources=fn<Obj(__fastcall *)(Obj)>(0x22E7E0)(fn<Obj(__fastcall *)(Obj)>(0x22CA00)(person));
-                int cost=fn<int(__fastcall *)()>(0x6D3670)();if(!valid(resources) || cost<0 || resources[0x14]<cost)continue;
+                Obj resources=fn<Obj(__fastcall *)(Obj)>(GA(GA_22E7E0))(fn<Obj(__fastcall *)(Obj)>(GA(GA_22CA00))(person));
+                int cost=fn<int(__fastcall *)()>(GA(GA_6D3670))();if(!valid(resources) || cost<0 || resources[0x14]<cost)continue;
                 Obj pair[]={person,item};++award_ai_transfer;int success=award_transfer(pair);--award_ai_transfer;
                 if(success)break;
             }

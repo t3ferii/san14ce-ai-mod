@@ -50,13 +50,14 @@ int main() {
     ID3D11Texture2D *back=nullptr;check(SUCCEEDED(chain->GetBuffer(0,__uuidof(ID3D11Texture2D),reinterpret_cast<void **>(&back))),"fixture backbuffer");
     ID3D11RenderTargetView *view=nullptr;check(SUCCEEDED(test_device->CreateRenderTargetView(back,nullptr,&view)),"fixture render target");
     const float clear[]={16.0f/255,32.0f/255,48.0f/255,1};test_context->ClearRenderTargetView(view,clear);
-    check(!read_flag(&visible) && !officer_panel::is_visible() && !briefing_overlay::needs_draw(),"all panels initially closed");
+    check(!read_flag(&visible) && !briefing_overlay::needs_draw(),"terrain and advisor overlays initially closed");
     draw(chain,0);check(!terrain_render::devices && !terrain_render::presents && !device,"idle frame keeps old early return");
     InterlockedExchange(&terrain_render::pending,1);draw(chain,DXGI_PRESENT_TEST);
     check(!terrain_render::devices && !terrain_render::presents && terrain_render::needs_present(),"DXGI test present never draws or consumes terrain work");
     draw(chain,0);check(terrain_render::devices==1 && terrain_render::presents==1 && !terrain_render::needs_present(),"dirty terrain enters production draw_locked with all panels closed");
-    check(!texture && !officer_panel::panel_texture && !briefing_overlay::drawing_context && !window && !read_flag(&ready),"terrain-only frame creates no panel texture or window binding");
-    check(!read_flag(&visible) && !officer_panel::is_visible() && !briefing_overlay::needs_draw(),"terrain frame preserves all three panel visibility states");
+    // 사용자 결정 2026-11-03: 통합 인사 제거. Terrain rendering still creates no advisor texture or window binding.
+    check(!texture && !briefing_overlay::drawing_context && !window && !read_flag(&ready),"terrain-only frame creates no advisor texture or window binding");
+    check(!read_flag(&visible) && !briefing_overlay::needs_draw(),"terrain frame preserves the shared button and advisor visibility states");
     D3D11_TEXTURE2D_DESC hidden_desc={};back->GetDesc(&hidden_desc);hidden_desc.Usage=D3D11_USAGE_STAGING;
     hidden_desc.BindFlags=0;hidden_desc.CPUAccessFlags=D3D11_CPU_ACCESS_READ;hidden_desc.MiscFlags=0;
     ID3D11Texture2D *hidden_staging=nullptr;check(SUCCEEDED(test_device->CreateTexture2D(&hidden_desc,nullptr,&hidden_staging)),"hidden-frame readback texture");

@@ -1,3 +1,4 @@
+#include "game_addresses.h"
 /* Automatic district domestic policy only. Manual commands share the native
  * batch executor, so its cost is overridden only in this thread's AI node. */
 static __declspec(thread) unsigned in_auto_domestic;
@@ -6,7 +7,7 @@ static DomesticTick original_domestic_tick;
 
 static Obj domestic_direct_district() {
     Obj root=world(),context=root?pointer(root,0x871E8):nullptr;
-    return context?fn<Obj(__fastcall *)(Obj)>(0x32E8D0)(context):nullptr;
+    return context?fn<Obj(__fastcall *)(Obj)>(GA(GA_32E8D0))(context):nullptr;
 }
 // User rule (v12.10): balanced development applies to delegated player corps
 // and computer corps; the ruler's direct 1st corps only with [domestic]
@@ -19,27 +20,28 @@ static bool domestic_direct_officer(Obj officer) {
 }
 static unsigned balanced_development(Obj area) {
     unsigned selected=0;int best=5;
-    const unsigned getters[3]={0x22E2B0,0x22C760,0x231170};
+    const unsigned getters[3]={GA(GA_22E2B0),GA(GA_22C760),GA(GA_231170)};
     for(unsigned i=0;i<3;++i) {
         int level=fn<int(__fastcall *)(Obj)>(getters[i])(area);
         if(level>=1 && level<best) {best=level;selected=i+1;}
     }
     return selected; // zero means all three are MAX; keep the officer.
 }
+static void *next_domestic_selection,*next_domestic_officer;   // Layout manager chain (null: original)
 static uint64_t __fastcall domestic_selection_node(Obj node,Obj context,Obj subject) { COST_SCOPE("domestic_selection_node");
-    if(!enabled)return fn<Execute>(0x7A110)(node,context,subject);
-    Obj store=fn<Obj(__fastcall *)(Obj)>(0xBF7A40)(context),area=nullptr;
-    if(!fn<unsigned char(__fastcall *)(Obj,unsigned,Obj *,int)>(0xB26470)(store,dword(node,0x38),&area,0) ||
+    if(!enabled)return next_or<Execute>(next_domestic_selection,GA(GA_7A110))(node,context,subject);
+    Obj store=fn<Obj(__fastcall *)(Obj)>(GA(GA_BF7A40))(context),area=nullptr;
+    if(!fn<unsigned char(__fastcall *)(Obj,unsigned,Obj *,int)>(GA(GA_B26470))(store,dword(node,0x38),&area,0) ||
        !valid(area))return 2;
     if(!mod_features.domestic_direct && domestic_direct_officer(table(0x158,word(area,0x36),6000)))
-        return fn<Execute>(0x7A110)(node,context,subject);
+        return next_or<Execute>(next_domestic_selection,GA(GA_7A110))(node,context,subject);
     unsigned selection=balanced_development(area);
     if(selection && area[0x72]==selection && valid(table(0x158,word(area,0x36),6000)))selection=0;
-    bool written=fn<unsigned char(__fastcall *)(Obj,unsigned,unsigned)>(0xB26990)(store,dword(node,0x3C),selection)!=0;
+    bool written=fn<unsigned char(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_B26990))(store,dword(node,0x3C),selection)!=0;
     return written?1:2;
 }
-static uint64_t __fastcall domestic_officer_node(Obj node,Obj context,Obj subject) {
-    auto original=fn<Execute>(0x36320);
+static uint64_t __fastcall domestic_officer_node(Obj node,Obj context,Obj subject) { COST_CRUMB_HOT("domestic_officer_node",node);
+    auto original=next_or<Execute>(next_domestic_officer,GA(GA_36320));
     if(!enabled)return original(node,context,subject);
 #if defined(PERSONNEL_CANDIDATE) || defined(INJURY_PROTECTION)
     if(!personnel_healthy_actor(node,context,0x3C))return 2;
@@ -54,10 +56,10 @@ static uint64_t __fastcall domestic_officer_node(Obj node,Obj context,Obj subjec
 }
 static unsigned __fastcall domestic_command_cost() { COST_SCOPE("domestic_command_cost");
     if(enabled && in_auto_domestic) {
-        log_event("auto_domestic_free_cost",0,dword(image,0x1A483DC),0);
+        log_event("auto_domestic_free_cost",0,dword(image,GA(GA_1A483DC)),0);
         return 0;
     }
-    return dword(image,0x1A483DC);
+    return dword(image,GA(GA_1A483DC));
 }
 static bool automated_domestic_district(Obj district,bool include_direct=false) {
     if(!valid(district))return false;
@@ -78,7 +80,7 @@ static void synchronize_domestic(Obj city) {
     for(unsigned id=1;id<=500;++id) {
         Obj area=table(0x6CAF0,id,500);
         if(!valid(area) || area[0x35]!=word(city,0x4E) ||
-           fn<unsigned(__fastcall *)(Obj)>(0x22CC00)(area)!=owner)continue;
+           fn<unsigned(__fastcall *)(Obj)>(GA(GA_22CC00))(area)!=owner)continue;
         Obj officer=table(0x158,word(area,0x36),6000);
         if(!valid(officer) || table(0xE0D0,officer[0xE0],51)!=district)continue;
         unsigned selection=balanced_development(area);

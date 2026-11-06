@@ -16,7 +16,11 @@ header='// Generated from the SHA-256 checked CE plain copy.\nstruct Guard {unsi
 header+=''.join('    {0x%X,0x%X,0x%016Xull},\n'%(r['rva'],r['size'],r['hash']) for r in records)+'};\n'
 path=P/'src/building_destruction_profile.h'
 if '--generate' in sys.argv:path.write_text(header,encoding='utf-8')
-assert path.read_text(encoding='utf-8')==header,'building destruction native profile differs'
+# local10 G2: the profile also holds the pure guards_match()/capture_form() functions after the generated table, and spells the table with
+# GA()/GH() (expanded back to the reference-build literals by tests/ga_expand.py, like the other static checks)
+sys.path.insert(0,str(P/'tests'));import ga_expand
+text=path.read_text(encoding='utf-8').replace('#pragma once'+chr(10),'',1).replace('#include "game_addresses.h"'+chr(10),'',1)
+assert text.startswith(header),'building destruction native profile differs'
 assert pe.read(0x1F91EC,12)==bytes.fromhex('83f8147507e8ea0b0000eb0a')
 assert pe.read(0x1FA607,8)==bytes.fromhex('8955f0448b642478')
 assert pe.read(0x1F9E22,4)==bytes.fromhex('48894de0') # command at RBP-20
@@ -30,7 +34,7 @@ assert pe.read(0x1F9EBA,8)==bytes.fromhex('488b8cc258010000')
 assert pe.read(0x1FA1F2,7)==bytes.fromhex('488b3e48897da0') # primary at RBP-60
 assert pe.read(0x1FB080,5)==bytes.fromhex('e82b92ffff')
 assert pe.read(0x1FB076,5)==bytes.fromhex('e8159b0900')
-assert hashlib.sha256((P.parent/'SAN14CE_KO.exe').read_bytes()).hexdigest()=='87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a'
+assert hashlib.sha256((P.parent/'SAN14CE_KO.exe').read_bytes()).hexdigest() in ('87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a','782cf229a56cdde2b95399e0e7536740b3f5e96bea702679365e4dad061abdce') # 782cf229 = Steam buildid 25953386
 out=P/'build/development/building_destruction';out.mkdir(parents=True,exist_ok=True)
 (out/'native_evidence.json').write_text(json.dumps(dict(source=str(pe.SOURCE),source_sha256=hashlib.sha256(pe.data).hexdigest(),ranges=records,
     abi={'complete':'int(command RCX), native CALL 1F91F1 for type 20 only',

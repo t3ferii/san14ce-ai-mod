@@ -1,29 +1,32 @@
+#include "game_addresses.h"
 /* Recruitment screen candidate. Invoked only by native UI callbacks.
  * No process injection, polling dispatcher, synthetic click, or background
  * native call. The automatic action starts after a user-confirmed selection.
  */
 #include <wchar.h>
+// Layout manager chain of the four recruit UI slots (design 8.0 G1; null: original game function).
+static void *next_recruit_selector_close,*next_recruit_selector_init,*next_recruit_layout_init,*next_recruit_state_update;
 // Only the native player menu's alert calculation uses these wrappers.
 // The hidden-person scan is also used by exploration; scope its filter to
 // 2DEE70 -> 2B2F10 so actual search lists and discoveries stay native.
 static __declspec(thread) Obj recruit_alert_force;
 static Obj recruit_alert_player() {
     Obj root=world(),context=root?pointer(root,0x871E8):nullptr;
-    return context?fn<Obj(__fastcall *)(Obj)>(0x32E910)(context):nullptr;
+    return context?fn<Obj(__fastcall *)(Obj)>(GA(GA_32E910))(context):nullptr;
 }
 static bool recruit_alert_hated(Obj target,Obj force) {
     if(!valid(target) || !valid(force))return false;
     Obj ruler=table(0x158,word(force,0x10),6000);
-    return valid(ruler) && fn<int(__fastcall *)(Obj,Obj)>(0x232A00)(target,ruler)!=0;
+    return valid(ruler) && fn<int(__fastcall *)(Obj,Obj)>(GA(GA_232A00))(target,ruler)!=0;
 }
 static int __fastcall recruit_alert_candidate(Obj target,Obj district) { COST_SCOPE("recruit_ui_recruit_alert_candidate");
-    int result=fn<int(__fastcall *)(Obj,Obj)>(0x1EF680)(target,district);
+    int result=fn<int(__fastcall *)(Obj,Obj)>(GA(GA_1EF680))(target,district);
     if(!enabled || !result || !valid(district))return result;
     Obj force=table(0xDF30,district[0x10],51);
     return force==recruit_alert_player() && recruit_alert_hated(target,force)?0:result;
 }
 static void __fastcall recruit_alert_location(Obj target,int *kind,int *id) { COST_SCOPE("recruit_ui_recruit_alert_location");
-    fn<void(__fastcall *)(Obj,int *,int *)>(0x231C60)(target,kind,id);
+    fn<void(__fastcall *)(Obj,int *,int *)>(GA(GA_231C60))(target,kind,id);
     if(enabled && recruit_alert_force && valid(target) && target[0xE6]==8 &&
        recruit_alert_hated(target,recruit_alert_force)) {
         *kind=0xFF;*id=0; // Native invalid location: skip this alert candidate.
@@ -32,7 +35,7 @@ static void __fastcall recruit_alert_location(Obj target,int *kind,int *id) { CO
 static Obj __fastcall recruit_alert_search(GameList *areas,int *people,int *items,int *scenery,int *selected) { COST_SCOPE("recruit_ui_recruit_alert_search");
     Obj previous=recruit_alert_force;
     recruit_alert_force=enabled?recruit_alert_player():nullptr;
-    Obj result=fn<Obj(__fastcall *)(GameList *,int *,int *,int *,int *)>(0x2B2F10)
+    Obj result=fn<Obj(__fastcall *)(GameList *,int *,int *,int *,int *)>(GA(GA_2B2F10))
         (areas,people,items,scenery,selected);
     recruit_alert_force=previous;return result;
 }
@@ -94,15 +97,15 @@ static const wchar_t *recruit_reason_label(unsigned reason,bool family_available
 static bool recruit_family_available(Obj target,Obj district) {
     Obj own_force=valid(district)?table(0xDF30,district[0x10],51):nullptr;
     if(!valid(target) || !valid(own_force))return false;
-    GameList candidates;list_init(candidates,0x13436B0);
-    fn<unsigned(__fastcall *)(Obj,GameList *)>(0x6DA8A0)(district,&candidates);
+    GameList candidates;list_init(candidates,GA(GA_13436B0));
+    fn<unsigned(__fastcall *)(Obj,GameList *)>(GA(GA_6DA8A0))(district,&candidates);
     bool found=false;unsigned count=0;
     for(Link *link=list_first(candidates);link && count<6000;link=link->next,++count) {
         Obj actor=link->value;
         if(!valid(actor) || personnel_force(actor)!=own_force || actor[0x161] || (word(actor,0x15E)&1) ||
            !personnel_family_envoy(target,actor))continue;
         PersonnelEmployCommand command={target,actor,0,0};
-        if(fn<int(__fastcall *)(PersonnelEmployCommand *)>(0x1EFE60)(&command)) {found=true;break;}
+        if(fn<int(__fastcall *)(PersonnelEmployCommand *)>(GA(GA_1EFE60))(&command)) {found=true;break;}
     }
     list_free(candidates);return found;
 }
@@ -125,10 +128,10 @@ static RecruitTab recruit_tabs[4];
 static bool recruit_columns_ready;
 static bool recruit_prepare_columns() {
     if(recruit_columns_ready)return true;
-    Obj original=image+0x1A2B850;
+    Obj original=image+GA(GA_1A2B850);
     // The captured table has 213 entries. Preserve aliases at IDs 13..17.
     if(dword(original,0)!=0 || dword(original,0x60)!=1 || dword(original,212*0x60)!=212)return false;
-    const auto *tabs=reinterpret_cast<const RecruitTab *>(image+0x1A31330);
+    const auto *tabs=reinterpret_cast<const RecruitTab *>(image+GA(GA_1A31330));
     if(tabs[3].ids)return false;
     for(unsigned tab=0;tab<3;++tab) {
         if(!tabs[tab].ids)return false;
@@ -204,12 +207,12 @@ static void __fastcall recruit_selector_close(Obj dialog,unsigned code) { COST_S
             if(first) {recruit_multi=next;++recruit_multi_revision;}
         }
     }
-    fn<void(__fastcall *)(Obj,unsigned)>(0x6BE8E0)(dialog,code);
+    next_or<void(__fastcall *)(Obj,unsigned)>(next_recruit_selector_close,GA(GA_6BE8E0))(dialog,code);
 }
 static uint64_t __fastcall recruit_selector_init(Obj dialog,Obj config) { COST_SCOPE("recruit_ui_recruit_selector_init");
-    auto original=fn<uint64_t(__fastcall *)(Obj,Obj)>(0x2C0820);
-    if(!enabled || !config || !valid(recruit_district) || pointer(config,8)!=image+0x1A31330 ||
-       pointer(config,16)!=image+0x1A2B850 || !recruit_prepare_columns()) {
+    auto original=next_or<uint64_t(__fastcall *)(Obj,Obj)>(next_recruit_selector_init,GA(GA_2C0820));
+    if(!enabled || !config || !valid(recruit_district) || pointer(config,8)!=image+GA(GA_1A31330) ||
+       pointer(config,16)!=image+GA(GA_1A2B850) || !recruit_prepare_columns()) {
         recruit_bind_context(nullptr);return original(dialog,config);
     }
     recruit_bind_context(recruit_district);
@@ -218,7 +221,7 @@ static uint64_t __fastcall recruit_selector_init(Obj dialog,Obj config) { COST_S
     unsigned old_mode=dword(config,0x18),old_limit=dword(config,0x1C);
     bool multi=false;
     if(recruit_target_pick && old_mode==1 && old_limit==1) {
-        int cost=fn<int(__fastcall *)()>(0x6D3660)();unsigned orders=recruit_district[0x14];
+        int cost=fn<int(__fastcall *)()>(GA(GA_6D3660))();unsigned orders=recruit_district[0x14];
         unsigned limit=cost>0?orders/static_cast<unsigned>(cost):orders;
         if(!limit)limit=1;
         // Record even a one-order pick: its confirmation clears old snapshots.
@@ -241,7 +244,7 @@ static uint64_t __fastcall recruit_selector_init(Obj dialog,Obj config) { COST_S
 }
 // Keep the published hook, but leave the original layout entirely native.
 static unsigned __fastcall recruit_layout_init(Obj layout,Obj district) { COST_SCOPE("recruit_ui_recruit_layout_init");
-    return fn<unsigned(__fastcall *)(Obj,Obj)>(0x6F1D10)(layout,district);
+    return next_or<unsigned(__fastcall *)(Obj,Obj)>(next_recruit_layout_init,GA(GA_6F1D10))(layout,district);
 }
 static void recruit_report_automatic(Obj district,const PersonnelBatchResult &result) {
     unsigned skipped=result.blocked+result.no_actor+result.no_orders+result.failed+result.advised_against;
@@ -276,19 +279,19 @@ static unsigned recruit_actor_count(Obj layout) {
     return count;
 }
 static void recruit_multi_preview(Obj layout,Obj district) {
-    int cost=fn<int(__fastcall *)()>(0x6D3660)();
+    int cost=fn<int(__fastcall *)()>(GA(GA_6D3660))();
     int total=cost*static_cast<int>(recruit_actor_count(layout)+recruit_multi.count-1);
     Obj source=pointer(layout,0x1A0);
     unsigned orders=(source==district?source:district)[0x14];
     wchar_t remaining[32]={},deduction[48]={};
     _snwprintf_s(remaining,32,_TRUNCATE,L"%d",static_cast<int>(orders)-total);
     _snwprintf_s(deduction,48,_TRUNCATE,L"(^03-%d^00)",total);
-    auto text=fn<void(__fastcall *)(Obj,unsigned,const wchar_t *,int)>(0x930D20);
+    auto text=fn<void(__fastcall *)(Obj,unsigned,const wchar_t *,int)>(GA(GA_930D20));
     text(layout+0x130,0xAB,remaining,1);text(layout+0x130,0xAC,deduction,1);
     Obj widget=pointer(layout,0x1A8);
     if(widget) {
-        unsigned node=fn<Obj(__fastcall *)(Obj,unsigned)>(0x92CEE0)(widget+0x130,2)?2:7;
-        const wchar_t *name=fn<const wchar_t *(__fastcall *)(Obj)>(0x22EEC0)(recruit_multi.people[0]);
+        unsigned node=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_92CEE0))(widget+0x130,2)?2:7;
+        const wchar_t *name=fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_22EEC0))(recruit_multi.people[0]);
         wchar_t label[64]={};
         _snwprintf_s(label,64,_TRUNCATE,L"%s 외 %u명",name,recruit_multi.count-1);
         text(widget+0x130,node,label,1);
@@ -296,8 +299,8 @@ static void recruit_multi_preview(Obj layout,Obj district) {
 }
 static void __fastcall recruit_state_update(Obj state) { COST_SCOPE("recruit_ui_recruit_state_update");
     Obj layout=pointer(state,0x478),district=pointer(state,0x470);
-    auto original=fn<void(__fastcall *)(Obj)>(0x733BD0);
-    if(!enabled || !layout || pointer(layout,0)!=image+0x1440E48 || !valid(district)) {
+    auto original=next_or<void(__fastcall *)(Obj)>(next_recruit_state_update,GA(GA_733BD0));
+    if(!enabled || !layout || pointer(layout,0)!=image+GA(GA_1440E48) || !valid(district)) {
         original(state);return;
     }
     RecruitScope scope(district);
@@ -320,9 +323,9 @@ static void __fastcall recruit_state_update(Obj state) { COST_SCOPE("recruit_ui_
         // User decision 2026-10-25: an unadvised display target is skipped
         // only for a matching multi-selection. Release its batch reservations.
         unsigned reserved_count=recommended?actor_count:0;
-        int cost=fn<int(__fastcall *)()>(0x6D3660)();
+        int cost=fn<int(__fastcall *)()>(GA(GA_6D3660))();
         unsigned reserved_orders=cost>0?static_cast<unsigned>(cost)*reserved_count:0;
-        GameList remaining;list_init(remaining,0x13436B0);
+        GameList remaining;list_init(remaining,GA(GA_13436B0));
         for(unsigned i=1;i<batch.count;++i)list_add(remaining,batch.people[i]);
         PersonnelBatchResult result=personnel_auto_employ(district,remaining,actors,reserved_count,reserved_orders,district);
         list_free(remaining);
@@ -334,7 +337,7 @@ static void __fastcall recruit_state_update(Obj state) { COST_SCOPE("recruit_ui_
         if(!recommended) {
             log_event("recruit_multi_display_advised_against",word(target,0x10),actor_count);
             // Mirror 733BD0's successful cases 3/4 on this UI caller thread.
-            fn<void(__fastcall *)(Obj)>(0x6BD740)(layout);
+            fn<void(__fastcall *)(Obj)>(GA(GA_6BD740))(layout);
             if(operation==3) {
                 auto close=*reinterpret_cast<void(__fastcall **)(Obj,unsigned)>(pointer(layout,0)+0x190);
                 close(layout,0x7FFFFFFD);

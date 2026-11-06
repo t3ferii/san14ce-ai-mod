@@ -37,7 +37,7 @@ python -B -X utf8 <스크래치>/src_<버전>/AI_TacticsMod/tools/audit_current_
 - 결과를 저장소에 `cp -r` 한 뒤 **README.md는 `git checkout README.md`로 되돌린다**(내보내기가 로컬 README로 「모더용 소스 공개」 절을 지움).
 - `FUNCTION_AUDIT.md` 3행·`source_audit.json` basis를 새 버전으로 고친다(생성기 문구가 v12.19로 남아 있음).
 - 저장소 전용 파일 유지: `tools/build_public_smoke.ps1`(로컬에 없음, `-Combat -Ccz` 실행해 통과 확인), `docs/SOURCE_*.md`, `AI_EDITING.md`, `development/CURRENT.md`, `public_source_manifest.json`(추가·변경 파일 지문), `THIRD_PARTY.md`, `site/`.
-- 커밋 전 `git diff --cached`에서 실명·gmail·`C:\Users\<계정>` 경로가 없는지 확인한다.
+- 커밋 전 `git diff --cached`에서 실명·gmail·`C:\Users\<user> 경로가 없는지 확인한다.
 
 ## 3. 임시 브랜치로 릴리스 생성
 main 커밋 해시를 `MAIN`으로 기억한 뒤:
@@ -112,6 +112,12 @@ jobs:
 - v15.3은 군정 초과 투입을 DLL에서도 중지한다. GUI/PS는 충돌 전투 3개와 초과 투입을 숨기되 이전 키의 OFF 이전 처리를 유지한다.
 - PUBLISHED에 v15.2를 추가하고 release_features.json에 이전 판 비교 자료를 포함한다.
 - 로컬 설치는 게임 종료 후 공용 설치 경로만 사용한다. 공개 패키지 준비는 실행 중 게임을 수정하지 않는다. 공개 무로그판과 로컬 진단판의 검증 결과를 구분한다.
+
+## v15.6 절차 보완 (2026-11-06)
+- 공개 패키지는 DLL 5개다. `SAN14_Layout.dll`(dinput8이 먼저 불러옴)이 빠지면 Layout 관리 기능이 꺼진다. `prepare_public_release.py`의 `expected`와 `build_share.py` 허용 이름에 넣었다. 공유 ZIP에서 DLL 5개·진단 문자열(`day=`) 없음을 확인한다.
+- 릴리스 브랜치에 `release_assets/.gitattributes`(`* -text`)를 넣는다. 없으면 Windows `core.autocrlf`가 `release_features.json`의 CRLF를 바꿔 러너의 해시가 어긋난다.
+- 워크플로는 초안 생성 → 자산 업로드 → size·digest 대조 → 공개(PATCH)를 한 번에 한다(`::notice::`로 결과 확인).
+- 공개하지 않은 판(v15.5.1)은 `PUBLISHED`에 넣지 않고 다음 공개판 노트에 "변경 포함"으로 적는다.
 
 ## UI 자료만 수정하는 배포
 - 사용자 요청으로 DLL을 유지하면 네이티브 소스·DLL 해시 동일성을 확인하고 설치기/리소스 관련 검사만 실행한다. DLL 재빌드나 전체 회귀를 했다고 보고하지 않는다.

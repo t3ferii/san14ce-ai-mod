@@ -11,10 +11,11 @@ static uint64_t __fastcall population_growth(Obj city) { COST_SCOPE("population_
         if(valid(area) && area[0x35]==word(city,0x4E))samples.push_back({area,word(area,0x52)});
     }
     uint64_t result=original_population_growth(city);
+    if(mod_features.population_rate<=1)return result;   // 1x = original growth
     for(const auto &s:samples) {
         unsigned now=word(s.area,0x52);
         if(now>s.before) {
-            unsigned value=(std::min)(60000u,s.before+4u*(now-s.before));
+            unsigned value=(std::min)(60000u,s.before+mod_features.population_rate*(now-s.before));
             *reinterpret_cast<unsigned short *>(s.area+0x52)=static_cast<unsigned short>(value);
         }
     }

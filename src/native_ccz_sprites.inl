@@ -3,6 +3,7 @@
 // 게임 스레드: 부대 표시 객체 vtable 5번(부대 모형 제출 1C6EC0)에서 위치·방향·상태·진영과 카메라를
 // 읽기만 하고 복사한다. 대상 부대는 원래 제출을 건너뛰어 3D 모형을 숨긴다(깃발 슬롯은 그대로).
 // 렌더 스레드: Present 직전 복사본과 우리 GPU 자원만으로 빌보드를 그린다. 게임 함수 호출 없음.
+#include "game_addresses.h"
 #include <algorithm>
 #include <cmath>
 #include <iterator>
@@ -13,21 +14,21 @@
 #include "ccz_sprites_vs.h"
 #include "ccz_sprites_ps.h"
 namespace ccz_sprites {
-constexpr unsigned kDisplayVtable=0x13A03A8,kSubmitSlot=0x13A03D0,kSubmit=0x1C6EC0,kSubmitSize=0x60;
-constexpr unsigned long long kSubmitHash=0x0BC927F835180669ull;   // FNV-1a of 1C6EC0..+60 (exe = running .text)
-constexpr unsigned kArmyVtable=0x1342458;                          // Army record, Army+148 = display
-constexpr unsigned kCameraRoot=0x27D1208,kCameraVtable=0x16B32C0;
+const unsigned kDisplayVtable=GA(GA_13A03A8),kSubmitSlot=GA(GA_13A03D0),kSubmit=GA(GA_1C6EC0),kSubmitSize=0x60;
+const unsigned long long kSubmitHash=GH(0x0BC927F835180669ull);   // FNV-1a of 1C6EC0..+60 (exe = running .text)
+const unsigned kArmyVtable=GA(GA_1342458);                          // Army record, Army+148 = display
+const unsigned kCameraRoot=GA(GA_27D1208),kCameraVtable=GA(GA_16B32C0);
 // CCZU v2 entry: move 11x48x48 | attack 12x64x64 | special 5x48x48, 8-bit palette index, 0 = clear.
 constexpr unsigned kRawSize=48*48*11+64*64*12+48*48*5;
 constexpr unsigned kAtlasW=64,kAtlasH=11*48+12*64+5*48,kAttackRow=11*48,kSpecialRow=kAttackRow+12*64;
-constexpr unsigned kSlots=256,kTextures=256,kQuads=kSlots*3;   // unit + up to two state labels
-// 2026-11-02 user: 64 -> 256 cached cells. Lazy GPU allocation: 96 KiB per atlas, at most 24 MiB.
+constexpr unsigned kSlots=512,kTextures=512,kQuads=kSlots*3;   // unit + up to two state labels
+// 2026-11-04 user: 256 -> 512 cached cells. Lazy GPU allocation: 96 KiB per atlas, at most 48 MiB.
 // 2026-10-31 user: 막기·회심 were hard to notice -> "막기!" / "회심!" labels over armies in that state.
 // Rendered once with GDI (Malgun Gothic) into an R8_UINT mask: row 0 막기, row 1 회심, 1 = glyph.
 constexpr unsigned kLabelW=64,kLabelH=20,kLabelCell=0xFFFFFFFEu;
 // Palette rows: 0 neutral (original green marks), 1+k = force colour k (Force+49, 62 colours), 63 Red Hare.
 // 2026-10-31 user: force colours, plus a contrasting outline so units do not sink into the ground.
-constexpr unsigned kRows=64,kForceColours=0x1A26590,kColourCount=62,kRedHare=63;   // 2ACF00 mode 0 -> 32C220 table (RRGGBBAA)
+const unsigned kRows=64,kForceColours=GA(GA_1A26590),kColourCount=62,kRedHare=63;   // 2ACF00 mode 0 -> 32C220 table (RRGGBBAA)
 constexpr ULONGLONG kBlockMs=700,kHurtMs=450,kCritMs=700;
 // 2026-11-01 user: attack / hurt motions changed too often -> slower attack frames, one hurt motion per 1.5 s.
 constexpr ULONGLONG kAttackFrameMs=260,kHurtCooldownMs=1500;
@@ -114,6 +115,7 @@ static void reload_appearance() {
 constexpr float kPixel=9.0f,kTowardCamera=250.0f;                  // world units per CCZ pixel; depth margin
 constexpr float kMinScreen=1.0f/10,kMaxScale=3.0f;                // 48px frame >= 1/10 screen height when zoomed out (user: 1/9 too big)
 using Submit=void(__fastcall *)(Obj,Obj,Obj);
+static Submit next_submit;   // Layout manager: next of 13A03D0 (original 1C6EC0 unless another mod chained first)
 struct Unit {
     Obj army=nullptr;ULONGLONG seen=0,moved=0;
     float x=0,y=0,z=0,yaw=0,fx=0,fz=0;bool facing=false;
@@ -195,12 +197,12 @@ static Identity identify(Obj army,unsigned formation) {   // pure reads, no game
     if(r.cls>=0x1000 && r.cls!=kNative && !catalog.find(r.cell))r.cls=kNative;
     return r;
 }
-static bool capture(Obj display,Obj scene) {
+static bool capture(Obj display,Obj scene) { COST_SCOPE("ccz_sprites_capture"); COST_CRUMB("ccz_capture_display",display);
     if(dword(display,0x740)!=0 || dword(display,0x748)!=0)return false;   // field mode only, no extra part
     // 2026-10-31 live read: *(image+1B9FB70) held a stack-like value, never main+210==scene, so
     // every army was rejected. The Army back-reference below already identifies field armies.
     (void)scene;
-    Obj army=pointer(display,0x40);
+    Obj army=pointer(display,0x40); COST_CRUMB("ccz_capture_army",army);
     if(!army || pointer(army,0)!=image+kArmyVtable || pointer(army,0x148)!=display)return false;
     unsigned formation=army[0x1B];
     Identity who=identify(army,formation);
@@ -251,7 +253,12 @@ static bool capture(Obj display,Obj scene) {
     bool drawable=fresh || now-camera_seen<500;
     return drawable && InterlockedCompareExchange(&hide_model,0,0)!=0;
 }
-static void __fastcall submit(Obj display,Obj scene,Obj list) { COST_SCOPE("ccz_sprites_submit");
+static void __fastcall submit(Obj display,Obj scene,Obj list) { COST_SCOPE("ccz_sprites_submit"); COST_CRUMB("ccz_sprites_display",display); COST_CRUMB("ccz_submit_display",display);
+#if defined(RUNTIME_COST_PROFILE) && !defined(NO_RUNTIME_LOG)
+    Obj submit_army=nullptr; SIZE_T submit_read=0;
+    if(display && ReadProcessMemory(GetCurrentProcess(),display+0x40,&submit_army,sizeof(submit_army),&submit_read) && submit_read==sizeof(submit_army))
+        COST_CRUMB("ccz_submit_army",submit_army);
+#endif
     if(InterlockedCompareExchange(&installed,0,0) && capture(display,scene)) {
         // 2026-10-31 live crash: installing the Present hook from split_activate (before the
         // game swap chain) let the Steam overlay re-hook over it -> Present recursion.
@@ -262,7 +269,7 @@ static void __fastcall submit(Obj display,Obj scene,Obj list) { COST_SCOPE("ccz_
 #endif
         return;
     }
-    fn<Submit>(kSubmit)(display,scene,list);
+    next_pick(next_submit,kSubmit)(display,scene,list);
 }
 // ---- asset ----
 static void hsv_shift(unsigned &rgba,float hue) {
@@ -460,7 +467,7 @@ static void sample_bind(UINT n,ID3D11RenderTargetView *const *rtv,ID3D11DepthSte
         if(t){D3D11_TEXTURE2D_DESC d{};t->GetDesc(&d);b.width=d.Width;b.height=d.Height;b.format=d.Format|(t==back_texture?0x10000u:0u);t->Release();}
     }
 }
-static void STDMETHODCALLTYPE set_targets(ID3D11DeviceContext *c,UINT n,ID3D11RenderTargetView *const *rtv,ID3D11DepthStencilView *dsv) {
+static void STDMETHODCALLTYPE set_targets(ID3D11DeviceContext *c,UINT n,ID3D11RenderTargetView *const *rtv,ID3D11DepthStencilView *dsv) { COST_SCOPE("ccz_set_targets");
     if(InterlockedCompareExchange(&drawing,0,0)){original_set(c,n,rtv,dsv);return;}
     LARGE_INTEGER t0;QueryPerformanceCounter(&t0);++stats.set_calls;
     if(dsv && n && n<=D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT && want_width)note_dsv(dsv);
@@ -623,7 +630,7 @@ static bool far_keep_enabled; // startup-only [ccz] ccz_far_keep=0; independent 
 static bool safe_read(void *out,const void *from,size_t size) {
     __try{memcpy(out,from,size);return true;}__except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
-static bool far_position(Obj army,float out[3],float &yaw) {   // display position of a known army, every pointer checked
+static bool far_position(Obj army,float out[3],float &yaw) { COST_SCOPE("ccz_sprites_far_position"); COST_CRUMB("ccz_far_army",army);   // display position of a known army, every pointer checked
     Obj vt=nullptr,display=nullptr,back=nullptr,dvt=nullptr;unsigned mode[3]={};
     if(!safe_read(&vt,army,8) || vt!=image+kArmyVtable || !safe_read(&display,army+0x148,8) || !display)return false;
     if(!safe_read(&dvt,display,8) || dvt!=image+kDisplayVtable || !safe_read(&back,display+0x40,8) || back!=army)return false;
@@ -694,7 +701,7 @@ static unsigned build(ID3D11DeviceContext *c,float height,bool linear,bool scene
     float hx=fx,hz=fz,hl=std::sqrt(hx*hx+hz*hz);if(hl>1e-3f){hx/=hl;hz/=hl;}else{hx=ux;hz=uz;}   // top-down: screen up = away
     D3D11_MAPPED_SUBRESOURCE mapped{};if(FAILED(c->Map(vertices,0,D3D11_MAP_WRITE_DISCARD,0,&mapped))){zero_reason=5;return 0;}
     auto out=static_cast<Vertex *>(mapped.pData);unsigned written=0;
-    Vertex labels[kSlots*2][4];unsigned label_count=0;
+    static thread_local Vertex labels[kSlots*2][4];unsigned label_count=0;
     for(unsigned i=0;i<count;++i) {
         const Unit &u=list[i];
         float ffx=u.facing?u.fx:std::sin(u.yaw),ffz=u.facing?u.fz:std::cos(u.yaw);
@@ -753,7 +760,7 @@ static bool linear_target(ID3D11RenderTargetView *rtv) {   // float / sRGB targe
         default:return false;
     }
 }
-static bool draw(ID3D11DeviceContext *c,ID3D11RenderTargetView *rtv,ID3D11DepthStencilView *dsv,float width,float height,bool scene) {
+static bool draw(ID3D11DeviceContext *c,ID3D11RenderTargetView *rtv,ID3D11DepthStencilView *dsv,float width,float height,bool scene) { COST_SCOPE("ccz_draw");
     LARGE_INTEGER t0;QueryPerformanceCounter(&t0);
     unsigned cells[kQuads];float cam[80];
     unsigned written=build(c,height,linear_target(rtv),scene,cells,cam);
@@ -795,7 +802,7 @@ static bool draw(ID3D11DeviceContext *c,ID3D11RenderTargetView *rtv,ID3D11DepthS
     stats.cost_qpc+=spent;if(spent>stats.cost_max)stats.cost_max=spent;
     return submitted;
 }
-static bool draw_scene(ID3D11DeviceContext *c,ID3D11RenderTargetView *rtv,ID3D11DepthStencilView *dsv) {
+static bool draw_scene(ID3D11DeviceContext *c,ID3D11RenderTargetView *rtv,ID3D11DepthStencilView *dsv) { COST_SCOPE("ccz_draw_scene");
     if(!needs_present() || !device || resources_failed)return false;
     ++stats.scene_draws;
     {D3D11_RENDER_TARGET_VIEW_DESC d{};rtv->GetDesc(&d);stats.target_format=d.Format;}
@@ -907,12 +914,12 @@ static void mark(Obj victim,Obj attacker,Mark kind) {   // game thread; touches 
     ReleaseSRWLockExclusive(&lock);
 }
 static bool guards_match() {
-    if(pointer(image,kSubmitSlot)!=image+kSubmit)return false;
+    // Slot ownership (13A03D0) is judged by the Layout hook manager (whitelist row: the fog mod checks it).
     unsigned long long hash=0xCBF29CE484222325ull;
     for(unsigned i=0;i<kSubmitSize;++i)hash=(hash^image[kSubmit+i])*0x100000001B3ull;
     return hash==kSubmitHash;
 }
-static bool install(bool hide,bool depth,bool far_keep) {
+static bool install(bool hide,bool depth,bool far_keep) { COST_SCOPE("ccz_install");
     if(InterlockedCompareExchange(&installed,0,0) || !guards_match())return false;
     InterlockedExchange(&hide_model,hide?1:0);InterlockedExchange(&depth_test,depth?1:0);
     far_keep_enabled=far_keep;stop_distance=0;
@@ -920,11 +927,11 @@ static bool install(bool hide,bool depth,bool far_keep) {
     log_event("ccz_sprites_far_keep",far_keep?1u:0u,static_cast<unsigned>(kFarKeepMs),0);
 #endif
     if(!load_asset()){log_event("ccz_sprites_asset_missing");return false;}
-    if(!patch_pointer(kSubmitSlot,kSubmit,reinterpret_cast<void *>(&submit)))return false;
+    if(layout_client::vt(kSubmitSlot,reinterpret_cast<void *>(&submit),reinterpret_cast<void **>(&next_submit))<=0)return false;
     InterlockedExchange(&installed,1);log_event("ccz_sprites_installed",static_cast<unsigned>(entries.size()),hide?1:0,depth?1:0);return true;
 }
-static void restore() {
-    if(InterlockedExchange(&installed,0))restore_pointer(kSubmitSlot,kSubmit,reinterpret_cast<void *>(&submit));
+static void restore() { COST_SCOPE("ccz_restore");
+    if(InterlockedExchange(&installed,0))layout_client::cancel_all();   // unpublished registrations only; installed hooks go through Layout unhook
     if(set_table) {
         DWORD prior=0;
         if(VirtualProtect(set_table+kSetTargetsSlot,sizeof(void *),PAGE_READWRITE,&prior)) {
@@ -941,7 +948,7 @@ static Lifetime lifetime;
 // 7단계 1749A0이 output+20/+22(u16) 합을 병력에서 뺀다(합 0 -> 원작이 1로 처리). 6단계 직후 output만 고친다.
 // 1749A0 진입 훅(전투 DLL)과 겹치지 않는다. pair+0 = 공격 기록 포인터, pair+8 = 피격 기록, 기록+4 27 = 야전 부대.
 namespace ccz_combat {
-constexpr unsigned kFix=0x16FDD0,kStat=0x22FCE0;
+const unsigned kFix=GA(GA_16FDD0),kStat=GA(GA_22FCE0);
 static volatile LONG block_on,critical_on;
 static unsigned roll() {   // per mille; own state, the game's random state is untouched
 #ifdef CCZ_NATIVE_FIXTURE
@@ -963,18 +970,19 @@ static int war(Obj army) {   // effective 무력 (22FCE0 index 1), -1 without a 
     return valid(person)?fn<int(__fastcall *)(Obj,unsigned,unsigned)>(kStat)(person,1,0xFFF):-1;
 }
 static int clamp(int v,int lo,int hi) {return v<lo?lo:v>hi?hi:v;}
-static int __fastcall fix(Obj manager,Obj pair,Obj output) { COST_SCOPE("ccz_combat_fix");
+static int __fastcall fix(Obj manager,Obj pair,Obj output) { COST_SCOPE("ccz_combat_fix"); COST_CRUMB("ccz_sprites_manager",manager);
     int next=fn<int(__fastcall *)(Obj,Obj,Obj)>(kFix)(manager,pair,output);
     bool block=InterlockedCompareExchange(&block_on,0,0)!=0,critical=InterlockedCompareExchange(&critical_on,0,0)!=0;
     if(next!=7 || (!block && !critical) || !pair || !output)return next;
     Obj attacker=field_army(pointer(pair,0)),victim=field_army(pair+8);
+    COST_CRUMB("ccz_combat_attacker",attacker); COST_CRUMB("ccz_combat_victim",victim);
     if(!valid(attacker) || !valid(victim) || attacker==victim)return next;
     if(!word(attacker,0x16) || !word(victim,0x16))return next;
     auto *damage=reinterpret_cast<unsigned short *>(output+0x20);
     unsigned before=damage[0]+damage[1];if(!before)return next;
-    unsigned af=fn<unsigned char(__fastcall *)(Obj)>(0x22CC40)(attacker);
-    unsigned vf=fn<unsigned char(__fastcall *)(Obj)>(0x22CC40)(victim);
-    if(af>=52 || vf>=52 || af==vf || !fn<bool(__fastcall *)(unsigned,unsigned)>(0x2CA280)(af,vf)) {
+    unsigned af=fn<unsigned char(__fastcall *)(Obj)>(GA(GA_22CC40))(attacker);
+    unsigned vf=fn<unsigned char(__fastcall *)(Obj)>(GA(GA_22CC40))(victim);
+    if(af>=52 || vf>=52 || af==vf || !fn<bool(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(af,vf)) {
 #ifndef NO_RUNTIME_LOG
         static volatile LONG rejected;
         if(InterlockedIncrement(&rejected)<=16)log_event("ccz_combat_not_hostile",af,vf,word(victim,0x12));
@@ -1009,7 +1017,7 @@ static int __fastcall fix(Obj manager,Obj pair,Obj output) { COST_SCOPE("ccz_com
 }
 // 2026-11-01: SAN14_CCZ.dll. The CALL at 169F8B is guarded and published by SAN14_Convenience
 // (native_ccz_bridge.inl), whose relay jumps to fix; this module only keeps the switches.
-static void configure(bool block,bool critical) {
+static void configure(bool block,bool critical) { COST_SCOPE("ccz_combat_configure");
     InterlockedExchange(&block_on,block?1:0);InterlockedExchange(&critical_on,critical?1:0);
     log_event("ccz_combat_installed",block?1:0,critical?1:0);
 }

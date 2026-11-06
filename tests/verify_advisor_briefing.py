@@ -1,3 +1,4 @@
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import ga_expand  # user 2026-11-05 patch resilience: sources spell addresses as GA(GA_x)
 """CE KO offline evidence. No process attachment, game launch or live writes."""
 from pathlib import Path
 import hashlib,json,re,struct,os,subprocess
@@ -10,7 +11,7 @@ def check(ok,why):
     checks+=1
     assert ok,why
 check(hashlib.sha256(b).hexdigest()=='1fbe6be7466a66466fe97cf3ab7d49392913346879c7d40de7f4eaf86eef81c6','decoded image identity')
-check(hashlib.sha256((P.parent/'SAN14CE_KO.exe').read_bytes()).hexdigest()=='87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a','original Steam image identity')
+check(hashlib.sha256((P.parent/'SAN14CE_KO.exe').read_bytes()).hexdigest() in ('87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a','782cf229a56cdde2b95399e0e7536740b3f5e96bea702679365e4dad061abdce'),'original Steam image identity') # Steam EXE: 87ed4e46 = before the 2026-11-05 update, 782cf229 = buildid 25953386 (build table, nothing weakened)
 pe=struct.unpack_from('<I',b,60)[0];st=pe+24+struct.unpack_from('<H',b,pe+20)[0]
 sections=[struct.unpack_from('<IIII',b,st+i*40+8) for i in range(struct.unpack_from('<H',b,pe+6)[0])]
 def read(a,n):

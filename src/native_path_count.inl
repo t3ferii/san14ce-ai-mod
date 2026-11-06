@@ -1,12 +1,13 @@
 // Sole owner SAN14_Convenience.dll. Diagnostic observation; native arguments/results unchanged.
+#include "game_addresses.h"
 #ifndef NO_RUNTIME_LOG
 #include "path_count.h"
 namespace path_count {
-static constexpr unsigned entry=0x183A30,size=0x9A2;
+static const unsigned entry=GA(GA_183A30),size=0x9A2;
 static constexpr unsigned char prologue[]={0x48,0x8B,0xC4,0x44,0x89,0x48,0x20};
 static bool matches(const unsigned char *code) {
     return !memcmp(code,prologue,sizeof(prologue)) &&
-        path_count_core::bytes(path_count_core::basis,code,size)==0x11cbf08ff66c9febull;
+        path_count_core::bytes(path_count_core::basis,code,size)==GH(0x11cbf08ff66c9febull);
 }
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
 static bool guards_match() {return matches(image+entry);}
@@ -36,7 +37,7 @@ static bool read_node(std::uintptr_t node,std::uintptr_t &parent,std::uint32_t &
         memcpy(&cell,reinterpret_cast<void *>(node+0x18),sizeof(cell));return true;
     } __except(EXCEPTION_EXECUTE_HANDLER) {return false;}
 }
-static Obj __fastcall search(Obj ctx,unsigned start,const int *goals,int count,Obj buffer,int clear_bytes,unsigned flags) {
+static Obj __fastcall search(Obj ctx,unsigned start,const int *goals,int count,Obj buffer,int clear_bytes,unsigned flags) { COST_SCOPE_HOT("search");
     const DWORD incoming_error=GetLastError();
     path_count_core::Hash key=0;
     const bool readable=input_key(ctx,start,goals,count,flags,key);

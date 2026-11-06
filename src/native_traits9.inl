@@ -9,13 +9,15 @@ struct Trait9Manifest {
 struct Trait9Patch {unsigned rva,size;unsigned char before[32],after[32];bool published;};
 struct Trait9State {Obj allocation;Trait9Patch patches[5];};
 static Trait9State traits9_states[3];
-static Trait9Patch captive_patch;
-static Obj captive_relay;
 static unsigned traits9_core_published;
-static int __fastcall captive_either_force(Obj prisoner,Obj capturing) { COST_SCOPE("traits9_captive_either_force");
-    auto player=reinterpret_cast<int(__fastcall *)(Obj)>(image+captive_original);
-    return (prisoner && player(prisoner)) || (capturing && player(capturing));
-}
+// local10 (2026-11-06, docs/LOCAL10_PORT_PLAN.md 4.1): the manifests carry the reference build's bytes. Three sites hold a RIP displacement
+// that differs per build, and the Layout manager / modpack_write compare `before` literally, so after the guards have passed (ga::mcmp_at
+// judges the pristine bytes of the running build) the `before` of every site and core row is copied from the image. The core rows are
+// the writable copy `traits9_core_rt` (rva, size and `after` unchanged); a revert is a plain memcmp against `after` (modpack_revert).
+static ModpackBytes traits9_core_rt[sizeof(traits9_core)/sizeof(traits9_core[0])];
+static bool traits9_before_copied;
+// The captive_dialog feature (either-force capture scene, former gate 72 / key extensions.captive_dialog) was removed on 2026-11-06 by the
+// user (the 1a4a447d original already shows the scene for either force): an old ini key is simply never read.
 static Obj traits9_allocate(unsigned size) {
     uintptr_t base=reinterpret_cast<uintptr_t>(image);
     for(uintptr_t offset=0x3000000;offset<0x70000000;offset+=0x10000) {
@@ -24,15 +26,43 @@ static Obj traits9_allocate(unsigned size) {
     }
     return nullptr;
 }
-static bool traits9_guards_match(bool slots=true,bool captive=true) {
-    if(slots)for(const auto &p:traits9_core)if(memcmp(image+p.rva,p.before,p.size))return false;
-    if(slots)for(const auto &m:trait9_manifests)for(size_t i=0;i<m.site_count;++i)
-        if(memcmp(image+m.sites[i].rva,m.sites[i].before,m.sites[i].size))return false;
-    return !captive || !memcmp(image+captive_site,captive_before,5);
+static bool traits9_guards_match() {
+    unsigned index=0;
+    for(const auto &p:traits9_core) {
+        if(ga::mcmp_at(image,p.rva,p.before,p.size)) {log_event("traits9_guard_failed",index);return false;}
+        ++index;
+    }
+    for(const auto &m:trait9_manifests)for(size_t i=0;i<m.site_count;++i) {
+        if(ga::mcmp_at(image,m.sites[i].rva,m.sites[i].before,m.sites[i].size)) {log_event("traits9_guard_failed",index);return false;}
+        ++index;
+    }
+    return true;
+}
+// Copies the pristine bytes of the running image into the runtime `before` copies. Only called right after traits9_guards_match().
+static bool traits9_copy_before() {
+    unsigned sites=0,core=0;
+    for(size_t n=0;n<sizeof(traits9_core)/sizeof(traits9_core[0]);++n) {
+        traits9_core_rt[n]=traits9_core[n];
+        if(!traits9_core_rt[n].rva || traits9_core_rt[n].size>sizeof(traits9_core_rt[n].before))return false;
+        memcpy(traits9_core_rt[n].before,image+traits9_core_rt[n].rva,traits9_core_rt[n].size);++core;
+    }
+    for(size_t n=0;n<3;++n) {
+        const auto &m=trait9_manifests[n];
+        if(m.site_count>5)return false;
+        for(size_t i=0;i<m.site_count;++i) {
+            auto &p=traits9_states[n].patches[i];
+            if(!m.sites[i].rva || m.sites[i].size<5 || m.sites[i].size>sizeof(p.before))return false;
+            p.rva=m.sites[i].rva;p.size=m.sites[i].size;memcpy(p.before,image+p.rva,p.size);++sites;
+        }
+    }
+    traits9_before_copied=true;
+    log_event("traits9_before_copied",sites,core);
+    return true;
 }
 static bool prepare_traits9() {
-    if(!traits9_guards_match(mod_features.traits9,mod_features.captive_dialog))return false;
-    if(mod_features.traits9)for(size_t n=0;n<3;++n) {
+    if(!mod_features.traits9)return true;
+    if(!traits9_guards_match() || !traits9_copy_before())return false;
+    for(size_t n=0;n<3;++n) {
         const auto &m=trait9_manifests[n];auto &s=traits9_states[n];
         if(m.site_count>5)return false;
         s.allocation=traits9_allocate(m.code_size+m.data_size);if(!s.allocation)return false;
@@ -50,7 +80,7 @@ static bool prepare_traits9() {
         for(size_t i=0;i<m.site_count;++i) {
             const auto &site=m.sites[i];auto &p=s.patches[i];
             if(site.size<5 || site.size>32)return false;
-            p.rva=site.rva;p.size=site.size;memcpy(p.before,site.before,site.size);
+            p.rva=site.rva;p.size=site.size;   // p.before: image bytes (traits9_copy_before)
             memset(p.after,0x90,site.size);p.after[0]=0xE9;
             intptr_t delta=(code+site.stub)-(image+site.rva+5);if(delta<INT32_MIN || delta>INT32_MAX)return false;
             *reinterpret_cast<int *>(p.after+1)=static_cast<int>(delta);
@@ -58,43 +88,57 @@ static bool prepare_traits9() {
         DWORD old=0;
         if(!VirtualProtect(code,m.code_size,PAGE_EXECUTE_READ,&old) || !FlushInstructionCache(GetCurrentProcess(),code,m.code_size))return false;
     }
-    if(!mod_features.captive_dialog)return true;
-    captive_relay=traits9_allocate(4096);if(!captive_relay)return false;
-    // Original reference relay passes the capturing force from native R15.
-    const unsigned char force[]={0x4C,0x89,0xFA};memcpy(captive_relay,force,3);
-    absolute_jump(captive_relay+3,reinterpret_cast<void *>(&captive_either_force));
-    captive_patch.rva=captive_site;captive_patch.size=5;
-    memcpy(captive_patch.before,captive_before,5);captive_patch.after[0]=0xE8;
-    intptr_t delta=captive_relay-(image+captive_site+5);if(delta<INT32_MIN || delta>INT32_MAX)return false;
-    *reinterpret_cast<int *>(captive_patch.after+1)=static_cast<int>(delta);
-    DWORD old=0;
-    return VirtualProtect(captive_relay,4096,PAGE_EXECUTE_READ,&old) && FlushInstructionCache(GetCurrentProcess(),captive_relay,4096);
-}
-// v12.8: captive_dialog (either-force capture scene) publishes independently of the nine slots.
-static bool publish_traits9(bool slots,bool captive) {
-    if(captive) {
-        captive_patch.published=true;
-        if(!modpack_write(captive_patch.rva,captive_patch.before,captive_patch.after,5))return false;
-    }
-    if(!slots)return true;
-    for(const auto &p:traits9_core) {
-        ++traits9_core_published;
-        if(!modpack_write(p.rva,p.before,p.after,p.size))return false;
-    }
-    for(size_t n=0;n<3;++n)for(size_t i=0;i<trait9_manifests[n].site_count;++i) {
-        auto &p=traits9_states[n].patches[i];p.published=true;
-        if(!modpack_write(p.rva,p.before,p.after,p.size))return false;
-    }
     return true;
 }
-static void restore_traits9() {
-    if(captive_patch.published)modpack_write(captive_patch.rva,captive_patch.after,captive_patch.before,5);
+// 2026-11-05 local3 (user: a failed optional feature switches only itself off): publish_traits9 returns the FAILED part
+// (bit0 = nine slots); a failed part is taken back here (its manager registrations / written bytes) and every other feature stays
+// as published. local10: the captive dialog part (bit1) was removed with the feature.
+#ifdef LAYOUT_ROUTED
+// Design 8.1 rows 45-46 (user 2026-11-05 Layout compatibility design): the eight inline JMP spans and the five 5->9
+// byte patches are registered with the manager as owner "traits9" (YIELD_IF_PEER, never chained: R1 Traits9 writes the
+// same bytes). Spans longer than 16 bytes or crossing a block are written block by block (hook_span). The manager compares
+// `before` literally, so it gets the bytes copied from the image (traits9_copy_before), never the reference build's literals.
+static unsigned publish_traits9(bool slots) {
+    if(!slots)return 0;
+    unsigned mark=layout_client::current_mark();
+    bool ok=traits9_before_copied;
+    for(const auto &p:traits9_core_rt)
+        if(ok && layout_client::bytes("traits9",p.rva,p.before,p.after,p.size,LF_Y)<=0)ok=false;
+    for(size_t n=0;n<3 && ok;++n)for(size_t i=0;i<trait9_manifests[n].site_count && ok;++i) {
+        const auto &p=traits9_states[n].patches[i];
+        if(layout_client::span("traits9",p.rva,p.before,p.size,traits9_states[n].allocation+trait9_manifests[n].sites[i].stub,LF_Y)<=0)ok=false;
+    }
+    if(!ok) {layout_client::rollback_to(mark);return 1;}
+    return 0;
+}
+static void restore_traits9() {}   // routed: split_rollback cancels the manager registrations
+#else
+static void restore_traits9_slots() {
+    // our own writes: plain memcmp against `after` (modpack_revert); ga::mcmp_at would judge them against the pristine bytes
     for(size_t n=0;n<3;++n)for(size_t i=0;i<trait9_manifests[n].site_count;++i) {
-        const auto &p=traits9_states[n].patches[i];if(p.published)modpack_write(p.rva,p.after,p.before,p.size);
+        auto &p=traits9_states[n].patches[i];if(p.published)modpack_revert(p.rva,p.after,p.before,p.size);
+        p.published=false;
     }
     for(unsigned i=0;i<traits9_core_published;++i) {
-        const auto &p=traits9_core[i];modpack_write(p.rva,p.after,p.before,p.size);
+        const auto &p=traits9_core_rt[i];modpack_revert(p.rva,p.after,p.before,p.size);
     }
     traits9_core_published=0;
     // Retain gates that a native UI callback could already have entered.
 }
+static unsigned publish_traits9(bool slots) {
+    if(!slots)return 0;
+    bool ok=traits9_before_copied;
+    for(const auto &p:traits9_core_rt) {
+        if(!ok)break;
+        ++traits9_core_published;
+        if(!modpack_write(p.rva,p.before,p.after,p.size))ok=false;
+    }
+    for(size_t n=0;n<3 && ok;++n)for(size_t i=0;i<trait9_manifests[n].site_count && ok;++i) {
+        auto &p=traits9_states[n].patches[i];p.published=true;
+        if(!modpack_write(p.rva,p.before,p.after,p.size))ok=false;
+    }
+    if(!ok) {restore_traits9_slots();return 1;}
+    return 0;
+}
+static void restore_traits9() {restore_traits9_slots();}
+#endif

@@ -68,7 +68,28 @@ function New-LayoutEntry([byte[]]$Original,[long]$Offset,[long]$Size,[long]$Bank
     return ,$taskEntry
 }
 function Get-LayoutTarget($Record,[long]$Bank){return ('{0}:{1}:{2}' -f [long]$Record.offset,[long]$Record.size,$Bank)}
-function Reset-TraitLayout($Index,$Records,[long]$Bank) {
+function Test-ModLayoutBank([long]$Bank){return $Bank -ge 24 -and $Bank -le 31}
+function Get-LayoutRestoreEntry($Record,$Layout,$Patch) {
+    # user 2026-11-03: restore the installing user's actual previous entry.
+    $taskKey=[string]([uint32]$Record.ktid);$taskPrevious=$null
+    if($null -ne $Layout -and $Layout.PSObject.Properties.Name -contains 'previous_entries' -and $null -ne $Layout.previous_entries -and $Layout.previous_entries.PSObject.Properties.Name -contains $taskKey) {
+        try {
+            $taskCandidate=[Convert]::FromBase64String([string]$Layout.previous_entries.$taskKey)
+            $taskLocator=Get-LayoutLocator $taskCandidate
+            if(-not $taskLocator -or -not (Test-ModLayoutBank ([long]($taskLocator.Split(':')[2])))) { $taskPrevious=$taskCandidate }
+            elseif($null -ne $Patch) {
+                $taskBank=[long]($taskLocator.Split(':')[2]);$taskPath=Get-LayoutBankPath $taskBank
+                if([IO.File]::Exists($taskPath)){$taskPrevious=$taskCandidate}
+            }
+        } catch {}
+    }
+    if($null -ne $taskPrevious){return ,$taskPrevious}
+    $taskOriginal=[Convert]::FromBase64String($Record.original_entry)
+    $taskOriginalLocator=Get-LayoutLocator $taskOriginal
+    if($taskOriginalLocator -and (Test-ModLayoutBank ([long]($taskOriginalLocator.Split(':')[2])))){return $null}
+    return ,$taskOriginal
+}
+function Reset-TraitLayout($Index,$Records,[long]$Bank,$Layout=$null,$Patch=$null) {
     # Only our entries that still point into our previous bank are returned to the
     # original entry. Any offset in that bank counts: a newer patch may resize records.
     $taskCount=0
@@ -84,7 +105,8 @@ function Reset-TraitLayout($Index,$Records,[long]$Bank) {
         foreach($i in $taskPositions) {
             $taskEntry=$Index.Entries[$i];$taskLocator=Get-LayoutLocator $taskEntry
             if($taskLocator -and [long]($taskLocator.Split(':')[2]) -eq $Bank) {
-                $Index.Entries[$i]=[Convert]::FromBase64String($taskRecord.original_entry);$taskCount++
+                $taskRestore=Get-LayoutRestoreEntry $taskRecord $Layout $Patch
+                if($null -ne $taskRestore){$Index.Entries[$i]=$taskRestore;$taskCount++}
             }
         }
     }
@@ -100,16 +122,46 @@ function Set-TraitLayout($Index,$Records,[long]$Bank) {
         $taskMine=(Get-LayoutLocator $taskCurrent) -eq (Get-LayoutTarget $taskRecord $Bank)
         if(-not $taskMine -and [Convert]::ToBase64String($taskCurrent) -cne $taskRecord.original_entry){$taskSkipped+=$taskRecord.ktid;continue}
         $taskOriginal=[Convert]::FromBase64String($taskRecord.original_entry)
+        if(-not $taskMine -and -not ($taskRecord.PSObject.Properties.Name -contains 'previous_entry_saved' -and $taskRecord.previous_entry_saved)) {
+            if($null -eq $script:taskPreviousEntries){$script:taskPreviousEntries=@{}}
+            $taskKey=[string]$taskKtid
+            if(-not $script:taskPreviousEntries.ContainsKey($taskKey)){$script:taskPreviousEntries[$taskKey]=[Convert]::ToBase64String($taskCurrent)}
+        }
         $Index.Entries[$taskAt]=New-LayoutEntry $taskOriginal ([long]$taskRecord.offset) ([long]$taskRecord.size) $Bank ([uint64]$taskRecord.dsz)
         $taskApplied+=$taskRecord.ktid
     }
     return @{Applied=$taskApplied;Skipped=$taskSkipped}
 }
-function Get-LayoutBankPath([long]$Bank){return Join-Path $taskGame ('0002\ScreenLayout.rdb.bin'+$Bank)}
+function Get-LayoutBankPath([long]$Bank){if($Bank -eq 0){return Join-Path $taskGame '0002\ScreenLayout.rdb.bin'};return Join-Path $taskGame ('0002\ScreenLayout.rdb.bin'+$Bank)}
+# 2026-11-05 local3 (user: a feature that is off in this EXE build leaves no screen change behind, docs/UI_RESOURCE_LIFECYCLE.md
+# section 8). EXE TimeDateStamp -> features that own ScreenLayout records and that SAN14_Convenience.dll switches off in that build
+# (its guards decide at run time; research/rva_map/1fbe6be7_to_1a4a447d/expected_disabled.json lists them and
+# tools/check_addresses.py keeps that list in step). local10 (2026-11-06): the traits9 payloads are table ids now, so the nine-slot code
+# runs on 0x6AD06F53 (Steam build 25953386, 1a4a447d) too and its four ScreenLayout records are applied; no build withholds a feature
+# any more (the table stays for a future build, keyed by the EXE TimeDateStamp as 8 hex digits).
+$taskBuildLayoutOff=@{}
+function Get-GameBuildLayoutOff {
+    # Unknown, unreadable or missing executable: nothing is withheld (the DLL guards still protect the game at run time).
+    $taskExe=Join-Path $taskGame 'SAN14CE_KO.exe'
+    try {
+        if(-not [IO.File]::Exists($taskExe)){return @()}
+        $taskStream=[IO.File]::Open($taskExe,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite)
+        try {
+            $taskHead=[byte[]]::new(4096);$taskRead=$taskStream.Read($taskHead,0,4096)
+            if($taskRead -lt 0x100 -or $taskHead[0] -ne 0x4D -or $taskHead[1] -ne 0x5A){return @()}
+            $taskPe=[BitConverter]::ToInt32($taskHead,0x3C)
+            if($taskPe -lt 0x40 -or $taskPe+12 -gt $taskRead -or [BitConverter]::ToUInt32($taskHead,$taskPe) -ne 0x00004550){return @()}
+            $taskStamp=('{0:X8}' -f [BitConverter]::ToUInt32($taskHead,$taskPe+8))
+        } finally {$taskStream.Dispose()}
+        if($taskBuildLayoutOff.ContainsKey($taskStamp)){return @($taskBuildLayoutOff[$taskStamp])}
+    } catch {}
+    return @()
+}
 function Get-TraitLayoutPlan($State,$Patch,[bool]$Install,$FeatureValues=$null) {
     # Returns the index/bank writes. Nothing is written here.
     $taskIndexPath=Join-Path $taskGame '0002\ScreenLayout.rdb'
     $taskPlan=@{Writes=@{};Deletes=@();State=$null;Changed=$false;Messages=@()}
+    $script:taskPreviousEntries=@{}
     if(-not [IO.File]::Exists($taskIndexPath)){
         if($Install){$taskPlan.Messages+='0002\ScreenLayout.rdb가 없어 개성 9칸 화면 확장을 건너뜁니다.'}
         return $taskPlan
@@ -122,14 +174,15 @@ function Get-TraitLayoutPlan($State,$Patch,[bool]$Install,$FeatureValues=$null) 
         $State.modules.PSObject.Properties.Name -contains '0002/ScreenLayout.rdb.bin31'
     if($taskLegacy -and $null -ne $taskRecords) {
         # v11.22-v11.30 used a fixed bank 31, the same name as a face editor.
-        [void](Reset-TraitLayout $taskIndex $taskRecords 31)
+        [void](Reset-TraitLayout $taskIndex $taskRecords 31 $State.layout $Patch)
         $taskReleased+=@{Bank=31;Hash=$State.modules.'0002/ScreenLayout.rdb.bin31'}
         $taskPlan.Changed=$true
     }
     $taskPrevious=$null
     if($null -ne $State -and $State.PSObject.Properties.Name -contains 'layout' -and $null -ne $State.layout -and $null -ne $taskRecords) {
         $taskPrevious=$State.layout
-        [void](Reset-TraitLayout $taskIndex $taskRecords ([long]$taskPrevious.bank))
+        if($taskPrevious.PSObject.Properties.Name -contains 'previous_entries' -and $null -ne $taskPrevious.previous_entries){foreach($p in $taskPrevious.previous_entries.PSObject.Properties){$script:taskPreviousEntries[$p.Name]=$p.Value}}
+        [void](Reset-TraitLayout $taskIndex $taskRecords ([long]$taskPrevious.bank) $taskPrevious $Patch)
         $taskReleased+=@{Bank=[long]$taskPrevious.bank;Hash=$taskPrevious.bank_sha256}
     }
     # user 2026-11-03: these resource records belong to CCZ sprites, not merely
@@ -138,7 +191,14 @@ function Get-TraitLayoutPlan($State,$Patch,[bool]$Install,$FeatureValues=$null) 
     # user 2026-11-03: speed owns atlas/table/popup/HUD, not just native hooks.
     $taskSpeedKeys=@([uint32]0x301526D7,[uint32]0xFEA5F28CL,[uint32]0x40F993CE,[uint32]0x454A1BCC)
     $taskSpeedOn=$null -eq $FeatureValues -or ($FeatureValues['groups.convenience'] -ne 0 -and (-not $FeatureValues.Contains('game_flow.speed_buttons') -or $FeatureValues['game_flow.speed_buttons'] -ne 0))
-    $taskCczOn=$null -eq $FeatureValues -or ($FeatureValues['groups.convenience'] -ne 0 -and $FeatureValues['ccz.ccz_sprites'] -ne 0)
+    # user 2026-11-03: groups.ccz master also owns the CCZ layout records.
+    $taskCczOn=$null -eq $FeatureValues -or ($FeatureValues['groups.convenience'] -ne 0 -and (-not $FeatureValues.Contains('groups.ccz') -or $FeatureValues['groups.ccz'] -ne 0) -and $FeatureValues['ccz.ccz_sprites'] -ne 0)
+    # 2026-11-05 local3: the four nine-slot trait records follow the EXE build only (the ini / group switches keep their earlier
+    # behaviour for these records: they stay applied; a follow-up decision, see docs/INSTALL_LOCAL2_TRIAGE.md section 12).
+    $taskTraits9Keys=@([uint32]0x49F89AB3,[uint32]0x7C471B31,[uint32]0x9EA0EB77L,[uint32]0xF1D669AFL)
+    $taskBuildOff=@(Get-GameBuildLayoutOff)
+    $taskTraits9On=$taskBuildOff -notcontains 'traits9'
+    if($Install -and $taskBuildOff -contains 'traits9'){$taskPlan.Messages+='이 게임 빌드에서는 개성 9칸 기능이 꺼져 있어 개성 9칸 화면 자료(4개)를 적용하지 않습니다.'}
     if($null -ne $taskRecords) {
         # Restore without (or with a stale) layout record: our entries are recognised by
         # their exact patch locator (offset:size) in any mod bank 24..31. Other mods'
@@ -150,24 +210,30 @@ function Get-TraitLayoutPlan($State,$Patch,[bool]$Install,$FeatureValues=$null) 
                 if($Install -and $taskCczKeys -notcontains $taskKtid){continue}
                 if(-not $taskIndex.ByKtid.ContainsKey($taskKtid) -or $taskIndex.ByKtid[$taskKtid] -lt 0){continue}
                 $taskAt=$taskIndex.ByKtid[$taskKtid]
-                if((Get-LayoutLocator $taskIndex.Entries[$taskAt]) -eq (Get-LayoutTarget $taskRecord ([long]$taskCandidate))) {
+                $taskCurrentLocator=Get-LayoutLocator $taskIndex.Entries[$taskAt]
+                $taskLegacyRecord=@()
+                if($taskCurrentLocator -and $null -ne $Patch.legacy_records){$taskLegacyRecord=@($Patch.legacy_records | Where-Object {[uint32]$_.ktid -eq $taskKtid -and [long]$_.offset -eq [long]($taskCurrentLocator.Split(':')[0]) -and [long]$_.size -eq [long]($taskCurrentLocator.Split(':')[1])})}
+                $taskExactCurrent=$taskCurrentLocator -eq (Get-LayoutTarget $taskRecord ([long]$taskCandidate))
+                $taskExactLegacy=$taskLegacyRecord.Count -gt 0
+                if((Test-ModLayoutBank $taskCandidate) -and $taskCurrentLocator -and [long]($taskCurrentLocator.Split(':')[2]) -eq $taskCandidate -and ($taskExactCurrent -or $taskExactLegacy)) {
                     # An exact locator alone is insufficient evidence of ownership
                     # for stale CCZ records. Compare the referenced payload bytes.
                     if($taskCczKeys -contains $taskKtid) {
                         $taskFile=Get-LayoutBankPath $taskCandidate
-                        if(-not [IO.File]::Exists($taskFile)){continue}
-                        $taskBankBytes=[IO.File]::ReadAllBytes($taskFile)
-                        $taskOffset=[int]$taskRecord.offset;$taskLength=[int]$taskRecord.size
-                        if($taskOffset -lt 0 -or $taskLength -le 0 -or $taskOffset+$taskLength -gt $taskBankBytes.Length){continue}
-                        $taskMatches=$true
-                        for($i=0;$i -lt $taskLength;$i++){if($taskBankBytes[$taskOffset+$i] -ne $Patch.Bytes[$taskOffset+$i]){$taskMatches=$false;break}}
-                        if(-not $taskMatches){continue}
+                        if([IO.File]::Exists($taskFile)) {
+                            $taskHash=Get-Digest $taskFile
+                            $taskKnown=@();if($null -ne $Patch.legacy_bank_sha256){$taskKnown+=@($Patch.legacy_bank_sha256)};if($null -ne $Patch.bank_sha256){$taskKnown+=@($Patch.bank_sha256)}
+                            if($null -ne $taskPrevious -and $taskPrevious.PSObject.Properties.Name -contains 'bank_sha256'){$taskKnown+=@($taskPrevious.bank_sha256)}
+                            if($taskKnown -notcontains $taskHash){$taskPlan.Messages+=('ScreenLayout.rdb.bin{0}은 다른 모드가 사용 중이라 보존했습니다.' -f $taskCandidate);continue}
+                        }
                     }
-                    $taskIndex.Entries[$taskAt]=[Convert]::FromBase64String($taskRecord.original_entry);$taskHit=$true
+                    $taskRestore=Get-LayoutRestoreEntry $taskRecord $taskPrevious $Patch
+                    if($null -eq $taskRestore){$taskPlan.Messages+=('KTID {0}의 원본 ScreenLayout 항목이 안전하지 않아 복원을 건너뛰었습니다.' -f $taskKtid);continue}
+                    $taskIndex.Entries[$taskAt]=$taskRestore;$taskHit=$true
                 }
             }
             if($taskHit -and -not (@($taskReleased | ForEach-Object { [long]$_.Bank }) -contains [long]$taskCandidate)) {
-                $taskReleased+=@{Bank=[long]$taskCandidate;Hash=$Patch.Hash}
+                $taskReleased+=@{Bank=[long]$taskCandidate;Hash=(Get-Digest (Get-LayoutBankPath $taskCandidate))}
             }
         }
     }
@@ -193,13 +259,13 @@ function Get-TraitLayoutPlan($State,$Patch,[bool]$Install,$FeatureValues=$null) 
         if($null -eq $taskBank) {
             $taskPlan.Messages+='비어 있는 ScreenLayout 번호(24~30)가 없어 개성 9칸 화면 확장을 건너뜁니다.'
         } else {
-            $taskSelected=@($taskRecords | Where-Object {($taskCczOn -or $taskCczKeys -notcontains [uint32]$_.ktid) -and ($taskSpeedOn -or $taskSpeedKeys -notcontains [uint32]$_.ktid)})
+            $taskSelected=@($taskRecords | Where-Object {($taskCczOn -or $taskCczKeys -notcontains [uint32]$_.ktid) -and ($taskSpeedOn -or $taskSpeedKeys -notcontains [uint32]$_.ktid) -and ($taskTraits9On -or $taskTraits9Keys -notcontains [uint32]$_.ktid)})
             $taskResult=Set-TraitLayout $taskIndex $taskSelected $taskBank
             if($taskResult.Skipped.Count){$taskPlan.Messages+=('다른 모드가 바꾼 무장 화면 {0}개는 그대로 두었습니다. 해당 화면의 개성은 5칸으로 표시됩니다.' -f $taskResult.Skipped.Count)}
             if($taskResult.Applied.Count) {
                 $taskBankPath=Get-LayoutBankPath $taskBank
                 if((Get-Digest $taskBankPath) -ne $Patch.Hash){$taskPlan.Writes[$taskBankPath]=$Patch.Bytes}
-                $taskPlan.State=@{format=1;bank=$taskBank;bank_sha256=$Patch.Hash;applied=@($taskResult.Applied)}
+                $taskPlan.State=@{format=1;bank=$taskBank;bank_sha256=$Patch.Hash;applied=@($taskResult.Applied);previous_entries=$script:taskPreviousEntries}
                 if($null -eq $taskPrevious -or [long]$taskPrevious.bank -ne $taskBank){$taskPlan.Changed=$true}
                 $taskPlan.Messages+=('개성 9칸 화면을 ScreenLayout.rdb.bin{0}에 연결했습니다.' -f $taskBank)
             }
@@ -212,10 +278,12 @@ function Get-TraitLayoutPlan($State,$Patch,[bool]$Install,$FeatureValues=$null) 
 }
 function Invoke-SplitPackage {
     Assert-GameClosed
-    $taskAllowed=@('SAN14_CombatAI.dll','SAN14_Convenience.dll','SAN14_CCZ.dll','SAN14_전법설명.txt')+$taskLegacyLayout
+    $taskAllowed=@('SAN14_CombatAI.dll','SAN14_Convenience.dll','SAN14_CCZ.dll','SAN14_Layout.dll','SAN14_전법설명.txt')+$taskLegacyLayout
     # 2026-11-01 user: 조조전 탭 = SAN14_CCZ.dll (v15+). Optional in a package; older packages do not know the
     # name, so a restore drops it from the record it leaves (the file itself is deleted) for an older Apply.
-    $taskOptionalModules=@('SAN14_CCZ.dll')
+    # 2026-11-05 user exception: SAN14_Layout.dll (5th DLL, loaded first by dinput8) is listed the same way, so packages from before
+    # it existed still apply; a package that carries it is hash-checked, installed and restored like every other module.
+    $taskOptionalModules=@('SAN14_CCZ.dll','SAN14_Layout.dll')
     # Reference text only; no DLL reads it. A same-named file from another mod or an
     # older copy never blocks install/update/restore: it is left as it is, not owned.
     $taskOptionalAssets=@('SAN14_전법설명.txt')
@@ -298,7 +366,7 @@ function Invoke-SplitPackage {
     try { Assert-GameBuild $taskExe }
     catch { Write-CompatibilityDiagnostic; throw }
     $taskExeHash=Get-Digest $taskExe
-    if($taskExeHash -ne $taskOriginalHash) {
+    if($taskOriginalHashes -notcontains $taskExeHash) {
         Write-Host '지원 PE 빌드 지문이 일치합니다. EXE 전체 해시 차이는 설치 차단 사유가 아닙니다.'
         Write-Host ('현재 EXE SHA256: ' + $taskExeHash)
         Write-Host '게임 실행 시 DLL이 복호화된 코드 CRC와 후킹 원본 바이트를 다시 검사합니다.'

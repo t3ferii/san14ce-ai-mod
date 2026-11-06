@@ -1,31 +1,50 @@
 // Convenience DLL; original UI callbacks only. No save writes or remote calls.
+#include "game_addresses.h"
 #include "advisor_briefing_profile.h"
 namespace advisor_briefing {
+static bool scene_yield=false;
+// local5: a failing guard reports which sub-guard it was (diagnostic group, one line per failure):
+// advisor_guard_failed(part, index, rva): part 1 callee prologue (index = row of the prologue list), 2 hash row (index in guards[]),
+// 3 vtable slot (index in slots[]), 4 phase call opcode, 5 phase call target.
+static bool guard_failed(unsigned part,unsigned index,unsigned rva) {
+#ifndef NO_RUNTIME_LOG
+    log_event("advisor_guard_failed",part,index,rva);
+#else
+    (void)part;(void)index;(void)rva;
+#endif
+    return false;
+}
 static bool guards_match() {
-    if(memcmp(image+0x1F0AD0,message_prologue,sizeof(message_prologue)) ||
-       memcmp(image+0x1F09E0,narration_prologue,sizeof(narration_prologue)) ||
-       memcmp(image+0x304640,narration_prologue,sizeof(narration_prologue)) ||
-       memcmp(image+0x1F0DD0,person_prologue,sizeof(person_prologue)) ||
-       memcmp(image+0x842380,event_prologue,sizeof(event_prologue)) ||
-       memcmp(image+0x6C43B0,scene_prologue,sizeof(scene_prologue)) ||
-       memcmp(image+0x6C4670,scene_prologue,sizeof(scene_prologue)) ||
-       memcmp(image+0x41D550,scenery_prologue,sizeof(scenery_prologue)) ||
-       memcmp(image+0x451FF0,picture_show_bytes,sizeof(picture_show_bytes)) ||
-       memcmp(image+0x43FF90,picture_close_bytes,sizeof(picture_close_bytes)))return false;
+    struct Prologue {unsigned rva;const unsigned char *bytes;unsigned size;};
+    const Prologue prologues[]={
+        {GA(GA_1F0AD0),message_prologue,sizeof(message_prologue)},{GA(GA_1F09E0),narration_prologue,sizeof(narration_prologue)},
+        {GA(GA_304640),narration_prologue,sizeof(narration_prologue)},{GA(GA_1F0DD0),person_prologue,sizeof(person_prologue)},
+        {GA(GA_842380),event_prologue,sizeof(event_prologue)},{GA(GA_41D550),scenery_prologue,sizeof(scenery_prologue)},
+        {GA(GA_451FF0),picture_show_bytes,sizeof(picture_show_bytes)},{GA(GA_43FF90),picture_close_bytes,sizeof(picture_close_bytes)}};
+    for(unsigned i=0;i<sizeof(prologues)/sizeof(prologues[0]);++i)
+        if(ga::mcmp_at(image,prologues[i].rva,prologues[i].bytes,prologues[i].size))return guard_failed(1,i,prologues[i].rva);
+    scene_yield=other_mod_present(L"SAN14_SceneSkip.dll") || ga::mcmp(image,GA_6C43B0,0,scene_prologue,sizeof(scene_prologue)) || ga::mcmp(image,GA_6C4670,0,scene_prologue,sizeof(scene_prologue));
+    unsigned row=0;
     for(const auto &g:guards) {
-        unsigned long long h=0xcbf29ce484222325ull;
-        for(unsigned i=0;i<g.size;++i)h=(h^image[g.rva+i])*0x100000001b3ull;
-        if(h!=g.hash)return false;
+        const unsigned index=row++;
+        if(scene_yield && (g.rva==GA(GA_6C43B0) || g.rva==GA(GA_6C4670)))continue;   // owned by the other mod's prologue hook
+        ga::ObserverSet used;   // local11: shared observer tolerance (ga::hash_ok); feature code 48 = advisor_briefing gate id
+        if(!ga::hash_ok(image,g.rva,g.size,g.hash,&used))return guard_failed(2,index,g.rva);
+        for(unsigned k=0;k<used.count;++k)log_event("observer_hook_tolerated",48,used.rva[k]);
     }
-    for(const auto &s:slots)if(pointer(image,s.rva)!=image+s.original)return false;
-    if(image[0x81133D]!=0xE8)return false;
-    int phase_call=*reinterpret_cast<int *>(image+0x81133E);
-    if(phase_call!=0x815EA0-0x811342) {
+    unsigned slot_index=0;
+    for(const auto &s:slots) {
+        if(pointer(image,s.rva)!=image+s.original)return guard_failed(3,slot_index,s.rva);
+        ++slot_index;
+    }
+    if(image[GA(GA_81133D)]!=0xE8)return guard_failed(4,0,GA(GA_81133D));
+    int phase_call=*reinterpret_cast<int *>(image+GA(GA_81133E));
+    if(phase_call!=static_cast<int>(GA(GA_815EA0)-GA(GA_811342))) {
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
         const auto &owned=diplomacy_intel::links[6];
-        if(!owned.published || owned.site!=0x81133D || owned.redirected!=phase_call)return false;
+        if(!owned.published || owned.site!=GA(GA_81133D) || owned.redirected!=phase_call)return guard_failed(5,0,GA(GA_81133E));
 #else
-        return false;
+        return guard_failed(5,0,GA(GA_81133E));
 #endif
     }
     return true;
@@ -82,7 +101,7 @@ static void layout_position(Obj object,int x,int y) {
     InterlockedIncrement64(&layout_move_calls);
     for(unsigned i=0;i<4;++i)if(measured_frames&(1u<<i))InterlockedIncrement64(&frame_metrics[i][3]);
 #endif
-    fn<void(__fastcall *)(Obj,int,int)>(0x874650)(object,x,y);
+    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_874650))(object,x,y);
 }
 static unsigned page=0;
 static bool open=false;
@@ -143,7 +162,7 @@ static void collected_state(Obj state) {
     if(rva && std::find(collected_top_rvas.begin(),collected_top_rvas.end(),rva)==collected_top_rvas.end())collected_top_rvas.push_back(rva);
 }
 #endif
-static Obj manager(){return fn<Obj(__fastcall *)()>(0x110E0)();}
+static Obj manager(){return fn<Obj(__fastcall *)()>(GA(GA_110E0))();}
 static Obj top_state() {
     Obj m=manager();if(!m)return nullptr;
     const auto count=*reinterpret_cast<const unsigned long long *>(m+0x10);
@@ -172,7 +191,7 @@ static bool clean_scene() {
     for(unsigned i=0;i<count;++i) {
         Obj state=pointer(states,i*8);if(!state)return false;
         Obj table=pointer(state,0);
-        if(table==image+0x13A2F00 || table==image+0x13A2F98 || table==image+0x145F9E8) {
+        if(table==image+GA(GA_13A2F00) || table==image+GA(GA_13A2F98) || table==image+GA(GA_145F9E8)) {
             Obj dialog=pointer(state,0x470);if(dialog && dword(dialog,0x20)!=10000)return false;
         }
     }
@@ -188,8 +207,8 @@ static Obj diplomatic_parent(bool result_only) {
         const char *name=reinterpret_cast<const char *>(state+0x70);size_t n=0;for(;n<128 && name[n];++n){}
         if(n==128)return nullptr;
         std::string value(name,n);
-        if(value.find("YesNo")!=std::string::npos || value.find("Select")!=std::string::npos || value.find("TreatPrisoner")!=std::string::npos || (value.find("Input")!=std::string::npos && pointer(state,0)!=image+0x1465260))return nullptr;
-        if(pointer(state,0)==image+0x145DBB8)parent=state;
+        if(value.find("YesNo")!=std::string::npos || value.find("Select")!=std::string::npos || value.find("TreatPrisoner")!=std::string::npos || (value.find("Input")!=std::string::npos && pointer(state,0)!=image+GA(GA_1465260)))return nullptr;
+        if(pointer(state,0)==image+GA(GA_145DBB8))parent=state;
     }
     if(!parent)return nullptr;
     unsigned phase=dword(parent,0x4D8);
@@ -198,7 +217,7 @@ static Obj diplomatic_parent(bool result_only) {
 static unsigned force_id(){return ::player_force();}
 static bool active(){return enabled && mod_features.advisor_briefing && world() && force_id();}
 static bool tutorial() {
-    Obj t=fn<Obj(__fastcall *)()>(0x56EE40)();
+    Obj t=fn<Obj(__fastcall *)()>(GA(GA_56EE40))();
     Obj context=world()?pointer(world(),0x871E8):nullptr;
     // +454 is the remaining order count, not a tutorial flag (44A0F0).
     return (t && dword(t,0)) || !context;
@@ -219,7 +238,7 @@ static volatile LONG64 picture_counts[2]{},picture_id_counts[79][2]{};
 // Close columns: suppressed, displayed, no record. Cumulative for DLL lifetime.
 static volatile LONG64 picture_close_counts[3]{};
 #endif
-static void __fastcall picture_show(Obj object,int id) {
+static void __fastcall picture_show(Obj object,int id) { COST_SCOPE("advisor_briefing::picture_show"); COST_CRUMB("advisor_briefing_object",object);
     bool suppressed=defer(); // Includes !interaction(), on the native UI caller.
     auto it=std::find_if(pictures.begin(),pictures.end(),[&](const Picture &p){return p.object==object;});
     if(it==pictures.end())pictures.push_back({object,id,suppressed});
@@ -230,9 +249,9 @@ static void __fastcall picture_show(Obj object,int id) {
     InterlockedExchange(&picture_last_id,id);
 #endif
     // Reproduce MOV RCX,[RCX+1B8]; XOR R8D,R8D; JMP 842A90 in C++.
-    if(!suppressed)fn<void(__fastcall *)(Obj,int,int)>(0x842A90)(pointer(object,0x1B8),id,0);
+    if(!suppressed)fn<void(__fastcall *)(Obj,int,int)>(GA(GA_842A90))(pointer(object,0x1B8),id,0);
 }
-static void __fastcall picture_close(Obj object) {
+static void __fastcall picture_close(Obj object) { COST_SCOPE("advisor_briefing::picture_close"); COST_CRUMB("advisor_briefing_object",object);
     auto it=std::find_if(pictures.begin(),pictures.end(),[&](const Picture &p){return p.object==object;});
     bool recorded=it!=pictures.end(),suppressed=recorded && it->suppressed;
 #ifndef NO_RUNTIME_LOG
@@ -240,7 +259,7 @@ static void __fastcall picture_close(Obj object) {
 #endif
     if(recorded)pictures.erase(it); // Do not retain an iterator across a native call.
     // Match the most recent show, even if collecting/interaction changed since it.
-    if(!suppressed)fn<void(__fastcall *)(Obj)>(0x835230)(pointer(object,0x1B8));
+    if(!suppressed)fn<void(__fastcall *)(Obj)>(GA(GA_835230))(pointer(object,0x1B8));
 }
 #ifndef NO_RUNTIME_LOG
 static bool wait_ready_diagnostic(unsigned path,bool diplomatic=false) {
@@ -353,7 +372,7 @@ static bool entry_ready(unsigned path) {
        !message_gate(path,message_overlay,briefing_overlay::available()) ||
        !message_gate(path,message_tutorial,!tutorial()) ||
        !message_gate(path,message_interaction,!interaction()))return false;
-    if(!message_gate(path,message_native_mode,fn<int(__fastcall *)()>(0x332E90)()==0))return false;
+    if(!message_gate(path,message_native_mode,fn<int(__fastcall *)()>(GA(GA_332E90))()==0))return false;
     return true;
 }
 using TimeWait=void(__fastcall *)(unsigned,int *,unsigned);
@@ -361,10 +380,10 @@ static TimeWait original_time_wait;
 static CodeLink time_wait_link;
 // 2026-11-01 user: duel (일기토) lines play as in the original but are still collected. 37ACF0 (duel end) clears
 // CDuelManager(*2783730)+10, 448C10 tests it as "duel running"; pure read.
-static bool duel_running(){Obj m=pointer(image,0x2783730);return m && dword(m,0x10)!=0;}
-static void __fastcall time_wait(unsigned milliseconds,int *result,unsigned allow_skip) {
-    bool expired=result && !duel_running() && defer() && fn<int(__fastcall *)()>(0x332E90)()==0 &&
-        fn<Obj(__fastcall *)(Obj)>(0x56FC20)(manager())!=nullptr;
+static bool duel_running(){Obj m=pointer(image,GA(GA_2783730));return m && dword(m,0x10)!=0;}
+static void __fastcall time_wait(unsigned milliseconds,int *result,unsigned allow_skip) { COST_SCOPE("time_wait");
+    bool expired=result && !duel_running() && defer() && fn<int(__fastcall *)()>(GA(GA_332E90))()==0 &&
+        fn<Obj(__fastcall *)(Obj)>(GA(GA_56FC20))(manager())!=nullptr;
 #ifndef NO_RUNTIME_LOG
     InterlockedIncrement64(&time_wait_counts[expired?0:1]);
 #endif
@@ -375,27 +394,27 @@ static void __fastcall time_wait(unsigned milliseconds,int *result,unsigned allo
 static void name_speaker(Event &e,Obj person) {
     if(!person)return;
     e.speaker=word(person,0x10);std::wstring name;
-    if(copy(fn<const wchar_t *(__fastcall *)(Obj)>(0x22EEC0)(person),name,100) && !name.empty())e.text=name+L"\n"+e.text;
+    if(copy(fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_22EEC0))(person),name,100) && !name.empty())e.text=name+L"\n"+e.text;
 }
 static bool capture_message(unsigned path,int speaker,const wchar_t *text) {
     if(!entry_ready(path))return false;
-    Obj context=pointer(image,0x27842A0);
+    Obj context=pointer(image,GA(GA_27842A0));
     if(!message_gate(path,message_native_context,!context || dword(context,0x1B0)==0) ||
-       !message_gate(path,message_no_caller,fn<Obj(__fastcall *)(Obj)>(0x56FC20)(manager())!=nullptr))return false;
+       !message_gate(path,message_no_caller,fn<Obj(__fastcall *)(Obj)>(GA(GA_56FC20))(manager())!=nullptr))return false;
     Event e;e.speaker=static_cast<unsigned>(speaker);e.day=day();
     if(!message_gate(path,message_bad_text,copy(text,e.text) && !e.text.empty()))return false;
     if(path==2 && speaker>=0 && speaker<6001)name_speaker(e,pointer(world(),0x158+static_cast<unsigned>(speaker)*8));
     if(!message_gate(path,message_store_failed,store({e})))return false;
     return !duel_running();   // stored; a duel line is also shown natively
 }
-static void __fastcall message_call(const wchar_t *text,int mode) {
+static void __fastcall message_call(const wchar_t *text,int mode) { COST_SCOPE("message_call");
     bool captured=capture_message(0,0,text);
 #ifndef NO_RUNTIME_LOG
     InterlockedIncrement64(&message_entry_counts[0][captured?0:1]);
 #endif
     if(!captured)original_message_call(text,mode);
 }
-static void __fastcall narration_call(int speaker,const wchar_t *text) {
+static void __fastcall narration_call(int speaker,const wchar_t *text) { COST_SCOPE("narration_call");
     bool captured=capture_message(1,speaker,text);
 #ifndef NO_RUNTIME_LOG
     InterlockedIncrement64(&message_entry_counts[1][captured?0:1]);
@@ -403,7 +422,7 @@ static void __fastcall narration_call(int speaker,const wchar_t *text) {
     if(!captured)original_narration_call(speaker,text);
 }
 static NarrationCall original_person_call;
-static void __fastcall person_call(int speaker,const wchar_t *text) {
+static void __fastcall person_call(int speaker,const wchar_t *text) { COST_SCOPE("person_call");
     bool captured=capture_message(2,speaker,text);
 #ifndef NO_RUNTIME_LOG
     InterlockedIncrement64(&message_entry_counts[2][captured?0:1]);
@@ -416,18 +435,18 @@ static SceneCall original_employ_scene,original_discovery_scene;
 static SceneryCall original_scenery_scene;
 static CodeLink scene_links[3];
 static bool scene_ready(unsigned path) {
-    return entry_ready(path) && message_gate(path,message_no_caller,fn<Obj(__fastcall *)(Obj)>(0x56FC20)(manager())!=nullptr);
+    return entry_ready(path) && message_gate(path,message_no_caller,fn<Obj(__fastcall *)(Obj)>(GA(GA_56FC20))(manager())!=nullptr);
 }
 static bool scene_person(Obj person,std::wstring &name) {
-    return person && copy(fn<const wchar_t *(__fastcall *)(Obj)>(0x22EEC0)(person),name,100) && !name.empty();
+    return person && copy(fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_22EEC0))(person),name,100) && !name.empty();
 }
 static bool scene_object_name(Obj object,std::wstring &name) {
     return object && copy(reinterpret_cast<const wchar_t *>(object+0x10),name,100) && !name.empty();
 }
 static bool scene_advantage(Obj place,std::wstring &name) {
     if(!place)return false;
-    Obj handle=fn<Obj(__fastcall *)(Obj)>(0x3F5A0)(place);
-    return handle && scene_object_name(fn<Obj(__fastcall *)(Obj)>(0x925B0)(handle),name);
+    Obj handle=fn<Obj(__fastcall *)(Obj)>(GA(GA_3F5A0))(place);
+    return handle && scene_object_name(fn<Obj(__fastcall *)(Obj)>(GA(GA_925B0))(handle),name);
 }
 static bool save_scene(unsigned path,Kind kind,Obj actor,const std::wstring &summary) {
     if(!message_gate(path,message_fields,!summary.empty()))return false;
@@ -459,21 +478,21 @@ static bool capture_scenery_scene(Obj actor,Obj scenery) {
     // 41D550's remaining arguments are display-only bonus message/amount.
     return save_scene(6,Kind::News,actor,discovery_scene_summary(5,a,b,L"",true));
 }
-static void __fastcall employ_scene(Obj params) {
+static void __fastcall employ_scene(Obj params) { COST_SCOPE("employ_scene");
     bool captured=capture_employ_scene(params);
 #ifndef NO_RUNTIME_LOG
     InterlockedIncrement64(&message_entry_counts[4][captured?0:1]);
 #endif
     if(!captured)original_employ_scene(params);
 }
-static void __fastcall discovery_scene(Obj params) {
+static void __fastcall discovery_scene(Obj params) { COST_SCOPE("discovery_scene");
     bool captured=capture_discovery_scene(params);
 #ifndef NO_RUNTIME_LOG
     InterlockedIncrement64(&message_entry_counts[5][captured?0:1]);
 #endif
     if(!captured)original_discovery_scene(params);
 }
-static void __fastcall scenery_scene(unsigned force,Obj actor,Obj scenery,unsigned message,unsigned amount) {
+static void __fastcall scenery_scene(unsigned force,Obj actor,Obj scenery,unsigned message,unsigned amount) { COST_SCOPE("scenery_scene");
     bool captured=capture_scenery_scene(actor,scenery);
 #ifndef NO_RUNTIME_LOG
     InterlockedIncrement64(&message_entry_counts[6][captured?0:1]);
@@ -524,7 +543,7 @@ static void restore_scene_calls() {
 static bool destiny_names(unsigned force,unsigned city,std::wstring &force_name,std::wstring &city_name) {
     if(!force || force>51 || !city || city>61)return false;
     Obj owner=table(0xDF30,force,51),building=table(0x6DA98,city,3000);
-    if(!owner || !building || !copy(fn<const wchar_t *(__fastcall *)(Obj)>(0x22ECC0)(owner),force_name,100) || force_name.empty())return false;
+    if(!owner || !building || !copy(fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_22ECC0))(owner),force_name,100) || force_name.empty())return false;
     // Reuse native_ai_trace's building -> centre hex -> area-name lookup.
     unsigned hex=word(building,0x10);Obj tile=hex<48400?table(0xE270,hex,48399):nullptr;
     unsigned area=tile?word(tile,0x12):0;Obj place=area && area<=500?table(0x6CAF0,area,500):nullptr;
@@ -540,7 +559,7 @@ static bool capture_destiny(Obj data) {
     event.text=event.report=destiny_summary(force_name,city_name,fields[4],fields[5],fields[6]);
     return message_gate(7,message_store_failed,store({event}));
 }
-static void __fastcall destiny_call(Obj data) {
+static void __fastcall destiny_call(Obj data) { COST_SCOPE("destiny_call");
     bool captured=capture_destiny(data);
 #ifndef NO_RUNTIME_LOG
     InterlockedIncrement64(&message_entry_counts[7][captured?0:1]);
@@ -566,13 +585,13 @@ static bool copy_scene_list(Obj list,std::vector<Event> &batch,Kind kind) {
 }
 using DisasterPush=void(__fastcall *)(Obj,Obj,Obj,Obj);
 using DisasterYield=void(__fastcall *)(Obj);
-template<unsigned Branch> static void __fastcall disaster_push(Obj state_manager,Obj type,Obj list,Obj callback) {
+template<unsigned Branch> static void __fastcall disaster_push(Obj state_manager,Obj type,Obj list,Obj callback) { COST_SCOPE("disaster_push");
     constexpr unsigned index=1+Branch*2,path=8+Branch;
     auto &pending=disaster_pending[Branch];pending={};
     bool captured=false;
     // A push may be suppressed only with its own successfully published yield.
-    if(scene_calls[index+1].published && scene_ready(path) && message_gate(path,message_params,type==image+0x13ACE30)) {
-        Obj caller=fn<Obj(__fastcall *)(Obj)>(0x56FC20)(state_manager);
+    if(scene_calls[index+1].published && scene_ready(path) && message_gate(path,message_params,type==image+GA(GA_13ACE30))) {
+        Obj caller=fn<Obj(__fastcall *)(Obj)>(GA(GA_56FC20))(state_manager);
         std::vector<Event> batch;
         if(caller && message_gate(path,message_bad_text,copy_scene_list(list,batch,Kind::Disaster))) {
             captured=message_gate(path,message_store_failed,store(std::move(batch)));
@@ -584,7 +603,7 @@ template<unsigned Branch> static void __fastcall disaster_push(Obj state_manager
 #endif
     if(!captured)reinterpret_cast<DisasterPush>(scene_next[index])(state_manager,type,list,callback);
 }
-template<unsigned Branch> static void __fastcall disaster_yield(Obj caller) {
+template<unsigned Branch> static void __fastcall disaster_yield(Obj caller) { COST_SCOPE("disaster_yield");
     auto &pending=disaster_pending[Branch];bool skipped=caller && pending.caller==caller;
     pending={}; // consume exactly once, even on a mismatched continuation
     if(!skipped)reinterpret_cast<DisasterYield>(scene_next[2+Branch*2])(caller);
@@ -605,7 +624,7 @@ static void publish_scene_calls() {
     for(unsigned i=0;i<scene_site_count;++i)if(scene_next[i] && !scene_call_publish(scene_calls[i]))log_event("advisor_scene_call_skip",scene_sites[i].rva,scene_sites[i].original,2);
 }
 static bool prepare_message_link(CodeLink &link,unsigned rva,const unsigned char *prologue,unsigned size,Obj at,void *hook) {
-    if(size<5 || (rva&15u)+size>16 || memcmp(image+rva,prologue,size))return false;
+    if(size<5 || (rva&15u)+size>16 || ga::mcmp_at(image,rva,prologue,size))return false;
     absolute_jump(at,hook);memcpy(at+32,image+rva,size);absolute_jump(at+32+size,image+rva+size);
     if(!prepare_link(link,rva,0xE9,at))return false;
     // Keep the shared five-byte CodeLink contract. Only this local entry patch
@@ -613,23 +632,23 @@ static bool prepare_message_link(CodeLink &link,unsigned rva,const unsigned char
     memset(link.modified+(rva-link.block)+5,0x90,size-5);return true;
 }
 static bool prepare_picture_link(CodeLink &link,unsigned rva,const unsigned char *bytes,unsigned size,Obj at,void *hook) {
-    if(size<5 || (rva&15u)+size>16 || memcmp(image+rva,bytes,size))return false;
+    if(size<5 || (rva&15u)+size>16 || ga::mcmp_at(image,rva,bytes,size))return false;
     absolute_jump(at,hook); // Only our destination; no displaced native bytes/rel32.
     if(!prepare_link(link,rva,0xE9,at))return false;
     memset(link.modified+(rva-link.block)+5,0x90,size-5);return true;
 }
-static void pop(){fn<void(__fastcall *)(Obj)>(0x12540)(manager());}
+static void pop(){fn<void(__fastcall *)(Obj)>(GA(GA_12540))(manager());}
 static void offscreen(Obj p){if(p)layout_position(p,10000,10000);}
 static std::wstring adviser_name() {
     std::wstring name;
-    if(last_adviser)copy(fn<const wchar_t *(__fastcall *)(Obj)>(0x22EEC0)(last_adviser),name,100);
+    if(last_adviser)copy(fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_22EEC0))(last_adviser),name,100);
     return name.empty()?L"군사":name;
 }
 static DiplomaticFacts report_facts(Obj owner,Obj person) {
     DiplomaticFacts facts;Obj context=world()?pointer(world(),0x871E8):nullptr;
-    Obj player=context?fn<Obj(__fastcall *)(Obj)>(0x32E910)(context):nullptr;
+    Obj player=context?fn<Obj(__fastcall *)(Obj)>(GA(GA_32E910))(context):nullptr;
     if(player && person) {
-        facts.friendly=fn<Obj(__fastcall *)(Obj)>(0x22CA00)(person)==player;
+        facts.friendly=fn<Obj(__fastcall *)(Obj)>(GA(GA_22CA00))(person)==player;
         facts.ruler=facts.friendly && word(person,0x10)==word(player,0x10);
     }
     Obj layout=owner?pointer(owner,0x4C0):nullptr,window=layout?pointer(layout,0x188):nullptr;
@@ -637,7 +656,7 @@ static DiplomaticFacts report_facts(Obj owner,Obj person) {
         Obj from=pointer(window,0x180),to=pointer(window,0x190);
         if(player && from && to && (from==player || to==player)) {
             facts.known_sides=true;facts.incoming=to==player;Obj other=from==player?to:from;
-            copy(fn<const wchar_t *(__fastcall *)(Obj)>(0x22ECC0)(other),facts.counterpart,100);
+            copy(fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_22ECC0))(other),facts.counterpart,100);
         }
         Obj command=pointer(window,0x1D8),vtable=command?pointer(command,0):nullptr;
         if(vtable)facts.kind=(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(vtable+0x98))(command);
@@ -666,7 +685,7 @@ static void hud(Obj layout,bool eligible,bool modal) {
     Obj root=world();unsigned force=force_id();
     if(inbox.world && (inbox.world!=reinterpret_cast<std::uintptr_t>(root) || inbox.force!=force))reset();
     inbox.context(reinterpret_cast<std::uintptr_t>(root),force);
-    bool player=fn<bool(__fastcall *)(Obj,const char *)>(0x56FE50)(manager(),"CUserStrategyState");
+    bool player=fn<bool(__fastcall *)(Obj,const char *)>(GA(GA_56FE50))(manager(),"CUserStrategyState");
     // 2026-10-27 live: the native command menu auto-hides independently of
     // standby. Do not let its visibility fight the player-frame inbox publisher.
     // 56FC20 returns manager+48, the state currently being updated, NOT a
@@ -711,26 +730,26 @@ static void hud(Obj layout,bool eligible,bool modal) {
             collect_names(e.text,m.names);
             if(e.speaker && e.speaker<6001) {
                 Obj who=pointer(root,0x158+e.speaker*8);std::wstring name;
-                if(who && copy(fn<const wchar_t *(__fastcall *)(Obj)>(0x22EEC0)(who),name,100))add_name(m.names,name);
+                if(who && copy(fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_22EEC0))(who),name,100))add_name(m.names,name);
             }
         }
     }
     display_cache=std::move(m);rendered_generation=inbox.generation;rendered_page=page;rendered_open=open;rendered_collecting=inbox.collecting;rendered_adviser=last_adviser;rendered_detail=detail;
     briefing_overlay::publish(display_cache,show,accepted_input);(void)layout;(void)eligible;(void)modal;
 }
-static unsigned long long __fastcall user_enter(Obj state,Obj argument) {
-    auto result=fn<unsigned long long(__fastcall *)(Obj,Obj)>(0x44A0F0)(state,argument);
+static unsigned long long __fastcall user_enter(Obj state,Obj argument) { COST_SCOPE("advisor_briefing::user_enter"); COST_CRUMB("advisor_briefing_state",state);
+    auto result=fn<unsigned long long(__fastcall *)(Obj,Obj)>(GA(GA_44A0F0))(state,argument);
     if(active()){inbox.finish();open=false;detail=false;page=0;}
     return result;
 }
-static void __fastcall user_frame(Obj state) {
+static void __fastcall user_frame(Obj state) { COST_SCOPE("advisor_briefing::user_frame"); COST_CRUMB("advisor_briefing_state",state);
 #ifndef NO_RUNTIME_LOG
     FrameTiming timing(3);
 #endif
 #ifndef NO_RUNTIME_LOG
     hook_called(0);
 #endif
-    fn<void(__fastcall *)(Obj)>(0x44CAF0)(state);
+    fn<void(__fastcall *)(Obj)>(GA(GA_44CAF0))(state);
     // UI-only actions must not wait for the command HUD's refresh cadence.
     // Stay on this original game/UI frame; never call native functions from
     // Present/WndProc, and do not touch state after its original frame returned.
@@ -738,21 +757,21 @@ static void __fastcall user_frame(Obj state) {
         hud(nullptr,true,false);
     }
 }
-static void __fastcall user_leave(Obj state,Obj argument) {
+static void __fastcall user_leave(Obj state,Obj argument) { COST_SCOPE("advisor_briefing::user_leave"); COST_CRUMB("advisor_briefing_state",state);
     if(active()) {
         inbox.begin(reinterpret_cast<std::uintptr_t>(world()),force_id());open=false;page=0;
         started_day=game_day();
         refresh_progress();
         log_event("advisor_briefing_cycle_begin",force_id(),inbox.generation);
     }
-    fn<void(__fastcall *)(Obj,Obj)>(0x448E40)(state,argument);
+    fn<void(__fastcall *)(Obj,Obj)>(GA(GA_448E40))(state,argument);
 }
-static void __fastcall game_leave(Obj state,Obj argument) {reset();fn<void(__fastcall *)(Obj,Obj)>(0x448A70)(state,argument);}
-static void __fastcall narration(Obj state) {
+static void __fastcall game_leave(Obj state,Obj argument) { COST_SCOPE("advisor_briefing::game_leave"); COST_CRUMB("advisor_briefing_state",state);reset();fn<void(__fastcall *)(Obj,Obj)>(GA(GA_448A70))(state,argument);}
+static void __fastcall narration(Obj state) { COST_SCOPE("advisor_briefing::narration"); COST_CRUMB("advisor_briefing_state",state);
 #ifndef NO_RUNTIME_LOG
     hook_called(3);
 #endif
-    fn<void(__fastcall *)(Obj)>(0x862E40)(state);
+    fn<void(__fastcall *)(Obj)>(GA(GA_862E40))(state);
 }
 static unsigned long long message_enter(Obj state,unsigned original,bool diplomatic) {
     bool accepted=false;
@@ -763,14 +782,14 @@ static unsigned long long message_enter(Obj state,unsigned original,bool diploma
         for(size_t i=0;ok && i<count;++i) {
             if(!node || node==head){ok=false;break;}
             Event e;e.day=day();if(diplomatic)e.kind=Kind::Diplomacy;
-            if(pointer(state,0)==image+0x13A2F98)e.speaker=dword(state,0x488);
+            if(pointer(state,0)==image+GA(GA_13A2F98))e.speaker=dword(state,0x488);
             ok=copy(reinterpret_cast<const wchar_t *>(pointer(node,0x10)),e.text) && !e.text.empty() && (diplomatic || passive_notice(e.text));
             if(ok && diplomatic)e.report=diplomatic_report(e.text,report_facts(diplomatic_parent(false),nullptr));
             if(ok)batch.push_back(std::move(e));node=pointer(node,0);
         }
         accepted=ok && node==head && store(std::move(batch),diplomatic);
 #ifndef NO_RUNTIME_LOG
-        if(accepted)stall_begin(state,diplomatic?5:pointer(state,0)==image+0x13A2F98?1:0);
+        if(accepted)stall_begin(state,diplomatic?5:pointer(state,0)==image+GA(GA_13A2F98)?1:0);
 #endif
     }
     auto result=fn<unsigned long long(__fastcall *)(Obj)>(original)(state);
@@ -781,10 +800,10 @@ static unsigned long long message_enter(Obj state,unsigned original,bool diploma
     }
     return result;
 }
-static unsigned long long __fastcall simple_enter(Obj state){return message_enter(state,0x1F15F0,false);}
-static unsigned long long __fastcall diplomatic_enter(Obj state){return message_enter(state,0x8108C0,true);}
-static unsigned long long __fastcall person_notice_enter(Obj state){return message_enter(state,0x1F16A0,false);}
-static void __fastcall simple_frame(Obj state) {
+static unsigned long long __fastcall simple_enter(Obj state){ COST_SCOPE("advisor_briefing::simple_enter"); COST_CRUMB("advisor_briefing_state",state);return message_enter(state,GA(GA_1F15F0),false);}
+static unsigned long long __fastcall diplomatic_enter(Obj state){ COST_SCOPE("advisor_briefing::diplomatic_enter"); COST_CRUMB("advisor_briefing_state",state);return message_enter(state,GA(GA_8108C0),true);}
+static unsigned long long __fastcall person_notice_enter(Obj state){ COST_SCOPE("advisor_briefing::person_notice_enter"); COST_CRUMB("advisor_briefing_state",state);return message_enter(state,GA(GA_1F16A0),false);}
+static void __fastcall simple_frame(Obj state) { COST_SCOPE("advisor_briefing::simple_frame"); COST_CRUMB("advisor_briefing_state",state);
 #ifndef NO_RUNTIME_LOG
     hook_called(4);
 #endif
@@ -794,7 +813,7 @@ static void __fastcall simple_frame(Obj state) {
         // whichever state happens to be on top in place of our own message.
         if(top_state()!=state)return;
         Obj dialog=pointer(state,0x470);
-        bool diplomatic=pointer(state,0)==image+0x145F9E8;
+        bool diplomatic=pointer(state,0)==image+GA(GA_145F9E8);
         if(!diplomatic)return; // General message states are always native.
         if(!dialogue_ready(false)) {
             simple_states.erase(it);simple_state=nullptr;
@@ -814,12 +833,12 @@ static void __fastcall simple_frame(Obj state) {
         if(messages && *reinterpret_cast<const unsigned long long *>(messages+8)) {
             // Advance through the original page/log queue before requesting
             // close, including the diplomacy-specific percentage animation.
-            fn<void(__fastcall *)(Obj)>(0x863C70)(dialog);return;
+            fn<void(__fastcall *)(Obj)>(GA(GA_863C70))(dialog);return;
         }
         simple_states.erase(it);simple_state=nullptr;
         // This can synchronously deliver the close callback. No dialog/state
         // access is allowed after the native acknowledgement returns.
-        fn<void(__fastcall *)(Obj,unsigned)>(0x861480)(dialog,0x7FFFFFFD);
+        fn<void(__fastcall *)(Obj,unsigned)>(GA(GA_861480))(dialog,0x7FFFFFFD);
         return;
     }
     // Original slot is 92AD0 (void no-op). Original close event and Leave
@@ -833,13 +852,13 @@ static bool record(Obj r,std::vector<Event> &batch) {
 }
 static bool pending_world_reports(std::vector<Event> &batch) {
     Obj root=world();Obj context=root?pointer(root,0x871E8):nullptr;if(!context)return false;
-    Obj district=fn<Obj(__fastcall *)(Obj)>(0x32E8D0)(context);
-    unsigned district_id=district?fn<unsigned(__fastcall *)(Obj)>(0x22DBC0)(district):0;
+    Obj district=fn<Obj(__fastcall *)(Obj)>(GA(GA_32E8D0))(context);
+    unsigned district_id=district?fn<unsigned(__fastcall *)(Obj)>(GA(GA_22DBC0))(district):0;
     for(unsigned i=0;i<2001;++i) {
         Obj r=pointer(root,0x79E90+i*8);if(!r)continue;
         unsigned flags=r[0x82],owner_id=r[0x12];if((flags&4) || !(flags&2))continue;
         Obj d=owner_id>0 && owner_id<52?pointer(root,0xE0D0+owner_id*8):nullptr;
-        bool known=(flags&1) || (d && fn<int(__fastcall *)(Obj)>(0x233750)(d));
+        bool known=(flags&1) || (d && fn<int(__fastcall *)(Obj)>(GA(GA_233750))(d));
         bool include_detail=(flags&1) || owner_id==district_id;
         if(!known && !include_detail)continue;
         Event e;e.speaker=word(r,0x88);e.day=day();std::wstring first,second;
@@ -874,20 +893,20 @@ static bool capture_event(Obj owner,Obj person,const wchar_t *text) {
     if(!message_gate(3,message_owner,allowed))return false;
     Event e;e.day=day();
     if(!message_gate(3,message_bad_text,copy(text,e.text) && !e.text.empty()))return false;
-    if(table==image+0x1440FF8) {
+    if(table==image+GA(GA_1440FF8)) {
         unsigned phase=dword(owner,0x4C8);
         if(!message_gate(3,message_phase,phase>=1 && phase<=3 && person && person==pointer(owner,phase==1?0x4B0:0x4B8)))return false;
         e.kind=Kind::Recruitment;std::wstring target,envoy;
         Obj who=pointer(owner,0x4B8),from=pointer(owner,0x4B0);
-        if(who)copy(fn<const wchar_t *(__fastcall *)(Obj)>(0x22EEC0)(who),target,100);
-        if(from)copy(fn<const wchar_t *(__fastcall *)(Obj)>(0x22EEC0)(from),envoy,100);
+        if(who)copy(fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_22EEC0))(who),target,100);
+        if(from)copy(fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_22EEC0))(from),envoy,100);
         if(phase==1)e.report=envoy.empty() || target.empty()?L"등용 임무의 결과를 보고드립니다.":envoy+L"의 "+target+L" 등용 임무를 보고드립니다.";
         else e.report=(target.empty()?L"해당 인재":target)+L"의 등용에 "+(phase==2?L"성공했습니다.":L"실패했습니다.");
     }
     name_speaker(e,person);
     return message_gate(3,message_store_failed,store({e}));
 }
-static void __fastcall event_speech(Obj owner,Obj person,const wchar_t *text,unsigned long long flags,const wchar_t *extra,unsigned style) {
+static void __fastcall event_speech(Obj owner,Obj person,const wchar_t *text,unsigned long long flags,const wchar_t *extra,unsigned style) { COST_SCOPE("event_speech");
 #ifndef NO_RUNTIME_LOG
     hook_called(6);
 #endif
@@ -899,19 +918,19 @@ static void __fastcall event_speech(Obj owner,Obj person,const wchar_t *text,uns
     // Relay preserves all six native arguments, including stack arguments 5/6.
     if(!captured)original_event_speech(owner,person,text,flags,extra,style);
 }
-static void __fastcall set_text(Obj root,int id,const wchar_t *text,unsigned long long flags) {
+static void __fastcall set_text(Obj root,int id,const wchar_t *text,unsigned long long flags) { COST_SCOPE("set_text");
     if(capturing && capturing->valid) {
         std::wstring value;
         if(!copy(text,value) || capturing->text.size()>=2048)capturing->valid=false;
         else if(!value.empty() || root==capturing->headless_root) {
             auto &v=capturing->text;auto it=std::find_if(v.begin(),v.end(),[&](const Text &t){return t.root==root && t.id==id;});
             if(it!=v.end())it->value=std::move(value);
-            else {int pos[2]{0,id};if(root!=capturing->headless_root)fn<void(__fastcall *)(Obj,int *,int)>(0x92CB10)(root,pos,id);v.push_back({root,id,pos[0],pos[1],std::move(value)});}
+            else {int pos[2]{0,id};if(root!=capturing->headless_root)fn<void(__fastcall *)(Obj,int *,int)>(GA(GA_92CB10))(root,pos,id);v.push_back({root,id,pos[0],pos[1],std::move(value)});}
         }
     }
     if(!capturing || root!=capturing->headless_root)original_text(root,id,text,flags);
 }
-static void __fastcall diplomatic_speech(Obj owner,int slot,Obj person,const wchar_t *text,Obj extra) {
+static void __fastcall diplomatic_speech(Obj owner,int slot,Obj person,const wchar_t *text,Obj extra) { COST_SCOPE("diplomatic_speech");
     bool capture=dialogue_ready(true) && owner==diplomatic_parent(true) && (slot==3 || slot==4);
     Event e;e.kind=Kind::Diplomacy;e.day=day();
     if(capture) {
@@ -919,7 +938,7 @@ static void __fastcall diplomatic_speech(Obj owner,int slot,Obj person,const wch
         if(capture)e.report=diplomatic_report(e.text,report_facts(owner,person));
         if(capture && person) {
             e.speaker=word(person,0x10);std::wstring name;
-            if(copy(fn<const wchar_t *(__fastcall *)(Obj)>(0x22EEC0)(person),name,100) && !name.empty())e.text=name+L"\n"+e.text;
+            if(copy(fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_22EEC0))(person),name,100) && !name.empty())e.text=name+L"\n"+e.text;
         }
         if(capture)capture=store({e},true);
 #ifndef NO_RUNTIME_LOG
@@ -938,7 +957,7 @@ static void __fastcall diplomatic_speech(Obj owner,int slot,Obj person,const wch
         speech_waiting=true;++speech_serial;
     }
 }
-static void __fastcall diplomatic_wait(Obj state) {
+static void __fastcall diplomatic_wait(Obj state) { COST_SCOPE("advisor_briefing::diplomatic_wait"); COST_CRUMB("advisor_briefing_state",state);
 #ifndef NO_RUNTIME_LOG
     hook_called(5);
     InterlockedExchange64(&wait_last_state,reinterpret_cast<LONG64>(state));
@@ -962,7 +981,7 @@ static void __fastcall diplomatic_wait(Obj state) {
         InterlockedIncrement64(&wait_zero_writes);
 #endif
     }
-    fn<void(__fastcall *)(Obj)>(0x83BE30)(state);
+    fn<void(__fastcall *)(Obj)>(GA(GA_83BE30))(state);
 #ifndef NO_RUNTIME_LOG
     InterlockedIncrement64(&wait_native_returns);
     if(top_state()!=state)InterlockedIncrement64(&wait_top_changed);
@@ -971,8 +990,8 @@ static void __fastcall diplomatic_wait(Obj state) {
 }
 // Only the 676870 -> 67AE80 call is redirected. A native UI fallback replays
 // the prepared scalar/string payload, rather than applying report results twice.
-static void __fastcall report_results(Obj action) {
-    if(!replay_results){fn<void(__fastcall *)(Obj)>(0x67AE80)(action);return;}
+static void __fastcall report_results(Obj action) { COST_SCOPE("report_results");
+    if(!replay_results){fn<void(__fastcall *)(Obj)>(GA(GA_67AE80))(action);return;}
     for(unsigned i=0;i<262;++i) {
         unsigned offset=i<261?0x1B00+i*0x140:0x16140;
         memcpy(action+offset+0x10,replay_results+offset+0x10,0x130);
@@ -982,9 +1001,9 @@ static void __fastcall report_results(Obj action) {
 struct ReportRecords {
     std::vector<unsigned char> bytes;
     ReportRecords():bytes(0x16290) {
-        for(unsigned i=0;i<262;++i)fn<Obj(__fastcall *)(Obj)>(0x2213C0)(bytes.data()+(i<261?0x1B00+i*0x140:0x16140));
+        for(unsigned i=0;i<262;++i)fn<Obj(__fastcall *)(Obj)>(GA(GA_2213C0))(bytes.data()+(i<261?0x1B00+i*0x140:0x16140));
     }
-    ~ReportRecords(){for(unsigned i=262;i;) {--i;fn<void(__fastcall *)(Obj)>(0x2220A0)(bytes.data()+(i<261?0x1B00+i*0x140:0x16140));}}
+    ~ReportRecords(){for(unsigned i=262;i;) {--i;fn<void(__fastcall *)(Obj)>(GA(GA_2220A0))(bytes.data()+(i<261?0x1B00+i*0x140:0x16140));}}
 };
 #ifndef NO_RUNTIME_LOG
 struct ReportTiming {
@@ -1009,11 +1028,11 @@ struct ReportTiming {
 #endif
 static bool report_districts(std::vector<Obj> &districts) {
     Obj root=world(),context=pointer(root,0x871E8);
-    Obj force=fn<Obj(__fastcall *)(Obj)>(0x32E910)(context);
+    Obj force=fn<Obj(__fastcall *)(Obj)>(GA(GA_32E910))(context);
     if(!force)return false;
     for(unsigned i=0;i<52;++i) {
         Obj district=pointer(root,0xE0D0+i*8);
-        if(!district || !fn<int(__fastcall *)(Obj)>(0x32F500)(district))continue;
+        if(!district || !fn<int(__fastcall *)(Obj)>(GA(GA_32F500))(district))continue;
         unsigned owner=district[0x10];
         if(owner>=52 || pointer(root,0xDF30+owner*8)!=force)continue;
         if(district[0x11]>=sizeof(district_labels)/sizeof(*district_labels))return false;
@@ -1033,7 +1052,7 @@ static bool headless_income(std::vector<Event> &batch,const std::vector<Obj> &di
     *reinterpret_cast<Obj *>(income+0x378)=child;
     for(Obj district:districts) {
         TextCapture values;values.headless_root=child+0x130;
-        {CaptureScope scope(values);fn<void(__fastcall *)(Obj,Obj)>(0x67D1F0)(income,district);}
+        {CaptureScope scope(values);fn<void(__fastcall *)(Obj,Obj)>(GA(GA_67D1F0))(income,district);}
         if(!values.valid)return false;
         std::vector<std::pair<int,std::wstring>> cells;
         for(const auto &t:values.text)if(t.root==values.headless_root)cells.push_back({t.id,t.value});
@@ -1051,7 +1070,7 @@ static bool headless_income(std::vector<Event> &batch,const std::vector<Obj> &di
             }
         }
         Event e;e.kind=Kind::Income;e.day=day();
-        if(!copy(fn<const wchar_t *(__fastcall *)(unsigned)>(0x30CF80)(district_labels[district[0x11]]),e.text,100) || e.text.empty())return false;
+        if(!copy(fn<const wchar_t *(__fastcall *)(unsigned)>(GA(GA_30CF80))(district_labels[district[0x11]]),e.text,100) || e.text.empty())return false;
         e.report=income_summary(e.text,cells);
         // Preserve the original formatted cell strings in their row order for
         // detail view, without exposing internal control IDs in the report.
@@ -1094,7 +1113,7 @@ static bool try_headless_report(Obj state,unsigned long long &result) {
             consumed.push_back({r,r[0x82]});r[0x82]=(r[0x82]&0xFD)|4;
         }
     }
-    fn<void(__fastcall *)(Obj)>(0x67AE80)(action); // original result/flag writers, exactly once
+    fn<void(__fastcall *)(Obj)>(GA(GA_67AE80))(action); // original result/flag writers, exactly once
     unsigned n=dword(action,0x16280);bool ok=n<=261;
     for(unsigned i=0;ok && i<n;++i)ok=record(action+0x1B00+i*0x140,batch);
     if(ok && dword(action,0x16284))ok=record(action+0x16140,batch);
@@ -1107,7 +1126,7 @@ static bool try_headless_report(Obj state,unsigned long long &result) {
         // caller-local replay protects irreversible result writers on retry.
         for(const auto &r:consumed)r.first[0x82]=(r.first[0x82]&0xF9)|(r.second&6);
         fallback();replay_results=action;
-        result=fn<unsigned long long(__fastcall *)(Obj)>(0x67B420)(state);
+        result=fn<unsigned long long(__fastcall *)(Obj)>(GA(GA_67B420))(state);
         replay_results=nullptr;report_state=state;report_deferred=false;
 #ifndef NO_RUNTIME_LOG
         log_event("advisor_report_collect_fail",failed_stage?failed_stage:3,n,static_cast<unsigned>(districts.size()));
@@ -1129,7 +1148,7 @@ static bool try_headless_report(Obj state,unsigned long long &result) {
 #endif
     return true;
 }
-static unsigned long long __fastcall report_enter(Obj state) {
+static unsigned long long __fastcall report_enter(Obj state) { COST_SCOPE("advisor_briefing::report_enter"); COST_CRUMB("advisor_briefing_state",state);
 #ifndef NO_RUNTIME_LOG
     ReportTiming timing(1);
 #endif
@@ -1139,7 +1158,7 @@ static unsigned long long __fastcall report_enter(Obj state) {
     // Accept only this final native report into the completed cycle.
     std::vector<Event> batch;bool capture=defer(true) && pending_world_reports(batch);
     if(capture)briefing_overlay::mask_report(true);
-    auto result=fn<unsigned long long(__fastcall *)(Obj)>(0x67B420)(state);
+    auto result=fn<unsigned long long(__fastcall *)(Obj)>(GA(GA_67B420))(state);
     report_state=state;report_deferred=false;
     if(!capture || !result){briefing_overlay::mask_report(false);return result;}
     Obj action=pointer(state,0x488);unsigned n=action?dword(action,0x16280):262;
@@ -1151,7 +1170,7 @@ static unsigned long long __fastcall report_enter(Obj state) {
     if(!store(std::move(batch),true))return result;
     offscreen(pointer(state,0x480));offscreen(action);report_deferred=true;return result;
 }
-static void __fastcall report_frame(Obj state) {
+static void __fastcall report_frame(Obj state) { COST_SCOPE("advisor_briefing::report_frame"); COST_CRUMB("advisor_briefing_state",state);
 #ifndef NO_RUNTIME_LOG
     hook_called(8);
 #endif
@@ -1166,15 +1185,15 @@ static void __fastcall report_frame(Obj state) {
 #ifndef NO_RUNTIME_LOG
         log_event("advisor_report_headless_finish",inbox.generation);
 #endif
-        fn<void(__fastcall *)(Obj)>(0x67B600)(state);return;
+        fn<void(__fastcall *)(Obj)>(GA(GA_67B600))(state);return;
     }
     if(state==report_state && report_deferred) {
         if(top_state()!=state)return;
-        if(!defer(true)){report_deferred=false;fallback();fn<void(__fastcall *)(Obj)>(0x67B600)(state);return;}
+        if(!defer(true)){report_deferred=false;fallback();fn<void(__fastcall *)(Obj)>(GA(GA_67B600))(state);return;}
         report_deferred=false;
         TextCapture capture;
         // Preserve creation and disposal of the original income controls too.
-        {CaptureScope scope(capture);fn<void(__fastcall *)(Obj,int)>(0x67C990)(state,1);}
+        {CaptureScope scope(capture);fn<void(__fastcall *)(Obj,int)>(GA(GA_67C990))(state,1);}
         Obj income=pointer(state,0x490);std::vector<Event> batch;
         // Income values are filled by the district-selection callback, after
         // the constructor has created the headings. Run that same display-only
@@ -1184,14 +1203,14 @@ static void __fastcall report_frame(Obj state) {
             Obj district=pointer(income,0x288+i*8);if(!district)continue;
             if(district[0x11]>=sizeof(district_labels)/sizeof(*district_labels)){ok=false;break;}
             TextCapture values=capture;
-            {CaptureScope scope(values);fn<void(__fastcall *)(Obj,Obj)>(0x67D1F0)(income,district);}
+            {CaptureScope scope(values);fn<void(__fastcall *)(Obj,Obj)>(GA(GA_67D1F0))(income,district);}
             Obj root=pointer(income,0x378);if(!root){ok=false;break;}
             values.text.erase(std::remove_if(values.text.begin(),values.text.end(),[&](const Text &t){return t.root!=root+0x130;}),values.text.end());
             bool number=false;for(const auto &t:values.text)for(wchar_t c:t.value)if(c>=L'0' && c<=L'9')number=true;
             if(!values.valid || !number){ok=false;break;}
             std::stable_sort(values.text.begin(),values.text.end(),[](const Text &a,const Text &b){return a.y!=b.y?a.y<b.y:a.x<b.x;});
             Event e;e.kind=Kind::Income;e.day=day();
-            if(!copy(fn<const wchar_t *(__fastcall *)(unsigned)>(0x30CF80)(district_labels[district[0x11]]),e.text,100)){ok=false;break;}
+            if(!copy(fn<const wchar_t *(__fastcall *)(unsigned)>(GA(GA_30CF80))(district_labels[district[0x11]]),e.text,100)){ok=false;break;}
             std::vector<std::pair<int,std::wstring>> cells;for(const auto &t:values.text)cells.push_back({t.id,t.value});
             e.report=income_summary(e.text,cells);
             e.text+=L"\n";int row=values.text.empty()?0:values.text.front().y;
@@ -1208,24 +1227,24 @@ static void __fastcall report_frame(Obj state) {
         }
         if(!store(std::move(batch),true))return;
         offscreen(pointer(state,0x490));
-        fn<void(__fastcall *)(Obj,int)>(0x67C990)(state,2); // original camera restoration
-        fn<void(__fastcall *)(Obj,int)>(0x67C990)(state,3); // original report completion phase
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_67C990))(state,2); // original camera restoration
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_67C990))(state,3); // original report completion phase
         *reinterpret_cast<unsigned *>(state+0x474)=3; // no visible bg_out delay
         // Native 67B600 phase 3 applies its own final audio/camera cleanup and
         // manager pop. Leave 67B1E0 still disposes all controls and calls +48.
     }
-    fn<void(__fastcall *)(Obj)>(0x67B600)(state);
+    fn<void(__fastcall *)(Obj)>(GA(GA_67B600))(state);
 }
-static void __fastcall report_leave(Obj state,Obj context) {
+static void __fastcall report_leave(Obj state,Obj context) { COST_SCOPE("advisor_briefing::report_leave"); COST_CRUMB("advisor_briefing_state",state);
 #ifndef NO_RUNTIME_LOG
     ReportTiming timing(3);
 #endif
     bool owned=state==report_state;
     if(owned){report_state=nullptr;report_deferred=false;report_headless=false;}
-    fn<void(__fastcall *)(Obj,Obj)>(0x67B1E0)(state,context);
+    fn<void(__fastcall *)(Obj,Obj)>(GA(GA_67B1E0))(state,context);
     if(owned && !report_state)briefing_overlay::mask_report(false);
 }
-static void __fastcall report_wait(Obj state) {if(defer(true) && top_state()==state){*reinterpret_cast<unsigned *>(state+0x470)=0;pop();return;}fn<void(__fastcall *)(Obj)>(0x67B7C0)(state);}
+static void __fastcall report_wait(Obj state) { COST_SCOPE("advisor_briefing::report_wait"); COST_CRUMB("advisor_briefing_state",state);if(defer(true) && top_state()==state){*reinterpret_cast<unsigned *>(state+0x470)=0;pop();return;}fn<void(__fastcall *)(Obj)>(GA(GA_67B7C0))(state);}
 #ifndef NO_RUNTIME_LOG
 static void diagnose_uncollected_top() {
     if(!active() || !inbox.collecting)return;
@@ -1240,18 +1259,18 @@ static void diagnose_uncollected_top() {
     log_event("advisor_briefing_uncollected_top",rva,day(),0);
 }
 #endif
-static void __fastcall log_frame(Obj layout) {
+static void __fastcall log_frame(Obj layout) { COST_SCOPE("advisor_briefing::log_frame"); COST_CRUMB("advisor_briefing_layout",layout);
 #ifndef NO_RUNTIME_LOG
     FrameTiming timing(1);
 #endif
 #ifndef NO_RUNTIME_LOG
     hook_called(1);
 #endif
-    bind(old_log,layout);fn<void(__fastcall *)(Obj)>(0x66F7C0)(layout);move(old_log,hide_native_hud() && replace_legacy());
+    bind(old_log,layout);fn<void(__fastcall *)(Obj)>(GA(GA_66F7C0))(layout);move(old_log,hide_native_hud() && replace_legacy());
     // Saved player-turn and YesNo snapshots both show this existing hook running.
     // Only read native state here; Present/WndProc consume the published decision.
     if(active() && !inbox.collecting){
-        Obj top=top_state();bool player=top && pointer(top,0)==image+0x13D63A0 && !interaction();
+        Obj top=top_state();bool player=top && pointer(top,0)==image+GA(GA_13D63A0) && !interaction();
 #ifndef NO_RUNTIME_LOG
         InterlockedIncrement64(&player_context_counts[0]);
         InterlockedIncrement64(&player_context_counts[player?1:2]);
@@ -1277,25 +1296,25 @@ static void __fastcall log_frame(Obj layout) {
     diagnose_uncollected_top();
 #endif
 }
-static void __fastcall log_leave(Obj layout,Obj context) {
+static void __fastcall log_leave(Obj layout,Obj context) { COST_SCOPE("advisor_briefing::log_leave"); COST_CRUMB("advisor_briefing_layout",layout);
     if(old_log.object==layout){move(old_log,false);old_log={};}
-    fn<void(__fastcall *)(Obj,Obj)>(0x66F3E0)(layout,context);
+    fn<void(__fastcall *)(Obj,Obj)>(GA(GA_66F3E0))(layout,context);
 }
-static void __fastcall advice_frame(Obj layout) {
+static void __fastcall advice_frame(Obj layout) { COST_SCOPE("advisor_briefing::advice_frame"); COST_CRUMB("advisor_briefing_layout",layout);
 #ifndef NO_RUNTIME_LOG
     FrameTiming timing(2);
 #endif
 #ifndef NO_RUNTIME_LOG
     hook_called(2);
 #endif
-    bind(old_advice,layout);fn<void(__fastcall *)(Obj)>(0x88C1C0)(layout);
+    bind(old_advice,layout);fn<void(__fastcall *)(Obj)>(GA(GA_88C1C0))(layout);
     if(!active()){move(old_advice,false);return;}
     Obj adviser=pointer(layout,0x448);unsigned art=adviser?word(adviser,0xA6):~0u;
     if(adviser!=last_adviser || art!=last_art){last_adviser=adviser;last_art=art;++portrait_serial;}
     bool needs_portrait=replace_legacy() && adviser && !briefing_overlay::captured(portrait_serial);
     move(old_advice,hide_native_hud() && replace_legacy() && !needs_portrait);
-    if(needs_portrait && fn<unsigned(__fastcall *)(Obj)>(0x86F250)(layout)) {
-        int pos[2]{},size[2]{};fn<void(__fastcall *)(Obj,int *,int)>(0x92CB10)(layout+0x130,pos,5);fn<void(__fastcall *)(Obj,int *,int)>(0x92CF90)(layout+0x130,size,5);
+    if(needs_portrait && fn<unsigned(__fastcall *)(Obj)>(GA(GA_86F250))(layout)) {
+        int pos[2]{},size[2]{};fn<void(__fastcall *)(Obj,int *,int)>(GA(GA_92CB10))(layout+0x130,pos,5);fn<void(__fastcall *)(Obj,int *,int)>(GA(GA_92CF90))(layout+0x130,size,5);
         // The call above refreshes the node's native matrix. Use its complete
         // world scale, including the parent's transform, rather than texel size.
         Obj nodes=pointer(layout,0x138),node=nodes && dword(layout,0x140)>5?pointer(nodes,5*8):nullptr;
@@ -1304,25 +1323,24 @@ static void __fastcall advice_frame(Obj layout) {
         if(matrix){memcpy(transform,matrix,sizeof(transform));if(portrait_bounds(size[0],size[1],node[0x10C],transform,bounds))briefing_overlay::request_portrait(bounds,portrait_serial);}
     }
 }
-static void __fastcall advice_leave(Obj layout,Obj context) {
+static void __fastcall advice_leave(Obj layout,Obj context) { COST_SCOPE("advisor_briefing::advice_leave"); COST_CRUMB("advisor_briefing_layout",layout);
     if(old_advice.object==layout){move(old_advice,false);old_advice={};last_adviser=nullptr;last_art=~0u;}
-    fn<void(__fastcall *)(Obj,Obj)>(0x893720)(layout,context);
+    fn<void(__fastcall *)(Obj,Obj)>(GA(GA_893720))(layout,context);
 }
 static void *replacements[]={reinterpret_cast<void *>(&user_enter),reinterpret_cast<void *>(&user_leave),reinterpret_cast<void *>(&game_leave),reinterpret_cast<void *>(&narration),reinterpret_cast<void *>(&simple_enter),reinterpret_cast<void *>(&simple_frame),reinterpret_cast<void *>(&report_enter),reinterpret_cast<void *>(&report_frame),reinterpret_cast<void *>(&report_leave),reinterpret_cast<void *>(&report_wait),reinterpret_cast<void *>(&log_frame),reinterpret_cast<void *>(&log_leave),reinterpret_cast<void *>(&advice_frame),reinterpret_cast<void *>(&advice_leave),reinterpret_cast<void *>(&diplomatic_enter),reinterpret_cast<void *>(&simple_frame),reinterpret_cast<void *>(&diplomatic_wait),reinterpret_cast<void *>(&user_frame),reinterpret_cast<void *>(&person_notice_enter),reinterpret_cast<void *>(&simple_frame)};
 static bool install() {
     if(!guards_match())return false;
-    Obj relay=allocate_near(image+0x930D20);if(!relay)return false;
-    absolute_jump(relay,reinterpret_cast<void *>(&set_text));memcpy(relay+32,image+0x930D20,5);absolute_jump(relay+37,image+0x930D25);
-    absolute_jump(relay+128,reinterpret_cast<void *>(&diplomatic_speech));memcpy(relay+160,image+0x841660,5);absolute_jump(relay+165,image+0x841665);
-    bool messages_prepared=prepare_message_link(message_links[0],0x1F0AD0,message_prologue,sizeof(message_prologue),relay+256,reinterpret_cast<void *>(&message_call)) &&
-        prepare_message_link(message_links[1],0x1F09E0,narration_prologue,sizeof(narration_prologue),relay+320,reinterpret_cast<void *>(&narration_call)) &&
-        prepare_message_link(message_links[2],0x1F0DD0,person_prologue,sizeof(person_prologue),relay+384,reinterpret_cast<void *>(&person_call)) &&
-        prepare_message_link(event_link,0x842380,event_prologue,sizeof(event_prologue),relay+448,reinterpret_cast<void *>(&event_speech)) &&
-        prepare_message_link(scene_links[0],0x6C43B0,scene_prologue,sizeof(scene_prologue),relay+512,reinterpret_cast<void *>(&employ_scene)) &&
-        prepare_message_link(scene_links[1],0x6C4670,scene_prologue,sizeof(scene_prologue),relay+576,reinterpret_cast<void *>(&discovery_scene)) &&
-        prepare_message_link(scene_links[2],0x41D550,scenery_prologue,sizeof(scenery_prologue),relay+640,reinterpret_cast<void *>(&scenery_scene));
-    original_employ_scene=reinterpret_cast<SceneCall>(relay+544);
-    original_discovery_scene=reinterpret_cast<SceneCall>(relay+608);
+    Obj relay=allocate_near(image+GA(GA_930D20));if(!relay)return false;
+    absolute_jump(relay,reinterpret_cast<void *>(&set_text));memcpy(relay+32,image+GA(GA_930D20),5);absolute_jump(relay+37,image+GA(GA_930D25));
+    absolute_jump(relay+128,reinterpret_cast<void *>(&diplomatic_speech));memcpy(relay+160,image+GA(GA_841660),5);absolute_jump(relay+165,image+GA(GA_841665));
+    bool messages_prepared=prepare_message_link(message_links[0],GA(GA_1F0AD0),message_prologue,sizeof(message_prologue),relay+256,reinterpret_cast<void *>(&message_call)) &&
+        prepare_message_link(message_links[1],GA(GA_1F09E0),narration_prologue,sizeof(narration_prologue),relay+320,reinterpret_cast<void *>(&narration_call)) &&
+        prepare_message_link(message_links[2],GA(GA_1F0DD0),person_prologue,sizeof(person_prologue),relay+384,reinterpret_cast<void *>(&person_call)) &&
+        prepare_message_link(event_link,GA(GA_842380),event_prologue,sizeof(event_prologue),relay+448,reinterpret_cast<void *>(&event_speech)) &&
+        (scene_yield || prepare_message_link(scene_links[0],GA(GA_6C43B0),scene_prologue,sizeof(scene_prologue),relay+512,reinterpret_cast<void *>(&employ_scene))) &&
+        (scene_yield || prepare_message_link(scene_links[1],GA(GA_6C4670),scene_prologue,sizeof(scene_prologue),relay+576,reinterpret_cast<void *>(&discovery_scene))) &&
+        prepare_message_link(scene_links[2],GA(GA_41D550),scenery_prologue,sizeof(scenery_prologue),relay+640,reinterpret_cast<void *>(&scenery_scene));
+    if(!scene_yield){original_employ_scene=reinterpret_cast<SceneCall>(relay+544);original_discovery_scene=reinterpret_cast<SceneCall>(relay+608);}
     original_scenery_scene=reinterpret_cast<SceneryCall>(relay+672);
     original_message_call=reinterpret_cast<MessageCall>(relay+288);
     original_narration_call=reinterpret_cast<NarrationCall>(relay+352);
@@ -1331,20 +1349,21 @@ static bool install() {
     original_speech=reinterpret_cast<SpeechSetter>(relay+160);
     original_text=reinterpret_cast<TextSetter>(relay+32);DWORD old;
     bool prepared=messages_prepared &&
-        prepare_picture_link(picture_links[0],0x451FF0,picture_show_bytes,sizeof(picture_show_bytes),relay+704,reinterpret_cast<void *>(&picture_show)) &&
-        prepare_picture_link(picture_links[1],0x43FF90,picture_close_bytes,sizeof(picture_close_bytes),relay+736,reinterpret_cast<void *>(&picture_close)) &&
-        prepare_message_link(time_wait_link,0x304640,narration_prologue,sizeof(narration_prologue),relay+768,reinterpret_cast<void *>(&time_wait)) &&
-        prepare_link(text_link,0x930D20,0xE9,relay) && prepare_link(speech_link,0x841660,0xE9,relay+128);
+        prepare_picture_link(picture_links[0],GA(GA_451FF0),picture_show_bytes,sizeof(picture_show_bytes),relay+704,reinterpret_cast<void *>(&picture_show)) &&
+        prepare_picture_link(picture_links[1],GA(GA_43FF90),picture_close_bytes,sizeof(picture_close_bytes),relay+736,reinterpret_cast<void *>(&picture_close)) &&
+        prepare_message_link(time_wait_link,GA(GA_304640),narration_prologue,sizeof(narration_prologue),relay+768,reinterpret_cast<void *>(&time_wait)) &&
+        prepare_link(text_link,GA(GA_930D20),0xE9,relay) && prepare_link(speech_link,GA(GA_841660),0xE9,relay+128);
     original_time_wait=reinterpret_cast<TimeWait>(relay+800);
     prepare_scene_calls(relay);
     absolute_jump(relay+1024,reinterpret_cast<void *>(&report_results));
-    prepared=prepared && call_prepare(report_results_call,0x676D0D,relay+1024);
+    prepared=prepared && call_prepare(report_results_call,GA(GA_676D0D),relay+1024);
     if(!prepared || !VirtualProtect(relay,4096,PAGE_EXECUTE_READ,&old) || !FlushInstructionCache(GetCurrentProcess(),relay,1040)){VirtualFree(relay,0,MEM_RELEASE);return false;}
     unsigned n=0;
     bool published=publish_link(text_link) && publish_link(speech_link);
     for(unsigned i=0;i<3 && published;++i)published=publish_link(message_links[i]);
     published=published && publish_link(event_link);
-    for(unsigned i=0;i<3 && published;++i)published=publish_link(scene_links[i]);
+    for(unsigned i=0;i<3 && published;++i)if(i>=2 || !scene_yield)published=publish_link(scene_links[i]);
+    if(scene_yield)log_event("advisor_scene_yield",other_mod_present(L"SAN14_SceneSkip.dll")?1:2,0,0);
     for(unsigned i=0;i<2 && published;++i)published=publish_link(picture_links[i]);
     published=published && publish_link(time_wait_link);
     published=published && scene_call_publish(report_results_call);

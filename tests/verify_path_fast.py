@@ -1,3 +1,4 @@
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import ga_expand  # user 2026-11-05 patch resilience: sources spell addresses as GA(GA_x)
 """Offline path_fast evidence. No process access, game execution or live writes.
 
 Steam's on-disk text is encrypted: check its identity, then the matching decoded
@@ -66,8 +67,10 @@ def function_size(address):
 
 
 def audit():
-    ok(hashlib.sha256((P.parent / 'SAN14CE_KO.exe').read_bytes()).hexdigest() ==
-       '87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a', 'Steam identity')
+    # local10 (2026-11-06): the on-disk Steam EXE is now buildid 25953386 (782cf229...); 87ed4e46... is the build the decoded evidence below belongs to.
+    ok(hashlib.sha256((P.parent / 'SAN14CE_KO.exe').read_bytes()).hexdigest() in
+       ('87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a',
+        '782cf229a56cdde2b95399e0e7536740b3f5e96bea702679365e4dad061abdce'), 'Steam identity')
     ok(hashlib.sha256(decoded).hexdigest() ==
        '1fbe6be7466a66466fe97cf3ab7d49392913346879c7d40de7f4eaf86eef81c6', 'decoded identity')
     # Audit all .text address operands, not merely decompiler cross references.
@@ -260,7 +263,8 @@ def implementation():
        'clear-elision whole atomic publication block is disjoint from combat/progress patches')
     ok(read(0x183A30,7)==bytes.fromhex('488bc444894820'),'seven-byte complete nonrelative home-space MOV prologue')
     ok(read(0x183D68,7)==bytes.fromhex('833d15ddfb0100'),'debug global RIP address 142141A84')
-    ok('static constexpr unsigned entry=0x183A30,debug_rva=0x2141A84;' in native,'sole convenience entry is 183A30')
+    # the source spells the entry as GA(GA_183A30) (expanded to the old-build RVA by ga_expand); const since the 2026-11-05 table change
+    ok(any(f'static {q} unsigned entry=0x183A30,debug_rva=0x2141A84;' in native for q in ('constexpr','const')),'sole convenience entry is 183A30')
     ok('count!=1 || !buffer || clear_bytes!=0xBD10' in native and
        'original(ctx,start,goals,count,buffer,clear_bytes,flags)' in native,'seven original arguments and mandatory delegation')
     ok('dword(image,debug_rva)' in native and 'busy)' in native,'debug and recursion delegate')
@@ -347,7 +351,7 @@ def implementation():
     ok(split.index('if(mod_features.path_fast)path_fast::install();')<split.index('path_count::install(') and
        'if(path_fast::active)log_event("path_count_skipped_path_fast");' in split and 'else path_count::install(' in split,
        'path_count skips installation only after path_fast successfully owns entry')
-    ok('"tests": ["path-fast"]' in (P/'development/features.json').read_text(encoding='utf-8-sig'),
+    ok('path-fast' in json.loads((P/'development/features.json').read_text(encoding='utf-8-sig'))['modules']['path-fast']['tests'],
        'focused route registered')
     for rel in ('installer/InstallerGui.cs','distribution/FeatureSelect.ps1','FeatureSelect.ps1'):
         text=(P/rel).read_text(encoding='utf-8-sig')

@@ -13,10 +13,8 @@ try {
     try {
         & python -B -X utf8 (Join-Path $taskProject 'tools\prepare_traits9.py') $taskBuild
         if($LASTEXITCODE -ne 0){throw 'Traits9 preparation failed.'}
-        & python -B -X utf8 (Join-Path $taskProject 'tools\import_modpack_objects.py') $taskBuild
-        if($LASTEXITCODE -ne 0){throw 'Modpack preparation failed.'}
         $taskFlags=@('/nologo','/W4','/WX','/wd4505','/utf-8','/O2','/MT','/std:c++17','/EHsc','/Zi','/DMERIT_CANDIDATE','/DRECRUITMENT_UI_CANDIDATE','/DHIDDEN_LOYALTY','/DINJURY_PROTECTION','/DAWARD_WAREHOUSE','/DSORTIE_FORMATION','/DSPLIT_BASE','/LD')
-        & cl.exe @taskFlags "/I$taskBuild" (Join-Path $taskProject 'src\native_adapter.cpp') (Join-Path $taskProject 'src\gpu_profile.cpp') hover.obj deaths.obj /FeSAN14_Convenience.dll /link /DEBUG:FULL /OPT:REF /OPT:ICF /MAP kernel32.lib user32.lib gdi32.lib bcrypt.lib dxguid.lib
+        & cl.exe @taskFlags "/I$taskBuild" (Join-Path $taskProject 'src\native_adapter.cpp') (Join-Path $taskProject 'src\gpu_profile.cpp') /FeSAN14_Convenience.dll /link /DEBUG:FULL /OPT:REF /OPT:ICF /MAP kernel32.lib user32.lib gdi32.lib bcrypt.lib dxguid.lib
         if($LASTEXITCODE -ne 0){throw 'Convenience diagnostic build failed.'}
     } finally {Pop-Location}
 } finally {$env:PATH=$taskSavedPath;$env:INCLUDE=$taskSavedInclude;$env:LIB=$taskSavedLib}

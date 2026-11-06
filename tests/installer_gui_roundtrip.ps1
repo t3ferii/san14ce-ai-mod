@@ -23,7 +23,7 @@ Copy-Item (Join-Path $taskProject 'build\input_package\manifest.json') (Join-Pat
     (New-Object Text.UTF8Encoding($false)))
 [string]$taskIni=Join-Path $taskGame 'AI_TacticsMod\기능설정.ini'
 # Pre-v12.8 file: no split keys; recruit=0 and injury=0 must be inherited by their split parts.
-[IO.File]::WriteAllText($taskIni,"[groups]`r`ncombat=0`r`n[personnel]`r`nrecruit=0`r`ninjury=0`r`nawards=0`r`n[features]`r`nunified=1`r`n[diagnostics]`r`nlayout_wait=1`r`n",[Text.Encoding]::Unicode)
+[IO.File]::WriteAllText($taskIni,"[groups]`r`ncombat=0`r`n[personnel]`r`nrecruit=0`r`ninjury=0`r`nawards=0`r`n[features]`r`nunified=1`r`n[diagnostics]`r`nlayout_wait=1`r`n[extensions]`r`ncaptive_dialog=1`r`n",[Text.Encoding]::Unicode)   # local10 2026-11-06: the retired captive_dialog key of an old file must be ignored without an error
 $taskAsm=[Reflection.Assembly]::Load([IO.File]::ReadAllBytes($Exe))
 $taskType=$taskAsm.GetType('AiTacticsInstaller.FeatureIni');$taskItems=$taskAsm.GetType('AiTacticsInstaller.Catalog').GetField('Items').GetValue($null)
 $taskLoad=$taskType.GetMethod('Load');$taskChecks=0
@@ -31,8 +31,9 @@ function Check([bool]$Value,[string]$Label){if(-not $Value){throw $Label};$scrip
 $taskDoc=$taskLoad.Invoke($null,[object[]]@($taskIni.psobject.BaseObject))
 $taskValues=New-Object 'System.Collections.Generic.Dictionary[string,int]'
 foreach($f in $taskItems){$taskValues[$f.Id]=$taskDoc.Value($f)}
-Check ($taskValues['groups.combat'] -eq 0 -and $taskValues['officer_ui.unified'] -eq 1 -and $taskValues['groups.performance'] -eq 1) 'legacy/section/default precedence'
-Check ($taskValues['personnel.recruit_ai'] -eq 0 -and $taskValues['personnel.injury_herbal'] -eq 0 -and $taskValues['extensions.captive_dialog'] -eq 1) 'old files inherit split switches'
+Check ($taskValues['groups.combat'] -eq 0 -and $taskValues['officer_ui.unified'] -eq 0 -and $taskValues['groups.performance'] -eq 1) 'user decision 2026-11-03: retired unified loads OFF while other legacy/default precedence remains'
+Check ($taskValues['personnel.recruit_ai'] -eq 0 -and $taskValues['personnel.injury_herbal'] -eq 0 -and $taskValues['extensions.traits9'] -eq 1) 'old files inherit split switches'
+Check (-not $taskValues.ContainsKey('extensions.captive_dialog')) 'captive_dialog was removed from the catalog (an old ini key is ignored)'
 # Package copy: listed files only, no root DLL, no traversal, never the user's settings.
 $taskFolders=$taskAsm.GetType('AiTacticsInstaller.Folders')
 $taskList=$taskFolders.GetMethod('PackageFiles').Invoke($null,[object[]]@([string]$taskPkg.psobject.BaseObject))
@@ -64,9 +65,15 @@ foreach($taskMode in 0..3){
     Check ($taskTerrainRaw -match ('(?m)^terrain_diag_mode='+$taskMode+'\r?$') -and $taskTerrainRaw -match '(?m)^extra_key=keep\r?$') ('GUI saves mode and preserves user key '+$taskMode)
 }
 # 사용자 결정 2026-10-28: 충돌 옵션 사용 중지. Legacy 1 and injected values must save as 0.
-$taskRetired=@('combat.departures','combat.group_advance','combat.support','diplomacy.diplomacy_overinvest')
+$taskCatalog=$taskAsm.GetType('AiTacticsInstaller.Catalog')
+$taskRetired=@($taskCatalog.GetField('Retired').GetValue($null))
+$taskRetiredSet=$taskCatalog.GetField('Retired').GetValue($null)
+$taskExpectedRetired=@('combat.departures','combat.group_advance','combat.support','diplomacy.diplomacy_overinvest','officer_ui.unified')
+foreach($id in $taskExpectedRetired){Check ($taskRetiredSet.Contains($id)) ('retired catalog preserves prior setting: '+$id)}
+# 사용자 결정 2026-11-03: the four newly retired settings remain covered by the catalog-driven check.
+foreach($id in @('ccz.ccz_hide_model','ccz.ccz_depth','ccz.ccz_far_keep','performance.timer_1ms')){Check ($taskRetiredSet.Contains($id)) ('user decision 2026-11-03: retired catalog includes: '+$id)}
 [string]$taskRetiredIni=Join-Path $Fixture 'retired.ini'
-[IO.File]::WriteAllText($taskRetiredIni,"[features]`r`ndepartures=1`r`ngroup_advance=1`r`nsupport=1`r`n[combat]`r`nmission_v2=0`r`ndepartures=1`r`ngroup_advance=1`r`nsupport=1`r`n",[Text.Encoding]::Unicode)
+[IO.File]::WriteAllText($taskRetiredIni,"[features]`r`ndepartures=1`r`ngroup_advance=1`r`nsupport=1`r`nunified=1`r`n[combat]`r`nmission_v2=0`r`ndepartures=1`r`ngroup_advance=1`r`nsupport=1`r`n[officer_ui]`r`nunified=1`r`n",[Text.Encoding]::Unicode)
 $taskRetiredDoc=$taskLoad.Invoke($null,[object[]]@($taskRetiredIni.psobject.BaseObject))
 foreach($f in $taskItems | Where-Object {$_.Id -in $taskRetired}){
     Check ($taskRetiredDoc.Value($f) -eq 0) ('GUI ignores legacy 1: '+$f.Id)
@@ -74,7 +81,7 @@ foreach($f in $taskItems | Where-Object {$_.Id -in $taskRetired}){
 }
 $taskRetiredDoc.Save($taskRetiredIni,$taskValues)
 $taskRaw=[IO.File]::ReadAllText($taskRetiredIni)
-foreach($key in @('departures','group_advance','support')){Check ($taskRaw -match ('(?m)^'+$key+'=0\r?$')) ('GUI raw save forces 0: '+$key)}
+foreach($key in @('departures','group_advance','support','unified')){Check ($taskRaw -match ('(?m)^'+$key+'=0\r?$')) ('user decision 2026-11-03: retired setting key remains and saves OFF: '+$key)}
 # Form: dependency chaining and rendering.
 $taskForm=[Activator]::CreateInstance($taskAsm.GetType('AiTacticsInstaller.MainForm'),[object[]]@([string]$taskPkg.psobject.BaseObject,[string]$taskGame.psobject.BaseObject))
 $taskForm.Show();[Windows.Forms.Application]::DoEvents()
@@ -102,6 +109,7 @@ try {
 } finally {[IO.File]::WriteAllText($taskManifest,$taskOriginalManifest)}
 $taskFar=@($taskItems|Where-Object {$_.Id -eq 'ccz.ccz_far_keep'})[0]
 Check ($taskFar.Default -eq 0 -and $taskFar.Tab -eq '조조전' -and $taskFar.Requires -eq 'ccz.ccz_sprites') 'far keep opt-in catalog'
+# 사용자 결정 2026-11-03: 원거리 그림 유지 제거, 지형 가림은 병종 그림에 통합
 foreach($taskFarValue in @(0,1)){
     $taskFarIni=Join-Path $Fixture 'far-keep.ini'
     [IO.File]::WriteAllText($taskFarIni,"[ccz]`r`nccz_far_keep=$taskFarValue`r`nccz_depth=1`r`ncustom=kept`r`n",[Text.Encoding]::Unicode)
@@ -111,11 +119,44 @@ foreach($taskFarValue in @(0,1)){
     $taskFarDoc.Save($taskFarIni,$taskFarValues)
     . (Join-Path $taskProject 'distribution\FeatureSelect.ps1')
     $taskFarPS=Get-FeatureValues (Read-FeatureIni $taskFarIni)
-    Check ($taskFarPS['ccz.ccz_far_keep'] -eq $taskFarValue -and $taskFarPS['ccz.ccz_depth'] -eq 1) 'far keep GUI to PS roundtrip preserves depth'
+    Check ($taskFarPS['ccz.ccz_far_keep'] -eq 0 -and $taskFarPS['ccz.ccz_depth'] -eq 0) 'retired far keep/depth always saved 0 (user 2026-11-03)'
     Write-FeatureIni $taskFarIni $taskFarPS (Read-FeatureIni $taskFarIni)
     $taskFarReload=$taskLoad.Invoke($null,[object[]]@($taskFarIni.psobject.BaseObject))
-    Check ($taskFarReload.Value($taskFar) -eq $taskFarValue -and [IO.File]::ReadAllText($taskFarIni).Contains('custom=kept')) 'far keep PS to GUI roundtrip preserves custom key'
+    Check ($taskFarReload.Value($taskFar) -eq 0 -and [IO.File]::ReadAllText($taskFarIni).Contains('custom=kept')) 'retired far keep PS to GUI reload is 0; custom key preserved (user 2026-11-03)'
 }
+$taskPopulation=@($taskItems|Where-Object {$_.Id -eq 'domestic.population_rate'})[0]
+foreach($taskPopulationInput in @(1,2,3,4,0,9)){
+    $taskPopulationExpected=[Math]::Max(1,[Math]::Min(4,$taskPopulationInput))
+    $taskPopulationIni=Join-Path $Fixture 'population-rate.ini'
+    [IO.File]::WriteAllText($taskPopulationIni,"[domestic]`r`npopulation_rate=$taskPopulationInput`r`n",[Text.Encoding]::Unicode)
+    $taskPopulationDoc=$taskLoad.Invoke($null,[object[]]@($taskPopulationIni.psobject.BaseObject))
+    Check ($taskPopulationDoc.Value($taskPopulation) -eq $taskPopulationExpected) ('GUI population_rate clamps '+$taskPopulationInput+' to '+$taskPopulationExpected)
+    $taskPopulationValues=New-Object 'System.Collections.Generic.Dictionary[string,int]'
+    foreach($f in $taskItems){$taskPopulationValues[$f.Id]=$taskPopulationDoc.Value($f)}
+    $taskPopulationPS=Get-FeatureValues (Read-FeatureIni $taskPopulationIni)
+    Check ($taskPopulationPS['domestic.population_rate'] -eq $taskPopulationExpected) ('PS population_rate clamps '+$taskPopulationInput+' to '+$taskPopulationExpected)
+    Write-FeatureIni $taskPopulationIni $taskPopulationPS (Read-FeatureIni $taskPopulationIni)
+    Check ((Read-FeatureIni $taskPopulationIni)['domestic']['population_rate'] -eq [string]$taskPopulationExpected) ('population_rate '+$taskPopulationExpected+' survives installer roundtrip')
+}
+# 2026-11-05 (user): merit stage 1/2 troops choice (1..4 = 1500/2000/2500/3000, default 4) and stage-3 friendship switch (default on).
+$taskMeritTroops=@($taskItems|Where-Object {$_.Id -eq 'personnel.merit_troops_level'})[0]
+$taskMeritFriend=@($taskItems|Where-Object {$_.Id -eq 'personnel.merit_friendship'})[0]
+foreach($taskMeritInput in @(1,2,3,4,0,9)){
+    $taskMeritExpected=[Math]::Max(1,[Math]::Min(4,$taskMeritInput))
+    $taskMeritIni=Join-Path $Fixture 'merit-troops.ini'
+    [IO.File]::WriteAllText($taskMeritIni,"[personnel]`r`nmerit_troops_level=$taskMeritInput`r`nmerit_friendship=0`r`n",[Text.Encoding]::Unicode)
+    $taskMeritDoc=$taskLoad.Invoke($null,[object[]]@($taskMeritIni.psobject.BaseObject))
+    Check ($taskMeritDoc.Value($taskMeritTroops) -eq $taskMeritExpected -and $taskMeritDoc.Value($taskMeritFriend) -eq 0) ('GUI merit_troops_level clamps '+$taskMeritInput+' to '+$taskMeritExpected+', friendship off kept')
+    $taskMeritPS=Get-FeatureValues (Read-FeatureIni $taskMeritIni)
+    Check ($taskMeritPS['personnel.merit_troops_level'] -eq $taskMeritExpected -and $taskMeritPS['personnel.merit_friendship'] -eq 0) ('PS merit_troops_level clamps '+$taskMeritInput+' to '+$taskMeritExpected)
+    Write-FeatureIni $taskMeritIni $taskMeritPS (Read-FeatureIni $taskMeritIni)
+    $taskMeritBack=Read-FeatureIni $taskMeritIni
+    Check ($taskMeritBack['personnel']['merit_troops_level'] -eq [string]$taskMeritExpected -and $taskMeritBack['personnel']['merit_friendship'] -eq '0') ('merit_troops_level '+$taskMeritExpected+' and friendship survive installer roundtrip')
+}
+$taskMeritDefault=Join-Path $Fixture 'merit-default.ini'
+[IO.File]::WriteAllText($taskMeritDefault,"[personnel]`r`nmerit=1`r`n",[Text.Encoding]::Unicode)
+$taskMeritDefaultDoc=$taskLoad.Invoke($null,[object[]]@($taskMeritDefault.psobject.BaseObject))
+Check ($taskMeritDefaultDoc.Value($taskMeritTroops) -eq 4 -and $taskMeritDefaultDoc.Value($taskMeritFriend) -eq 1) 'merit troops default 3000 and friendship default on when keys are absent'
 $taskState=$taskForm.GetType().GetField('values',$taskFlags).GetValue($taskForm)
 $taskState['groups.convenience']=0;$taskState['personnel.awards']=0;$taskState['personnel.awards_ai']=0
 $taskChild=$taskAsm.GetType('AiTacticsInstaller.Catalog').GetMethod('ById').Invoke($null,[object[]]@('personnel.awards_ai'))
@@ -187,18 +228,19 @@ foreach($mission in @(0,1)){foreach($master in @(0,1)){
     }
     $taskCombat=@($taskItems | Where-Object {$_.Tab -eq '전투' -and -not $_.IsMaster -and $_.Id -notin $taskRetired})
     $taskCount=@($taskCombat | Where-Object {$taskEffective.Invoke($taskForm.psobject.BaseObject,[object[]]@($_.psobject.BaseObject))}).Count
-    Check ($taskTabs['전투'].Text -eq ('전투  '+$taskCount+'/'+$taskCombat.Count)) 'combat count excludes exactly three retired rows'
+    Check ($taskTabs['전투'].Text -eq ('전투  '+$taskCount+'/'+$taskCombat.Count)) 'combat count excludes its three retired rows; officer_ui.unified is retired separately'
     $taskMissionItem=@($taskItems | Where-Object {$_.Id -eq 'combat.mission_v2'})[0]
     Check ([bool]$taskEffective.Invoke($taskForm.psobject.BaseObject,[object[]]@($taskMissionItem.psobject.BaseObject)) -eq [bool]($mission -and $master)) 'mission_v2 keeps its normal effective state'
 }}
 # Exercise the actual bulk-action event handlers without mouse input.
+$taskChoices=$taskCatalog.GetField('Choices').GetValue($null)
 $taskActions=$taskForm.GetType().GetField('actions',$taskFlags).GetValue($taskForm)
 foreach($label in @('모두 켜기','배포 기본값')){
     $taskAction=@($taskActions | Where-Object {$_.Text -eq $label})[0]
     $taskAction.GetType().GetMethod('OnClick',$taskFlags).Invoke($taskAction.psobject.BaseObject,[object[]]@([EventArgs]::Empty))
     foreach($id in $taskRetired){Check ($taskState[$id] -eq 0) ('GUI bulk action stays OFF: '+$label+'/'+$id)}
     foreach($f in $taskItems | Where-Object {$_.Id -notin $taskRetired}){
-        $taskExpected=if($label -eq '모두 켜기' -and $f.Id -ne 'diagnostics.terrain_diag_mode'){1}else{$f.Default}
+        $taskExpected=if($label -eq '모두 켜기' -and -not $taskChoices.ContainsKey($f.Id)){1}else{$f.Default}
         Check ($taskState[$f.Id] -eq $taskExpected) ('GUI bulk action preserves other feature: '+$f.Id)
     }
 }
@@ -256,13 +298,14 @@ foreach($taskSource in @('distribution\FeatureSelect.ps1','FeatureSelect.ps1')){
         foreach($id in $taskRetired){$taskPSValues[$id]=1}
         Write-FeatureIni $taskRetiredIni $taskPSValues @{}
         $taskRaw=[IO.File]::ReadAllText($taskRetiredIni)
-        foreach($key in @('departures','group_advance','support')){Check ($taskRaw -match ('(?m)^'+$key+'=0\r?$')) ('PS raw save forces 0: '+$key)}
+        foreach($key in @('departures','group_advance','support','unified')){Check ($taskRaw -match ('(?m)^'+$key+'=0\r?$')) ('user decision 2026-11-03: PS retains retired setting key and forces OFF: '+$key)}
     }
 }
 # User 2026-11-02: game-menu appearance profile is raw structured data, never a checkbox.
+# 사용자 결정 2026-11-03: 원거리 그림 유지 제거, 지형 가림은 병종 그림에 통합
 $taskAppearanceIni=Join-Path $Fixture 'ccz-appearance.ini'
 $taskAppearanceProfile=(@(2,70,90,8209)+@(0..67)+@(1..92|ForEach-Object {255})) -join ','
-[IO.File]::WriteAllText($taskAppearanceIni,"[ccz]`r`nccz_depth=0`r`nccz_far_keep=1`r`n[ccz_appearance]`r`nprofile=older`r`n[custom]`r`ntoken=keep`r`n[ccz_appearance]`r`nprofile=$taskAppearanceProfile`r`n",[Text.Encoding]::Unicode)
+[IO.File]::WriteAllText($taskAppearanceIni,"[ccz]`r`nccz_block=0`r`nccz_depth=1`r`nccz_far_keep=1`r`n[ccz_appearance]`r`nprofile=older`r`n[custom]`r`ntoken=keep`r`n[ccz_appearance]`r`nprofile=$taskAppearanceProfile`r`n",[Text.Encoding]::Unicode)
 $taskRawCatalog=$taskAsm.GetType('AiTacticsInstaller.Catalog').GetField('RawSettings').GetValue($null)
 Check ($taskRawCatalog -contains 'ccz_appearance.profile') 'GUI registers raw appearance schema'
 for($taskRound=0;$taskRound -lt 3;$taskRound++){
@@ -277,7 +320,8 @@ for($taskRound=0;$taskRound -lt 3;$taskRound++){
     Write-FeatureIni $taskAppearanceIni $taskAppearancePS $taskAppearanceRead
     $taskAppearanceRead=Read-FeatureIni $taskAppearanceIni
     Check ($taskAppearanceRead['ccz_appearance']['profile'] -ceq $taskAppearanceProfile -and $taskAppearanceRead['custom']['token'] -eq 'keep') 'PS preserves appearance and unrelated user keys'
-    Check ($taskAppearanceRead['ccz']['ccz_depth'] -eq '0' -and $taskAppearanceRead['ccz']['ccz_far_keep'] -eq '1') 'appearance save keeps ordinary 0/1 switches'
+    Check ($taskAppearanceRead['ccz']['ccz_block'] -eq '0') 'appearance save keeps ordinary 0/1 switch'
+    Check ($taskAppearanceRead['ccz']['ccz_depth'] -eq '0' -and $taskAppearanceRead['ccz']['ccz_far_keep'] -eq '0') 'retired appearance switches always save 0 (user 2026-11-03)'
     $taskAppearanceRaw=[IO.File]::ReadAllText($taskAppearanceIni)
     Check (([regex]::Matches($taskAppearanceRaw,'(?m)^\[ccz_appearance\]\r?$').Count -eq 1) -and ([regex]::Matches($taskAppearanceRaw,'(?m)^profile=2,70,90,8209,').Count -eq 1)) 'appearance section and key not duplicated; full source-cell code preserved'
 }

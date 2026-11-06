@@ -578,7 +578,7 @@ int main(int argc,char **argv) {
     for(const auto &s:slots)point(image,s.rva,image+s.original);
     check(guards_match(),"native original code and slots accepted");
     scene_site_checks();
-    for(const auto &g:guards)for(unsigned offset:{0u,g.size-1}){image[g.rva+offset]^=1;check(!guards_match(),"changed dependency rejects briefing");image[g.rva+offset]^=1;}
+    for(const auto &g:guards)for(unsigned offset:{0u,g.size-1}){image[g.rva+offset]^=1;bool yielded_scene=(offset==0 && (g.rva==0x6C43B0 || g.rva==0x6C4670));check(guards_match()==yielded_scene,"only changed scene entry prologues yield; other briefing dependencies remain strict");if(yielded_scene)check(scene_yield,"scene prologue mismatch sets yield mode");image[g.rva+offset]^=1;}
     for(const auto &s:slots){image[s.rva]^=1;check(!guards_match(),"foreign slot rejects briefing");image[s.rva]^=1;}
     image[0x81133D]^=1;check(!guards_match(),"foreign opcode at diplomacy-owned phase call rejects briefing");image[0x81133D]^=1;
     image[0x81133E]^=1;check(!guards_match(),"unknown phase-call redirection is not accepted as a local counterturn");image[0x81133E]^=1;
@@ -632,6 +632,7 @@ int main(int argc,char **argv) {
     }
     for(unsigned n=0;n<sizeof(slots)/sizeof(*slots);++n)restore_pointer(slots[n].rva,slots[n].original,replacements[n]);
     restore_link(time_wait_link);for(unsigned i=2;i;)restore_link(picture_links[--i]);for(unsigned i=3;i;)restore_link(scene_links[--i]);restore_link(event_link);for(unsigned i=3;i;)restore_link(message_links[--i]);
+    for(unsigned i=0;i<sizeof(slots)/sizeof(*slots);++i)restore_pointer(slots[i].rva,slots[i].original,replacements[i]);
     call_restore(report_results_call);restore_link(speech_link);restore_link(text_link);
     check(guards_match(),"rollback restores both full entry functions, five-byte links and native slots");
     // A publication conflict on the second entry must roll the first one back.
@@ -642,6 +643,17 @@ int main(int argc,char **argv) {
     check(publish_link(pair[0]) && !publish_link(pair[1]),"second entry CAS conflict is detected");
     restore_link(pair[1]);restore_link(pair[0]);image[0x1F09E0+12]^=1;
     check(guards_match(),"failed pair publication leaves both entries native after rollback");
+    unsigned char saved_employ[sizeof(scene_prologue)],saved_discovery[sizeof(scene_prologue)];
+    memcpy(saved_employ,image+0x6C43B0,sizeof(saved_employ));memcpy(saved_discovery,image+0x6C4670,sizeof(saved_discovery));
+    image[0x6C43B0]^=0xFF;image[0x6C4670]^=0xFF;scene_yield=false;scene_links[0].published=scene_links[1].published=false;
+    check(guards_match()&&scene_yield,"two foreign scene prologues yield only their own hashes and links");
+    check(advisor_briefing::install(),"scene-yield mode still installs the remaining briefing hooks");
+    check(!scene_links[0].published&&!scene_links[1].published&&scene_links[2].published,"scene-yield mode leaves exactly the two foreign-owned links unpublished");
+    restore_link(time_wait_link);for(unsigned i=2;i;)restore_link(picture_links[--i]);for(unsigned i=3;i;)restore_link(scene_links[--i]);restore_link(event_link);for(unsigned i=3;i;)restore_link(message_links[--i]);
+    for(unsigned i=0;i<sizeof(slots)/sizeof(*slots);++i)restore_pointer(slots[i].rva,slots[i].original,replacements[i]);
+    call_restore(report_results_call);restore_link(speech_link);restore_link(text_link);
+    memcpy(image+0x6C43B0,saved_employ,sizeof(saved_employ));memcpy(image+0x6C4670,saved_discovery,sizeof(saved_discovery));scene_yield=false;
+    check(guards_match(),"scene-yield fixture restores both native prologues and original guards");
     VirtualFree(entry_relay,0,MEM_RELEASE);
     point(image,0x277DF18,root.data());point(root.data(),0x871E8,context.data());point(root.data(),0xE0D0+8,district_mem.data());
     // User 2026-10-26: normal live game has 15/16 orders at context+454.

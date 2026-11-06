@@ -49,7 +49,11 @@ else:
         sys.path.insert(0,str(P/'tools'));import traits9_layout as tl
         patch=json.loads((P/'research/traits9/layout_patch/traits9_layout.json').read_text(encoding='utf-8-sig'))
         data,reverted,_=tl.revert(original.read_bytes(),patch['records'],state['layout']['bank'])
-        assert len(reverted)==4,reverted
+        # local5: on the 1a4a447d install SplitManage.ps1 Get-TraitLayoutPlan does not apply the four traits9 records (the 9-slot code is off on
+        # that build), so the installed index already holds the original entries and nothing is reverted; any other count is an error.
+        applied=set(state['layout'].get('applied',[]))
+        expected=4 if any(r['ktid'] in applied for r in patch['records']) else 0
+        assert len(reverted)==expected,(reverted,expected)
         original=P/'build/traits9_original_index.rdb';original.write_bytes(data)
 idx=index.Index(str(original));bank=bytearray()
 assets=OUT/'assets';(assets/'0002').mkdir(parents=True,exist_ok=True)
@@ -63,41 +67,44 @@ for spec in layout.SPECS:
 (assets/'0002/ScreenLayout.rdb').write_bytes(idx.build())
 (assets/'0002/ScreenLayout.rdb.bin31').write_bytes(bank)
 out=Path(sys.argv[1]) if len(sys.argv)>1 else P/'build/development/loader_split';out.mkdir(parents=True,exist_ok=True)
-lines=['// Borrowed current-build Editor_Source manifests.']
+# local10 (2026-11-06, docs/LOCAL10_PORT_PLAN.md 4.1): the manifests come from the reference build (1fbe6be7).  Every original RVA of
+# that build is written as a table id (GA(GA_<oldRVA>), resolved per running build, the same convention as the rest of the mod); a
+# target inside a function is written GA(GA_<site>)+offset.  Anything else must be a plain offset and is refused here.
+SITE_IDS=[0x8DF198,0x8DF1F5,0x907294,0x8CDD40,0x8E0148,0x8E01D0,0x907D9C,0x2BF033]
+CORE_IDS=[0x4A6CF3,0x4A7313,0x22558F,0x23064A,0x232D97]
+FUNC_IDS=[0x353810,0x2305D0,0x32F500]
+DATA_IDS=[0x1A8A078,0x1A8A140,0x1A30830,0x1A47B98,0x1A2B850,0x277DF18]
+INNER={0x8DF19F:(0x8DF198,7),0x8DF1A0:(0x8DF198,8),0x8DF1FB:(0x8DF1F5,6),0x9072A5:(0x907294,0x11),
+       0x8E0152:(0x8E0148,0xA),0x8E0160:(0x8E0148,0x18),0x8E01D6:(0x8E01D0,6),0x907DAC:(0x907D9C,0x10),0x2BF042:(0x2BF033,0xF)}
+KNOWN=set(SITE_IDS+CORE_IDS+FUNC_IDS+DATA_IDS)
+def ga(v):
+    assert v in KNOWN,'original RVA 0x%X is not a registered table id (tools/gen_signatures.py EXTRA_IDS)'%v
+    return 'GA(GA_%X)'%v
+def ga_expr(v):
+    if v in KNOWN:return ga(v)
+    assert v in INNER,'module-relative addend 0x%X is neither a table id nor a registered in-function offset'%v
+    site,off=INNER[v];return 'GA(GA_%X)+0x%X'%(site,off)
+for m in manifests:
+    for s in m.sites:assert s.rva in KNOWN,hex(s.rva)
+for p_ in patches:assert p_['rva'] in KNOWN,hex(p_['rva'])
+assert {s.rva for m in manifests for s in m.sites}=={*SITE_IDS},'site list drifted'
+assert {p_['rva'] for p_ in patches}=={*CORE_IDS},'core list drifted'
+lines=['// Borrowed current-build Editor_Source manifests (original RVAs are table ids, local10).','#include "game_addresses.h"']
 for i,m in enumerate(manifests):
     lines += ['static const unsigned char t9_code%d[]=%s;'%(i,array(m.code)),
               'static const unsigned char t9_data%d[]=%s;'%(i,array(m.data))]
-    lines.append('static const Trait9Site t9_sites%d[]={%s};'%(i,','.join('{0x%X,%d,%d,%s}'%(s.rva,len(s.original),s.stub,array(s.original)) for s in m.sites)))
+    lines.append('static const Trait9Site t9_sites%d[]={%s};'%(i,','.join('{%s,%d,%d,%s}'%(ga(s.rva),len(s.original),s.stub,array(s.original)) for s in m.sites)))
     target={'module':0,'code':1,'data':2}
-    lines.append('static const Trait9Reloc t9_relocs%d[]={%s};'%(i,','.join('{%d,%d,%d,%d,%d}'%(r.region=='data',r.offset,r.kind=='abs64',target[r.target],r.addend) for r in m.relocs)))
+    lines.append('static const Trait9Reloc t9_relocs%d[]={%s};'%(i,','.join('{%d,%d,%d,%d,%s}'%(r.region=='data',r.offset,r.kind=='abs64',target[r.target],ga_expr(r.addend) if r.target=='module' else str(r.addend)) for r in m.relocs)))
 lines.append('static const Trait9Manifest trait9_manifests[]={'+','.join('{t9_code%d,sizeof(t9_code%d),t9_data%d,sizeof(t9_data%d),%d,%d,t9_sites%d,sizeof(t9_sites%d)/sizeof(Trait9Site),t9_relocs%d,sizeof(t9_relocs%d)/sizeof(Trait9Reloc)}'%(i,i,i,i,m.code_size,m.data_size,i,i,i,i) for i,m in enumerate(manifests))+'};')
-lines.append('static const ModpackBytes traits9_core[]={'+','.join('{0x%X,%d,%s,%s}'%(p['rva'],len(bytes.fromhex(p['before'])),array(bytes.fromhex(p['before'])),array(bytes.fromhex(p['after']))) for p in patches)+'};')
-(out/'traits9_payloads.h').write_text('\n'.join(lines)+'\n',encoding='utf-8')
-# CaptiveDialog's original audience predicate and R15 capturing-force contract.
-sys.path.insert(0,str(P/'legacy/FogMod_Source/tools'))
-pass  # Public snapshot: install capstone in the active Python environment.
-from capstone import Cs,CS_ARCH_X86,CS_MODE_64,CS_GRP_CALL,CS_GRP_JUMP
-from audit_native_game import PEImage
-pe=PEImage(G/'SAN14CE_KO.exe');plain=(P/'legacy/FogMod_Source/native_game_analysis/running_code_text.bin').read_bytes()
-b=bytes.fromhex('4439a424d80000000f84d8000000498bcee89e28f5ff85c00f84c8000000e8616b11');mask=bytearray([1]*len(b))
-md=Cs(CS_ARCH_X86,CS_MODE_64);md.detail=True
-for ins in md.disasm(b,0):
-    if (ins.group(CS_GRP_CALL) or ins.group(CS_GRP_JUMP)) and ins.imm_size:mask[ins.address+ins.imm_offset:ins.address+ins.imm_offset+ins.imm_size]=bytes(ins.imm_size)
-mask[-4:]=bytes(4)
-hits=[]
-for at in range(0x2E041C-0x4000,0x2E041C+0x4000):
-    if all(not mask[i] or b[i]==plain[at-4096+i] for i in range(len(b))):hits.append(at)
-assert len(hits)==1,hits
-capture=hits[0]+17;before=plain[capture-4096:capture-4096+5]
-target=capture+5+struct.unpack_from('<i',before,1)[0]
-assert target==0x2337B0,(hex(capture),hex(target))
-with (out/'traits9_payloads.h').open('a',encoding='utf-8') as f:
-    f.write('static const unsigned captive_site=0x%X,captive_original=0x%X;\nstatic const unsigned char captive_before[]=%s;\n'%(capture,target,array(before)))
+lines.append('static const ModpackBytes traits9_core[]={'+','.join('{%s,%d,%s,%s}'%(ga(p['rva']),len(bytes.fromhex(p['before'])),array(bytes.fromhex(p['before'])),array(bytes.fromhex(p['after']))) for p in patches)+'};')
+(out/'traits9_payloads.h').write_text(chr(10).join(lines)+chr(10),encoding='utf-8')
+# The captive_dialog feature (either-force capture scene) was removed in local10 (user 2026-11-06): no CaptiveDialog audience
+# predicate or capture-site search any more.
 report=dict(status='traits9_sources_prepared',patches=patches,layout_changes=changes,
     asset_originals={'0002/ScreenLayout.rdb':hashlib.sha256(original.read_bytes()).hexdigest()},
     assets={p.relative_to(assets).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in assets.rglob('*') if p.is_file()},
     source_sha256={n:hashlib.sha256((S/n).read_bytes()).hexdigest() for n in ('codepatch.py','traits9ui.py','traits9abil.py','traits9list.py','traitlayout.py','senpotex.py')},
     manifests=[dict(id=m.id,sites=[dict(rva=s.rva,before=s.original.hex(),stub=s.stub) for s in m.sites]) for m in manifests])
-report['capture']={'site':capture,'original':target,'before':before.hex(),'scope':'prisoner force or capturing force is player'}
 (P/'build/traits9_preparation.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
 print('Prepared 9-trait logic,',sum(len(m.sites) for m in manifests),'UI hooks and four layouts; originals unchanged')

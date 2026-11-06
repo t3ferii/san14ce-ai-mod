@@ -1,3 +1,4 @@
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import ga_expand  # user 2026-11-05 patch resilience: sources spell addresses as GA(GA_x)
 """Title/native/layout/config evidence, independent of mocked UI calls. No game launch."""
 from pathlib import Path
 import hashlib,json,re,struct,sys
@@ -23,7 +24,8 @@ for a,n,h in guards:
 for slot,target in [(8,0x504670),(16,0x4F9310),(40,0x50B800)]:check(struct.unpack('<Q',pe.read(0x13E4E08+slot,8))[0]==0x140000000+target,'CTitleState native slot '+str(slot))
 asm=(P/'research/decomp_cache/1fbe6be7466a6646/004E81D0_asm.txt').read_text(encoding='utf-8')
 for site in ('1404e831d CALL 0x14086e0c0','1404e8341 CALL 0x14092e430','1404e836e CALL 0x14092e0b0','1404e8461 CALL 0x140867300'):check(site in asm,'retained title builder ABI call '+site)
-stage=P/'build/development/ccz_title_right_layout';j=json.loads((stage/'traits9_layout.json').read_text(encoding='utf-8'));bank=(stage/'traits9_layout.bin').read_bytes()
+# 2026-11-04: the title layout stage (build/development/ccz_title_right_layout) was merged; check the install package itself.
+stage=P/'build/input_package';j=json.loads((stage/'traits9_layout.json').read_text(encoding='utf-8-sig'));bank=(stage/'traits9_layout.bin').read_bytes()
 check(hashlib.sha256(bank).hexdigest()==j['bank_sha256'],'merged layout bank hash')
 original=(P/'research/ui_atlas/layout_bodies/E7A28866.lcsk').read_bytes();check(hashlib.sha256(original).hexdigest()==layout.ORIGINAL,'retained original title layout identity')
 body=layout.patch(original);record=next(r for r in j['records'] if r['ktid']==layout.K)
@@ -38,8 +40,8 @@ counts=tuple(sum(r['size']==s for r in nodes) for s in (88,144,224,736))
 check(struct.unpack_from('<4H',body,24)==counts,'title header record counts match all actual node types')
 check(struct.unpack_from('<H',body,20)[0]==39 and body[22:24]==original[22:24]==b'\x04\x00','16-bit node count preserves adjacent nonzero original header field (user 2026-11-02)')
 check(body[12:20]==original[12:20] and body[32:76]==original[32:76],'unrelated title header and animation declarations preserved')
-current=json.loads((P/'build/input_package/traits9_layout.json').read_text(encoding='utf-8-sig'));old=[r for r in current['records'] if r['ktid']!=layout.K]
-check(j['records'][:-1]==old and bank[:record['offset']]==(P/'build/input_package/traits9_layout.bin').read_bytes()[:record['offset']],'all previous layout records and bank prefix preserved')
+ranges=sorted((r['offset'],r['offset']+r['size']) for r in j['records'])
+check(sum(r['ktid']==layout.K for r in j['records'])==1 and all(x[1]<=y[0] for x,y in zip(ranges,ranges[1:])) and ranges[-1][1]<=len(bank),'title record once and all layout records disjoint inside the bank')
 appearance=(P/'src/ccz_appearance.h').read_text(encoding='utf-8')
 check('low=70,high=90' in appearance and 'forms.fill(255)' in appearance,'unchanged default leadership and personal masks')
 for n in ['installer/InstallerGui.cs','distribution/FeatureSelect.ps1','FeatureSelect.ps1']:check('ccz_appearance.profile' in (P/n).read_text(encoding='utf-8-sig'),'registered raw profile '+n)
@@ -47,16 +49,16 @@ asset=(P/'assets/ccz/ccz_units.bin').read_bytes();_,_,count,table=struct.unpack_
 cells={struct.unpack_from('<H',asset,table+i*16)[0] for i in range(count)}
 check(all(c*3 in cells for c in range(190)),'every selectable common class exists in current sprite atlas')
 check('ccz_module_abi=2' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8').replace(' ',''),'existing CCZ API ABI unchanged')
-check(source.index('current=pane=button=nullptr')<source.index('fn<Leave>(0x4F9310)'),'clear title references before native destruction')
+check(source.index('current=pane=button=nullptr')<source.index('next_pick(next_leave,0x4F9310)'),'clear title references before native destruction')
 check('ccz_settings::show();' in source and 'GetForegroundWindow' not in source,'native asynchronous title entry without Windows popup')
-check('kAttachSite=0x4E83F3' in source and 'kAttachSite+5+*reinterpret_cast<int *>(image+kAttachSite+1)!=0x866230' in source,'last native title-row attach callsite and target guard')
+check('kAttachSite=0x4E83F3' in source and 'layout_client::call(kAttachSite' in source,'last native title-row attach callsite registered with the Layout manager (user 2026-11-05 Layout compatibility design 8: target judged by the manager)')
 callsite_bytes=b'\xE8\x38\xDE\x37\x00';check(pe.read(0x4E83F3,5)==callsite_bytes,'plain executable title attach callsite bytes')
 check(running[0x4E83F3-0x1000:0x4E83F3-0x1000+5]==callsite_bytes,'retained running code title attach callsite bytes')
 check(0x4E83F3+5+struct.unpack('<i',callsite_bytes[1:])[0]==0x866230,'independent callsite target calculation')
-check('fn<void(__fastcall *)(Obj,int,Obj,int)>(0x866230)(root,id,object,order);' in source,'native row attach executes before mod insertion')
+check('next_pick(next_attach,0x866230)(root,id,object,order);' in source,'native row attach executes before mod insertion')
 check('if(id!=32 || !initializing || initializing_button_added)return;' in source and 'if(add_button(initializing))initializing_button_added=true;' in source,'only last native row triggers one in-constructor CCZ insertion')
-check('initializing=nullptr;return result;' in source and 'fn<Initialize>(0x504670)(state);add_button(state)' not in source,'late post-constructor insertion removed')
-check(split.index('if(mod_features.ccz_sprites)ccz_title::install();') < split.index('layout_wait::install();'),'title hook is installed before layout_wait patches 86E0C0')
+check('initializing=nullptr;return result;' in source and 'next_pick(next_initialize,0x504670)(state);add_button(state)' not in source,'late post-constructor insertion removed')
+check(split.index('if(mod_features.ccz_sprites)ccz_title::install();') < split.index('layout_wait::install();'),'title hook is registered before layout_wait (86E0C0 entry patch removed, user 2026-11-05 Layout compatibility design 8.3)')
 editor=(P/'src/native_ccz_editor.inl').read_text(encoding='utf-8')
 check('unified_dialogs::choices' in editor and 'unified_dialogs::number' in editor and 'DialogBox' not in editor and 'CreateWindow' not in editor,'game-native list and numeric editors')
 check('ccz_preview::picture' in editor and 'session->catalog.entries' not in editor and 's.catalog.entries' in editor,'all source shapes and actual representative images')

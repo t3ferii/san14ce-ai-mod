@@ -13,8 +13,13 @@ try {
     try {
         & cl.exe /nologo /W4 /WX /wd4505 /utf-8 /O2 /MT /std:c++17 /EHsc (Join-Path $taskProject 'tests\building_destruction_fixture.cpp') /Febuilding_destruction_fixture.exe /link kernel32.lib
         if($LASTEXITCODE -ne 0){throw 'Building destruction fixture compilation failed.'}
-        $taskResult=& '.\building_destruction_fixture.exe' (Join-Path $taskProject 'build\ui_native_analysis\editor83_plain\game.exe.unpacked.exe')
+        $taskResult=& '.\building_destruction_fixture.exe' (Join-Path $taskProject 'build\ui_native_analysis\editor83_plain\game.exe.unpacked.exe') 1
         if($LASTEXITCODE -ne 0){throw 'Building destruction fixture failed.'}
+        # local10 G2 3.2: second known build (1a4a447d, capture point form 2); SAN14_GA_BUILD selects its address table before the statics run
+        $env:SAN14_GA_BUILD='1'
+        try {$taskResultNew=& '.\building_destruction_fixture.exe' (Join-Path $taskProject 'build\ui_native_analysis\editor83_b25953386\game.exe.unpacked.exe') 2} finally {Remove-Item Env:SAN14_GA_BUILD -ErrorAction SilentlyContinue}
+        if($LASTEXITCODE -ne 0){throw 'Building destruction fixture failed on build 1a4a447d.'}
+        $taskResultNew
         $taskResult
         [IO.File]::WriteAllText((Join-Path $taskBuild 'result.json'),($taskResult | Select-Object -Last 1),(New-Object Text.UTF8Encoding($false)))
         & python -B -X utf8 (Join-Path $taskProject 'tools\verify_building_destruction_native.py')

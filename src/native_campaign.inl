@@ -1,3 +1,4 @@
+#include "game_addresses.h"
 /* Included after the native adapter helpers. All orders run on the game's AI
  * thread. Dates use its own 30-day calendar conversion, not wall-clock time. */
 static int game_day();
@@ -6,9 +7,9 @@ static bool construction_completed(const Progress &p) {
     if(!p.facility || p.construction_hex>=48400)return false;
     Obj tile=table(0xE270,p.construction_hex,48399);
     if(!valid(tile) || !word(tile,0x1A))return false;
-    Obj building=fn<Obj(__fastcall *)(Obj)>(0x22FB10)(tile);
+    Obj building=fn<Obj(__fastcall *)(Obj)>(GA(GA_22FB10))(tile);
     if(!valid(building) || building[0x13]!=p.force || building[0x12]!=p.facility)return false;
-    int maximum=fn<int(__fastcall *)(Obj)>(0x2AC120)(building);
+    int maximum=fn<int(__fastcall *)(Obj)>(GA(GA_2AC120))(building);
     return maximum>0 && word(building,0x14)>=maximum;
 }
 static bool attack_mode(unsigned mode) { return mode==8 || mode==9 || mode==10 || mode==11 || mode==22; }
@@ -16,7 +17,7 @@ static bool attack_mode(unsigned mode) { return mode==8 || mode==9 || mode==10 |
 static constexpr int campaign_stationary_days=40;
 static int game_day() {
     Obj context = pointer(world(),0x871E8);
-    int day = fn<int(__fastcall *)(Obj)>(0x32BA50)(context+0x34);
+    int day = fn<int(__fastcall *)(Obj)>(GA(GA_32BA50))(context+0x34);
 #ifndef NO_RUNTIME_LOG
     InterlockedExchange(&log_day, day);
 #endif
@@ -24,15 +25,15 @@ static int game_day() {
 }
 static Obj campaign_goal(unsigned city) {
     if (!city || city>=52) return nullptr;
-    Obj goal=fn<Obj(__fastcall *)(Obj,unsigned)>(0x32C130)(world(),city);
+    Obj goal=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32C130))(world(),city);
     return valid(goal) && word(goal,0x4E)==city ? goal : nullptr;
 }
 static bool hostile_city(Obj army, unsigned city) {
     Obj goal=campaign_goal(city);
-    Obj force=goal ? fn<Obj(__fastcall *)(Obj)>(0x22C990)(goal) : nullptr;
+    Obj force=goal ? fn<Obj(__fastcall *)(Obj)>(GA(GA_22C990))(goal) : nullptr;
     if (!valid(force)) return false;
     auto id=*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(force,0)+0x60);
-    return fn<int(__fastcall *)(unsigned,unsigned)>(0x2CA280)(army_force(army),id(force))!=0;
+    return fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(army_force(army),id(force))!=0;
 }
 static bool campaign_transit_region(unsigned id);
 static unsigned campaign_path_capture_hex(Obj army,unsigned destination);
@@ -107,9 +108,9 @@ static bool region_reserved(unsigned hex, Obj actor) {
     return false;
 }
 static void offensive_order(Obj army, unsigned city, bool clear) {
-    if (clear) fn<void(__fastcall *)(Obj)>(0xA2410)(army);
-    fn<void(__fastcall *)(Obj,int)>(0x2EAAE0)(army,4);
-    fn<void(__fastcall *)(Obj,int,int)>(0x2EAB40)(army,5,static_cast<int>(city));
+    if (clear) fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(army,4);
+    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(army,5,static_cast<int>(city));
 }
 static bool campaign_transit_region(unsigned id);
 #ifdef SORTIE_FORMATION
@@ -128,15 +129,15 @@ static bool campaign_defensive_wait(Obj army,Progress &p);
 static bool campaign_guard_priority(Obj army,Progress &p);
 static bool campaign_transit_region(unsigned id) {
     Obj area=table(0x6CAF0,id,500);
-    return valid(area) && (fn<int(__fastcall *)(Obj)>(0x232680)(area) || fn<int(__fastcall *)(Obj)>(0x232BF0)(area));
+    return valid(area) && (fn<int(__fastcall *)(Obj)>(GA(GA_232680))(area) || fn<int(__fastcall *)(Obj)>(GA(GA_232BF0))(area));
 }
 static bool campaign_request_companion(Obj army,Progress &p,unsigned target);
 // Adjacency selects missions only; every movement path remains native.
 static bool campaign_adjacent_city_base(unsigned hex,unsigned city) {
     if(!city || city>61 || hex>=48400)return false;
-    Obj goal=fn<Obj(__fastcall *)(Obj,unsigned)>(0x32C130)(world(),city);
+    Obj goal=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32C130))(world(),city);
     if(!valid(goal) || word(goal,0x4E)!=city)return false;
-    unsigned h=fn<unsigned(__fastcall *)(Obj)>(0x22D740)(goal);
+    unsigned h=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(goal);
     unsigned region=campaign_area_id(h),base=campaign_area_id(hex);
     Obj area=table(0x6CAF0,region,500);if(!valid(area) || !base || base==region || campaign_transit_region(base))return false;
     for(unsigned i=0;i<8;++i)if((area[0x66]&(1u<<i)) && word(area,0x56+i*2)==base)return true;
@@ -147,7 +148,7 @@ static std::vector<unsigned> campaign_home_bases(Obj army,unsigned only_city=0) 
     for(unsigned id=1;id<=51;++id) {
         if(only_city && only_city!=id)continue;
         Obj city=campaign_goal(id);if(!city)continue;
-        unsigned h=fn<unsigned(__fastcall *)(Obj)>(0x22D740)(city);Obj t=table(0xE270,h,48399);
+        unsigned h=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(city);Obj t=table(0xE270,h,48399);
         if(!valid(t) || t[0x14]!=own || (!only_city && distance(here,h)>20))continue;
         Obj area=table(0x6CAF0,campaign_area_id(h),500);if(!valid(area))continue;
         unsigned source_region=campaign_area_id(h);if(!source_region)continue;
@@ -179,7 +180,7 @@ static unsigned campaign_path_capture_hex(Obj army,unsigned destination) {
     // Inspect regions in native travel order, including the current region.
     // A port is terrain 17, not a city/gate assault target.
     for(unsigned region:onward.regions) {
-        Obj a=table(0x6CAF0,region,500);if(!valid(a) || fn<int(__fastcall *)(Obj)>(0x232680)(a) ||
+        Obj a=table(0x6CAF0,region,500);if(!valid(a) || fn<int(__fastcall *)(Obj)>(GA(GA_232680))(a) ||
             !campaign_region_hostile(army,region))continue;
         unsigned center=word(a,0x3A);if(center>=48400)continue;
         CampaignRoute capture=campaign_safe_route(army,center,false,true);
@@ -203,7 +204,7 @@ static bool campaign_near_capture(Obj army,Progress &p) {
         }
         p.near_capture_hex=48400;
     }
-    Obj goal=campaign_goal(city);unsigned destination=goal?fn<unsigned(__fastcall *)(Obj)>(0x22D740)(goal):48400;
+    Obj goal=campaign_goal(city);unsigned destination=goal?fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(goal):48400;
     if(p.region_target<48400 && campaign_region_hostile(army,campaign_area_id(p.region_target)))destination=p.region_target;
     else if(army[0x37]==1 && army[0x38]==9 && word(army,0x3A)<48400)destination=word(army,0x3A);
     unsigned h=campaign_path_capture_hex(army,destination);
@@ -250,10 +251,10 @@ static unsigned next_region(Obj army, Progress &p, unsigned city_hex,bool sequen
     for(unsigned h:enemy_bases)if(!region_reserved(h,army) && campaign_assign_safe(army,p,h,true,sequential))return 1;
     struct Candidate {unsigned hex;int score;};std::vector<Candidate> candidates;
     GameList nearby;list_init(nearby);Obj city_tile=table(0xE270,city_hex,48399);
-    if(valid(city_tile))fn<void(__fastcall *)(Obj,int,GameList *)>(0x2A7AA0)(city_tile,15,&nearby);
+    if(valid(city_tile))fn<void(__fastcall *)(Obj,int,GameList *)>(GA(GA_2A7AA0))(city_tile,15,&nearby);
     bool seen[501]={};
     for(Link *entry=list_first(nearby);entry;entry=entry->next) {
-        unsigned id=valid(entry->value)?campaign_area_id(fn<unsigned(__fastcall *)(Obj)>(0x22DDA0)(entry->value)):0;
+        unsigned id=valid(entry->value)?campaign_area_id(fn<unsigned(__fastcall *)(Obj)>(GA(GA_22DDA0))(entry->value)):0;
         if(!id || seen[id])continue;seen[id]=true;Obj area=table(0x6CAF0,id,500);
         if(!valid(area) || campaign_transit_region(id) || !campaign_region_hostile(army,id))continue;
         unsigned hex=word(area,0x3A);if(hex<48400)candidates.push_back({hex,distance(word(army,0x2A),hex)});
@@ -268,7 +269,7 @@ static void prepare_local_build(Obj army, Progress &p) {
     Obj area=army_area(army);if(!valid(area))return;
     unsigned hex=word(area,0x3A);Obj center=table(0xE270,hex,48399);
     Obj goal=p.campaign?campaign_goal(p.city):nullptr;
-    unsigned castle=goal?fn<unsigned(__fastcall *)(Obj)>(0x22D740)(goal):48400;
+    unsigned castle=goal?fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(goal):48400;
     Obj standing=table(0xE270,word(army,0x2A),48399);
     bool siege_ground=goal && hostile_city(army,p.city) && valid(standing) && standing[0x14]==army_force(army) &&
         campaign_area_id(castle)==campaign_area_id(word(army,0x2A));
@@ -289,7 +290,7 @@ static void prepare_local_build(Obj army, Progress &p) {
     if(campaign_group_marching(army) && !siege_ground)return;
     if(siege_ground && p.build_audit_day==game_day() && p.build_audit_mask)return;
     if(!valid(center) || (!siege_ground && (center[0x14]!=army_force(army) ||
-       fn<int(__fastcall *)(Obj)>(0x232680)(area) || fn<int(__fastcall *)(Obj)>(0x232BF0)(area) ||
+       fn<int(__fastcall *)(Obj)>(GA(GA_232680))(area) || fn<int(__fastcall *)(Obj)>(GA(GA_232BF0))(area) ||
        distance(word(army,0x2A),hex)>=11)))return;
     if(p.regional_worker && ((p.work_reviewed_center==hex && area_full(area)) ||
        (p.region_target!=hex && distance(word(army,0x2A),hex)>1)))return;
@@ -298,38 +299,55 @@ static void prepare_local_build(Obj army, Progress &p) {
     p.build_chain=true;p.build_center=static_cast<unsigned short>(hex);p.cycle_mask=0;
 }
 static bool recovery_return(Obj army, Progress &p) {
-    Obj origin=fn<Obj(__fastcall *)(Obj)>(0x22A5A0)(army);
-    unsigned hex=valid(origin)?fn<unsigned(__fastcall *)(Obj)>(0x22D740)(origin):48400;
+    Obj origin=fn<Obj(__fastcall *)(Obj)>(GA(GA_22A5A0))(army);
+    unsigned hex=valid(origin)?fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(origin):48400;
     Obj tile=table(0xE270,hex,48399);
     if(hex>=48400 || !valid(tile) || tile[0x14]!=army_force(army)) {
         if(!p.forced_return)return false;
         int nearest=INT32_MAX;origin=nullptr;
         for(unsigned id=1;id<=51;++id) {
             Obj city=campaign_goal(id);if(!city)continue;
-            unsigned h=fn<unsigned(__fastcall *)(Obj)>(0x22D740)(city);Obj t=table(0xE270,h,48399);
+            unsigned h=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(city);Obj t=table(0xE270,h,48399);
             if(!valid(t) || t[0x14]!=army_force(army))continue;
             int range=distance(word(army,0x2A),h);if(range<nearest) {nearest=range;origin=city;hex=h;}
         }
         if(!origin)return false;
     }
     if(word(army,0x2A)==hex) {p.returning=false;return false;}
-    fn<void(__fastcall *)(Obj)>(0xA2410)(army);
+    fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
     // A gate home (base 52..61) takes the original gate-retreat form: action 12, target kind 6, gate
     // number base-51 (611C0). The former city form (11/5/base) was rejected by daily processing every
     // turn and parked the army in place (2026-10-22: 사마의 at 유미 for ~360 days).
     unsigned base=word(origin,0x4E);bool gate=base>51 && base<=61;
     if(p.returning && army[0x37]!=(gate?12:11))log_event("return_order_not_kept",army_id(army),army[0x37],base);
-    fn<void(__fastcall *)(Obj,int)>(0x2EAAE0)(army,gate?12:11);
-    fn<void(__fastcall *)(Obj,int,int)>(0x2EAB40)(army,gate?6:5,static_cast<int>(gate?base-51:base));
-    fn<void(__fastcall *)(Obj)>(0x26C940)(army);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(army,gate?12:11);
+    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(army,gate?6:5,static_cast<int>(gate?base-51:base));
+    fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);
     if(!p.returning)log_event(p.forced_return?"forced_return_home":"idle_return_home",army_id(army),word(army,0x16),hex);
     p.returning=true;p.recovery_hex=static_cast<unsigned short>(hex);p.campaign=false;
     p.region_target=48400;p.staging_hex=48400;return true;
 }
 // The original AI already orders this army against its troops' hostile goal city/gate: the mod's
 // own field steering (path captures, campaign steps) stands aside (2026-10-21, mission coherence).
+// 1a4a447d (docs/BUILD_25953386_COMBAT.md, conflict 2): the original 27D490/2A3E30 (called from 68CE0/613A0/64E10) hands an
+// attacking troop's member to a hostile enemy foothold or watchtower: action 6, kind 11, target = building id. That is the
+// original AI's own mission, so it is recognised like the city assault (1fbe6be7 never issues it from these nodes; a hostile
+// kind-11 target is harmless there too, the mod never orders action 6).
+static bool native_fort_assault(Obj army) {
+    Obj troops=table(0x7F8D8,word(army,0x58),500);if(!valid(troops) || !attack_mode(word(troops,0x14)))return false;
+    unsigned id=word(army,0x3A);
+    if(army[0x37]!=6 || army[0x38]!=11 || !id || id>3000)return false;
+    Obj building=table(0x6DA98,id,3000);if(!valid(building))return false;
+    unsigned owner=building[0x13];
+    return owner>0 && owner<52 && fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(army_force(army),owner)!=0;
+}
 static bool native_on_mission(Obj army) {
     Obj troops=table(0x7F8D8,word(army,0x58),500);if(!valid(troops) || !attack_mode(word(troops,0x14)))return false;
+    if(native_fort_assault(army)) {
+        static volatile LONG samples;
+        if(InterlockedIncrement(&samples)<=200)log_event("native_fort_assault",army_id(army),word(army,0x3A),word(army,0x2A));
+        return true;
+    }
     unsigned goal=word(troops,0x16);
     return goal && goal<=61 && (army[0x37]==4 || army[0x37]==5) && (army[0x38]==5 || army[0x38]==6) &&
         word(army,0x3A)==(army[0x38]==6 && goal>51?goal-51:goal) && hostile_city(army,goal);
@@ -350,7 +368,7 @@ static unsigned char mission_corridor_distance(Obj lead,unsigned from,unsigned g
     memset(dist,255,501);dist[from]=0;unsigned queue[500],head=0,tail=0;queue[tail++]=from;
     while(head<tail) {
         unsigned id=queue[head++];Obj a=table(0x6CAF0,id,500);if(!valid(a))continue;
-        if(id!=from && fn<int(__fastcall *)(Obj)>(0x232680)(a))continue;   // castles and gates end a chain
+        if(id!=from && fn<int(__fastcall *)(Obj)>(GA(GA_232680))(a))continue;   // castles and gates end a chain
         for(unsigned i=0;i<8;++i) {
             unsigned n=word(a,0x56+i*2);if(!(a[0x66]&(1u<<i)) || !n || n>500 || dist[n]!=255)continue;
             if(n!=goal && !campaign_region_open(lead,n))continue;
@@ -364,8 +382,8 @@ static void mission_route_corridor(Obj troops,Obj lead,unsigned castle_hex) {
     unsigned id=word(lead,0x58),goal=word(troops,0x16);if(!id || id>500)return;
     auto &done=mission_corridor_done[id];if(done.root==world() && done.goal==goal)return;
     done={world(),static_cast<unsigned short>(goal)};
-    Obj origin=fn<Obj(__fastcall *)(Obj)>(0x22A5A0)(lead);
-    unsigned from=campaign_area_id(valid(origin)?fn<unsigned(__fastcall *)(Obj)>(0x22D740)(origin):word(lead,0x2A));
+    Obj origin=fn<Obj(__fastcall *)(Obj)>(GA(GA_22A5A0))(lead);
+    unsigned from=campaign_area_id(valid(origin)?fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(origin):word(lead,0x2A));
     unsigned to=campaign_area_id(castle_hex);if(!from || !to || from==to)return;
     unsigned char ds[501],dg[501];unsigned shortest=mission_corridor_distance(lead,from,to,ds);
     if(shortest==255 || shortest>12 || mission_corridor_distance(lead,to,from,dg)==255)return;
@@ -374,7 +392,7 @@ static void mission_route_corridor(Obj troops,Obj lead,unsigned castle_hex) {
     std::vector<unsigned> pick;
     for(unsigned r=1;r<=500;++r) {
         if(r==from || r==to || ds[r]==255 || dg[r]==255 || static_cast<unsigned>(ds[r]+dg[r])>shortest+1)continue;
-        Obj a=table(0x6CAF0,r,500);if(!valid(a) || fn<int(__fastcall *)(Obj)>(0x232680)(a) || !campaign_region_hostile(lead,r))continue;
+        Obj a=table(0x6CAF0,r,500);if(!valid(a) || fn<int(__fastcall *)(Obj)>(GA(GA_232680))(a) || !campaign_region_hostile(lead,r))continue;
         unsigned center=word(a,0x3A);if(center>=48400)continue;
         bool listed=false;for(unsigned i=0;i<10;++i)if(list[i]==center)listed=true;
         if(!listed)pick.push_back(r);
@@ -392,14 +410,14 @@ static void mission_route_corridor(Obj troops,Obj lead,unsigned castle_hex) {
 static void mission_route_waypoint(Obj troops) {
     if(!valid(troops) || !attack_mode(word(troops,0x14)))return;
     unsigned goal=word(troops,0x16);Obj castle=goal && goal<=61?campaign_goal(goal):nullptr;
-    if(!castle && goal>51 && goal<=61)castle=fn<Obj(__fastcall *)(Obj,unsigned)>(0x32C130)(world(),goal);
+    if(!castle && goal>51 && goal<=61)castle=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32C130))(world(),goal);
     if(!valid(castle))return;
     Obj lead=nullptr;
     for(unsigned i=1;i<=500;++i) {Obj a=table(0x7E838,i,500);
         if(valid(a) && belongs_to_troops(a,troops) && campaign_controlled(a) && word(a,0x16)>=1000 &&
            (!lead || word(a,0x16)>word(lead,0x16)))lead=a;}
     if(!lead || !hostile_city(lead,goal))return;
-    unsigned castle_hex=fn<unsigned(__fastcall *)(Obj)>(0x22D740)(castle);
+    unsigned castle_hex=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(castle);
     mission_route_corridor(troops,lead,castle_hex);
     unsigned h=campaign_path_capture_hex(lead,castle_hex);
     if(h>=48400 || h==castle_hex || campaign_area_id(h)==campaign_area_id(castle_hex))return;
@@ -458,7 +476,7 @@ static void pause_assembly(Progress &p) {p.staging_hex=48400;}
 static bool campaign_step(Obj army, Progress &p, Obj node=nullptr, Obj context=nullptr) {
     Obj goal=campaign_goal(p.city);
     if(!goal || !hostile_city(army,p.city)) {p.campaign=false;return false;}
-    unsigned hex=fn<unsigned(__fastcall *)(Obj)>(0x22D740)(goal);
+    unsigned hex=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(goal);
     if(hex>=48400) {p.campaign=false;return false;}
     unsigned region_state=next_region(army,p,hex);
     if(region_state==1) {p.region_blocked_day=-1;p.staging_hex=48400;return true;}
@@ -472,7 +490,7 @@ static bool campaign_step(Obj army, Progress &p, Obj node=nullptr, Obj context=n
     p.credit=false;p.build_chain=false;p.region_blocked_day=-1;
     offensive_order(army,p.city,true);
     (void)node;(void)context;
-    fn<void(__fastcall *)(Obj)>(0x26C940)(army);
+    fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);
     log_event("campaign_city_last_fallback",army_id(army),p.city,hex);
     return true;
 }
@@ -491,6 +509,8 @@ static bool campaign_individual_priority(Obj army,Progress &p) {
         unsigned goal=army[0x38]==6?word(army,0x3A)+51:word(army,0x3A);
         if(goal && goal<=61 && hostile_city(army,goal))p.motion_day=game_day();
     }
+    // Same for the original AI's own assault on a hostile foothold/watchtower (action 6, kind 11; 1a4a447d 27D490).
+    if(mod_features.mission_v2 && native_fort_assault(army))p.motion_day=game_day();
     if(mod_features.stationary_retreat && !p.forced_return && game_day()-p.motion_day>=campaign_stationary_days) {
         p.forced_return=true;p.guard_beneficiary=0;p.combat_target=0;p.combat_city=0;
         p.facility=0;p.credit=false;p.build_chain=false;
@@ -508,11 +528,11 @@ static bool campaign_individual_priority(Obj army,Progress &p) {
     if(p.siege_city && hostile_city(army,p.siege_city) && !p.facility) {
         // A direct weak-city attack still reviews usable siege ground before
         // committing to the castle; an active build is handled below.
-        Obj city=campaign_goal(p.siege_city);unsigned h=city?fn<unsigned(__fastcall *)(Obj)>(0x22D740)(city):48400;
+        Obj city=campaign_goal(p.siege_city);unsigned h=city?fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(city):48400;
         if(campaign_area_id(h)==campaign_area_id(word(army,0x2A)))prepare_local_build(army,p);
         if(!p.credit && !p.build_chain) {
             if(campaign_near_capture(army,p))return true;
-            offensive_order(army,p.siege_city,true);fn<void(__fastcall *)(Obj)>(0x26C940)(army);return true;
+            offensive_order(army,p.siege_city,true);fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);return true;
         }
     }
     return false;

@@ -1,3 +1,4 @@
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import ga_expand  # user 2026-11-05 patch resilience: sources spell addresses as GA(GA_x)
 """Focused native-site, layout and unchanged save-contract audit."""
 from pathlib import Path
 import collections,hashlib,json,os,re,struct,sys,zlib
@@ -20,17 +21,22 @@ for m in report['manifests']:
     for p in m['sites']:
         before=bytes.fromhex(p['before']);check(read(p['rva'],len(before))==before,'UI '+hex(p['rva']))
         check(5<=len(before)<=32,'complete jump site');ranges.append((p['rva'],len(before)))
-p=report['capture'];check(read(p['site'],5)==bytes.fromhex(p['before']),'capture call original')
-check(p['site']+5+struct.unpack_from('<i',read(p['site'],5),1)[0]==p['original'],'capture native player predicate')
-ranges.append((p['site'],5))
+# local10 2026-11-06: the captive_dialog capture-call patch was removed with the feature (no 'capture' record any more)
+check('capture' not in report,'captive_dialog capture record is gone')
 for path in (P/'src').glob('*'):
-    if path.suffix not in ('.cpp','.h','.inl') or path.name in ('native_traits9.inl','modpack_tables.h'):continue
+    # 사용자 2026-11-05 Layout 호환 설계 §8: layout_registry.h is the Layout manager's data-only registry of these very patch
+    # sites (owner traits9, yield-only); tests/verify_layout_registry.py checks it against this same payload table.
+    if path.suffix not in ('.cpp','.h','.inl') or path.name in ('native_traits9.inl','modpack_tables.h','layout_registry.h','game_addresses_data.inl'):continue
+    # game_addresses_data.inl (generated, 2026-11-05) is the address table: its RVA/id integer literals are table data, never a hook site.
     values={int(x,16) for x in re.findall(r'0[xX][0-9a-fA-F]+',path.read_text(encoding='utf-8'))}
     hits=[hex(v) for a,n in ranges for v in values if a<=v<a+n]
     check(not hits,'existing hook candidate '+path.name+str(hits))
 # Original native person load already copies all nine u16 trait IDs at +118.
 check(read(0x31FF44,3)==bytes.fromhex('83ff09'),'native person copy count remains nine')
 check(0x118+9*2==0x12A and 0x12A<0x12C,'nine traits fit existing record before next field')
+# 사용자 2026-11-05 기준 갱신: Layout P3·패치 내성 치환. 기준 해시(build/input_package/manifest.json split_modules.source_sha256)의
+# native_merit_save.inl만 갱신했다. v15.4 공개 소스 대비 변경은 P3 분리(next_or 호출, 주석 한 줄)와 GA() 치환+include뿐이고
+# awards_save/sidecar_cache/merit_bond는 v15.4와 바이트 동일(저장 쓰기 변경 없음, diff 확인).
 save_sources=('src/native_merit_save.inl','src/native_awards_save.inl','src/sidecar_cache.h','src/merit_bond.h')
 # v11.31 reviewed change: the merit feature switch only gates re-adding saved
 # merit friends to native slots after load. Any other edit still fails here.

@@ -8,9 +8,11 @@
 // 143C498, CStrategyUnitTargetState 1457208) phase 1 advances to 2 at once, so the next click is taken
 // while the HUD still slides in. Own-layout waits and phase 4 (menu opening) stay original.
 // The same slot also runs lord_change's per-frame status fix (installed when either feature is on).
+#include "game_addresses.h"
 namespace lord_change {static void map_tick();}
 namespace fast_menu {
-static const unsigned kBusy=0x56FF60,kSlots[3]={0x13D63A0+0x30,0x143C498+0x30,0x1457208+0x30};
+static const unsigned kBusy=GA(GA_56FF60),kSlots[3]={GA(GA_13D63A0)+0x30,GA(GA_143C498)+0x30,GA(GA_1457208)+0x30};
+static unsigned long long (__fastcall *next_busy[3])(Obj);   // Layout manager: next of each slot (original 56FF60 unless another mod chained first)
 #ifndef NO_RUNTIME_LOG
 // Diagnostics (2026-10-25, user: "is it really faster?"): per map state, the time from the first
 // phase-1 frame (menu closed, HUD slide-in wait) to the first frame 56FF60 returns 0 (input taken
@@ -35,24 +37,46 @@ static void wait_end(Obj state) {
     }
 }
 #endif
-static unsigned long long __fastcall busy(Obj state) { COST_SCOPE("fast_menu::busy");
+#if defined(RUNTIME_COST_PROFILE) && !defined(NO_RUNTIME_LOG)
+static void record_state(Obj state) {
+    uintptr_t table=0;SIZE_T read=0;
+    COST_CRUMB("fast_menu_state",state);
+    if(state && ReadProcessMemory(GetCurrentProcess(),state,&table,sizeof(table),&read) && read==sizeof(table))
+        COST_CRUMB("fast_menu_vt",reinterpret_cast<void *>(table-reinterpret_cast<uintptr_t>(image)));
+}
+#endif
+template<unsigned I> static unsigned long long __fastcall busy(Obj state) { COST_SCOPE("fast_menu::busy");
+#if defined(RUNTIME_COST_PROFILE) && !defined(NO_RUNTIME_LOG)
+    if(costprofile::call_trace_enabled)record_state(state);
+#endif
     if(mod_features.lord_change)lord_change::map_tick();   // game thread, map states only
     const bool waiting=state && dword(state,0x6C)==1;
 #ifndef NO_RUNTIME_LOG
     if(diagnostic_logging && waiting)wait_begin(state);
 #endif
     if(mod_features.fast_menu && waiting)*reinterpret_cast<int *>(state+0x6C)=2;
-    const unsigned long long result=fn<unsigned long long(__fastcall *)(Obj)>(kBusy)(state);
+    const unsigned long long result=next_pick(next_busy[I],kBusy)(state);
+#if defined(RUNTIME_COST_PROFILE) && !defined(NO_RUNTIME_LOG)
+    if(costprofile::call_trace_enabled)record_state(state);
+#endif
 #ifndef NO_RUNTIME_LOG
     if(diagnostic_logging && !result)wait_end(state);
 #endif
     return result;
 }
 static bool install() {
-    for(unsigned slot:kSlots)if(pointer(image,slot)!=image+kBusy) {log_event("fast_menu_guard_rejected",slot);return false;}
-    unsigned done=0;
-    for(;done<3;++done)if(!patch_pointer(kSlots[done],kBusy,reinterpret_cast<void *>(&busy)))break;
-    if(done!=3) {while(done){--done;restore_pointer(kSlots[done],kBusy,reinterpret_cast<void *>(&busy));}return false;}
-    log_event("fast_menu_installed");return true;
+    // 8.7: R1 FastMenu does the same busy-slot job. The phase skip yields; lord_change's per-frame fix needs the slot
+    // anyway, so with lord_change on the hooks stay (without the YIELD flag) and only the skip is dropped.
+    const bool peer=layout_client::yield_to_peer("fast_menu",kSlots[0]);
+    if(peer)mod_features.fast_menu=false;
+    if(peer && !mod_features.lord_change)return true;
+    const uint32_t drop=mod_features.lord_change?LAYOUT_YIELD_IF_PEER:0;
+    layout_client::Transaction tx;
+    if(!layout_client::vt(kSlots[0],reinterpret_cast<void *>(&busy<0>),reinterpret_cast<void **>(&next_busy[0]),drop) ||
+       !layout_client::vt(kSlots[1],reinterpret_cast<void *>(&busy<1>),reinterpret_cast<void **>(&next_busy[1]),drop) ||
+       !layout_client::vt(kSlots[2],reinterpret_cast<void *>(&busy<2>),reinterpret_cast<void **>(&next_busy[2]),drop)) {
+        log_event("fast_menu_register_rejected");return false;
+    }
+    tx.done=true;log_event("fast_menu_installed");return true;
 }
 }

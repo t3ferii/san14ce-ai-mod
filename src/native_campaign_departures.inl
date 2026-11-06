@@ -1,3 +1,4 @@
+#include "game_addresses.h"
 /* Periodic departures use the existing AI callback, native candidate list,
  * command preparation and paid dispatcher. No fabricated behavior node. */
 struct CampaignDepartureAudit {Obj root;int day;};
@@ -5,16 +6,16 @@ static CampaignDepartureAudit campaign_departure_force[52],campaign_departure_ci
 static Obj campaign_paid_single(Obj source,Obj target,unsigned hex,unsigned wanted,bool worker) {
     COST_SCOPE("campaign_paid_single");
     unsigned budget=campaign::available(dword(source,0x3C));if(budget<(worker?1000u:3000u))return nullptr;
-    GameList people;list_init(people,0x13436B0);
-    fn<void(__fastcall *)(Obj,GameList *)>(0x2D7180)(source,&people);
-    fn<void(__fastcall *)(GameList *)>(0x2A0780)(&people);
-    fn<void(__fastcall *)(GameList *,int,int,int)>(0xD32C0)(&people,0,1,0);
+    GameList people;list_init(people,GA(GA_13436B0));
+    fn<void(__fastcall *)(Obj,GameList *)>(GA(GA_2D7180))(source,&people);
+    fn<void(__fastcall *)(GameList *)>(GA(GA_2A0780))(&people);
+    fn<void(__fastcall *)(GameList *,int,int,int)>(GA(GA_D32C0))(&people,0,1,0);
     std::vector<Obj> candidates;
     for(Link *l=list_first(people);l;l=l->next)if(sortie_auto_person(l->value) && !l->value[0x161])candidates.push_back(l->value);
     list_free(people);
     std::sort(candidates.begin(),candidates.end(),[](Obj a,Obj b){
-        return fn<int(__fastcall *)(Obj,unsigned,unsigned)>(0x22FCE0)(a,0,0xFFF)>
-               fn<int(__fastcall *)(Obj,unsigned,unsigned)>(0x22FCE0)(b,0,0xFFF);
+        return fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_22FCE0))(a,0,0xFFF)>
+               fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_22FCE0))(b,0,0xFFF);
     });
     for(Obj person:candidates) {
         if(!worker && person[0xA9]==1)continue;
@@ -22,7 +23,7 @@ static Obj campaign_paid_single(Obj source,Obj target,unsigned hex,unsigned want
             if(valid(a) && word(a,0x12)==word(person,0x10)) {deployed=true;break;}}
         if(deployed)continue;
         Obj district=table(0xE0D0,person[0xE0],51);unsigned formation=worker?sortie_capture_formation(person):sortie_field_formation(person);
-        int capacity=fn<int(__fastcall *)(Obj)>(0x2311A0)(person);
+        int capacity=fn<int(__fastcall *)(Obj)>(GA(GA_2311A0))(person);
         if(!valid(district) || !district[0x14] || !formation || capacity<(worker?1000:3000))continue;
         unsigned soldiers=worker?1000:(std::min)(budget,(std::min)(wanted,static_cast<unsigned>(capacity)));
         unsigned cmd[30];sortie_command(nullptr,target,person,formation,soldiers,cmd);
@@ -46,7 +47,7 @@ static Obj campaign_paid_single(Obj source,Obj target,unsigned hex,unsigned want
             log_event("home_capture_worker_departed",army_id(army),1000,hex);
         } else {
             p->campaign=true;p->city=word(target,0x4E);p->siege_city=p->city;
-            offensive_order(army,p->city,true);fn<void(__fastcall *)(Obj)>(0x26C940)(army);
+            offensive_order(army,p->city,true);fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);
             log_event("weak_city_single_departed",army_id(army),word(army,0x16),p->city);
         }
         return army;
@@ -54,8 +55,8 @@ static Obj campaign_paid_single(Obj source,Obj target,unsigned hex,unsigned want
     return nullptr;
 }
 static bool campaign_city_connected(Obj source,Obj target,unsigned force) {
-    unsigned from=campaign_area_id(fn<unsigned(__fastcall *)(Obj)>(0x22D740)(source));
-    unsigned to=campaign_area_id(fn<unsigned(__fastcall *)(Obj)>(0x22D740)(target));
+    unsigned from=campaign_area_id(fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(source));
+    unsigned to=campaign_area_id(fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(target));
     unsigned enemy=campaign_city_owner(target);if(!from || !to)return false;
     bool seen[501]={};std::vector<unsigned> queue={from};seen[from]=true;
     for(size_t k=0;k<queue.size();++k) {
@@ -89,11 +90,11 @@ static void campaign_frontier_diagnostic() {
             unsigned n=word(a,0x56+e*2);if(!(a[0x66]&(1u<<e)) || !n || n>500)continue;
             Obj b=table(0x6CAF0,n,500);if(!valid(b))continue;
             unsigned other=owner_of(b);if(other==own)continue;
-            unsigned port=fn<int(__fastcall *)(Obj)>(0x232BF0)(b)?1:0,core=fn<int(__fastcall *)(Obj)>(0x232680)(b)?1:0;
+            unsigned port=fn<int(__fastcall *)(Obj)>(GA(GA_232BF0))(b)?1:0,core=fn<int(__fastcall *)(Obj)>(GA(GA_232680))(b)?1:0;
             unsigned special=0,neutral=0;
             for(unsigned f=0;f<8;++f) {unsigned m=word(b,0x56+f*2);if(!(b[0x66]&(1u<<f)) || !m || m>500)continue;
                 Obj c=table(0x6CAF0,m,500);if(!valid(c))break;
-                special=(fn<int(__fastcall *)(Obj)>(0x232BF0)(c) || fn<int(__fastcall *)(Obj)>(0x232680)(c))?1:0;
+                special=(fn<int(__fastcall *)(Obj)>(GA(GA_232BF0))(c) || fn<int(__fastcall *)(Obj)>(GA(GA_232680))(c))?1:0;
                 neutral=owner_of(c)==0?1:0;break;}
             log_event("frontier_area",a[0x35],n|(other<<9)|(port<<15)|(core<<16)|(special<<17)|(neutral<<18),word(b,0x3A));
         }
@@ -116,10 +117,10 @@ static void campaign_saturated_departures(Obj actor) {
         if(maximum<=0 || static_cast<uint64_t>(stock)*10<static_cast<uint64_t>(maximum)*9 ||
            campaign::available(stock)<sortie_split_threshold)continue;
         auto &used=campaign_departure_city[id];if(used.root==world() && day>=used.day && day-used.day<30)continue;
-        Obj target=nullptr;int best=INT32_MAX;unsigned source_hex=fn<unsigned(__fastcall *)(Obj)>(0x22D740)(source);
+        Obj target=nullptr;int best=INT32_MAX;unsigned source_hex=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(source);
         for(unsigned city=1;city<=51;++city) {
             Obj g=campaign_goal(city);if(!g || !hostile_city(actor,city))continue;
-            int range=distance(source_hex,fn<unsigned(__fastcall *)(Obj)>(0x22D740)(g));
+            int range=distance(source_hex,fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(g));
             if(range>60 || !campaign_city_connected(source,g,force))continue;
             uint64_t incoming=0;for(unsigned i=1;i<=500;++i) {
                 Obj a=table(0x7E838,i,500);if(!valid(a) || army_force(a)!=force || a[0x37]==11 || a[0x37]==12)continue;
@@ -151,13 +152,13 @@ static void campaign_proactive_departures(Obj actor) {
             auto bases=campaign_home_bases(actor,id);if(bases.empty())break;
             if(!campaign_paid_single(source,source,bases[0],1000,true))break;
         }
-        Obj target=nullptr;int score=INT32_MAX;unsigned source_hex=fn<unsigned(__fastcall *)(Obj)>(0x22D740)(source);
+        Obj target=nullptr;int score=INT32_MAX;unsigned source_hex=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(source);
         for(unsigned city=1;city<=51;++city) {
             Obj g=campaign_goal(city);if(!g || !hostile_city(actor,city))continue;
             unsigned budget=campaign::available(dword(source,0x3C));bool weak=dword(g,0x3C)<10000;
             if(budget<(weak?3000u:20000u))continue;
             if(!weak && !campaign::siege_departure(budget,dword(g,0x3C)))continue;
-            int range=distance(source_hex,fn<unsigned(__fastcall *)(Obj)>(0x22D740)(g));
+            int range=distance(source_hex,fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(g));
             if(range>60 || !campaign_city_connected(source,g,force))continue;
             uint64_t incoming=0;for(unsigned i=1;i<=500;++i) {
                 Obj a=table(0x7E838,i,500);if(!valid(a) || army_force(a)!=force || a[0x37]==11 || a[0x37]==12)continue;

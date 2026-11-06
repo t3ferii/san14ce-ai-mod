@@ -1,3 +1,4 @@
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import ga_expand  # user 2026-11-05 patch resilience: sources spell addresses as GA(GA_x)
 """Offline identity/byte/ABI evidence. Steam .text is encrypted: decoded bytes are
 checked against the cached unpacked EXE and the existing running-code capture.
 No live process, EXE execution, memory writes or new reverse-engineering session.

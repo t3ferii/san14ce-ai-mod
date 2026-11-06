@@ -122,16 +122,34 @@ static void *function(unsigned r) {
 }
 template<class T>static T fn(unsigned r){return reinterpret_cast<T>(function(r));}
 namespace region_officers {static void __fastcall frame(Obj);}
-static bool patch_pointer(unsigned slot,unsigned original,void *p){
-    if(++patch_calls==fail_patch)return false;
-    check(pointer(image,slot)==image+original,"only original slot may publish");put(image,slot,reinterpret_cast<Obj>(p));
+// 2026-11-05 user Layout compatibility design 8: region_officers::install now registers its six vtable slots with the
+// SAN14_Layout.dll hook manager (layout_client). This stub plays the manager for the fixture: it publishes into the
+// synthetic image, refuses a slot that is not original, can fail the Nth registration, and a failed install takes its
+// partial registrations back (layout_client::Transaction). The next pointer stays null so next_pick uses the mocks.
+#include "../src/layout_registry.h"
+template<class T>static T next_pick(T next,unsigned rva){return next?next:fn<T>(rva);}
+static void log_event(const char *,unsigned=0,unsigned=0,unsigned=0){}
+namespace layout_client {
+static std::vector<unsigned> published;
+static const LayoutRow *row_for(unsigned rva){for(unsigned i=0;i<layout_row_count;++i)if(layout_rows[i].rva==rva)return &layout_rows[i];return nullptr;}
+static int vt(unsigned slot,void *p,void **,uint32_t=0){
+    if(++patch_calls==fail_patch)return 0;
+    const LayoutRow *row=row_for(slot);
+    check(row && pointer(image,slot)==image+row->original,"only original slot may publish");put(image,slot,reinterpret_cast<Obj>(p));
+    published.push_back(slot);
     if(patch_calls==1)region_officers::frame(nullptr); // publication gate must not touch UI state
-    return true;
+    return 1;
 }
-static void restore_pointer(unsigned slot,unsigned original,void *p){if(pointer(image,slot)==p)put(image,slot,image+original);}
+struct Transaction {
+    size_t mark;bool done;
+    Transaction():mark(published.size()),done(false){}
+    ~Transaction(){if(!done)while(published.size()>mark){unsigned s=published.back();put(image,s,image+row_for(s)->original);published.pop_back();}}
+};
+}
 #ifndef COST_SCOPE
 #define COST_SCOPE(name) do {} while(0)
 #endif
+#define COST_CRUMB(name,value) do {} while(0)
 #include "../src/native_region_officers.inl"
 static void seed_profile(const char *path) {
     std::ifstream f(path,std::ios::binary);check(f.good(),"plain current EXE supplied");

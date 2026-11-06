@@ -4,6 +4,7 @@
 #include <dxgi1_2.h>
 #include "terrain_call_profile.h"
 #include "unified_overlay_policy.h"
+// layout_client (Layout API access, common log sink) lives in native_layout_client.inl, included earlier.
 namespace unified_overlay {
 // perf-begin
 #ifndef NO_RUNTIME_LOG
@@ -58,15 +59,19 @@ static void finish(const Frame &frame,LONGLONG elapsed){
 // perf-end
 using Present=HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *,UINT,UINT);
 using Present1=HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *,UINT,UINT,const DXGI_PRESENT_PARAMETERS *);
+#ifndef LAYOUT_OWNS_PRESENT
 static Present original_present;
 static Present1 original_present1;
+#endif
 static LONG requested,visible,ready,hover,dirty=1,generation;
 static bool attempted;
 static SRWLOCK geometry_lock=SRWLOCK_INIT,draw_lock=SRWLOCK_INIT;
 static Bounds rectangle;
 static int buffer_width,buffer_height;
 static HWND window;
+#ifndef LAYOUT_OWNS_PRESENT
 static WNDPROC original_window;
+#endif
 static Pointer mouse;
 static ID3D11Device *device;
 static ID3D11DeviceContext *context;
@@ -82,11 +87,6 @@ static void show(bool value) {
 }
 static bool take_click(){return InterlockedExchange(&requested,0)!=0;}
 }
-namespace officer_panel {
-static bool input(HWND hwnd,UINT message,LPARAM lparam);
-static void draw(ID3D11Device *device,ID3D11DeviceContext *context,ID3D11Texture2D *back,const D3D11_TEXTURE2D_DESC &desc,bool rgba);
-static bool is_visible();
-}
 namespace ccz_sprites {   // 조조전 병종 그림 (native_ccz_sprites.inl)
 static bool needs_present();
 static void on_present(ID3D11Device *d,ID3D11DeviceContext *c,ID3D11Texture2D *back,const D3D11_TEXTURE2D_DESC &desc);
@@ -97,14 +97,51 @@ static void draw(ID3D11Device *,ID3D11DeviceContext *,ID3D11Texture2D *,const D3
 }
 #include "native_advisor_overlay.inl"
 namespace unified_overlay {
-static LRESULT CALLBACK window_proc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
+#ifdef LAYOUT_OWNS_PRESENT
+static int __cdecl layout_window_proc(void *window_handle,unsigned message,uintptr_t wparam_value,intptr_t lparam_value,void *) { COST_SCOPE("window_proc");
+// perf-begin
+#ifndef NO_RUNTIME_LOG
+    COST_SCOPE("unified_overlay_window_proc");
+#endif
+// perf-end
+    HWND hwnd=static_cast<HWND>(window_handle);WPARAM wparam=static_cast<WPARAM>(wparam_value);LPARAM lparam=static_cast<LPARAM>(lparam_value);
+    if(briefing_overlay::input(hwnd,message,wparam,lparam))return 1;   // 1 = consumed; Layout then returns 0
+    bool active=read_flag(&visible) && read_flag(&ready),hit=false;
+    if(active && (message==WM_MOUSEMOVE || message==WM_LBUTTONDOWN || message==WM_LBUTTONUP || message==WM_LBUTTONDBLCLK)) {
+        RECT client={};GetClientRect(hwnd,&client);
+        AcquireSRWLockShared(&geometry_lock);
+        hit=client_hit(rectangle,static_cast<short>(LOWORD(lparam)),static_cast<short>(HIWORD(lparam)),
+            client.right,client.bottom,buffer_width,buffer_height);
+        ReleaseSRWLockShared(&geometry_lock);
+    }
+    if(message==WM_MOUSEMOVE) {
+        if(InterlockedExchange(&hover,hit?1:0)!=(hit?1:0))InterlockedExchange(&dirty,1);
+    } else if(message==WM_LBUTTONDOWN || message==WM_LBUTTONDBLCLK) {
+        if(mouse.down(active,hit,static_cast<unsigned>(read_flag(&generation))))return 1;
+    } else if(message==WM_LBUTTONUP) {
+        bool fire=false;
+        if(mouse.up(active,hit,static_cast<unsigned>(read_flag(&generation)),fire)) {
+            if(fire)InterlockedExchange(&requested,1);
+            return 1;
+        }
+    } else if(message==WM_KILLFOCUS || message==WM_CAPTURECHANGED || message==WM_SIZE || message==WM_DPICHANGED) {
+        mouse.armed=false;InterlockedExchange(&hover,0);InterlockedExchange(&dirty,1);
+    }
+    return 0;   // not consumed: later subscribers and the previous window procedure run
+}
+static bool bind(HWND hwnd) {
+    const San14LayoutApiV1 *api=layout_client::get();
+    if(!api || !api->wndproc_bind(hwnd))return false;
+    window=hwnd;return true;
+}
+#else
+static LRESULT CALLBACK window_proc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) { COST_SCOPE("window_proc");
 // perf-begin
 #ifndef NO_RUNTIME_LOG
     COST_SCOPE("unified_overlay_window_proc");
 #endif
 // perf-end
     if(briefing_overlay::input(hwnd,message,wparam,lparam))return 0;
-    if(officer_panel::input(hwnd,message,lparam))return 0;
     bool active=read_flag(&visible) && read_flag(&ready),hit=false;
     if(active && (message==WM_MOUSEMOVE || message==WM_LBUTTONDOWN || message==WM_LBUTTONUP || message==WM_LBUTTONDBLCLK)) {
         RECT client={};GetClientRect(hwnd,&client);
@@ -140,6 +177,7 @@ static bool bind(HWND hwnd) {
     InterlockedExchangePointer(reinterpret_cast<void *volatile *>(&original_window),reinterpret_cast<void *>(result));
     window=hwnd;return true;
 }
+#endif
 static bool raster(unsigned width,unsigned height,bool highlighted) {
     BITMAPINFO info={};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);
     info.bmiHeader.biWidth=static_cast<LONG>(width);info.bmiHeader.biHeight=-static_cast<LONG>(height);
@@ -207,11 +245,6 @@ static bool draw_locked(IDXGISwapChain *chain) {
         AcquireSRWLockExclusive(&geometry_lock);buffer_width=static_cast<int>(desc.Width);buffer_height=static_cast<int>(desc.Height);ReleaseSRWLockExclusive(&geometry_lock);
         briefing_overlay::draw(device,context,back,desc);
     }
-    // The roster filter panel shares the device, back buffer and window hook.
-    if(context && officer_panel::is_visible() && bind(swap.OutputWindow)) {
-        AcquireSRWLockExclusive(&geometry_lock);buffer_width=static_cast<int>(desc.Width);buffer_height=static_cast<int>(desc.Height);ReleaseSRWLockExclusive(&geometry_lock);
-        officer_panel::draw(device,context,back,desc,rgba);
-    }
     if(context && read_flag(&visible) && next.width>0 && next.height>0) {
         if(!texture || texture_width!=static_cast<unsigned>(next.width) || texture_height!=static_cast<unsigned>(next.height) || texture_format!=desc.Format) {
             if(texture){texture->Release();texture=nullptr;}
@@ -235,7 +268,7 @@ static bool draw_locked(IDXGISwapChain *chain) {
     back->Release();return success;
 }
 static void draw(IDXGISwapChain *chain,UINT flags) {
-    if((flags&DXGI_PRESENT_TEST) || (!read_flag(&visible) && !officer_panel::is_visible() && !briefing_overlay::needs_draw() && !terrain_render::needs_present() && !ccz_sprites::needs_present() && !ccz_preview::needs_draw()))return;
+    if((flags&DXGI_PRESENT_TEST) || (!read_flag(&visible) && !briefing_overlay::needs_draw() && !terrain_render::needs_present() && !ccz_sprites::needs_present() && !ccz_preview::needs_draw()))return;
     if(TryAcquireSRWLockExclusive(&draw_lock)) {
         InterlockedExchange(&ready,draw_locked(chain)?1:0);ReleaseSRWLockExclusive(&draw_lock);
     }
@@ -251,7 +284,20 @@ static void perf_draw_frame(IDXGISwapChain *chain,UINT flags) {
 #define draw(chain,flags) perf_draw_frame(chain,flags)
 #endif
 // perf-end
-static HRESULT STDMETHODCALLTYPE present(IDXGISwapChain *chain,UINT sync,UINT flags) {
+#ifdef LAYOUT_OWNS_PRESENT
+// Called by Layout before the next Present in the chain (never for DXGI_PRESENT_TEST).
+static void __cdecl layout_present(void *swap_chain,void *) { COST_SCOPE("present");
+// perf-begin
+#ifndef NO_RUNTIME_LOG
+    COST_SCOPE("unified_overlay_present");
+    terrain_profile::Frame terrain_frame(true);
+    TERRAIN_SCOPE(PresentHook);
+#endif
+// perf-end
+    draw(static_cast<IDXGISwapChain *>(swap_chain),0);
+}
+#else
+static HRESULT STDMETHODCALLTYPE present(IDXGISwapChain *chain,UINT sync,UINT flags) { COST_SCOPE("present");
 // perf-begin
 #ifndef NO_RUNTIME_LOG
     COST_SCOPE("unified_overlay_present");
@@ -267,7 +313,7 @@ static HRESULT STDMETHODCALLTYPE present(IDXGISwapChain *chain,UINT sync,UINT fl
 // perf-end
     return original_present(chain,sync,flags);
 }
-static HRESULT STDMETHODCALLTYPE present1(IDXGISwapChain1 *chain,UINT sync,UINT flags,const DXGI_PRESENT_PARAMETERS *parameters) {
+static HRESULT STDMETHODCALLTYPE present1(IDXGISwapChain1 *chain,UINT sync,UINT flags,const DXGI_PRESENT_PARAMETERS *parameters) { COST_SCOPE("present1");
 // perf-begin
 #ifndef NO_RUNTIME_LOG
     COST_SCOPE("unified_overlay_present1");
@@ -283,11 +329,22 @@ static HRESULT STDMETHODCALLTYPE present1(IDXGISwapChain1 *chain,UINT sync,UINT 
 // perf-end
     return original_present1(chain,sync,flags,parameters);
 }
+#endif
 // perf-begin
 #ifndef NO_RUNTIME_LOG
 #undef draw
 #endif
 // perf-end
+#ifdef LAYOUT_OWNS_PRESENT
+static void install() {
+    if(attempted)return;attempted=true;
+    const San14LayoutApiV1 *api=layout_client::get();
+    if(!api) {log_event("layout_missing_overlay_off");return;}   // no Layout: overlays and the Present hook stay off
+    bool input=api->wndproc_subscribe(&layout_window_proc,nullptr)>=0;
+    bool drawing=input && api->overlay_subscribe(&layout_present,nullptr)>=0;
+    log_event("layout_overlay_subscribed",input?1:0,drawing?1:0);
+}
+#else
 static bool install_slot(void **slot,void *hook,void **original) {
     DWORD protection=0;if(!VirtualProtect(slot,sizeof(void *),PAGE_READWRITE,&protection))return false;
     *original=*slot;InterlockedExchangePointer(slot,hook);DWORD ignored=0;VirtualProtect(slot,sizeof(void *),protection,&ignored);return true;
@@ -314,5 +371,5 @@ static void install() {
     }
     if(temporary_context)temporary_context->Release();if(temporary)temporary->Release();if(chain)chain->Release();DestroyWindow(probe);
 }
+#endif
 }
-#include "native_officer_panel.inl"

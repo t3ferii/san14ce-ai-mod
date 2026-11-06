@@ -1,5 +1,6 @@
 // Native requests are asynchronous. Keep source lists, columns, output pointers,
 // callbacks and text alive until the game has left the corresponding state.
+#include "game_addresses.h"
 #include <functional>
 #include <memory>
 #include <string>
@@ -7,10 +8,10 @@
 namespace unified_dialogs {
 // 2C1381 loads this native CDataSelectDlg change delegate before binding 0x514.
 // 13AEFA0 is unrelated data with a null first slot (2026-11-03 crash dump).
-static constexpr unsigned kChangeDelegateRva=0x13ADFA0;
+static const unsigned kChangeDelegateRva=GA(GA_13ADFA0);
 struct List {
     GameList value;
-    List(){list_init(value,0x13436B0);}
+    List(){list_init(value,GA(GA_13436B0));}
     ~List(){list_free(value);}
     List(const List &)=delete;List &operator=(const List &)=delete;
 };
@@ -38,9 +39,9 @@ static void initialize_completion() {
     completion_vtable[0]=reinterpret_cast<void *>(&copy_completion);
     completion_vtable[1]=reinterpret_cast<void *>(&copy_completion);
     completion_vtable[2]=reinterpret_cast<void *>(&complete);
-    completion_vtable[3]=reinterpret_cast<void *>(fn<Obj(__fastcall *)()>(0x7AEC20));
-    completion_vtable[4]=reinterpret_cast<void *>(fn<void(__fastcall *)(Obj,char)>(0x90B5D0));
-    completion_vtable[5]=reinterpret_cast<void *>(fn<Obj(__fastcall *)(Obj)>(0x7FEB90));
+    completion_vtable[3]=reinterpret_cast<void *>(fn<Obj(__fastcall *)()>(GA(GA_7AEC20)));
+    completion_vtable[4]=reinterpret_cast<void *>(fn<void(__fastcall *)(Obj,char)>(GA(GA_90B5D0)));
+    completion_vtable[5]=reinterpret_cast<void *>(fn<Obj(__fastcall *)(Obj)>(GA(GA_7FEB90)));
 }
 template<class T>static T *retain(std::unique_ptr<T> value) {
     T *r=value.get();r->parent=active;active=r;retained.push_back(std::move(value));return r;
@@ -79,11 +80,11 @@ struct Dialog:Request {
     // A native child dialog, without another modal state or global channel.
     std::unique_ptr<Dialog> sidebar;
     bool initialized=false;
-    Dialog(){fn<Obj(__fastcall *)(Obj)>(0x250EA0)(config);initialized=true;}
-    ~Dialog(){if(initialized)fn<void(__fastcall *)(Obj)>(0x251A10)(config);}
+    Dialog(){fn<Obj(__fastcall *)(Obj)>(GA(GA_250EA0))(config);initialized=true;}
+    ~Dialog(){if(initialized)fn<void(__fastcall *)(Obj)>(GA(GA_251A10))(config);}
 };
 static bool owns(const Dialog &r) {
-    if(!r.object || pointer(image+0x27D3CA0,r.channel*8)!=r.object)return false;
+    if(!r.object || pointer(image+GA(GA_27D3CA0),r.channel*8)!=r.object)return false;
     Obj config=pointer(r.object,0x1A8);
     return config && pointer(config,8)==reinterpret_cast<Obj>(const_cast<Tab *>(r.tabs.data())) &&
         pointer(config,0x28)==reinterpret_cast<Obj>(const_cast<wchar_t *>(r.title.c_str()));
@@ -98,9 +99,9 @@ static void __fastcall command_click(Command *self,Obj *) { COST_SCOPE("unified_
 static void set_commands(Dialog &r) {
     command_vtable[0]=reinterpret_cast<void *>(&copy_command);command_vtable[1]=reinterpret_cast<void *>(&copy_command);
     command_vtable[2]=reinterpret_cast<void *>(&command_click);
-    command_vtable[3]=reinterpret_cast<void *>(fn<Obj(__fastcall *)()>(0x7AEC20));
-    command_vtable[4]=reinterpret_cast<void *>(fn<void(__fastcall *)(Obj,char)>(0x90B5D0));
-    command_vtable[5]=reinterpret_cast<void *>(fn<Obj(__fastcall *)(Obj)>(0x7FEB90));
+    command_vtable[3]=reinterpret_cast<void *>(fn<Obj(__fastcall *)()>(GA(GA_7AEC20)));
+    command_vtable[4]=reinterpret_cast<void *>(fn<void(__fastcall *)(Obj,char)>(GA(GA_90B5D0)));
+    command_vtable[5]=reinterpret_cast<void *>(fn<Obj(__fastcall *)(Obj)>(GA(GA_7FEB90)));
     for(unsigned i=0;i<3;++i)if(!r.button_names[i].empty()) {
         Obj record=r.config+0x310+i*0x50;
         *reinterpret_cast<const wchar_t **>(record)=r.button_names[i].c_str();
@@ -120,7 +121,7 @@ static void configure(Dialog &r) {
 static void dispose_sidebar(Dialog &r) {
     if(!r.sidebar || !r.sidebar->object)return;
     Obj object=r.sidebar->object;r.sidebar->object=nullptr;
-    Obj application=ui_call_trace::call(ui_call_trace::DisposeManager,0x14CB00,fn<Obj(__fastcall *)()>(0x14CB00));
+    Obj application=ui_call_trace::call(ui_call_trace::DisposeManager,GA(GA_14CB00),fn<Obj(__fastcall *)()>(GA(GA_14CB00)));
     Obj context=application?pointer(application,0x210):nullptr;
     auto leave=*reinterpret_cast<void(__fastcall **)(Obj,Obj)>(pointer(object,0)+0x28);
     leave(object,context);
@@ -135,42 +136,42 @@ struct PaneBounds {int x,y,width,height;};
 static constexpr PaneBounds roster_bounds{64,200,1200,690},condition_bounds{1344,200,496,690};
 static void dispose_control(Obj object) {
     if(!object)return;
-    Obj application=ui_call_trace::call(ui_call_trace::DisposeManager,0x14CB00,fn<Obj(__fastcall *)()>(0x14CB00));
+    Obj application=ui_call_trace::call(ui_call_trace::DisposeManager,GA(GA_14CB00),fn<Obj(__fastcall *)()>(GA(GA_14CB00)));
     Obj context=application?pointer(application,0x210):nullptr;
     auto leave=*reinterpret_cast<void(__fastcall **)(Obj,Obj)>(pointer(object,0)+0x28);ui_call_trace::call(ui_call_trace::DisposeLeave,ui_call_trace::target(reinterpret_cast<uintptr_t>(leave)),leave,object,context);
     auto destroy=*reinterpret_cast<void(__fastcall **)(Obj,int)>(pointer(object,0));ui_call_trace::call(ui_call_trace::DisposeDestroy,ui_call_trace::target(reinterpret_cast<uintptr_t>(destroy)),destroy,object,1);
 }
 static Obj make_data_list(Dialog &r,Obj parent,PaneBounds bounds) {
-    Obj object=ui_call_trace::call(ui_call_trace::ListAlloc,0x3F6BC0,fn<Obj(__fastcall *)(size_t)>(0x3F6BC0),size_t(0x310));if(!object)return nullptr;
-    object=ui_call_trace::call(ui_call_trace::ListCtor,0x2504D0,fn<Obj(__fastcall *)(Obj)>(0x2504D0),object);
+    Obj object=ui_call_trace::call(ui_call_trace::ListAlloc,GA(GA_3F6BC0),fn<Obj(__fastcall *)(size_t)>(GA(GA_3F6BC0)),size_t(0x310));if(!object)return nullptr;
+    object=ui_call_trace::call(ui_call_trace::ListCtor,GA(GA_2504D0),fn<Obj(__fastcall *)(Obj)>(GA(GA_2504D0)),object);
     const unsigned settings[][2]={{0x254,0xAC},{0x268,0x110},{0x26C,0x114},{0x270,0x118},{0x274,0x11C},{0x308,0x178}};
     for(const auto &setting:settings)*reinterpret_cast<unsigned *>(object+setting[0])=dword(r.config,setting[1]);
     Link *begin=list_first(r.source.value),*end=nullptr;
     alignas(8) unsigned char callback[64]={};
     unsigned flags=dword(r.config,0x18)>1 && dword(r.config,0x100)?1u:0u;
     // Exact CDataList::Init ABI used by 2C0820; no second fullscreen dialog.
-    ui_call_trace::call(ui_call_trace::ListInit,0x2BEFE0,fn<unsigned(__fastcall *)(Obj,int,int,int,int,Obj,Link **,Link **,Tab *,Obj,Obj,unsigned,Obj)>(0x2BEFE0),
+    ui_call_trace::call(ui_call_trace::ListInit,GA(GA_2BEFE0),fn<unsigned(__fastcall *)(Obj,int,int,int,int,Obj,Link **,Link **,Tab *,Obj,Obj,unsigned,Obj)>(GA(GA_2BEFE0)),
          object,bounds.x,bounds.y,bounds.width,bounds.height,parent,&begin,&end,r.tabs.data(),
          pointer(r.config,0x10),r.config+0x18,flags,callback);
     Obj bodies=pointer(object,0x130);unsigned count=dword(object,0x20C);
     for(unsigned i=0;bodies && i<count;++i)if(Obj body=pointer(bodies,i*8))
         *reinterpret_cast<uint64_t *>(body+0x170)=*reinterpret_cast<uint64_t *>(r.config+0x18);
     begin=list_first(r.initial.value);
-    ui_call_trace::call(ui_call_trace::ListChecks,0x2EE480,fn<void(__fastcall *)(Obj,Link **,Link **)>(0x2EE480),object,&begin,&end);
-    ui_call_trace::call(ui_call_trace::ListEnter,0x86E100,fn<void(__fastcall *)(Obj,Obj)>(0x86E100),object,parent);
+    ui_call_trace::call(ui_call_trace::ListChecks,GA(GA_2EE480),fn<void(__fastcall *)(Obj,Link **,Link **)>(GA(GA_2EE480)),object,&begin,&end);
+    ui_call_trace::call(ui_call_trace::ListEnter,GA(GA_86E100),fn<void(__fastcall *)(Obj,Obj)>(GA(GA_86E100)),object,parent);
     return object;
 }
 static Obj make_scrollbar(Obj list,Obj parent,PaneBounds bounds) {
-    Obj object=ui_call_trace::call(ui_call_trace::BarAlloc,0x3F6BC0,fn<Obj(__fastcall *)(size_t)>(0x3F6BC0),size_t(0x1C8));if(!object)return nullptr;
-    object=ui_call_trace::call(ui_call_trace::BarCtor,0x84B300,fn<Obj(__fastcall *)(Obj)>(0x84B300),object);
+    Obj object=ui_call_trace::call(ui_call_trace::BarAlloc,GA(GA_3F6BC0),fn<Obj(__fastcall *)(size_t)>(GA(GA_3F6BC0)),size_t(0x1C8));if(!object)return nullptr;
+    object=ui_call_trace::call(ui_call_trace::BarCtor,GA(GA_84B300),fn<Obj(__fastcall *)(Obj)>(GA(GA_84B300)),object);
     auto initialize=*reinterpret_cast<unsigned(__fastcall **)(Obj,int,int,int,Obj)>(pointer(object,0)+0x188);
     ui_call_trace::call(ui_call_trace::BarInit,ui_call_trace::target(reinterpret_cast<uintptr_t>(initialize)),initialize,object,bounds.x+bounds.width+8,bounds.y+80,bounds.height-80,parent);
     *reinterpret_cast<Obj *>(list+0x138)=object;
     Obj bodies=pointer(list,0x130);unsigned index=dword(list,0x208),count=dword(list,0x20C);
     // 2026-11-03 crash: 867930 takes (body, scrollbar). RDX is stored at
     // body+178 and receives an event delegate; omitting it registers on garbage.
-    if(bodies && index<count)if(Obj body=pointer(bodies,index*8))ui_call_trace::call(ui_call_trace::BarBind,0x867930,fn<void(__fastcall *)(Obj,Obj)>(0x867930),body,object);
-    ui_call_trace::call(ui_call_trace::BarEnter,0x86E100,fn<void(__fastcall *)(Obj,Obj)>(0x86E100),object,parent);
+    if(bodies && index<count)if(Obj body=pointer(bodies,index*8))ui_call_trace::call(ui_call_trace::BarBind,GA(GA_867930),fn<void(__fastcall *)(Obj,Obj)>(GA(GA_867930)),body,object);
+    ui_call_trace::call(ui_call_trace::BarEnter,GA(GA_86E100),fn<void(__fastcall *)(Obj,Obj)>(GA(GA_86E100)),object,parent);
     return object;
 }
 static bool attach_sidebar(Dialog &r) {
@@ -188,22 +189,23 @@ static bool attach_sidebar(Dialog &r) {
     dispose_control(old_list);dispose_control(old_bar);
     // One viewport-sized host, two bounded siblings. Never center another
     // fullscreen dialog inside the roster or inherit its fullscreen backdrop.
-    fn<void(__fastcall *)(Obj,int,int)>(0x874650)(r.object,0,0);
-    fn<void(__fastcall *)(Obj,int)>(0x875F00)(r.object,1920);
-    fn<void(__fastcall *)(Obj,int)>(0x8740F0)(r.object,1080);
+    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_874650))(r.object,0,0);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_875F00))(r.object,1920);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_8740F0))(r.object,1080);
     alignas(8) unsigned char changed[64]={};
     *reinterpret_cast<Obj *>(changed)=image+kChangeDelegateRva;
     *reinterpret_cast<Obj *>(changed+8)=r.object;*reinterpret_cast<Obj *>(changed+56)=changed;
-    fn<void(__fastcall *)(Obj,unsigned,Obj)>(0x1A3CB0)(left,0x514,changed);
-    fn<void(__fastcall *)(Obj)>(0x2FC280)(r.object);
+    fn<void(__fastcall *)(Obj,unsigned,Obj)>(GA(GA_1A3CB0))(left,0x514,changed);
+    fn<void(__fastcall *)(Obj)>(GA(GA_2FC280))(r.object);
     return true;
 }
 static void process_control(Obj object,unsigned offset) {
     if(object){auto process=*reinterpret_cast<void(__fastcall **)(Obj)>(pointer(object,0)+offset);process(object);}
 }
-static void __fastcall frame(Obj object) { COST_SCOPE("unified_dialogs::frame");
-    if(ui_call_trace::sample(ui_call_trace::DialogFrame,4))ui_call_trace::call(ui_call_trace::DialogFrame,0x2FB440,fn<void(__fastcall *)(Obj)>(0x2FB440),object);
-    else fn<void(__fastcall *)(Obj)>(0x2FB440)(object);
+static void *next_frame,*next_controls,*next_destroy;   // Layout manager chain (null: original)
+static void __fastcall frame(Obj object) { COST_SCOPE("unified_dialogs::frame"); COST_CRUMB("unified_dialogs_object",object);
+    if(ui_call_trace::sample(ui_call_trace::DialogFrame,4))ui_call_trace::call(ui_call_trace::DialogFrame,GA(GA_2FB440),next_or<void(__fastcall *)(Obj)>(next_frame,GA(GA_2FB440)),object);
+    else next_or<void(__fastcall *)(Obj)>(next_frame,GA(GA_2FB440))(object);
     Dialog *owner=nullptr;
     for(auto &request:retained)if(auto r=dynamic_cast<Dialog *>(request.get()))
         if(!r->completed && r->object==object){owner=r;break;}
@@ -214,18 +216,20 @@ static void __fastcall frame(Obj object) { COST_SCOPE("unified_dialogs::frame");
     // May open pickers (retained grows): call after the scan, never inside it.
     if(owner->on_frame && owns(*owner))owner->on_frame(*owner,active==owner);
 }
-static void __fastcall controls(Obj object) { COST_SCOPE("unified_dialogs::controls");
-    if(ui_call_trace::sample(ui_call_trace::DialogControls,4))ui_call_trace::call(ui_call_trace::DialogControls,0x258170,fn<void(__fastcall *)(Obj)>(0x258170),object);
-    else fn<void(__fastcall *)(Obj)>(0x258170)(object);
+static void __fastcall controls(Obj object) { COST_SCOPE("unified_dialogs::controls"); COST_CRUMB("unified_dialogs_object",object);
+    using Controls=void(__fastcall *)(Obj);
+    auto next=next_or<Controls>(next_controls,GA(GA_258170));
+    if(ui_call_trace::sample(ui_call_trace::DialogControls,4))ui_call_trace::call(ui_call_trace::DialogControls,GA(GA_258170),next,object);
+    else next(object);
     for(auto &request:retained)if(auto r=dynamic_cast<Dialog *>(request.get()))
         if(!r->completed && r->object==object && r->sidebar && r->sidebar->object && active==r) {
             process_control(r->sidebar->object,0x38);process_control(r->sidebar->scrollbar,0x38);break;
         }
 }
-static Obj __fastcall destroy(Obj object,unsigned flags) { COST_SCOPE("unified_dialogs::destroy");
+static Obj __fastcall destroy(Obj object,unsigned flags) { COST_SCOPE("unified_dialogs::destroy"); COST_CRUMB("unified_dialogs_object",object);
     for(auto &request:retained)if(auto r=dynamic_cast<Dialog *>(request.get()))
         if(r->object==object){dispose_sidebar(*r);break;}
-    return fn<Obj(__fastcall *)(Obj,unsigned)>(0x256970)(object,flags);
+    return next_or<Obj(__fastcall *)(Obj,unsigned)>(next_destroy,GA(GA_256970))(object,flags);
 }
 static Dialog *parent_dialog(Request *r) {
     for(;r;r=r->parent)if(auto dialog=dynamic_cast<Dialog *>(r))return dialog;return nullptr;
@@ -234,19 +238,19 @@ static bool open(std::unique_ptr<Dialog> request) {
     Dialog *r=request.get();Dialog *parent=parent_dialog(active);
     r->channel=parent?parent->channel+1:0;
     // Over a native screen (e.g. the officer roster) start at the first free slot.
-    if(!parent)while(r->channel<8 && pointer(image+0x27D3CA0,r->channel*8))++r->channel;
+    if(!parent)while(r->channel<8 && pointer(image+GA(GA_27D3CA0),r->channel*8))++r->channel;
     if(r->channel>=8)return false;
     ui_call_trace::run(ui_call_trace::Configure,[&]{configure(*r);});ui_call_trace::run(ui_call_trace::Retain,[&]{retain(std::move(request));});
-    ui_call_trace::call(ui_call_trace::Create,0x45B620,fn<void(__fastcall *)(Obj,int)>(0x45B620),r->config,static_cast<int>(r->channel));
-    r->object=pointer(image+0x27D3CA0,r->channel*8);
+    ui_call_trace::call(ui_call_trace::Create,GA(GA_45B620),fn<void(__fastcall *)(Obj,int)>(GA(GA_45B620)),r->config,static_cast<int>(r->channel));
+    r->object=pointer(image+GA(GA_27D3CA0),r->channel*8);
     if(!r->object){r->completed=r->delivered=true;active=r->parent;return false;}
     if(r->on_created)r->on_created(*r);
     ui_call_trace::run(ui_call_trace::Sidebar,[&]{return attach_sidebar(*r);});
     Obj modal=r->object;
     alignas(8) unsigned char callback[64];ui_call_trace::run(ui_call_trace::Completion,[&]{completion_storage(callback,r);});
-    Obj manager=ui_call_trace::call(ui_call_trace::DisposeManager,0x110E0,fn<Obj(__fastcall *)()>(0x110E0));
-    ui_call_trace::call(ui_call_trace::Enqueue,0x45ED60,fn<void(__fastcall *)(Obj,Obj,Obj,Obj)>(0x45ED60),
-        manager,image+0x13F13E8,reinterpret_cast<Obj>(&modal),static_cast<Obj>(callback));
+    Obj manager=ui_call_trace::call(ui_call_trace::DisposeManager,GA(GA_110E0),fn<Obj(__fastcall *)()>(GA(GA_110E0)));
+    ui_call_trace::call(ui_call_trace::Enqueue,GA(GA_45ED60),fn<void(__fastcall *)(Obj,Obj,Obj,Obj)>(GA(GA_45ED60)),
+        manager,image+GA(GA_13F13E8),reinterpret_cast<Obj>(&modal),static_cast<Obj>(callback));
     return true;
 }
 static void collect_list(Dialog &r,GameList &out) {
@@ -254,7 +258,7 @@ static void collect_list(Dialog &r,GameList &out) {
     Obj list=r.standalone_list?r.object:pointer(r.object,0x180);if(!list)return;
     unsigned index=dword(list,0x208),count=dword(list,0x20C);
     Obj bodies=pointer(list,0x130);if(!bodies || index>=count)return;
-    Obj body=pointer(bodies,index*8);if(body)fn<void(__fastcall *)(Obj,GameList *)>(0x6DD290)(body,&out);
+    Obj body=pointer(bodies,index*8);if(body)fn<void(__fastcall *)(Obj,GameList *)>(GA(GA_6DD290))(body,&out);
 }
 static void collect(Dialog &r,GameList &out) {
     if(r.completed || !owns(r))return;collect_list(r,out);
@@ -275,7 +279,7 @@ static std::unique_ptr<Dialog> choices(const std::wstring &title,const std::vect
         if(!list_add(r->source.value,reinterpret_cast<Obj>(&row)))return nullptr;
         if(initial.count(row.id) && !list_add(r->initial.value,reinterpret_cast<Obj>(&row)))return nullptr;
     }
-    memcpy(r->column,image+0x1A2B850+3*0x60,0x60);
+    memcpy(r->column,image+GA(GA_1A2B850)+3*0x60,0x60);
     *reinterpret_cast<unsigned *>(r->column)=0;
     *reinterpret_cast<const wchar_t **>(r->column+8)=L"선택 항목";
     *reinterpret_cast<unsigned *>(r->column+0x10)=1200;
@@ -303,15 +307,15 @@ static bool pick(const std::wstring &title,const std::vector<std::wstring> &labe
 struct Number:Request {
     struct Data {int x=650,y=350;Obj style;int minimum,maximum;int *value;} data;
     int value;
-    explicit Number(int initial):value(initial){data.style=image+0x13A0FF0;data.value=&value;}
+    explicit Number(int initial):value(initial){data.style=image+GA(GA_13A0FF0);data.value=&value;}
 };
 static bool number(int initial,int minimum,int maximum,std::function<void(bool,int)> done) {
     if(minimum>maximum || initial<minimum || initial>maximum)return false;
     auto request=std::make_unique<Number>(initial);Number *r=request.get();r->data.minimum=minimum;r->data.maximum=maximum;
     r->done=[r,done=std::move(done)](bool ok){done(ok,r->value);};retain(std::move(request));
     alignas(8) unsigned char callback[64];completion_storage(callback,r);
-    fn<void(__fastcall *)(Obj,Obj,Obj,Obj)>(0x45E1E0)
-        (fn<Obj(__fastcall *)()>(0x110E0)(),image+0x13EAC48,reinterpret_cast<Obj>(&r->data),callback);
+    fn<void(__fastcall *)(Obj,Obj,Obj,Obj)>(GA(GA_45E1E0))
+        (fn<Obj(__fastcall *)()>(GA(GA_110E0))(),image+GA(GA_13EAC48),reinterpret_cast<Obj>(&r->data),callback);
     return true;
 }
 struct Text:Request {
@@ -333,8 +337,8 @@ static bool input(std::function<void(bool,const std::wstring &)> done) {
     auto request=std::make_unique<Text>();Text *r=request.get();
     r->done=[r,done=std::move(done)](bool ok){done(ok,ok?decode(r->value):L"");};retain(std::move(request));
     alignas(8) unsigned char callback[64];completion_storage(callback,r);
-    fn<void(__fastcall *)(Obj,Obj,Obj,Obj)>(0x464140)
-        (fn<Obj(__fastcall *)()>(0x110E0)(),image+0x13EA120,reinterpret_cast<Obj>(&r->data),callback);
+    fn<void(__fastcall *)(Obj,Obj,Obj,Obj)>(GA(GA_464140))
+        (fn<Obj(__fastcall *)()>(GA(GA_110E0))(),image+GA(GA_13EA120),reinterpret_cast<Obj>(&r->data),callback);
     return true;
 }
 static void abandon() {
@@ -344,9 +348,9 @@ static void abandon() {
 static void release_closed() {
     if(active)return;
     for(auto &r:retained)if(r->delivered)if(auto dialog=dynamic_cast<Dialog *>(r.get())) {
-        Obj slot=image+0x27D3CA0+dialog->channel*8;
+        Obj slot=image+GA(GA_27D3CA0)+dialog->channel*8;
         if(owns(*dialog)) {
-            Obj application=fn<Obj(__fastcall *)()>(0x14CB00)();
+            Obj application=fn<Obj(__fastcall *)()>(GA(GA_14CB00))();
             Obj context=application?pointer(application,0x210):nullptr;if(!context)return;
             Obj object=dialog->object;
             dispose_sidebar(*dialog);

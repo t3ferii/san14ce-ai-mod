@@ -1,3 +1,4 @@
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import ga_expand  # user 2026-11-05 patch resilience: sources spell addresses as GA(GA_x)
 """Independent check of face_keep guard constants against the DRM-free analysis EXE and the captured
 running .text (2026-10-25 user: army flag faces stay loaded), plus the decoded behaviour it relies on."""
 from pathlib import Path

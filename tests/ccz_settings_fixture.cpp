@@ -56,6 +56,36 @@ static bool patch_pointer(unsigned slot,unsigned original,void *replacement){
 }
 static void restore_pointer(unsigned slot,unsigned original,void *replacement){if(pointer(image,slot)==replacement)point(image,slot,image+original);}
 namespace ccz_settings { static void tick(Obj){} static bool show(){return true;} static void abandon(){} }
+#define COST_SCOPE(name) do {} while(0)
+// 2026-11-05 user Layout compatibility design 8: ccz_title::install registers its three vtable slots and the 4E83F3 CALL
+// with the SAN14_Layout.dll hook manager (layout_client). This stub plays the manager and keeps the former checks:
+// registration order (initialize last, after both lifetime handlers and the CALL), refusal of non-original slots,
+// failure injection, and the roll-back of a failed install (layout_client::Transaction).
+#include "../src/layout_registry.h"
+#include <vector>
+template<class T> static T next_pick(T next,unsigned rva){return next?next:fn<T>(rva);}
+namespace layout_client {
+static std::vector<std::pair<unsigned,unsigned>> done_slots;
+static bool call_done;
+static const LayoutRow *row_for(unsigned rva){for(unsigned i=0;i<layout_row_count;++i)if(layout_rows[i].rva==rva)return &layout_rows[i];return nullptr;}
+static int vt(unsigned slot,void *replacement,void **,uint32_t=0){
+    const LayoutRow *row=row_for(slot);if(!row || !patch_pointer(slot,row->original,replacement))return 0;
+    done_slots.push_back({slot,row->original});return 1;
+}
+static int call(unsigned,void *,void **,uint32_t=0){
+    if(callsite_prepare_fail || callsite_publish_fail)return 0;
+    fixture_callsite_published=true;call_done=true;return 1;
+}
+struct Transaction {
+    size_t mark;bool had_call,done;
+    Transaction():mark(done_slots.size()),had_call(call_done),done(false){}
+    ~Transaction(){
+        if(done)return;
+        while(done_slots.size()>mark){auto s=done_slots.back();restore_pointer(s.first,s.second,pointer(image,s.first));done_slots.pop_back();}
+        if(call_done && !had_call){call_done=false;fixture_callsite_published=false;}
+    }
+};
+}
 #include "../src/native_ccz_title.inl"
 static unsigned long long __fastcall original_initialize(Obj s){
     number(fixture_peer.data(),0x40,3);
@@ -122,6 +152,9 @@ static void *function(unsigned rva){
     default:check(false,"unexpected game function");return nullptr;
     }
 }
+static bool title_slots_original(){
+    return pointer(image,ccz_title::kVtable+8)==image+0x504670 && pointer(image,ccz_title::kVtable+16)==image+0x4F9310 && pointer(image,ccz_title::kVtable+40)==image+0x50B800;
+}
 int wmain(int argc,wchar_t **argv){
     check(argc==4,"fixture takes running text, isolated ini, preview bitmap");self_module=GetModuleHandleW(nullptr);wcscpy_s(ini_path,argv[2]);
     image=static_cast<Obj>(VirtualAlloc(nullptr,0x2800000,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));check(image!=nullptr,"synthetic image");
@@ -129,9 +162,9 @@ int wmain(int argc,wchar_t **argv){
     point(image,ccz_title::kVtable+8,image+0x504670);point(image,ccz_title::kVtable+16,image+0x4F9310);point(image,ccz_title::kVtable+40,image+0x50B800);
     check(ccz_title::guards_match(),"all guards match independent retained running code");
     for(auto &g:ccz_title::guards){image[g.rva]^=1;check(!ccz_title::guards_match(),"foreign native code rejected");image[g.rva]^=1;}
-    for(unsigned fail:{1u,2u}){fail_at=fail;callsite_prepare_fail=false;callsite_publish_fail=false;patches=0;check(!ccz_title::install(),"injected lifetime publication failure rejected");check(ccz_title::guards_match(),"earlier title slots rolled back");}
-    fail_at=0;callsite_prepare_fail=true;callsite_publish_fail=false;patches=0;check(!ccz_title::install(),"callsite preparation failure rejected");check(ccz_title::guards_match(),"prepare failure leaves title slots unchanged");
-    callsite_prepare_fail=false;callsite_publish_fail=true;patches=0;check(!ccz_title::install(),"callsite publication failure rejected");check(ccz_title::guards_match(),"callsite failure rolls back title slots");
+    for(unsigned fail:{1u,2u}){fail_at=fail;callsite_prepare_fail=false;callsite_publish_fail=false;patches=0;check(!ccz_title::install(),"injected lifetime publication failure rejected");check(ccz_title::guards_match() && title_slots_original(),"earlier title slots rolled back");}
+    fail_at=0;callsite_prepare_fail=true;callsite_publish_fail=false;patches=0;check(!ccz_title::install(),"callsite preparation failure rejected");check(ccz_title::guards_match() && title_slots_original(),"prepare failure leaves title slots unchanged");
+    callsite_prepare_fail=false;callsite_publish_fail=true;patches=0;check(!ccz_title::install(),"callsite publication failure rejected");check(ccz_title::guards_match() && title_slots_original() && !fixture_callsite_published,"callsite failure rolls back title slots");
     callsite_publish_fail=false;fail_at=3;patches=0;check(!ccz_title::install(),"initialize publication failure rejected");check(ccz_title::guards_match() && !fixture_callsite_published,"initialize failure rolls back callsite and title slots");
     fail_at=0;patches=0;check(ccz_title::install(),"title hooks publish");
     check(pointer(image,ccz_title::kVtable+8)==reinterpret_cast<Obj>(&ccz_title::initialize) && pointer(image,ccz_title::kVtable+16)==reinterpret_cast<Obj>(&ccz_title::leave),"title hooks single owner");

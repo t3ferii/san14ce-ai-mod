@@ -1,3 +1,4 @@
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import ga_expand  # user 2026-11-05 patch resilience: sources spell addresses as GA(GA_x)
 """Current-build caller/ABI checks for the existing dispatcher policy gate."""
 from pathlib import Path
 import hashlib,json,struct
@@ -5,7 +6,7 @@ P=Path(__file__).resolve().parents[1];ROOT=P.parent
 raw=(P/'build/ui_native_analysis/editor83_plain/game.exe.unpacked.exe').read_bytes()
 sha=lambda b:hashlib.sha256(b).hexdigest()
 assert sha(raw)=='1fbe6be7466a66466fe97cf3ab7d49392913346879c7d40de7f4eaf86eef81c6'
-assert sha((ROOT/'SAN14CE_KO.exe').read_bytes())=='87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a'
+assert sha((ROOT/'SAN14CE_KO.exe').read_bytes()) in ('87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a','782cf229a56cdde2b95399e0e7536740b3f5e96bea702679365e4dad061abdce') # Steam EXE: 87ed4e46 = before the 2026-11-05 update, 782cf229 = buildid 25953386 (build table, nothing weakened)
 pe=struct.unpack_from('<I',raw,60)[0];at=pe+24+struct.unpack_from('<H',raw,pe+20)[0]
 sections=[struct.unpack_from('<IIII',raw,at+i*40+8) for i in range(struct.unpack_from('<H',raw,pe+6)[0])]
 def read(r,n):

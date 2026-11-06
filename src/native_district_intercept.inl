@@ -16,6 +16,7 @@
 // Owner of the 1EC890 hook: the combat module when it is loaded (sortie_dispatch
 // calls blocked() first); otherwise SAN14_Convenience.dll publishes its own
 // entry hook (native_district_intercept_link.inl). Never both: the convenience module checks for the combat DLL.
+#include "game_addresses.h"
 namespace district_intercept {
 using Dispatch=Obj(__fastcall *)(unsigned *,int);
 enum Verdict {Allow,BlockSupport,BlockDomestic};
@@ -119,7 +120,7 @@ static void diag_line(const char *text) {
     ReleaseSRWLockExclusive(&diag_lock);
 }
 static void diag_departure(Obj district,unsigned corps_index,const unsigned *command,int verdict) {
-    if(!fn<int(__fastcall *)(Obj)>(0x233750)(district))return;
+    if(!fn<int(__fastcall *)(Obj)>(GA(GA_233750))(district))return;
     char line[160];
     _snprintf_s(line,sizeof(line),_TRUNCATE,"%llu,%lu,corps%u,no%u,policy%u,perm%02X,person%u,action%u,kind%u,target%u,soldiers%u,verdict%d\r\n",
         GetTickCount64(),GetCurrentThreadId(),corps_index,district[0x11],district[0x17],district[0x1B],command[0],command[13],command[14],command[15],command[2],verdict);
@@ -132,10 +133,10 @@ static void diag_line(const char *) {}
 // Player-delegated corps with policy 지원/내정 (not the ruler's direct corps).
 static bool restricted_corps(Obj district) {
     if(!valid(district) || (district[0x17]!=kPolicySupport && district[0x17]!=kPolicyDomestic))return false;
-    if(!fn<int(__fastcall *)(Obj)>(0x233750)(district))return false;
+    if(!fn<int(__fastcall *)(Obj)>(GA(GA_233750))(district))return false;
     Obj root=world(),context=root?pointer(root,0x871E8):nullptr;
     if(!context)return false;
-    Obj direct=fn<Obj(__fastcall *)(Obj)>(0x32E8D0)(context);
+    Obj direct=fn<Obj(__fastcall *)(Obj)>(GA(GA_32E8D0))(context);
     return valid(direct) && district!=direct;
 }
 static Verdict judge(const unsigned *command) {
@@ -146,10 +147,10 @@ static Verdict judge(const unsigned *command) {
     if(!valid(district))return Allow;
     const unsigned policy=district[0x17],action=command[13];
     if(policy!=kPolicySupport && policy!=kPolicyDomestic) {diag_departure(district,person[0xE0],command,-1);return Allow;} // other policies and unknown values pass
-    if(!fn<int(__fastcall *)(Obj)>(0x233750)(district))return Allow;   // player force, not computer
+    if(!fn<int(__fastcall *)(Obj)>(GA(GA_233750))(district))return Allow;   // player force, not computer
     Obj root=world(),context=root?pointer(root,0x871E8):nullptr;
     if(!context)return Allow;
-    Obj direct=fn<Obj(__fastcall *)(Obj)>(0x32E8D0)(context);
+    Obj direct=fn<Obj(__fastcall *)(Obj)>(GA(GA_32E8D0))(context);
     // Missing/unknown direct-corps context must not suppress a player's command.
     if(!valid(direct) || district==direct)return Allow;
     Verdict v=policy==kPolicySupport?(action==2 || action==3?Allow:BlockSupport):(military(action)?BlockDomestic:Allow);

@@ -1,4 +1,3 @@
-param()
 $ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot
 & (Join-Path $PSScriptRoot 'build_advisor_shaders.ps1')

@@ -1,3 +1,4 @@
+#include "game_addresses.h"
 /* Transit through a still-hostile city region uses a tile, never its castle
  * center. A recruited protector must physically arrive before any shortcut. */
 static std::vector<unsigned> campaign_transit_tiles(Obj army,unsigned region,unsigned goal) {
@@ -8,7 +9,7 @@ static std::vector<unsigned> campaign_transit_tiles(Obj army,unsigned region,uns
     for(unsigned h=0;h<48400;++h) {
         Obj tile=table(0xE270,h,48399);if(!valid(tile) || word(tile,0x12)!=region)continue;
         unsigned owner=tile[0x14],own=army_force(army);
-        if(!owner || owner==own || fn<int(__fastcall *)(unsigned,unsigned)>(0x2CA280)(own,owner))result.push_back(h);
+        if(!owner || owner==own || fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(own,owner))result.push_back(h);
     }
     std::sort(result.begin(),result.end(),[here](unsigned a,unsigned b){int da=distance(here,a),db=distance(here,b);return da!=db?da<db:a<b;});
     return result;
@@ -100,7 +101,7 @@ static bool campaign_defensive_wait(Obj army,Progress &p) {
     for(unsigned id=1;id<=3000;++id) {
         Obj b=table(0x6DA98,id,3000);
         if(!valid(b) || b[0x13]!=own || (b[0x12]!=3 && b[0x12]!=4) || word(b,0x10)>=48400 || distance(here,word(b,0x10))>15)continue;
-        int maximum=fn<int(__fastcall *)(Obj)>(0x2AC120)(b);
+        int maximum=fn<int(__fastcall *)(Obj)>(GA(GA_2AC120))(b);
         if(maximum>0 && word(b,0x14)>=maximum)forts.push_back({word(b,0x10)});
     }
     if(forts.empty())return false;

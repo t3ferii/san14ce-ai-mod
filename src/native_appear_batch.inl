@@ -9,11 +9,12 @@
 // Mod: the original update runs several times in one frame within kBudgetUs, without rested frames.
 // Armies, order and every native call are the original ones; the state is still ended by the
 // original call of a later frame. UI thread only (the original caller).
+#include "game_addresses.h"
 #include "appear_batch.h"
 namespace face_keep {static void prefetch(Obj state);}   // native_face_keep.inl: [performance] face_prefetch
 namespace appear_batch {
-static const unsigned kSlot=0x13D72C0,kUpdate=0x44AC80,kStop=0x332E90;
-static const unsigned long long kUpdateHash=0x2b3ba4c85e82964eull,kStopHash=0xa2521e4dd50f954full;
+static const unsigned kSlot=GA(GA_13D72C0),kUpdate=GA(GA_44AC80),kStop=GA(GA_332E90);
+static const unsigned long long kUpdateHash=GH(0x2b3ba4c85e82964eull),kStopHash=GH(0xa2521e4dd50f954full);
 // 2026-10-25 user: 12 -> 100 -> 50 ms. One army costs 15-40 ms here (measured): 12 ms still gave one
 // army per frame; 100 ms (3-5 per frame, ~10 fps) felt choppy; 50 ms gives about 2-3 per frame (~20 fps).
 static constexpr long long kBudgetUs=50000;

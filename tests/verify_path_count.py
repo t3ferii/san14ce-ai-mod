@@ -1,3 +1,4 @@
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import ga_expand  # user 2026-11-05 patch resilience: sources spell addresses as GA(GA_x)
 """Read-only Steam identity, decoded/captured bytes, ABI, hook and catalog checks.
 Steam .text is encrypted on disk; this explicitly distinguishes saved runtime
 bytes from a fresh live-game verification. No game launch, live read or write.

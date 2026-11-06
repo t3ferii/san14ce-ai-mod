@@ -1,3 +1,4 @@
+#include "game_addresses.h"
 /* Area+56: eight u16 adjacency IDs, Area+66: enabled adjacency bits.
  * Reuse the exact graph used by native 2B07C0. Tile+12 selects its area. */
 static unsigned campaign_area_id(unsigned hex) {
@@ -17,13 +18,13 @@ static bool campaign_region_hostile(Obj army,unsigned id) {
     Obj area=table(0x6CAF0,id,500);if(!valid(area))return false;
     Obj center=table(0xE270,word(area,0x3A),48399);if(!valid(center))return false;
     unsigned owner=center[0x14],own=army_force(army);
-    return owner!=own && (!owner || fn<int(__fastcall *)(unsigned,unsigned)>(0x2CA280)(own,owner));
+    return owner!=own && (!owner || fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(own,owner));
 }
 static bool campaign_region_open(Obj army,unsigned id) {
     Obj area=table(0x6CAF0,id,500);if(!valid(area))return false;
     Obj tile=table(0xE270,word(area,0x3A),48399);if(!valid(tile))return false;
     return !tile[0x14] || tile[0x14]==army_force(army) ||
-        fn<int(__fastcall *)(unsigned,unsigned)>(0x2CA280)(army_force(army),tile[0x14]);
+        fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(army_force(army),tile[0x14]);
 }
 // Siege travel uses native paths; no source-to-city region graph or forced region centers.
 static Obj campaign_guard(Obj army,unsigned region,unsigned goal) {
@@ -50,12 +51,12 @@ static float __fastcall sortie_movement(Obj,Obj,int,int,Obj);
 #endif
 struct CampaignMovement {Obj army,formation;float daily,here;};
 static CampaignMovement campaign_movement(Obj army) {
-    Obj formation=fn<Obj(__fastcall *)(Obj)>(0x22B090)(army);
-    return {army,formation,static_cast<float>(fn<int(__fastcall *)(Obj)>(0x269150)(army)),
+    Obj formation=fn<Obj(__fastcall *)(Obj)>(GA(GA_22B090))(army);
+    return {army,formation,static_cast<float>(fn<int(__fastcall *)(Obj)>(GA(GA_269150))(army)),
 #ifdef SORTIE_FORMATION
         sortie_movement(army,formation,1,0,nullptr)
 #else
-        fn<float(__fastcall *)(Obj,Obj,int,int,Obj)>(0x2B0290)(army,formation,1,0,nullptr)
+        fn<float(__fastcall *)(Obj,Obj,int,int,Obj)>(GA(GA_2B0290))(army,formation,1,0,nullptr)
 #endif
 };
 }
@@ -66,11 +67,11 @@ static float campaign_tile_days(const CampaignMovement &m,unsigned hex) {
 #ifdef SORTIE_FORMATION
         sortie_movement(m.army,m.formation,1,0,tile);
 #else
-        fn<float(__fastcall *)(Obj,Obj,int,int,Obj)>(0x2B0290)(m.army,m.formation,1,0,tile);
+        fn<float(__fastcall *)(Obj,Obj,int,int,Obj)>(GA(GA_2B0290))(m.army,m.formation,1,0,tile);
 #endif
-    Obj terrain=fn<Obj(__fastcall *)(Obj)>(0x2318B0)(tile);
+    Obj terrain=fn<Obj(__fastcall *)(Obj)>(GA(GA_2318B0))(tile);
     if(!(there>0) || !valid(terrain))return 1.0e9f;
-    int cost=fn<int(__fastcall *)(Obj)>(0xBE120)(terrain);
+    int cost=fn<int(__fastcall *)(Obj)>(GA(GA_BE120))(terrain);
     return cost>0?static_cast<float>(cost)*m.here/(m.daily*there):1.0e9f;
 }
 static float campaign_tile_days(Obj army,unsigned hex) {return campaign_tile_days(campaign_movement(army),hex);}
@@ -83,7 +84,7 @@ static unsigned campaign_relay_points(const std::vector<unsigned> &cells,unsigne
 static __declspec(thread) std::vector<unsigned> *campaign_native_trace;
 static bool campaign_generated_path(Obj army,const CampaignRoute &route) {
     if(native_search_depth)return false;
-    fn<void(__fastcall *)(Obj)>(0x26C940)(army);
+    fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);
     return !route.cells.empty() && (word(army,0x2A)==route.cells.back() ||
         (word(army,0x48)<48400 && distance(word(army,0x2A),word(army,0x48))==1));
 }
@@ -100,10 +101,10 @@ static CampaignRoute campaign_safe_route(Obj army,unsigned target,bool shortcut,
     unsigned char saved[0x34];memcpy(saved,army+0x2C,sizeof(saved));
     unsigned flags=dword(army,0x1F0);unsigned short future=word(army,0x1F8);
     auto previous=campaign_native_trace;campaign_native_trace=&result.cells;
-    fn<void(__fastcall *)(Obj)>(0xA2410)(army);
-    fn<void(__fastcall *)(Obj,int)>(0x2EAAE0)(army,1);
-    fn<void(__fastcall *)(Obj,int,int)>(0x2EAB40)(army,9,static_cast<int>(target));
-    fn<void(__fastcall *)(Obj)>(0x26C940)(army);
+    fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(army,1);
+    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(army,9,static_cast<int>(target));
+    fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);
     campaign_native_trace=previous;
     bool legal=word(army,0x48)<48400 && distance(from,word(army,0x48))==1 &&
         !result.cells.empty() && result.cells.front()==from && result.cells.back()==target;
@@ -123,9 +124,9 @@ static bool campaign_route_order(Obj army,const CampaignRoute &route) {
     if(army[0x37]==1 && army[0x38]==9 && word(army,0x3A)==target &&
        (word(army,0x2A)==target || (word(army,0x48)<48400 && distance(word(army,0x2A),word(army,0x48))==1)))return true;
     unsigned char saved[0x34];memcpy(saved,army+0x2C,sizeof(saved));unsigned flags=dword(army,0x1F0);unsigned short future=word(army,0x1F8);
-    fn<void(__fastcall *)(Obj)>(0xA2410)(army);
-    fn<void(__fastcall *)(Obj,int)>(0x2EAAE0)(army,1);
-    fn<void(__fastcall *)(Obj,int,int)>(0x2EAB40)(army,9,static_cast<int>(target));
+    fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(army,1);
+    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(army,9,static_cast<int>(target));
     if(campaign_generated_path(army,route))return true;
     memcpy(army+0x2C,saved,sizeof(saved));*reinterpret_cast<unsigned *>(army+0x1F0)=flags;*reinterpret_cast<unsigned short *>(army+0x1F8)=future;return false;
 }
@@ -153,9 +154,9 @@ static bool campaign_assign_safe(Obj army,Progress &p,unsigned target,bool short
 static bool campaign_build_order(Obj army,unsigned facility,unsigned hex) {
     if(native_search_depth)return false;
     unsigned char saved[0x34];memcpy(saved,army+0x2C,sizeof(saved));unsigned flags=dword(army,0x1F0);unsigned short future=word(army,0x1F8);
-    fn<void(__fastcall *)(Obj)>(0xA2410)(army);
-    fn<void(__fastcall *)(Obj,int)>(0x2EAAE0)(army,8);
-    fn<void(__fastcall *)(Obj,int,int)>(0x2EAB40)(army,9,static_cast<int>(hex));
+    fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(army,8);
+    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(army,9,static_cast<int>(hex));
     army[0x46]=static_cast<unsigned char>(facility);*reinterpret_cast<unsigned short *>(army+0x42)=static_cast<unsigned short>(hex);
     CampaignRoute route;route.cells.push_back(hex);
     if(campaign_generated_path(army,route))return true;

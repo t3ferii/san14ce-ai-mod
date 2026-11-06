@@ -1,4 +1,8 @@
-"""Inspect actual release binaries; never loads the game or writes its memory."""
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import ga_expand  # user 2026-11-05 patch resilience: sources spell addresses as GA(GA_x)
+"""Inspect actual release binaries; never loads the game or writes its memory.
+LEGACY (2026-11-03): pre-split v12 release proof, used only by old prepare_*_release scripts and not part of
+check_feature / dll-split. It matches log event names as raw substrings, so functional labels that reuse
+the same words (e.g. AI reason tag "ap:build_hold_wait") fail it. Do not run it in the current flow."""
 from pathlib import Path
 import hashlib,json,re,struct,sys
 PROJECT=Path(__file__).resolve().parents[1]
@@ -32,16 +36,23 @@ for name in ('native_campaign_routes.inl','native_campaign_operations.inl','nati
 event_names=set()
 timing_names=set()
 functional_phase_names=set()
+interface_names=set()
 for source in (PROJECT/'src').rglob('*'):
     if source.suffix not in ('.cpp','.h','.inl'):continue
     text=source.read_text(encoding='utf-8')
     event_names.update(re.findall(r'log_event\("([^"\n]+)"',text))
     timing_names.update(re.findall(r'COST_SCOPE\("([^"\n]+)"',text))
     functional_phase_names.update(re.findall(r'NativePhase\s+\w+\("([^"\n]+)"',text))
+    interface_names.update(re.findall(r'__declspec\(dllexport\)[^(;{]*?\b(\w+)\s*\(',text))
+    interface_names.update(re.findall(r'GetProcAddress\([^,]+,\s*"(\w+)"',text))
 for name in ('dinput8.dll','SAN14_CombatAI.dll','SAN14_Convenience.dll'):
     data=(binary/name).read_bytes();files[name]=hashlib.sha256(data).hexdigest()
     # Dispatch/search names also drive the reentrancy crash guard; retain those.
-    for marker in sorted(event_names|(timing_names-functional_phase_names)|{'SAN14_AITactics.log','SAN14_CombatAI.log','function_cost_'}):
+    # Split module interface names are export/GetProcAddress strings in every build; a timing scope may reuse one.
+    # log_event/COST_SCOPE names are narrow strings; the same words as wide strings are settings keys.
+    for marker in sorted((event_names|(timing_names-functional_phase_names))-interface_names):
+        assert marker.encode() not in data,(name,marker);checks+=1
+    for marker in ('SAN14_AITactics.log','SAN14_CombatAI.log','function_cost_'):
         assert marker.encode() not in data and marker.encode('utf-16le') not in data,(name,marker);checks+=1
     assert 'AddVectoredExceptionHandler' not in imports(binary/name),name;checks+=1
 combat_imports=imports(binary/'SAN14_CombatAI.dll')

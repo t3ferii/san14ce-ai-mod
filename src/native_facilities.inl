@@ -1,23 +1,24 @@
+#include "game_addresses.h"
 /* Verified native facility attack orders: action 6, kind 11, building ID.
  * Area cap is the native 2C9E30 check (classes 2/3/4 vs Area+6E).
  * Never remove a facility directly; its movement and damage remain native. */
 static bool area_full(Obj area) {
-    return valid(area) && fn<bool(__fastcall *)(Obj)>(0x2C9E30)(area);
+    return valid(area) && fn<bool(__fastcall *)(Obj)>(GA(GA_2C9E30))(area);
 }
 static bool area_hostile_facilities(Obj army,Obj area) {
     unsigned own=army_force(army);
     for(unsigned i=1;i<=3000;++i) {
         Obj b=table(0x6DA98,i,3000);
         if(!valid(b) || !word(b,0x14) || b[0x13]==own || b[0x12]<3 || b[0x12]>14 || word(b,0x10)>=48400)continue;
-        if(b[0x13] && !fn<int(__fastcall *)(unsigned,unsigned)>(0x2CA280)(own,b[0x13]))continue;
+        if(b[0x13] && !fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(own,b[0x13]))continue;
         Obj t=table(0xE270,word(b,0x10),48399);
-        if(valid(t) && fn<Obj(__fastcall *)(Obj)>(0x229EA0)(t)==area)return true;
+        if(valid(t) && fn<Obj(__fastcall *)(Obj)>(GA(GA_229EA0))(t)==area)return true;
     }
     return false;
 }
 static bool player_threat(Obj army) {
     unsigned player=player_force(),own=army_force(army);
-    if(!player || !fn<int(__fastcall *)(unsigned,unsigned)>(0x2CA280)(own,player))return false;
+    if(!player || !fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(own,player))return false;
     for(unsigned i=1;i<=500;++i) {
         Obj enemy=table(0x7E838,i,500);
         if(valid(enemy) && army_force(enemy)==player && word(enemy,0x2A)<48400 &&
@@ -31,14 +32,14 @@ static unsigned local_facilities(Obj army, Obj area) {
         Obj b=table(0x6DA98,i,3000);
         if(!valid(b) || b[0x13]!=owner || b[0x12]>=31 || word(b,0x10)>=48400)continue;
         Obj tile=table(0xE270,word(b,0x10),48399);
-        if(valid(tile) && fn<Obj(__fastcall *)(Obj)>(0x229EA0)(tile)==area)mask|=1u<<b[0x12];
+        if(valid(tile) && fn<Obj(__fastcall *)(Obj)>(GA(GA_229EA0))(tile)==area)mask|=1u<<b[0x12];
     }
     for(unsigned i=1;i<=500;++i) {
         Progress &other=progress[i];Obj member=table(0x7E838,i,500);
         if(member==army || !computer_army(member) || army_force(member)!=owner || other.army!=member ||
            other.commander!=word(member,0x12) || !other.facility || other.facility>=31 || other.construction_hex>=48400)continue;
         Obj tile=table(0xE270,other.construction_hex,48399);
-        if(valid(tile) && fn<Obj(__fastcall *)(Obj)>(0x229EA0)(tile)==area)mask|=1u<<other.facility;
+        if(valid(tile) && fn<Obj(__fastcall *)(Obj)>(GA(GA_229EA0))(tile)==area)mask|=1u<<other.facility;
     }
     if(mask & (15u<<11))mask|=15u<<11;
     return mask;
@@ -65,11 +66,11 @@ static bool restore_cut(Obj army, Progress &p) {
     }
     if(!have)return false;
     if(!same) {
-        fn<void(__fastcall *)(Obj)>(0xA2410)(army);
-        fn<void(__fastcall *)(Obj,int)>(0x2EAAE0)(army,p.cut_action);
-        fn<void(__fastcall *)(Obj,int,int)>(0x2EAB40)(army,p.cut_kind,p.cut_goal);
-        for(unsigned j=0;j<5;++j)fn<void(__fastcall *)(Obj,int,unsigned)>(0x2EE1E0)(army,static_cast<int>(j),p.cut_route[j]);
-        fn<void(__fastcall *)(Obj)>(0x26C940)(army);
+        fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(army,p.cut_action);
+        fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(army,p.cut_kind,p.cut_goal);
+        for(unsigned j=0;j<5;++j)fn<void(__fastcall *)(Obj,int,unsigned)>(GA(GA_2EE1E0))(army,static_cast<int>(j),p.cut_route[j]);
+        fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);
         log_event("cut_priority_restored",army_id(army),p.cut_target,word(army,0x2A));
     }
     *reinterpret_cast<unsigned *>(army+0x1F0)|=8;
@@ -88,15 +89,15 @@ static bool destructible(Obj army, Obj b) {
     unsigned type=b[0x12],owner=b[0x13];
     if(!owner)return type==9 || type==10 || type==16;
     if(type<3 || type>14)return false; // preserve enemy-owned facility scope
-    return owner!=army_force(army) && fn<int(__fastcall *)(unsigned,unsigned)>(0x2CA280)(army_force(army),owner)!=0;
+    return owner!=army_force(army) && fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(army_force(army),owner)!=0;
 }
 static bool destroy_order(Obj army, Progress &p, unsigned id, Obj b) {
     bool changed=army[0x37]!=6 || army[0x38]!=11 || word(army,0x3A)!=id;
     if(changed) {
-        fn<void(__fastcall *)(Obj)>(0xA2410)(army);
-        fn<void(__fastcall *)(Obj,int)>(0x2EAAE0)(army,6);
-        fn<void(__fastcall *)(Obj,int,int)>(0x2EAB40)(army,11,static_cast<int>(id));
-        fn<void(__fastcall *)(Obj)>(0x26C940)(army);
+        fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(army,6);
+        fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(army,11,static_cast<int>(id));
+        fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);
     }
     if(p.destroy_id!=id || p.destroy_hex!=word(b,0x10)) {
         p.destroy_day=game_day();
@@ -129,10 +130,10 @@ static bool try_destroy(Obj army, Progress &p, bool emergency_only=false) {
             log_event("facility_destroyed_resume",army_id(army),p.destroy_id,p.destroy_hex);
         } else failed=p.destroy_id;
         if(!p.destroy_owner && army[0x37]==6 && army[0x38]==11 && word(army,0x3A)==p.destroy_id) {
-            fn<void(__fastcall *)(Obj)>(0xA2410)(army);
-            fn<void(__fastcall *)(Obj,int)>(0x2EAAE0)(army,13);
-            fn<void(__fastcall *)(Obj,int,int)>(0x2EAB40)(army,255,0);
-            fn<void(__fastcall *)(Obj)>(0x26C940)(army);
+            fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
+            fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(army,13);
+            fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(army,255,0);
+            fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);
         }
         p.destroy_id=0;p.destroy_hex=48400;p.destroy_reason=0;
     }
@@ -145,7 +146,7 @@ static bool try_destroy(Obj army, Progress &p, bool emergency_only=false) {
         if(!b[0x13]) {if(!reason || (emergency_only && reason!=2))continue;}
         else if(emergency_only || (!full && !drifting))continue;
         Obj tile=table(0xE270,hex,48399);
-        bool local=valid(tile) && valid(area) && fn<Obj(__fastcall *)(Obj)>(0x229EA0)(tile)==area;
+        bool local=valid(tile) && valid(area) && fn<Obj(__fastcall *)(Obj)>(GA(GA_229EA0))(tile)==area;
         if(b[0x13] && !drifting && !local)continue;
         // At the cap, first clear something that actually occupies this area's slots.
         int score=range*4+(local?0:100)+(b[0x13]==player_force()?0:2)-(reason==2?200:0);
@@ -166,10 +167,10 @@ static bool cancel_unqualified_neutral_order(Obj army,Progress &p) {
         !p.destroy_owner && game_day()>=p.destroy_day && game_day()-p.destroy_day<20 &&
         neutral_mission_valid(army,p,b);
     if(recorded || neutral_wall_reason(army,p,b))return false;
-    fn<void(__fastcall *)(Obj)>(0xA2410)(army);
-    fn<void(__fastcall *)(Obj,int)>(0x2EAAE0)(army,13);
-    fn<void(__fastcall *)(Obj,int,int)>(0x2EAB40)(army,255,0);
-    fn<void(__fastcall *)(Obj)>(0x26C940)(army);
+    fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(army,13);
+    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(army,255,0);
+    fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);
     log_event("neutral_wall_unqualified_order_cancelled",army_id(army),id,word(b,0x10));
     return true;
 }

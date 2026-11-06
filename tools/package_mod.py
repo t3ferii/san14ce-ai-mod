@@ -13,7 +13,16 @@ PROJECT = Path(__file__).resolve().parents[1]
 GAME = PROJECT.parent
 sys.path.insert(0, str(GAME / 'AI_TacticsMod/legacy/FogMod_Source/tools'))
 from audit_native_game import PEImage
-ORIGINAL_SHA = '87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a'
+# User 2026-11-05 patch resilience: the installed game EXE is identified by a per-build table (one entry per supported game
+# build: 87ed4e46... = build before the 2026-11-05 Steam update, 782cf229... = SAN14CE_KO.exe of Steam buildid 25953386).
+# ORIGINAL_SHA keeps its old call sites (== / != / in) and accepts every known build.
+KNOWN_ORIGINAL_SHAS = ('87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a',
+                       '782cf229a56cdde2b95399e0e7536740b3f5e96bea702679365e4dad061abdce')
+class _OriginalSha(str):
+    def __eq__(self, other): return isinstance(other, str) and other in KNOWN_ORIGINAL_SHAS
+    def __ne__(self, other): return not self.__eq__(other)
+    __hash__ = str.__hash__
+ORIGINAL_SHA = _OriginalSha(KNOWN_ORIGINAL_SHAS[0])
 DLL = 'AI14.dll'
 
 def sha(data): return hashlib.sha256(data).hexdigest()

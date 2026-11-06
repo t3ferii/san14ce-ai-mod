@@ -8,10 +8,11 @@
 // effect frames 0x0E..0x1F skipped (no cue there), counters x4. Message layouts (+5B0/+5B8) keep their own
 // animations; the original code always runs on the original caller thread.
 // [features] occupy_fast (convenience group, default on).
+#include "game_addresses.h"
 namespace occupy_fast {
-static const unsigned kUpdateSlot=0x13D3FA8,kUpdate=0x42B7E0,kCameraCall=0x42B507,kCamera=0x451360;
-static const unsigned long long kUpdateHash=0x8c495743e2765e0bull,kCameraPhaseHash=0xc085e89a45bc1993ull,
-    kEffectPhaseHash=0xbcee66f750a7d08full,kTilePhaseHash=0xe383719e7dba05c2ull,kLastPhaseHash=0x546e9bb3037ce9a8ull;
+static const unsigned kUpdateSlot=GA(GA_13D3FA8),kUpdate=GA(GA_42B7E0),kCameraCall=GA(GA_42B507),kCamera=GA(GA_451360);
+static const unsigned long long kUpdateHash=GH(0x8c495743e2765e0bull),kCameraPhaseHash=GH(0xc085e89a45bc1993ull),
+    kEffectPhaseHash=GH(0xbcee66f750a7d08full),kTilePhaseHash=GH(0xe383719e7dba05c2ull),kLastPhaseHash=GH(0x546e9bb3037ce9a8ull);
 static const unsigned kEffectEnd=0x47,kEffectShort=0x24;   // after the last cue at 0x21
 static const unsigned kGapStart=0x0E,kGapEnd=0x20;           // between cues 13 and 0x21
 using Update=void(__fastcall *)(Obj,unsigned long long,unsigned long long,unsigned long long);
@@ -24,9 +25,9 @@ static unsigned long long fingerprint(unsigned rva,unsigned size) {
 static bool guards_match() {
     return pointer(image,kUpdateSlot)==image+kUpdate && image[kCameraCall]==0xE8 &&
         kCameraCall+5+*reinterpret_cast<int *>(image+kCameraCall+1)==kCamera &&
-        fingerprint(kUpdate,0xE8)==kUpdateHash && fingerprint(0x42B310,0x217)==kCameraPhaseHash &&
-        fingerprint(0x42C190,0xF7)==kEffectPhaseHash && fingerprint(0x42BB90,0x38C)==kTilePhaseHash &&
-        fingerprint(0x426DA0,0x157)==kLastPhaseHash;
+        fingerprint(kUpdate,0xE8)==kUpdateHash && fingerprint(GA(GA_42B310),0x217)==kCameraPhaseHash &&
+        fingerprint(GA(GA_42C190),0xF7)==kEffectPhaseHash && fingerprint(GA(GA_42BB90),0x38C)==kTilePhaseHash &&
+        fingerprint(GA(GA_426DA0),0x157)==kLastPhaseHash;
 }
 static unsigned long long __fastcall camera(unsigned tile,int mode,int ms,double a,double b,int flag) { COST_SCOPE("occupy_fast::camera");
     return fn<Camera>(kCamera)(tile,mode,ms>500?ms/4:(ms>125?125:ms),a,b,flag);

@@ -9,6 +9,17 @@ int main() {
     wcscpy_s(costprofile::file_path,temporary);
     costprofile::Key outer("outer"),inner("inner"),same("inner");
     check(inner.slot==same.slot,"duplicate names use the same counter");
+    costprofile::set_crumbs_enabled(true);auto *ring=costprofile::get_crumb_ring();LONG crumb_start=ring->index;
+    {costprofile::Key crumb_key("crumb_fixture");costprofile::Scope crumb_scope(crumb_key);}
+    {costprofile::Key crumb_key("crumb_fixture");costprofile::Scope crumb_scope(crumb_key);}
+    costprofile::crumb("game_function",costprofile::Call,0x1234);
+    costprofile::set_crumbs_enabled(false);
+    const auto &crumb_enter=ring->entries[static_cast<unsigned>(crumb_start+1)&255];
+    const auto &crumb_leave=ring->entries[static_cast<unsigned>(crumb_start+2)&255];
+    const auto &crumb_call=ring->entries[static_cast<unsigned>(crumb_start+3)&255];
+    check(ring->index==crumb_start+3 && crumb_enter.enter==1 && crumb_leave.enter==0 &&
+          crumb_enter.repeat==2 && crumb_leave.repeat==2 && crumb_call.enter==costprofile::Call && crumb_call.value==0x1234,
+          "thread ring compresses repeated pairs and records calls");
     {costprofile::Scope a(outer);Sleep(3);{costprofile::Scope b(inner);Sleep(3);}Sleep(3);}
     auto &stats=costprofile::state.values;
     check(stats[outer.slot].calls==1 && stats[inner.slot].calls==1,"nested calls counted once each");

@@ -1,3 +1,4 @@
+#include "game_addresses.h"
 /* Unpublished candidate bindings. Host callbacks run on the game thread;
  * only hashing native archive bytes runs on the native save/load worker.
  * No worker calls a gameplay getter, enumerates Person, or modifies relations. */
@@ -43,7 +44,7 @@ static std::string friendship_job_name(unsigned offset) {
     return friendship::SaveCoordinator::valid_name(name)?name:std::string{};
 }
 [[maybe_unused]] static unsigned char __fastcall friendship_file_write(
-    Obj remote,const char *name,const void *data,int count) {
+    Obj remote,const char *name,const void *data,int count) { COST_SCOPE("friendship_file_write");
     auto original=*reinterpret_cast<RemoteWrite *>(pointer(remote,0));
     std::string filename;uint64_t epoch=0;friendship::Binding hash={};bool digest=false;
     if(enabled)try {
@@ -60,7 +61,7 @@ static std::string friendship_job_name(unsigned offset) {
     }
     return success;
 }
-[[maybe_unused]] static int __fastcall friendship_file_read(Obj remote,const char *name,void *data,int count) {
+[[maybe_unused]] static int __fastcall friendship_file_read(Obj remote,const char *name,void *data,int count) { COST_SCOPE("friendship_file_read");
     auto original=*reinterpret_cast<RemoteRead *>(pointer(remote,0)+8);
     std::string filename;uint64_t epoch=0;
     if(enabled)try {
@@ -128,12 +129,12 @@ static bool friendship_read_sidecar(const friendship::SaveCoordinator::Completed
     } catch(...) {CloseHandle(file);throw;}
     CloseHandle(file);return result;
 }
-[[maybe_unused]] static void __fastcall friendship_save_host(Obj host) {
+[[maybe_unused]] static void __fastcall friendship_save_host(Obj host) { COST_SCOPE("friendship_save_host");
     unsigned phase=dword(host,0x470);
     if(enabled && phase==1) {
         friendship::Store snapshot;std::string name;
         try {
-            name=friendship_job_name(0x27D2A98);
+            name=friendship_job_name(GA(GA_27D2A98));
             AcquireSRWLockExclusive(&friendship_lock);
             try {friendship_check_world();snapshot=expanded_friends;}
             catch(...) {ReleaseSRWLockExclusive(&friendship_lock);throw;}
@@ -144,30 +145,30 @@ static bool friendship_read_sidecar(const friendship::SaveCoordinator::Completed
             ReleaseSRWLockExclusive(&friendship_job_lock);
         } catch(...) {friendship_save_epoch=0;log_event("friendship_save_begin_failed");}
     }
-    fn<SaveHost>(0x50B670)(host);
+    fn<SaveHost>(GA(GA_50B670))(host);
     if(enabled && host==friendship_save_host_object && phase==2 && dword(host,0x470)==3) {
         try {
             friendship::SaveCoordinator::Completed job;bool ready;
             AcquireSRWLockExclusive(&friendship_job_lock);
-            try {ready=friendship_jobs.finish_save(friendship_save_epoch,dword(image,0x27D2A20)==1,job);}
+            try {ready=friendship_jobs.finish_save(friendship_save_epoch,dword(image,GA(GA_27D2A20))==1,job);}
             catch(...) {ReleaseSRWLockExclusive(&friendship_job_lock);throw;}
             ReleaseSRWLockExclusive(&friendship_job_lock);friendship_save_epoch=0;
             if(ready) {bool saved=friendship_write_sidecar(job);log_event(saved?"friendship_save_written":"friendship_save_write_failed");}
         } catch(...) {log_event("friendship_save_write_failed");}
     }
 }
-[[maybe_unused]] static void __fastcall friendship_load_host(Obj host) {
+[[maybe_unused]] static void __fastcall friendship_load_host(Obj host) { COST_SCOPE("friendship_load_host");
     unsigned phase=dword(host,0x470);
     if(enabled && phase==1)try {
-        std::string name=friendship_job_name(0x27D2A68);
+        std::string name=friendship_job_name(GA(GA_27D2A68));
         AcquireSRWLockExclusive(&friendship_job_lock);
         try {friendship_load_epoch=friendship_jobs.begin_load(name);friendship_load_host_object=host;}
         catch(...) {ReleaseSRWLockExclusive(&friendship_job_lock);throw;}
         ReleaseSRWLockExclusive(&friendship_job_lock);
     } catch(...) {friendship_load_epoch=0;friendship_load_host_object=host;log_event("friendship_load_begin_failed");}
-    fn<SaveHost>(0x509580)(host);
+    fn<SaveHost>(GA(GA_509580))(host);
     if(enabled && host==friendship_load_host_object && phase==2 && dword(host,0x470)==3 &&
-       dword(image,0x27D2A50)!=0) {
+       dword(image,GA(GA_27D2A50))!=0) {
         // Successful native load always replaces the extras, even if the
         // sidecar is absent/corrupt or the world uses the same address.
         friendship::Store replacement;bool restored=false;

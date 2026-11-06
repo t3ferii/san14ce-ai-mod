@@ -41,7 +41,7 @@ for name,source in (('관리.ps1','Manage.ps1'),('진단.ps1','Diagnose.ps1'),
 for name in ('AI모드_호환성진단.cmd','AI모드_기능선택.cmd'):
     files['AI_TacticsMod/optional_tools/'+name]=windows_text(PROJECT/'optional_tools'/name)
 for name,digest in manifest['split_modules']['files'].items():
-    assert name in ('dinput8.dll','SAN14_CombatAI.dll','SAN14_Convenience.dll','SAN14_CCZ.dll')
+    assert name in ('dinput8.dll','SAN14_CombatAI.dll','SAN14_Convenience.dll','SAN14_CCZ.dll','SAN14_Layout.dll')
     data=(PAYLOAD/name).read_bytes();assert hashlib.sha256(data).hexdigest()==digest
     files['AI_TacticsMod/build/input_package/'+name]=data
 files['AI_TacticsMod/build/input_package/manifest.json']=(PAYLOAD/'manifest.json').read_bytes()

@@ -1,5 +1,6 @@
 // Evidence: research/v9. This callback observes the native DAMAGE application,
 // not the earlier score/forecast stage. It only records; AI nodes issue orders.
+#include "game_addresses.h"
 using ApplyDamage=uint64_t(__fastcall *)(Obj,Obj,Obj);
 static ApplyDamage original_damage;
 struct RangedHit {
@@ -20,7 +21,7 @@ static bool obstacle_between(unsigned from,unsigned to,unsigned wall) {
 static bool player_ranged_army(Obj attacker) {
     unsigned player=player_force();
     if(!player || !valid(attacker) || army_force(attacker)!=player)return false;
-    Obj active=fn<Obj(__fastcall *)(Obj)>(0x22B090)(attacker);
+    Obj active=fn<Obj(__fastcall *)(Obj)>(GA(GA_22B090))(attacker);
     // Active formation getter chooses land/water from the ACTUAL terrain.
     return active && (active==table(0x77428,3,20) || active==table(0x77428,13,20));
 }
@@ -33,16 +34,16 @@ static uint64_t __fastcall combat_apply_damage(Obj manager,Obj pair,Obj output) 
     unsigned source_kind=source?dword(source,4):0;
     unsigned source_city=source && (source_kind==5 || source_kind==6)?word(source,0):0;
     bool castle_kind=source_kind==5?source_city<=51:source_kind==6 && source_city>51 && source_city<=61;
-    Obj firing_city=source_city && castle_kind?fn<Obj(__fastcall *)(Obj,unsigned)>(0x32C130)(world(),source_city):nullptr;
-    Obj firing_force=valid(firing_city) && word(firing_city,0x4E)==source_city?fn<Obj(__fastcall *)(Obj)>(0x22C990)(firing_city):nullptr;
+    Obj firing_city=source_city && castle_kind?fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32C130))(world(),source_city):nullptr;
+    Obj firing_force=valid(firing_city) && word(firing_city,0x4E)==source_city?fn<Obj(__fastcall *)(Obj)>(GA(GA_22C990))(firing_city):nullptr;
     unsigned city_force=valid(firing_force)?(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(firing_force,0)+0x60))(firing_force):0;
-    bool city_hit=campaign_controlled(victim) && city_force && fn<int(__fastcall *)(unsigned,unsigned)>(0x2CA280)(army_force(victim),city_force);
+    bool city_hit=campaign_controlled(victim) && city_force && fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(army_force(victim),city_force);
     // [combat] hit_response=0: record nothing, so no hit-driven lock/escort/obstacle response.
     bool engaged=enabled && mod_features.hit_response && !in_policy && campaign_controlled(victim) && valid(attacker) &&
-        fn<int(__fastcall *)(unsigned,unsigned)>(0x2CA280)(army_force(victim),army_force(attacker))!=0;
+        fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(army_force(victim),army_force(attacker))!=0;
     engaged=engaged || (mod_features.hit_response && city_hit);
     bool watch=enabled && !in_policy && engaged && player_ranged_army(attacker) &&
-        fn<int(__fastcall *)(unsigned,unsigned)>(0x2CA280)(army_force(victim),army_force(attacker))!=0;
+        fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(army_force(victim),army_force(attacker))!=0;
     unsigned before=engaged?word(victim,0x16):0,commander=engaged?word(victim,0x12):0;
     unsigned attacking_commander=engaged && valid(attacker)?word(attacker,0x12):0,owner=engaged?army_force(victim):0;
     Obj saved_root=engaged?world():nullptr;
@@ -101,8 +102,8 @@ static void observe_obstacle_motion(Obj army,Progress &p) {
     if(p.returning || !p.campaign || word(army,0x16)<3000 || word(army,0x2A)>=48400) {
         p.obstacle.count=0;return;
     }
-    Obj goal=fn<Obj(__fastcall *)(Obj,unsigned)>(0x32C130)(world(),p.city);
-    unsigned hex=valid(goal)?fn<unsigned(__fastcall *)(Obj)>(0x22D740)(goal):48400;
+    Obj goal=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32C130))(world(),p.city);
+    unsigned hex=valid(goal)?fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(goal):48400;
     if(hex>=48400) {p.obstacle.count=0;return;}
     obstacle_sample(p.obstacle,game_day(),word(army,0x2A),hex,
                     distance(word(army,0x2A),hex),p.progress_day);

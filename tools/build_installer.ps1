@@ -14,6 +14,8 @@ $taskRefs=@('mscorlib.dll','System.dll','System.Core.dll','System.Drawing.dll','
 if($LASTEXITCODE -ne 0){throw 'Installer compilation failed.'}
 & python -B -X utf8 (Join-Path $taskProject 'tests\verify_installer_gui.py') $taskExe
 if($LASTEXITCODE -ne 0){throw 'Installer catalog check failed.'}
+& python -B -X utf8 (Join-Path $taskProject 'tests\verify_feature_switches.py')
+if($LASTEXITCODE -ne 0){throw 'Feature switch static check failed.'}
 $taskFixture=Join-Path $taskOut 'fixture'
 & powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File (Join-Path $taskProject 'tests\installer_gui_roundtrip.ps1') -Exe $taskExe -Fixture $taskFixture
 if($LASTEXITCODE -ne 0){throw 'Installer roundtrip check failed.'}

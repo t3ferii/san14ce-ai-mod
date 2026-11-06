@@ -9,13 +9,32 @@ static unsigned char *__fastcall name_lookup_entry(unsigned char *table,const ch
 }
 static bool name_lookup_guards_match() {
     using namespace name_lookup;
-    return !memcmp(image+entry_rva,entry_bytes,sizeof(entry_bytes)) &&
-           !memcmp(image+compare_rva,compare_bytes,sizeof(compare_bytes));
+    return !ga::mcmp_at(image,entry_rva,entry_bytes,sizeof(entry_bytes)) &&
+           !ga::mcmp_at(image,compare_rva,compare_bytes,sizeof(compare_bytes));
 }
+#ifndef NO_RUNTIME_LOG
+// local5 diagnostic: which array failed and the first differing byte of the running image against this build's exact bytes.
+// name_lookup_guard_detail(array 1 entry / 2 compare, first differing offset or 0xFFFF, rva).
+static void name_lookup_guard_detail() {
+    using namespace name_lookup;
+    const struct {unsigned rva;const unsigned char *bytes;unsigned size;} arrays[]={{entry_rva,entry_bytes,sizeof(entry_bytes)},{compare_rva,compare_bytes,sizeof(compare_bytes)}};
+    for(unsigned i=0;i<2;++i) {
+        unsigned first=0xFFFF;
+        for(unsigned k=0;k<arrays[i].size && first==0xFFFF;++k)if(ga::mcmp_at(image,arrays[i].rva+k,arrays[i].bytes+k,1))first=k;
+        if(ga::mcmp_at(image,arrays[i].rva,arrays[i].bytes,arrays[i].size) || first!=0xFFFF)
+            log_event("name_lookup_guard_detail",i+1,first,arrays[i].rva);
+    }
+}
+#endif
 static bool install_name_lookup() {
-    // A/B switch, read once at game start: 0 leaves E09910 untouched (기능설정.ini, then progress_native.ini).
-    if(!mod_setting(L"name_lookup",L"enabled",1,L"progress_native.ini")) {log_event("name_lookup_disabled");return true;}
-    if(!name_lookup_guards_match()) {log_event("name_lookup_guard_rejected");return false;}
+    // Switched by [performance] name_lookup (caller); the old [name_lookup] enabled duplicate is no longer read (2026-11-03).
+    if(!name_lookup_guards_match()) {
+        log_event("name_lookup_guard_rejected");
+#ifndef NO_RUNTIME_LOG
+        name_lookup_guard_detail();
+#endif
+        return false;
+    }
     Obj relay=allocate_near(image+name_lookup::entry_rva);if(!relay)return false;
     absolute_jump(relay,reinterpret_cast<void *>(&name_lookup_entry));
     CodeLink link;DWORD old;

@@ -14,6 +14,48 @@ static wchar_t file_path[MAX_PATH];static LONGLONG frequency;
 // Diagnostic builds compile the writer but start it only for [diagnostics] cost_profile=1 (2026-10-23);
 // the RuntimeCosts build (NO_RUNTIME_LOG) always starts it. Release builds compile none of it.
 static bool on;
+enum CrumbDirection { Leave=0, Enter=1, Call=2 };
+struct Crumb {uint64_t tick;DWORD thread;const char *name;LONG enter;uintptr_t value;volatile LONG repeat;};
+struct CrumbRing {volatile LONG thread;volatile LONG index;Crumb entries[256];};
+static CrumbRing crumb_rings[64];
+static volatile LONG crumbs_enabled;
+static __declspec(thread) CrumbRing *thread_ring;
+static __declspec(thread) bool pair_pending;
+static void set_crumbs_enabled(bool value) {InterlockedExchange(&crumbs_enabled,value?1:0);}
+static CrumbRing *get_crumb_ring() {
+    if(thread_ring)return thread_ring;
+    LONG id=static_cast<LONG>(GetCurrentThreadId());
+    for(unsigned i=0;i<63;++i) {
+        LONG owner=InterlockedCompareExchange(&crumb_rings[i].thread,id,0);
+        if(owner==0 || owner==id)return thread_ring=&crumb_rings[i];
+    }
+    return thread_ring=&crumb_rings[63];
+}
+static bool same_crumb(const Crumb &e,const char *name,LONG direction,uintptr_t value,DWORD thread) {
+    return e.thread==thread && e.enter==direction && e.value==value && e.name && name && !strcmp(e.name,name);
+}
+static void crumb(const char *name,LONG direction,uintptr_t value=0) {
+    if(!InterlockedCompareExchange(&crumbs_enabled,0,0))return;
+    CrumbRing *ring=get_crumb_ring();DWORD thread=GetCurrentThreadId();
+    LONG end=InterlockedCompareExchange(&ring->index,0,0);
+    if(ring!=&crumb_rings[63] && end>0) {
+        Crumb &last=ring->entries[static_cast<unsigned>(end)&255];
+        if(pair_pending) {
+            pair_pending=false;
+            if(direction==Leave && same_crumb(last,name,Leave,value,thread)) {InterlockedIncrement(&last.repeat);return;}
+        }
+        if(same_crumb(last,name,direction,value,thread)) {InterlockedIncrement(&last.repeat);return;}
+        if(direction==Enter && end>1) {
+            Crumb &previous=ring->entries[static_cast<unsigned>(end-1)&255];
+            if(same_crumb(previous,name,Enter,value,thread) && same_crumb(last,name,Leave,value,thread)) {
+                InterlockedIncrement(&previous.repeat);pair_pending=true;return;
+            }
+        }
+    }
+    LONG sequence=InterlockedIncrement(&ring->index);
+    Crumb &entry=ring->entries[static_cast<unsigned>(sequence)&255];
+    entry.tick=GetTickCount64();entry.thread=thread;entry.name=name;entry.enter=direction;entry.value=value;entry.repeat=1;
+}
 struct Key {
     unsigned slot;
     explicit Key(const char *name) {
@@ -58,11 +100,13 @@ static void flush() {
 struct Scope {
     unsigned slot,frame;LONGLONG begin;bool active;
     explicit Scope(const Key &key):slot(key.slot),frame(state.depth),begin(0),active(frequency>0 && slot<maximum && state.depth<128) {
+        crumb(key.slot<maximum?names[key.slot]:"unknown",true);
         if(!active)return;
         if(!state.window)state.window=GetTickCount64();state.frames[state.depth++]={};
         LARGE_INTEGER q;QueryPerformanceCounter(&q);begin=q.QuadPart;
     }
     ~Scope() {
+        crumb(slot<maximum?names[slot]:"unknown",false);
         if(!active)return;
         LARGE_INTEGER q;QueryPerformanceCounter(&q);LONGLONG elapsed=q.QuadPart-begin;
         Entry &e=state.values[slot];++e.calls;e.total+=elapsed;
@@ -77,6 +121,12 @@ struct Scope {
 #define COST_JOIN(a,b) COST_JOIN_INNER(a,b)
 #define COST_SCOPE_INDEX(name,n) static const costprofile::Key COST_JOIN(cost_key_,n)(name); costprofile::Scope COST_JOIN(cost_scope_,n)(COST_JOIN(cost_key_,n))
 #define COST_SCOPE(name) COST_SCOPE_INDEX(name,__COUNTER__)
+#ifndef NO_RUNTIME_LOG
+#define COST_CRUMB(name,value) costprofile::crumb(name,costprofile::Enter,reinterpret_cast<uintptr_t>(value))
+#else
+#define COST_CRUMB(name,value) do {} while(0)
+#endif
 #else
 #define COST_SCOPE(name) do {} while(0)
+#define COST_CRUMB(name,value) do {} while(0)
 #endif

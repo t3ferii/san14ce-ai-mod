@@ -1,4 +1,4 @@
-﻿# 기능별 켜기/끄기
+# 기능별 켜기/끄기
 
 개발 설치기 목록은 아래 표와 기능 카탈로그를 따른다. 설치·배포본의 기능 수는 CURRENT를 따른다. 기준은 `distribution/FeatureSelect.ps1`의 `$taskFeatureCatalog`, DLL 해석은 `src/native_adapter.cpp::load_mod_features`, 로더 해석은 `src/module_loader.cpp`다. 배포 기본값과 현재 사용자 INI 값은 다르다.
 
@@ -38,7 +38,6 @@
 | 편의성 | domestic.region_officers | 1 | groups.convenience | 월드맵 지역담당관 초상화 |
 | 편의성 | domestic.region_officer_traits | 1 | groups.convenience + domestic.region_officers | 지역담당관 이름 옆 내정 관련 개성 표시 |
 | 편의성 | extensions.battle_deaths | 1 | groups.convenience | AI 전사 연출·게임 기록 |
-| 편의성 | extensions.captive_dialog | 1 | groups.convenience | 포획 대사 (플레이어 관련 포획 장면 표시) |
 | 편의성 | officer_ui.loyalty | 1 | groups.convenience | 숨겨진 충성도 숫자 표시 |
 | 편의성 | officer_ui.damage_preview | 1 | groups.convenience | 전투력대체 예상 피해량 |
 | 편의성 | extensions.tooltip_collab | 1 | groups.convenience | 개성·전법 툴팁 + 콜라보 개성/전법 해금 |
@@ -56,7 +55,7 @@
 | 편의성 | officer_ui.drag_learn | 1 | groups.convenience | 전법서 습득 다중 선택 (여러 무장 × 여러 전법서 한 번에). 근거·원작 위치: src/native_drag_learn.inl |
 | 편의성 | officer_ui.lord_change | 1 | groups.convenience | 시작 전 군주 변경 (세력 선택 하단 「반란」 버튼). 근거·원작 위치: src/native_lord_change.inl |
 | 편의성 | extensions.scenery_skip | 1 | groups.convenience | 명승지 연출 생략 |
-| 편의성 | officer_ui.unified | 0 | groups.convenience | 통합 인사·무장 검색·출진 전법 자동 선택 (시험 중) |
+| 편의성 | officer_ui.unified | 0 (사용 중지) | — | 통합 인사·무장 검색·출진 전법 자동 선택 — 2026-11-03 개발 중지로 제거, 이전 설정이 1이어도 꺼짐 |
 | 성능 | groups.performance | 1 | — | 성능 가속 전체 |
 | 성능 | performance.distance | 1 | groups.performance | 거리·AI 진입 계산 가속 |
 | 성능 | performance.name_lookup | 1 | groups.performance | 원작 이름 탐색 가속 |
@@ -92,13 +91,14 @@
 
 ## 해석과 종속 관계
 
-- 키 우선순위: `[해당 섹션] 키` → 이전 `[features] 키` → 상속값/기본값. `recruit_ai`, `injury_herbal`, `captive_dialog`는 키가 없는 옛 파일에서 각각 recruit/injury/traits9 값을 상속한다. **상속은 필수 종속과 다르다.**
+- 키 우선순위: `[해당 섹션] 키` → 이전 `[features] 키` → 상속값/기본값. `recruit_ai`, `injury_herbal`는 키가 없는 옛 파일에서 각각 recruit/injury 값을 상속한다(`captive_dialog`는 2026-11-06 삭제, 옛 키는 무시). **상속은 필수 종속과 다르다.**
 - 필수 종속은 DLL에서 부모와 AND한다: awards_ai→awards, domestic_free/direct→domestic, region_officer_traits→region_officers, stats200_growth→stats200. 설치기는 체크할 때 필요한 묶음/부모도 켠다.
 - combat=0이면 전투 DLL을 로드하지 않는다. 세 묶음이 모두 0이면 기능 모듈을 로드하지 않는다. 성능만 켜도 편의 DLL을 로드한다. convenience=0이면 그 DLL은 편의 기능을 게시하지 않고 필요한 조정·성능 경로만 맡는다.
 - 내정 틱은 자동 내정·명품 배분·본초학이 공유한다. 내부에서 각각 스위치를 판정한다. 논공/명품 보조 저장 연결은 보존한다.
 - 숙련 공방/인접효과와 툴팁/콜라보 해금은 각각 같은 코드 경로라 한 항목이다. 자료 설치와 기능 훅 선택은 별도이며 개성9·속도 레이아웃 자료가 남는 것만으로 기능이 켜지지는 않는다.
+- `extensions.tooltip_collab`의 hover 툴팁은 자체 구현(`src/native_trait_hover.inl`, Layout owner `trait_hover`)이다. ModPack v1.6 TraitHover 블롭은 쓰지 않으며 실게임 미확인이다. 전법 툴팁은 `SAN14_전법설명.txt` 없이 원작 전법 '특징' 탭의 서식 함수(게임 데이터)로 나온다(`docs/TRAIT_HOVER_TACTIC_TEXT.md`, 실게임 미확인).
 - 숨은 `performance.timer_1ms`는 메뉴에 포함하지 않으며 기본 꺼짐이다. 거리/이름 탐색 하위 값도 기능설정.ini에서 읽으며, 키가 없을 때만 이전 progress_native.ini를 참조한다.
-- 설치기 없는 INI에서 `officer_ui.unified`가 누락되면 DLL 자체 fallback은 true다. 배포 설치기는 명시적 기본값 0을 기록한다. 위 표는 **설치기 기본값**이다.
+- `officer_ui.unified`는 2026-11-03 제거되어 DLL이 더 읽지 않는다. 위 표는 **설치기 기본값**이다.
 
 ## 검사와 확인 범위
 

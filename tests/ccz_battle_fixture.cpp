@@ -170,16 +170,16 @@ int main(){
     ccz_appearance::Settings legacy;auto old_profile=ccz_appearance::encode(legacy);old_profile[0]=L'1';check(ccz_appearance::decode(old_profile.c_str(),legacy) && legacy.low==70 && legacy.high==90,"existing version1 appearance settings migrate without loss");
     appearance.mapping[4][2]=static_cast<unsigned short>(ccz_appearance::code(catalog.entries.back().cell));pa[0xEC]=100;
     check(identify(attacker.data(),4).cell==catalog.entries.back().cell,"real identity supports explicit original-source cells");
-    // User 2026-11-02: actually retain 256 distinct GPU atlases, then evict only one on the 257th.
+    // User 2026-11-04: retain 512 distinct GPU atlases, then evict only one on the 513th.
     ID3D11Device *gpu=nullptr;ID3D11DeviceContext *gpu_context=nullptr;D3D_FEATURE_LEVEL gpu_level;
     check(SUCCEEDED(D3D11CreateDevice(nullptr,D3D_DRIVER_TYPE_WARP,nullptr,0,nullptr,0,D3D11_SDK_VERSION,&gpu,&gpu_level,&gpu_context)),"world cache WARP device");
     check(create_resources(gpu),"actual world renderer GPU resources");
-    std::array<ID3D11ShaderResourceView *,256> held{};
+    std::array<ID3D11ShaderResourceView *,kTextures> held{};
     for(unsigned i=0;i<held.size();++i){held[i]=cell_view(catalog.entries[i].cell);check(held[i]!=nullptr,"distinct world atlas allocated on demand");held[i]->AddRef();}
-    for(unsigned i=0;i<held.size();++i)check(cell_view(catalog.entries[i].cell)==held[i],"all 256 world atlases retained without decoding/replacing");
-    check(cell_view(catalog.entries[256].cell)!=nullptr,"257th world atlas can still load");
+    for(unsigned i=0;i<held.size();++i)check(cell_view(catalog.entries[i].cell)==held[i],"all world atlases retained without decoding/replacing");
+    check(cell_view(catalog.entries[kTextures].cell)!=nullptr,"next world atlas can still load");
     unsigned retained=0;for(unsigned i=0;i<held.size();++i)for(const auto &t:textures)if(t.cell==catalog.entries[i].cell && t.view==held[i])++retained;
-    check(retained==255,"one replacement when the cache is full");
+    check(retained==kTextures-1,"one replacement when the cache is full");
     for(auto view:held)view->Release();release_resources();gpu_context->Release();gpu->Release();
     VirtualFree(image,0,MEM_RELEASE);
     std::printf("{\"status\":\"ccz_battle_fixture_passed\",\"checks\":%u,\"live_game\":false}\n",checks);return 0;

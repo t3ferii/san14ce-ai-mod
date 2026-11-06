@@ -18,6 +18,13 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
+#if defined(RUNTIME_COST_PROFILE) && !defined(NO_RUNTIME_LOG)
+extern "C" void gpu_profile_crumb(const char *,bool);
+struct GpuCrumbScope {const char *name;explicit GpuCrumbScope(const char *n):name(n){gpu_profile_crumb(name,true);}~GpuCrumbScope(){gpu_profile_crumb(name,false);}};
+#define COST_SCOPE(name) GpuCrumbScope gpu_crumb_scope(name)
+#else
+#define COST_SCOPE(name) do {} while(0)
+#endif
 
 namespace {
 constexpr unsigned kSlots=4,kSegs=192,kAgg=320,kInherited=0xFFFF;
@@ -109,40 +116,40 @@ inline void count(ID3D11DeviceContext *c,bool dispatch) {
     if(dispatch)++s.dispatches;else ++s.draws;
 }
 
-void STDMETHODCALLTYPE set_targets(ID3D11DeviceContext *c,UINT n,ID3D11RenderTargetView *const *rtv,ID3D11DepthStencilView *dsv) {
+void STDMETHODCALLTYPE set_targets(ID3D11DeviceContext *c,UINT n,ID3D11RenderTargetView *const *rtv,ID3D11DepthStencilView *dsv) { COST_SCOPE("gpu_profile::set_targets");
     boundary(c,n,rtv,dsv,0);
     REAL(p_set,OMSetRenderTargets,ID3D11DeviceContextVtbl)(c,n,rtv,dsv);
 }
 void STDMETHODCALLTYPE set_targets_uav(ID3D11DeviceContext *c,UINT n,ID3D11RenderTargetView *const *rtv,ID3D11DepthStencilView *dsv,
-                                        UINT start,UINT uavs,ID3D11UnorderedAccessView *const *views,const UINT *counts) {
+                                        UINT start,UINT uavs,ID3D11UnorderedAccessView *const *views,const UINT *counts) { COST_SCOPE("gpu_profile::set_targets_uav");
     if(n!=D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)boundary(c,n,rtv,dsv,uavs!=D3D11_KEEP_UNORDERED_ACCESS_VIEWS && uavs?1u:0u);
     REAL(p_set_uav,OMSetRenderTargetsAndUnorderedAccessViews,ID3D11DeviceContextVtbl)(c,n,rtv,dsv,start,uavs,views,counts);
 }
-void STDMETHODCALLTYPE draw_indexed(ID3D11DeviceContext *c,UINT a,UINT b,INT d) {
+void STDMETHODCALLTYPE draw_indexed(ID3D11DeviceContext *c,UINT a,UINT b,INT d) { COST_SCOPE("gpu_profile::draw_indexed");
     count(c,false);REAL(p_draw[0],DrawIndexed,ID3D11DeviceContextVtbl)(c,a,b,d);
 }
-void STDMETHODCALLTYPE draw(ID3D11DeviceContext *c,UINT a,UINT b) {
+void STDMETHODCALLTYPE draw(ID3D11DeviceContext *c,UINT a,UINT b) { COST_SCOPE("gpu_profile::draw");
     count(c,false);REAL(p_draw[1],Draw,ID3D11DeviceContextVtbl)(c,a,b);
 }
-void STDMETHODCALLTYPE draw_indexed_instanced(ID3D11DeviceContext *c,UINT a,UINT b,UINT d,INT e,UINT f) {
+void STDMETHODCALLTYPE draw_indexed_instanced(ID3D11DeviceContext *c,UINT a,UINT b,UINT d,INT e,UINT f) { COST_SCOPE("gpu_profile::draw_indexed_instanced");
     count(c,false);REAL(p_draw[2],DrawIndexedInstanced,ID3D11DeviceContextVtbl)(c,a,b,d,e,f);
 }
-void STDMETHODCALLTYPE draw_instanced(ID3D11DeviceContext *c,UINT a,UINT b,UINT d,UINT e) {
+void STDMETHODCALLTYPE draw_instanced(ID3D11DeviceContext *c,UINT a,UINT b,UINT d,UINT e) { COST_SCOPE("gpu_profile::draw_instanced");
     count(c,false);REAL(p_draw[3],DrawInstanced,ID3D11DeviceContextVtbl)(c,a,b,d,e);
 }
-void STDMETHODCALLTYPE draw_auto(ID3D11DeviceContext *c) {
+void STDMETHODCALLTYPE draw_auto(ID3D11DeviceContext *c) { COST_SCOPE("gpu_profile::draw_auto");
     count(c,false);REAL(p_draw[4],DrawAuto,ID3D11DeviceContextVtbl)(c);
 }
-void STDMETHODCALLTYPE draw_indexed_indirect(ID3D11DeviceContext *c,ID3D11Buffer *b,UINT o) {
+void STDMETHODCALLTYPE draw_indexed_indirect(ID3D11DeviceContext *c,ID3D11Buffer *b,UINT o) { COST_SCOPE("gpu_profile::draw_indexed_indirect");
     count(c,false);REAL(p_draw[5],DrawIndexedInstancedIndirect,ID3D11DeviceContextVtbl)(c,b,o);
 }
-void STDMETHODCALLTYPE draw_indirect(ID3D11DeviceContext *c,ID3D11Buffer *b,UINT o) {
+void STDMETHODCALLTYPE draw_indirect(ID3D11DeviceContext *c,ID3D11Buffer *b,UINT o) { COST_SCOPE("gpu_profile::draw_indirect");
     count(c,false);REAL(p_draw[6],DrawInstancedIndirect,ID3D11DeviceContextVtbl)(c,b,o);
 }
-void STDMETHODCALLTYPE dispatch(ID3D11DeviceContext *c,UINT x,UINT y,UINT z) {
+void STDMETHODCALLTYPE dispatch(ID3D11DeviceContext *c,UINT x,UINT y,UINT z) { COST_SCOPE("gpu_profile::dispatch");
     count(c,true);REAL(p_dispatch[0],Dispatch,ID3D11DeviceContextVtbl)(c,x,y,z);
 }
-void STDMETHODCALLTYPE dispatch_indirect(ID3D11DeviceContext *c,ID3D11Buffer *b,UINT o) {
+void STDMETHODCALLTYPE dispatch_indirect(ID3D11DeviceContext *c,ID3D11Buffer *b,UINT o) { COST_SCOPE("gpu_profile::dispatch_indirect");
     count(c,true);REAL(p_dispatch[1],DispatchIndirect,ID3D11DeviceContextVtbl)(c,b,o);
 }
 
@@ -300,7 +307,7 @@ void frame_edge(IDXGISwapChain *sc,bool before) {
     }
     ReleaseSRWLockExclusive(&lock);
 }
-HRESULT STDMETHODCALLTYPE present(IDXGISwapChain *sc,UINT sync,UINT flags) {
+HRESULT STDMETHODCALLTYPE present(IDXGISwapChain *sc,UINT sync,UINT flags) { COST_SCOPE("gpu_profile::present");
     const bool real_frame=!(flags & DXGI_PRESENT_TEST);
     if(real_frame)frame_edge(sc,true);
     const HRESULT hr=REAL(p_present,Present,IDXGISwapChainVtbl)(sc,sync,flags);
@@ -312,13 +319,13 @@ void patch_chain(IDXGISwapChain *sc) {
     if(patch(p_present,sc,offsetof(IDXGISwapChainVtbl,Present),reinterpret_cast<void *>(present),"chain_class_skipped"))note("present_hooked",sc);
     ReleaseSRWLockExclusive(&lock);
 }
-HRESULT STDMETHODCALLTYPE create_chain(IDXGIFactory *f,IUnknown *device,DXGI_SWAP_CHAIN_DESC *desc,IDXGISwapChain **out) {
+HRESULT STDMETHODCALLTYPE create_chain(IDXGIFactory *f,IUnknown *device,DXGI_SWAP_CHAIN_DESC *desc,IDXGISwapChain **out) { COST_SCOPE("gpu_profile::create_chain");
     const HRESULT hr=REAL(p_create,CreateSwapChain,IDXGIFactoryVtbl)(f,device,desc,out);
     if(SUCCEEDED(hr) && out && *out)patch_chain(*out);
     return hr;
 }
 HRESULT STDMETHODCALLTYPE create_chain_hwnd(IDXGIFactory2 *f,IUnknown *device,HWND hwnd,const DXGI_SWAP_CHAIN_DESC1 *desc,
-                                            const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *full,IDXGIOutput *output,IDXGISwapChain1 **out) {
+                                            const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *full,IDXGIOutput *output,IDXGISwapChain1 **out) { COST_SCOPE("gpu_profile::create_chain_hwnd");
     const HRESULT hr=REAL(p_create_hwnd,CreateSwapChainForHwnd,IDXGIFactory2Vtbl)(f,device,hwnd,desc,full,output,out);
     if(SUCCEEDED(hr) && out && *out)patch_chain(reinterpret_cast<IDXGISwapChain *>(*out));
     return hr;

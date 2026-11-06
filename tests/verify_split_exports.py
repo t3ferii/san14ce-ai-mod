@@ -15,7 +15,9 @@ def exports(path):
         result.append(pe.read(address,80).split(b'\0')[0].decode('ascii'))
     return sorted(result)
 expected={'dinput8.dll':['DirectInput8Create'],'SAN14_CombatAI.dll':['AIInitialize','SAN14CombatGetApi'],
-          'SAN14_Convenience.dll':['AIInitialize','SAN14ConvenienceInitialize'],'SAN14_CCZ.dll':['SAN14CczGetApi']}
+          'SAN14_Convenience.dll':['AIInitialize','SAN14ConvenienceInitialize'],'SAN14_CCZ.dll':['SAN14CczGetApi'],
+          # User exception 2026-11-05: the fifth DLL. Release Layout exports exactly the API entry, initialize and publish.
+          'SAN14_Layout.dll':['SAN14LayoutGetApi','SAN14LayoutInitialize','SAN14LayoutPublish']}
 checks=0
 for name,names in expected.items():
     assert exports(binary/name)==names,(name,exports(binary/name));checks+=1

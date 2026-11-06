@@ -1,6 +1,7 @@
 // 조조전 탭 (2026-11-01 사용자: 조조전 기능은 별도 DLL). Sole owner of the Present hook and of the 169F8B
 // CALL publication stays SAN14_Convenience; SAN14_CCZ.dll (ccz_module.cpp) draws and decides. It is
 // loaded here, on the install worker, only when a [ccz] feature is on. Missing DLL -> those features off.
+#include "game_addresses.h"
 #ifndef CCZ_GUARD_FIXTURE
 #include "ccz_module_api.h"
 namespace ccz_module {
@@ -14,6 +15,9 @@ static bool load() {
     DWORD length=GetModuleFileNameW(self_module,path,MAX_PATH);if(!length || length>=MAX_PATH)return false;
     wchar_t *slash=wcsrchr(path,L'\\');if(!slash || wcscpy_s(slash+1,MAX_PATH-static_cast<size_t>(slash+1-path),L"SAN14_CCZ.dll"))return false;
     HMODULE module=LoadLibraryExW(path,nullptr,LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+#if defined(RUNTIME_COST_PROFILE) && !defined(NO_RUNTIME_LOG)
+    if(module)crash_cache_ccz(module);
+#endif
     auto get=module?reinterpret_cast<GetCczApi>(GetProcAddress(module,"SAN14CczGetApi")):nullptr;
     const CczApi *found=get?get(ccz_module_abi):nullptr;
     if(!found || found->size!=sizeof(CczApi) || found->abi!=ccz_module_abi || !found->initialize || !found->sprites_guards ||
@@ -52,20 +56,20 @@ static bool ccz_sprites_guards_match() {return ccz_sprites::guards_match();}
 #endif
 // 조조전식 막기·회심. 일반 공격 처리 169C50의 6단계 CALL 16FDD0(manager,pair,output) at 169F8B (유일한 호출자).
 namespace ccz_combat {
-constexpr unsigned kSite=0x169F8B,kFix=0x16FDD0;
+const unsigned kSite=GA(GA_169F8B),kFix=GA(GA_16FDD0);
 static CallLink link;
 static bool guards_match() {
     // lea r8,[rsp+30]; mov rdx,rbx; mov rcx,r15; call 16FDD0 (169C50 case 6)
     // User 2026-11-02: original army-force and hostile-relation ABI.
     static const struct {unsigned rva;unsigned long long hash;} relations[]={
-        {0x22CC40,0x777A504FBF698C1Cull},{0x2CA280,0x7221823C76F2F29Full}};
+        {GA(GA_22CC40),GH(0x777A504FBF698C1Cull)},{GA(GA_2CA280),GH(0x7221823C76F2F29Full)}};
     for(const auto &g:relations) {
         unsigned long long h=0xCBF29CE484222325ull;
         for(unsigned i=0;i<0x30;++i)h=(h^image[g.rva+i])*0x100000001B3ull;
         if(h!=g.hash)return false;
     }
     static const unsigned char before[]={0x4C,0x8D,0x44,0x24,0x30,0x48,0x8B,0xD3,0x49,0x8B,0xCF};
-    return image[kSite]==0xE8 && kSite+5+*reinterpret_cast<int *>(image+kSite+1)==kFix && !memcmp(image+kSite-11,before,11);
+    return image[kSite]==0xE8 && kSite+5+*reinterpret_cast<int *>(image+kSite+1)==kFix && !ga::mcmp_at(image,kSite-11,before,11);
 }
 #ifndef CCZ_GUARD_FIXTURE
 static bool install(bool block,bool critical) {

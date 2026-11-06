@@ -3,7 +3,6 @@ static unsigned compat_calls;
 static uint64_t __fastcall compat_plan(Obj a,Obj b,Obj c) {++compat_calls;return reinterpret_cast<uint64_t>(a)^reinterpret_cast<uint64_t>(b)^reinterpret_cast<uint64_t>(c);}
 static float __fastcall compat_move(Obj a,Obj b,int c,int d,Obj t) {++compat_calls;return a==image+32 && b==image+48 && c==7 && d==13 && t==image+64?3.75f:-1.0f;}
 static int __fastcall compat_search(SortieNativePath *,Obj c,unsigned f,unsigned *t,int a,int b,int d) {++compat_calls;return c==image+48 && f==2 && t && *t==3?a+b+d:-1;}
-static void __fastcall compat_info(Obj a,Obj b) {if(a==image+32 && b==image+48)++compat_calls;}
 static void compat_set_call(unsigned site,Obj target) {
     intptr_t delta=reinterpret_cast<intptr_t>(target)-reinterpret_cast<intptr_t>(image+site+5);
     check(delta>=INT32_MIN && delta<=INT32_MAX,"fixture target reachable by rel32");
@@ -137,24 +136,4 @@ static void callsite_sortie_tests() {
     }
     enabled=saved_enabled;VirtualFree(relay,0,MEM_RELEASE);VirtualFree(foreign,0,MEM_RELEASE);
     check(code_ready(),"callsite fixtures restore complete captured text CRC");
-}
-static void callsite_info_tests(const SplitFixtureApi *api,const char *mode) {
-    unsigned char original[5],entry[64];memcpy(original,image+0x5CC37E,5);memcpy(entry,image+0x2C0820,64);
-    Obj foreign=allocate_near(image+0x5CC37E);check(foreign!=nullptr,"info foreign relay allocated");
-    absolute_jump(foreign,reinterpret_cast<void *>(&compat_info));DWORD old=0;check(VirtualProtect(foreign,4096,PAGE_EXECUTE_READ,&old)!=0,"info foreign surrogate executable");
-    bool external=!strcmp(mode,"--callsite-foreign"),opcode=!strcmp(mode,"--callsite-opcode"),invalid=!strcmp(mode,"--callsite-invalid") || opcode;
-    if(external)compat_set_call(0x5CC37E,foreign);
-    if(invalid)compat_set_call(0x5CC37E,image+0x1000);
-    if(opcode)image[0x5CC37E]=0xCC;
-    absolute_jump(image+0x2C0820,reinterpret_cast<void *>(&compat_info));
-    unsigned char untouched[64];memcpy(untouched,image+0x2C0820,64);
-    check(api->prepare(image,nullptr) && api->publish(),"info mismatch never fails other convenience hooks");
-    check(!memcmp(image+0x2C0820,untouched,64),"info install preserves native first 64 bytes even with a foreign entry");
-    check(invalid?(opcode?image[0x5CC37E]==0xCC:compat_target(0x5CC37E)==image+0x1000):compat_target(0x5CC37E)!=(external?foreign:image+0x2C0820),"info original external and invalid call cases");
-    if(!invalid) {unsigned before=compat_calls;reinterpret_cast<void(__fastcall *)(Obj,Obj)>(compat_target(0x5CC37E))(image+32,image+48);check(compat_calls==before+1,"info wrapper actually calls native or external next");}
-    if(external)image[0x5CC37E]=0xCC;
-    api->rollback();
-    check(external || opcode?image[0x5CC37E]==0xCC:compat_target(0x5CC37E)==(invalid?image+0x1000:image+0x2C0820),"info restores only its current owned bytes");
-    memcpy(image+0x5CC37E,original,5);memcpy(image+0x2C0820,entry,64);VirtualFree(foreign,0,MEM_RELEASE);
-    check(code_ready(),"info cases restore captured text CRC");
 }

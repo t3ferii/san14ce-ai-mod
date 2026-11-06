@@ -1,8 +1,9 @@
-// Input loader only. All game guards, hooks and features live in the two modules;
-// the loader only decides which modules to load.
+// Input loader only. All game guards, hooks and features live in the modules;
+// the loader only decides which modules to load (Layout first, then combat/convenience).
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "split_module_api.h"
+#include "layout_api.h"
 static HINSTANCE loader_module;
 static HMODULE load_module(const wchar_t *name) {
     wchar_t path[MAX_PATH];
@@ -34,6 +35,12 @@ static const SplitCombatApi null_combat={sizeof(SplitCombatApi),split_module_abi
 static DWORD WINAPI initialize_modules(LPVOID) {
     const bool use_combat=group_enabled(L"combat");
     if(!use_combat && !group_enabled(L"convenience") && !group_enabled(L"performance"))return 0;
+    // SAN14_Layout.dll first (user exception 2026-11-05): it waits for the unpacked image, is pinned, and
+    // owns the Present/WndProc hooks the other modules subscribe to. Without it (missing file, failed
+    // initialize) the UI features of the other modules stay off; they never hook those places themselves.
+    HMODULE layout=load_module(L"SAN14_Layout.dll");
+    auto initialize_layout=layout?reinterpret_cast<InitializeLayout>(GetProcAddress(layout,"SAN14LayoutInitialize")):nullptr;
+    const bool layout_ready=initialize_layout && initialize_layout(san14_layout_abi);
     HMODULE combat=use_combat?load_module(L"SAN14_CombatAI.dll"):nullptr;
     HMODULE convenience=load_module(L"SAN14_Convenience.dll");
     if((use_combat && !combat) || !convenience)return 0;
@@ -43,6 +50,8 @@ static DWORD WINAPI initialize_modules(LPVOID) {
     if(!start || !api || api->size!=sizeof(SplitCombatApi) || api->abi!=split_module_abi ||
        !api->prepare || !api->publish || !api->rollback || !api->activate || !api->departure_scope)return 0;
     start(split_module_abi,api);
+    // Registered hooks are published together once every module has registered (design 4.2).
+    if(layout_ready)if(auto publish=reinterpret_cast<PublishLayout>(GetProcAddress(layout,"SAN14LayoutPublish")))publish();
     // Modules remain loaded for process lifetime; callbacks can be in flight.
     return 0;
 }

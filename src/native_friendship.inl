@@ -1,3 +1,4 @@
+#include "game_addresses.h"
 /* Supplemental friendship bindings, not published by the current installer.
  * Save/load publication and the expanded relationship screen remain required
  * before these callbacks can be enabled in a distributed game DLL. */
@@ -25,7 +26,7 @@ static void friendship_check_world() {
     Obj current=world();
     if(current!=friendship_world) {expanded_friends.clear();friendship_world=current;}
 }
-[[maybe_unused]] static int __fastcall friendship_has(Obj officer,Obj other) {
+[[maybe_unused]] static int __fastcall friendship_has(Obj officer,Obj other) { COST_SCOPE("friendship_has");
     int native=original_friend_has(officer,other);
     if(native || !enabled || !valid(officer) || !valid(other))return native;
     unsigned owner=word(officer,0x10),target=word(other,0x10);
@@ -34,7 +35,7 @@ static void friendship_check_world() {
     bool found=expanded_friends.contains(owner,target,friendship_native(officer));
     ReleaseSRWLockExclusive(&friendship_lock);return found?1:0;
 }
-[[maybe_unused]] static void __fastcall friendship_add(Obj officer,Obj other) {
+[[maybe_unused]] static void __fastcall friendship_add(Obj officer,Obj other) { COST_SCOPE("friendship_add");
     if(!enabled || !valid(officer) || !valid(other)) {original_friend_add(officer,other);return;}
     unsigned owner=word(officer,0x10),target=word(other,0x10);
     friendship::AddResult result=friendship::AddResult::Invalid;
@@ -55,7 +56,7 @@ static void friendship_check_world() {
     ReleaseSRWLockExclusive(&friendship_lock);
     if(result==friendship::AddResult::Full)log_event("friendship_500_capacity_reached",owner,target);
 }
-[[maybe_unused]] static void __fastcall friendship_remove(Obj officer,Obj other) {
+[[maybe_unused]] static void __fastcall friendship_remove(Obj officer,Obj other) { COST_SCOPE("friendship_remove");
     original_friend_remove(officer,other);
     if(!enabled || !valid(officer) || !valid(other))return;
     AcquireSRWLockExclusive(&friendship_lock);friendship_check_world();
@@ -74,7 +75,7 @@ static void friendship_check_world() {
     } catch(...) {success=false;}
     ReleaseSRWLockExclusive(&friendship_lock);return success;
 }
-[[maybe_unused]] static unsigned __fastcall friendship_list(Obj officer,GameList *out,int templates) {
+[[maybe_unused]] static unsigned __fastcall friendship_list(Obj officer,GameList *out,int templates) { COST_SCOPE("friendship_list");
     unsigned count=original_friend_list(officer,out,templates);
     if(!enabled || !valid(officer) || !out)return count;
     std::vector<uint16_t> ids;
@@ -112,10 +113,10 @@ static void friendship_prune(Obj officer,bool custom_aware) {
     } catch(...) {ReleaseSRWLockExclusive(&friendship_lock);return;}
     ReleaseSRWLockExclusive(&friendship_lock);
 }
-[[maybe_unused]] static void __fastcall friendship_cleanup(Obj officer) {
+[[maybe_unused]] static void __fastcall friendship_cleanup(Obj officer) { COST_SCOPE("friendship_cleanup");
     original_friend_cleanup(officer);friendship_prune(officer,false);
 }
-[[maybe_unused]] static void __fastcall friendship_normalize(Obj officer) {
+[[maybe_unused]] static void __fastcall friendship_normalize(Obj officer) { COST_SCOPE("friendship_normalize");
     original_friend_normalize(officer);
     if(enabled && valid(officer)) {
         unsigned id=word(officer,0x10);
@@ -129,7 +130,7 @@ static bool friendship_is_world_person(Obj officer,unsigned id) {
     Obj current=world();
     return current && friendship::valid_id(id) && pointer(current,0x158+id*8)==officer;
 }
-[[maybe_unused]] static void __fastcall friendship_reset(Obj officer) {
+[[maybe_unused]] static void __fastcall friendship_reset(Obj officer) { COST_SCOPE("friendship_reset");
     unsigned old_id=word(officer,0x10);
     bool matched=enabled && friendship_is_world_person(officer,old_id);
     original_friend_reset(officer);
@@ -138,10 +139,10 @@ static bool friendship_is_world_person(Obj officer,unsigned id) {
         ReleaseSRWLockExclusive(&friendship_lock);
     }
 }
-[[maybe_unused]] static unsigned char __fastcall friendship_person_read(Obj officer,Obj archive) {
+[[maybe_unused]] static unsigned char __fastcall friendship_person_read(Obj officer,Obj archive) { COST_SCOPE("friendship_person_read");
     unsigned old_id=word(officer,0x10);bool reading=dword(archive,0x20)==1;
     bool old_match=enabled && reading && friendship_is_world_person(officer,old_id);
-    unsigned char result=fn<unsigned char(__fastcall *)(Obj,Obj)>(0x2390B0)(officer,archive);
+    unsigned char result=fn<unsigned char(__fastcall *)(Obj,Obj)>(GA(GA_2390B0))(officer,archive);
     if(enabled && reading && result) {
         unsigned new_id=word(officer,0x10);
         bool new_match=friendship_is_world_person(officer,new_id);

@@ -1,61 +1,68 @@
 // Sole owner SAN14_Convenience.dll, original UI/AI caller threads only.
 // Evidence/alias closure: tests/verify_path_fast.py; NATIVE_FUNCTIONS path_fast.
+#include "game_addresses.h"
 #include "path_fast.h"
 namespace path_fast {
-static constexpr unsigned entry=0x183A30,debug_rva=0x2141A84;
+static const unsigned entry=GA(GA_183A30),debug_rva=GA(GA_2141A84);
 struct Guard {unsigned rva,size;unsigned long long hash;};
 static const Guard guards[]={
-    {0x1843F0,0x18D,0x2bc2a29fa00bcd58ull},
-    {0x183A30,0x9A2,0x11cbf08ff66c9febull},
-    {0x18AE60,0x132,0x73037cef8a22e554ull},
-    {0x18AFA0,0x206,0x55ae3e62de7508d0ull},
-    {0x18DD40,0x52,0x3b589a2996fa3f21ull},
-    {0x2A7720,0x148,0x1d6d4c9e36e1ff90ull},
-    {0x2AE6F0,0x8B,0x15208ddabb0f2913ull},
-    {0x1864F0,0x1FB,0x2afa522fc7bc2fa3ull},
-    {0x18A080,0x33E,0x0fbd138cba30277aull},
-    {0x2CA280,0x155,0x8ab0c33d562dec08ull},
-    {0x22FB10,0x2C,0x99a5ed6df7e7ff2eull},
-    {0x32F500,0x24,0xb302042a0360860cull},
-    {0x232650,0x27,0x8ea28a06f23303dbull},
-    {0x232BD0,0x1E,0x954452f9468380c5ull},
-    {0xEE90,0x2A,0x0f0f24adc0fc7152ull},
-    {0x2C6950,0x57,0xee7d5726d0edb259ull},
-    {0x2C6850,0xBB,0x27ce261532697d4aull},
-    {0x1879C0,0xC1,0x2eb18e55c7274edcull},
-    {0x2AA860,0x9E,0x293ef7107333cbbdull},
-    {0x2AEE80,0x23,0x0bbc93973ca1bab9ull},
-    {0x22CC40,0x8B,0x66e1d780bcf40acdull},
-    {0x232730,0x80,0x1ce31f2eb2b32750ull},
-    {0x32C130,0xCD,0x9b56391fd58202edull},
-    {0x22D740,0x4D,0xd762f2a729878b2eull},
-    {0x2C3780,0x6F,0x7cdaad4223582c75ull},
-    {0xBE120,0x8A,0xcb7a49e55d10b330ull},
-    {0x2211F0,0x35,0x3be6c62024a0e8c6ull},
-    {0x2EF540,0x4C,0x1c10338fc64faa6cull},
-    {0x2B02A0,0x515,0x2dc04f9cfef07249ull},
-    {0x221FC0,0xF,0xd797f102380b2965ull},
-    {0x3E2610,0x50,0xd4a8e9910122c16cull},
-    {0x3F6C50,0x58,0xe25ef5e2ea6bf1ccull},
-    {0x4DE80,0x68,0xab8858ea0c64e76cull},
-    {0x184CF0,0x1B5,0x68da7c8c17b914bfull},
-    {0x185620,0x1B5,0x3e728d11fce15e42ull},
-    {0x1534D0,0x43,0xae2dd00988a7678aull},
-    {0x149FE0,0x9B,0xe3f577fb94671d27ull}
+    {GA(GA_1843F0),0x18D,GH(0x2bc2a29fa00bcd58ull)},
+    {GA(GA_183A30),0x9A2,GH(0x11cbf08ff66c9febull)},
+    {GA(GA_18AE60),0x132,GH(0x73037cef8a22e554ull)},
+    {GA(GA_18AFA0),0x206,GH(0x55ae3e62de7508d0ull)},
+    {GA(GA_18DD40),0x52,GH(0x3b589a2996fa3f21ull)},
+    {GA(GA_2A7720),0x148,GH(0x1d6d4c9e36e1ff90ull)},
+    {GA(GA_2AE6F0),0x8B,GH(0x15208ddabb0f2913ull)},
+    {GA(GA_1864F0),0x1FB,GH(0x2afa522fc7bc2fa3ull)},
+    {GA(GA_18A080),0x33E,GH(0x0fbd138cba30277aull)},
+    {GA(GA_2CA280),0x155,GH(0x8ab0c33d562dec08ull)},
+    {GA(GA_22FB10),0x2C,GH(0x99a5ed6df7e7ff2eull)},
+    {GA(GA_32F500),0x24,GH(0xb302042a0360860cull)},
+    {GA(GA_232650),0x27,GH(0x8ea28a06f23303dbull)},
+    {GA(GA_232BD0),0x1E,GH(0x954452f9468380c5ull)},
+    {GA(GA_EE90),0x2A,GH(0x0f0f24adc0fc7152ull)},   // 2026-11-05 local3: was the raw RVA 0xEE90
+    {GA(GA_2C6950),0x57,GH(0xee7d5726d0edb259ull)},
+    {GA(GA_2C6850),0xBB,GH(0x27ce261532697d4aull)},
+    {GA(GA_1879C0),0xC1,GH(0x2eb18e55c7274edcull)},
+    {GA(GA_2AA860),0x9E,GH(0x293ef7107333cbbdull)},
+    {GA(GA_2AEE80),0x23,GH(0x0bbc93973ca1bab9ull)},
+    {GA(GA_22CC40),0x8B,GH(0x66e1d780bcf40acdull)},
+    {GA(GA_232730),0x80,GH(0x1ce31f2eb2b32750ull)},
+    {GA(GA_32C130),0xCD,GH(0x9b56391fd58202edull)},
+    {GA(GA_22D740),0x4D,GH(0xd762f2a729878b2eull)},
+    {GA(GA_2C3780),0x6F,GH(0x7cdaad4223582c75ull)},
+    {GA(GA_BE120),0x8A,GH(0xcb7a49e55d10b330ull)},
+    {GA(GA_2211F0),0x35,GH(0x3be6c62024a0e8c6ull)},
+    {GA(GA_2EF540),0x4C,GH(0x1c10338fc64faa6cull)},
+    {GA(GA_2B02A0),0x515,GH(0x2dc04f9cfef07249ull)},
+    {GA(GA_221FC0),0xF,GH(0xd797f102380b2965ull)},
+    {GA(GA_3E2610),0x50,GH(0xd4a8e9910122c16cull)},
+    {GA(GA_3F6C50),0x58,GH(0xe25ef5e2ea6bf1ccull)},
+    {GA(GA_4DE80),0x68,GH(0xab8858ea0c64e76cull)},
+    {GA(GA_184CF0),0x1B5,GH(0x68da7c8c17b914bfull)},
+    {GA(GA_185620),0x1B5,GH(0x3e728d11fce15e42ull)},
+    {GA(GA_1534D0),0x43,GH(0xae2dd00988a7678aull)},
+    {GA(GA_149FE0),0x9B,GH(0xe3f577fb94671d27ull)}
 };
 // AI-CONTRACT [hook boundary]: 183A30/184485 belong to convenience; 1843E0 entry belongs to combat. Preserve mutual exclusion with path_count and native-search reentrancy guards; delegation must restore native node state.
-static constexpr unsigned clear_site=0x184485;
+static const unsigned clear_site=GA(GA_184485);
 static constexpr unsigned char clear_bytes_expected[]={0xF3,0xAA};
 // 사용자 결정 2026-10-30: 통합패치·발탁장수 공존을 위해 첫머리 훅을 호출 자리로 이동
 // Combat now owns these two CALLs inside fingerprinted path helpers.
-static constexpr unsigned movement_calls[]={0x183CC9,0x1865AA};
+static const unsigned movement_calls[]={GA(GA_183CC9),GA(GA_1865AA)};
 static bool movement_call_match(unsigned site) {
     if(image[site]!=0xE8)return false;
     int delta;memcpy(&delta,image+site+1,4);
     uintptr_t target=reinterpret_cast<uintptr_t>(image+site+5)+delta;
     auto pe=reinterpret_cast<IMAGE_NT_HEADERS64 *>(image+reinterpret_cast<IMAGE_DOS_HEADER *>(image)->e_lfanew);
     uintptr_t begin=reinterpret_cast<uintptr_t>(image),end=begin+pe->OptionalHeader.SizeOfImage;
-    return target==begin+0x2B0290 || target<begin || target>=end;
+    return target==begin+GA(GA_2B0290) || target<begin || target>=end;
+}
+// local10 G2 3.1: the node buffer slots (slot_of) are image+GA_1BB7B00. The id is a data address, so its value is confirmed here by the
+// LEA r8,[rax+disp32] 0x17 bytes before the REP STOSB that clear_site NOPs (same instruction stream in both builds; the 1843F0 guard pins the range).
+static bool node_base_ok() {
+    const unsigned cs=GA(GA_184485);static const unsigned char lea[]={0x4C,0x8D,0x80};
+    return cs && !memcmp(image+cs-0x17,lea,3) && static_cast<unsigned>(*reinterpret_cast<const int *>(image+cs-0x14))==GA(GA_1BB7B00);
 }
 static bool guards_match() {
     for(unsigned site:movement_calls)if(!movement_call_match(site))return false;
@@ -64,28 +71,29 @@ static bool guards_match() {
         for(unsigned i=0;i<g.size;++i) {
             unsigned at=g.rva+i;unsigned char value=image[at];
             for(unsigned site:movement_calls)if(at>site && at<site+5) {
-                int native=static_cast<int>(0x2B0290-site-5);
+                int native=static_cast<int>(GA(GA_2B0290)-site-5);
                 value=reinterpret_cast<unsigned char *>(&native)[at-site-1];
             }
             h=(h^value)*0x100000001b3ull;
         }
         if(h!=g.hash)return false;
     }
+    if(!node_base_ok())return false;
     // Independent confirmation of the debug-global RIP displacement, not its value.
-    return !memcmp(image+clear_site,clear_bytes_expected,sizeof(clear_bytes_expected)) && image[0x183D68]==0x83 && 0x183D6F+*reinterpret_cast<int *>(image+0x183D6A)==debug_rva;
+    return !ga::mcmp_at(image,clear_site,clear_bytes_expected,sizeof(clear_bytes_expected)) && image[GA(GA_183D68)]==0x83 && GA(GA_183D6F)+*reinterpret_cast<int *>(image+GA(GA_183D6A))==debug_rva;
 }
 static float movement(Obj army,Obj formation,int preview,int modifier,Obj tile) {
     // The native search used this CALL. Follow its combat-owned thunk so the
     // convenience DLL reads the combat DLL's cohort state, including its next.
-    if(movement_call_match(0x183CC9)) {
-        int delta;memcpy(&delta,image+0x183CCA,4);
-        auto next=reinterpret_cast<float(__fastcall *)(Obj,Obj,int,int,Obj)>(image+0x183CCE+delta);
+    if(movement_call_match(GA(GA_183CC9))) {
+        int delta;memcpy(&delta,image+GA(GA_183CCA),4);
+        auto next=reinterpret_cast<float(__fastcall *)(Obj,Obj,int,int,Obj)>(image+GA(GA_183CCE)+delta);
         return next(army,formation,preview,modifier,tile);
     }
 #ifdef SORTIE_FORMATION
     return sortie_movement(army,formation,preview,modifier,tile);
 #else
-    return fn<float(__fastcall *)(Obj,Obj,int,int,Obj)>(0x2B0290)(army,formation,preview,modifier,tile);
+    return fn<float(__fastcall *)(Obj,Obj,int,int,Obj)>(GA(GA_2B0290))(army,formation,preview,modifier,tile);
 #endif
 }
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
@@ -160,7 +168,7 @@ static void record(bool fast,bool compared,bool mismatch,bool dirty,std::uint64_
                 log_event(name,static_cast<unsigned>(a),static_cast<unsigned>(b),static_cast<unsigned>(c));
             },[](unsigned id,unsigned direction) {
                 // Guarded 2A7720 is pure integer geometry; no terrain/aux callbacks for diagnostics.
-                return fn<unsigned(__fastcall *)(unsigned,unsigned)>(0x2A7720)(id,direction);
+                return fn<unsigned(__fastcall *)(unsigned,unsigned)>(GA(GA_2A7720))(id,direction);
             });
     }
     ReleaseSRWLockExclusive(&day_lock);
@@ -176,110 +184,110 @@ struct Native {
     bool prepare(Node *nodes,unsigned from,unsigned to,unsigned bits) {
         start=from;goal=to;flags=bits;
         int x,y;
-        fn<void(__fastcall *)(unsigned,int *,int *)>(0x2AEE80)(start,&x,&y);
+        fn<void(__fastcall *)(unsigned,int *,int *)>(GA(GA_2AEE80))(start,&x,&y);
         army=pointer(ctx,0);
-        valid=fn<Unary>(0x32F500)(army);
+        valid=fn<Unary>(GA(GA_32F500))(army);
         if(!valid) {
             Obj other=pointer(ctx,8);
-            if(fn<Unary>(0x32F500)(other)) {
+            if(fn<Unary>(GA(GA_32F500))(other)) {
                 other=pointer(ctx,8); // 183BB7 reload after the validity callback
                 force=(*reinterpret_cast<int(__fastcall **)(Obj)>(*reinterpret_cast<Obj *>(other)+0x60))(other);
             }
         } else {
-            force=fn<Unary>(0x22CC40)(pointer(ctx,0));
+            force=fn<Unary>(GA(GA_22CC40))(pointer(ctx,0));
             army=pointer(ctx,0); // 183ACC reload, preserving callback side effects
             local_b0=army[0x10]==2;
             const unsigned first=army[0x1B],second=army[0x1C];
             a0=pointer(world(),0x77428+(first<0x15?first:0)*8);
             a8=pointer(world(),0x77428+(second<0x15?second:0)*8);
-            if((force!=0x33 && static_cast<unsigned>(force)-0x2E>4) || fn<Unary>(0x232730)(army)) {
+            if((force!=0x33 && static_cast<unsigned>(force)-0x2E>4) || fn<Unary>(GA(GA_232730))(army)) {
                 army=pointer(ctx,0); // 183B42
                 const unsigned officer=word(army,0x12);
                 Obj person=pointer(world(),officer<0x1771?0x158+officer*8:0x73A50);
                 const unsigned county=word(army,0x2A);
-                Obj region=fn<Obj(__fastcall *)(Obj,unsigned)>(0x32C130)(world(),word(person,0xE2));
-                c4=county==static_cast<unsigned>(fn<Unary>(0x22D740)(region));
+                Obj region=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32C130))(world(),word(person,0xE2));
+                c4=county==static_cast<unsigned>(fn<Unary>(GA(GA_22D740))(region));
             }
-            if(fn<int(__fastcall *)(Obj,int)>(0x2C3780)(pointer(ctx,0),0x66))c8=0;
+            if(fn<int(__fastcall *)(Obj,int)>(GA(GA_2C3780))(pointer(ctx,0),0x66))c8=0;
         }
         if(dword(ctx,0x10))local_b0=1;
         Node *root=nullptr;
-        return fn<int(__fastcall *)(unsigned,int,unsigned,unsigned,const unsigned *,int,Node *,Node **)>(0x18AFA0)
+        return fn<int(__fastcall *)(unsigned,int,unsigned,unsigned,const unsigned *,int,Node *,Node **)>(GA(GA_18AFA0))
             (flags,force,local_b0,start,&goal,1,nodes,&root)!=0;
     }
     void begin() {
-        aux[0]=fn<Obj(__fastcall *)(Obj *)>(0x18DD40)(aux);
-        const int base=fn<Unary>(0xBE120)(pointer(world(),0x73870));
+        aux[0]=fn<Obj(__fastcall *)(Obj *)>(GA(GA_18DD40))(aux);
+        const int base=fn<Unary>(GA(GA_BE120))(pointer(world(),0x73870));
         const __m128 numerator=_mm_cvtepi32_ps(_mm_cvtsi32_si128(base));
         __m128 denominator=numerator;
         if((flags&5) && pointer(ctx,0)) {
             alignas(16) unsigned char object[32];
-            fn<Obj(__fastcall *)(Obj)>(0x2211F0)(object);
-            fn<void(__fastcall *)(Obj,int)>(0x2EF540)(object,2);
+            fn<Obj(__fastcall *)(Obj)>(GA(GA_2211F0))(object);
+            fn<void(__fastcall *)(Obj,int)>(GA(GA_2EF540))(object,2);
             army=pointer(ctx,0); // 183C8A reload after constructor/setter callbacks
             const unsigned id=army[0x1B];
             Obj terrain_type=pointer(world(),0x77428+(id<0x15?id:0)*8);
             const float speed=movement(army,terrain_type,0,0,object);
             // COMISS numerator,speed; CMOVBE selects numerator (including NaN).
             if(!_mm_comile_ss(numerator,_mm_set_ss(speed)))denominator=_mm_set_ss(speed);
-            fn<void(__fastcall *)(Obj)>(0x221FC0)(object);
+            fn<void(__fastcall *)(Obj)>(GA(GA_221FC0))(object);
         }
         scale=_mm_cvtss_f32(_mm_div_ss(numerator,denominator));
     }
-    unsigned neighbour(unsigned id,unsigned direction) {return fn<unsigned(__fastcall *)(unsigned,unsigned)>(0x2A7720)(id,direction);}
+    unsigned neighbour(unsigned id,unsigned direction) {return fn<unsigned(__fastcall *)(unsigned,unsigned)>(GA(GA_2A7720))(id,direction);}
     Obj tile(unsigned id) {return pointer(world(),0xE270+(id<path_fast_core::cells?id:0)*8);}
-    int terrain(Obj cell) {return fn<int(__fastcall *)(Obj,int,unsigned)>(0x2AE6F0)(cell,force,c8);}
+    int terrain(Obj cell) {return fn<int(__fastcall *)(Obj,int,unsigned)>(GA(GA_2AE6F0))(cell,force,c8);}
     bool allowed(unsigned id,Obj cell,std::int32_t &cost) {
         if(!(flags&0xC)) {
-            if(!fn<int(__fastcall *)(Obj,Obj,int,unsigned,unsigned,const unsigned *,int)>(0x18A080)
+            if(!fn<int(__fastcall *)(Obj,Obj,int,unsigned,unsigned,const unsigned *,int)>(GA(GA_18A080))
                 (pointer(ctx,0),cell,force,flags&0x40,c4,&goal,1))return false;
-            if(local_b0 && fn<int(__fastcall *)(int,unsigned)>(0x2CA280)(force,cell[0x14]))return false;
+            if(local_b0 && fn<int(__fastcall *)(int,unsigned)>(GA(GA_2CA280))(force,cell[0x14]))return false;
             Obj key=pointer(ctx,0x20);
             const unsigned id_key=key?dword(key,0):0x14000;
-            Obj lists=pointer(image,0x27D10F0);
-            if(lists && id_key<dword(image,0x27D1120))
+            Obj lists=pointer(image,GA(GA_27D10F0));
+            if(lists && id_key<dword(image,GA(GA_27D1120)))
                 for(Obj item=pointer(lists,id_key*8);item;item=pointer(item,8))
                     if(pointer(item,0)==cell)return false;
             if(dword(ctx,0x28) && word(cell,0x16))return false;
             if(dword(ctx,0x2C) && cell[0x10]==7)cost=path_fast_core::add(cost,10000);
             if(!(flags&0x40)) {
-                Obj building=fn<Obj(__fastcall *)(Obj)>(0x22FB10)(cell);
-                if(fn<Unary>(0x32F500)(building) && !fn<Unary>(0x232650)(building) && !fn<Unary>(0x232BD0)(building)) {
-                    Obj type=fn<Obj(__fastcall *)(Obj)>(0xEE90)(building);
+                Obj building=fn<Obj(__fastcall *)(Obj)>(GA(GA_22FB10))(cell);
+                if(fn<Unary>(GA(GA_32F500))(building) && !fn<Unary>(GA(GA_232650))(building) && !fn<Unary>(GA(GA_232BD0))(building)) {
+                    Obj type=fn<Obj(__fastcall *)(Obj)>(GA(GA_EE90))(building);
                     if(type[0x2C]==2 || type[0x2C]==3)return false;
                 }
             }
-        } else if(!fn<int(__fastcall *)(unsigned,int)>(0x2C6850)(id,force))return false;
-        if((flags&0x10) && id!=goal && fn<int(__fastcall *)(unsigned)>(0x2C6950)(id))return false;
-        if((flags&0x21)==1 && valid && fn<int(__fastcall *)(unsigned)>(0x2C6950)(id))
-            cost=path_fast_core::add(cost,fn<int(__fastcall *)(Obj,Obj)>(0x1879C0)(cell,pointer(ctx,0)));
+        } else if(!fn<int(__fastcall *)(unsigned,int)>(GA(GA_2C6850))(id,force))return false;
+        if((flags&0x10) && id!=goal && fn<int(__fastcall *)(unsigned)>(GA(GA_2C6950))(id))return false;
+        if((flags&0x21)==1 && valid && fn<int(__fastcall *)(unsigned)>(GA(GA_2C6950))(id))
+            cost=path_fast_core::add(cost,fn<int(__fastcall *)(Obj,Obj)>(GA(GA_1879C0))(cell,pointer(ctx,0)));
         return true;
     }
     int adjust(int cost,Obj cell) {
-        return fn<int(__fastcall *)(int,unsigned,Obj,Obj,Obj,Obj,Obj *)>(0x1864F0)
+        return fn<int(__fastcall *)(int,unsigned,Obj,Obj,Obj,Obj,Obj *)>(GA(GA_1864F0))
             (cost,flags,cell,pointer(ctx,0),a0,a8,aux);
     }
-    void coordinate(unsigned id) {int x,y;fn<void(__fastcall *)(unsigned,int *,int *)>(0x2AEE80)(id,&x,&y);}
+    void coordinate(unsigned id) {int x,y;fn<void(__fastcall *)(unsigned,int *,int *)>(GA(GA_2AEE80))(id,&x,&y);}
     int heuristic(unsigned id) {
-        const int distance=fn<int(__fastcall *)(unsigned,unsigned)>(0x2AA850)(id,start);
+        const int distance=fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2AA850))(id,start);
         return _mm_cvttss_si32(_mm_mul_ss(_mm_cvtepi32_ps(_mm_cvtsi32_si128(distance)),_mm_set_ss(scale)));
     }
     void success() {*reinterpret_cast<unsigned *>(image+debug_rva)=0;}
     void cleanup() {
         Obj root=aux[0],item=pointer(root,8);
         while(!item[0x19]) {
-            fn<void(__fastcall *)(Obj *,Obj)>(0x3E2610)(aux,pointer(item,0x10));
+            fn<void(__fastcall *)(Obj *,Obj)>(GA(GA_3E2610))(aux,pointer(item,0x10));
             Obj next=pointer(item,0);
-            fn<void(__fastcall *)(Obj)>(0x3F6C50)(item);item=next;
+            fn<void(__fastcall *)(Obj)>(GA(GA_3F6C50))(item);item=next;
         }
         root=aux[0];*reinterpret_cast<Obj *>(root+8)=root;
         *reinterpret_cast<Obj *>(root)=root;*reinterpret_cast<Obj *>(root+0x10)=root;aux[1]=nullptr;
-        fn<void(__fastcall *)(Obj,int,unsigned)>(0x4DE80)(root,1,0x30);
+        fn<void(__fastcall *)(Obj,int,unsigned)>(GA(GA_4DE80))(root,1,0x30);
     }
 };
 static int slot_of(const Node *buffer) {
     for(unsigned slot=0;slot<3;++slot)
-        if(reinterpret_cast<const unsigned char *>(buffer)==image+0x1BB7B00+slot*path_fast_core::node_bytes)return static_cast<int>(slot);
+        if(reinterpret_cast<const unsigned char *>(buffer)==image+GA(GA_1BB7B00)+slot*path_fast_core::node_bytes)return static_cast<int>(slot);
     return -1;
 }
 static bool known_slot(const Node *buffer) {return slot_of(buffer)>=0;}
@@ -371,7 +379,7 @@ static Node *path_body(Obj ctx,unsigned start,const int *goals,int count,Node *b
     const DWORD error=GetLastError();
     SetLastError(error);return output;
 }
-static Node *__fastcall path(Obj ctx,unsigned start,const int *goals,int count,Node *buffer,int clear_bytes,unsigned flags) {
+static Node *__fastcall path(Obj ctx,unsigned start,const int *goals,int count,Node *buffer,int clear_bytes,unsigned flags) { COST_SCOPE_HOT("path");
     const DWORD error=GetLastError();
     COST_SCOPE("path_fast");
     SetLastError(error);return path_body(ctx,start,goals,count,buffer,clear_bytes,flags);
@@ -392,7 +400,7 @@ static bool prepare(Obj relay) {
     // REP affects only RCX/RDI and memory. Both registers and RAX are killed
     // before their next read; TEST R12,R12 replaces flags at 18448E.
     const unsigned char nop[]={0x90,0x90};
-    return prepare_bytes(clear_link,0x184485,nop,sizeof(nop));
+    return prepare_bytes(clear_link,GA(GA_184485),nop,sizeof(nop));
 }
 static bool install() {
 #ifndef NO_RUNTIME_LOG

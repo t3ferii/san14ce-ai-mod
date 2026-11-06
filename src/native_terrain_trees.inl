@@ -1,5 +1,6 @@
 // User/Claude 2026-10-29: ResourceMap edits on the native placement callback only.
 #pragma once
+#include "game_addresses.h"
 #define SAN14_TERRAIN_TREES_INCLUDED 1
 #include <vector>
 #include <cmath>
@@ -10,7 +11,7 @@ namespace terrain_trees {
 alignas(8) static volatile LONG64 perf_calls,perf_total_us,perf_frame_us,perf_max_us;
 static const LONGLONG perf_frequency=[] {LARGE_INTEGER f={};QueryPerformanceFrequency(&f);return f.QuadPart?f.QuadPart:1;}();
 #endif
-static constexpr unsigned Slot=0x1694958,UpdateRva=0xBB10F0,SetterRva=0xB91330;
+static const unsigned Slot=GA(GA_1694958),UpdateRva=GA(GA_BB10F0),SetterRva=GA(GA_B91330);
 static constexpr unsigned Size=1024,HexCount=48400,FrameLimit=64;
 static constexpr unsigned char update_bytes[16]={0x40,0x55,0x53,0x56,0x41,0x55,0x41,0x56,0x48,0x8D,0xAC,0x24,0x10,0xE7,0xFF,0xFF};
 static constexpr unsigned char setter_bytes[16]={0x48,0x89,0x5C,0x24,0x18,0x48,0x89,0x74,0x24,0x20,0x48,0x89,0x54,0x24,0x10,0x57};
@@ -36,8 +37,8 @@ static std::vector<unsigned char> original_resource;
 static bool active() {return permitted && enabled && mod_features.convenience && mod_features.terrain_edit;}
 static bool guards_match() {
     return pointer(image,Slot)==image+UpdateRva &&
-        !memcmp(image+UpdateRva,update_bytes,sizeof(update_bytes)) &&
-        !memcmp(image+SetterRva,setter_bytes,sizeof(setter_bytes));
+        !ga::mcmp_at(image,UpdateRva,update_bytes,sizeof(update_bytes)) &&
+        !ga::mcmp_at(image,SetterRva,setter_bytes,sizeof(setter_bytes));
 }
 static void clear_queue_locked() {memset(queued,0,sizeof(queued));dirty_head=dirty_count=0;}
 static void enqueue_locked(unsigned hex) {
@@ -129,11 +130,11 @@ static bool readable(Obj object,size_t bytes) {
     return true;
 }
 static bool resource(Obj s,Obj &r,Obj &data) {
-    if(!readable(s,0x70D8) || pointer(s,0)!=image+0x1694928 ||
+    if(!readable(s,0x70D8) || pointer(s,0)!=image+GA(GA_1694928) ||
        *reinterpret_cast<unsigned *>(s+0x7084)!=Size || *reinterpret_cast<unsigned *>(s+0x7088)!=Size ||
        *reinterpret_cast<unsigned *>(s+0x708C)!=128 || *reinterpret_cast<unsigned *>(s+0x7090)!=128 || s[0x70B4]!=1)return false;
     r=pointer(s,0x70D0);
-    if(!readable(r,0x98) || pointer(r,0)!=image+0x1692770 ||
+    if(!readable(r,0x98) || pointer(r,0)!=image+GA(GA_1692770) ||
        *reinterpret_cast<unsigned *>(r+0x14)!=Size || *reinterpret_cast<unsigned *>(r+0x18)!=Size)return false;
     data=pointer(r,0x58);return readable(data,static_cast<size_t>(Size)*Size);
 }

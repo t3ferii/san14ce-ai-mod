@@ -19,19 +19,20 @@
 // "done" (job created, entry +178[id] = {.., +8 job, +10 texture}, count 1 = the pin) so many jobs run
 // together. 8A8B80 only binds an image whose job result (+20) exists, so before 1B91E0 sets a requested
 // face the skipped original wait `while(!14D90(job,0,*manager)) Sleep(0)` runs once (usually done).
+#include "game_addresses.h"
 #include "face_keep.h"
 #ifndef NO_RUNTIME_LOG
 #include <psapi.h>
 #endif
 namespace face_keep {
-static const unsigned kSite=0x1B3523,kFace=0x1B91E0,kAdd=0x8A6DE0,kId=0x8A83A0,kRelease=0x8A7EA0,kManager=0x27D4390;
-static const unsigned long long kFaceHash=0x48b0735f99258031ull,kAddHash=0x0aeca3e5d3d8f863ull,
-    kIdHash=0x3f79d63ec71cc249ull,kReleaseHash=0xe9fe6c32e37f87d3ull;
+static const unsigned kSite=GA(GA_1B3523),kFace=GA(GA_1B91E0),kAdd=GA(GA_8A6DE0),kId=GA(GA_8A83A0),kRelease=GA(GA_8A7EA0),kManager=GA(GA_27D4390);
+static const unsigned long long kFaceHash=GH(0x48b0735f99258031ull),kAddHash=GH(0x0aeca3e5d3d8f863ull),
+    kIdHash=GH(0x3f79d63ec71cc249ull),kReleaseHash=GH(0xe9fe6c32e37f87d3ull);
 static const int kFaceKind=10;
 using Face=void(__fastcall *)(Obj,Obj);
 static face_keep_core::Pins pins;   // UI thread only
-static const unsigned kPumpSite=0x8AB11B,kPump=0x14D90,kLoad=0x8AAD70,kPersons=0x277DF18;
-static const unsigned long long kLoadHash=0x9ddcb888371c8c54ull;   // 8AAD70..8AB216 with its chunks
+static const unsigned kPumpSite=GA(GA_8AB11B),kPump=GA(GA_14D90),kLoad=GA(GA_8AAD70),kPersons=GA(GA_277DF18);
+static const unsigned long long kLoadHash=GH(0x9ddcb888371c8c54ull);   // 8AAD70..8AB216 with its chunks
 static constexpr long long kPrefetchUs=6000;   // request time per frame (part of the appear budget)
 using Pump=unsigned long long(__fastcall *)(Obj,unsigned long long,Obj);
 static face_keep_core::Pending pending;      // UI thread only
@@ -112,7 +113,7 @@ static void log_memory() {
 static LONGLONG clock_hz;
 #endif
 static int face_id(Obj manager,Obj person) {
-    if(!manager || !person || !fn<int(__fastcall *)(Obj)>(0x32F500)(person))return 0;   // as 1B91E0
+    if(!manager || !person || !fn<int(__fastcall *)(Obj)>(GA(GA_32F500))(person))return 0;   // as 1B91E0
     const int face=static_cast<int>(*reinterpret_cast<unsigned short *>(person+0xA6));
     return fn<int(__fastcall *)(Obj,int,int)>(kId)(manager,kFaceKind,face);   // table lookup only
 }
@@ -200,7 +201,7 @@ static bool install() {
         // 8AB11B: CALL 14D90; TEST AL,AL; JNE 8AB13D (skip the Sleep(0)/14D90 loop at 8AB124..8AB13B).
         static const unsigned char kWait[]={0x84,0xC0,0x75,0x19,0x33,0xC9,0xFF,0x15};
         if(image[kPumpSite]!=0xE8 || kPumpSite+5+*reinterpret_cast<int *>(image+kPumpSite+1)!=kPump ||
-           memcmp(image+kPumpSite+5,kWait,sizeof(kWait)) || fingerprint(kLoad,0x8AB216-0x8AAD70)!=kLoadHash) {
+           ga::mcmp_at(image,kPumpSite+5,kWait,sizeof(kWait)) || fingerprint(kLoad,GA(GA_8AB216)-GA(GA_8AAD70))!=kLoadHash) {
             log_event("face_prefetch_guard_rejected");return true;
         }
         Obj stub=allocate_near(image+kPumpSite);if(!stub)return true;

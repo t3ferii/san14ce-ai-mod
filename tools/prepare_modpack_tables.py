@@ -17,8 +17,5 @@ header+='static const ModpackBytes modpack_bytes[]={\n'+',\n'.join(rows)+'\n};\n
 for name,rva,count in [('traits',0x2020,39),('tactics',0x2070,43)]:
     values=struct.unpack('<'+'H'*count,collab.read(rva,count*2))
     header+='static const unsigned short collab_'+name+'[]={'+','.join(map(str,values))+'};\n'
-hover=PEImage(data/'SAN14_TraitHover.dll')
-slots=[struct.unpack('<III',hover.read(0x62A0+i*12,12)) for i in range(152)]
-header+='static const unsigned hover_slots[]={'+','.join('0x%X'%s[0] for s in slots)+'};\n'
 (P/'src/modpack_tables.h').write_text(header,encoding='utf-8')
-print('prepared',len(rows),'stat patches; collab ID tables;',len(slots),'hover callback slots')
+print('prepared',len(rows),'stat patches; collab ID tables')

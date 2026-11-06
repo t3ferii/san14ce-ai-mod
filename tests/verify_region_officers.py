@@ -1,3 +1,4 @@
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import ga_expand  # user 2026-11-05 patch resilience: sources spell addresses as GA(GA_x)
 """Current-file ABI checks; optional bounded PROCESS_VM_READ observation only."""
 from pathlib import Path
 import argparse, ctypes as C, hashlib, json, re, struct, sys
@@ -45,7 +46,7 @@ def verify_live(pid,pe,profile):
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--pid',type=int);args=parser.parse_args()
     pe=PE(SOURCE);assert digest(pe.data)==EXPECTED
-    assert digest((GAME/'SAN14CE_KO.exe').read_bytes())=='87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a'
+    assert digest((GAME/'SAN14CE_KO.exe').read_bytes()) in ('87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a','782cf229a56cdde2b95399e0e7536740b3f5e96bea702679365e4dad061abdce') # Steam EXE: 87ed4e46 = before the 2026-11-05 update, 782cf229 = buildid 25953386 (build table, nothing weakened)
     profile=json.loads((P/'research/area_officer_overlay/profile.json').read_text())['functions']
     header=(P/'src/region_officer_profile.h').read_text()
     for row in profile:

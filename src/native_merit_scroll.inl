@@ -1,3 +1,4 @@
+#include "game_addresses.h"
 /* The window/message thread differs from the profile UI caller. Exchange
  * scalar input only; native UI calls and text vectors stay on the UI caller. */
 struct MeritScroll {
@@ -107,7 +108,7 @@ static void merit_scroll_stop() {
 }
 static bool merit_scroll_front() {
     // A different modal over the biography must retain its own keys.
-    Obj manager=image+0x1B620B0;
+    Obj manager=image+GA(GA_1B620B0);
     size_t count=*reinterpret_cast<size_t *>(manager+0x10);Obj states=pointer(manager,0x20);
     if(!count || count>4096 || !states)return false;
     Obj state=pointer(states,static_cast<unsigned>((count-1)*8));
@@ -131,7 +132,7 @@ static void merit_scroll_render(MeritScroll &s) {
     std::wstring colour;
     for(size_t i=0;i<start;++i)if(merit_scroll_control(s.text,i)) {colour=s.text.substr(i,3);i+=2;}
     std::wstring page=heading+colour+s.text.substr(start,end-start);
-    fn<void(__fastcall *)(Obj,unsigned,const wchar_t *)>(0x930D20)(s.profile+0x130,s.key,page.c_str());
+    fn<void(__fastcall *)(Obj,unsigned,const wchar_t *)>(GA(GA_930D20))(s.profile+0x130,s.key,page.c_str());
 }
 static void merit_scroll_set(Obj profile,unsigned key,const std::wstring &text) {
     merit_scroll_reset_input();
@@ -152,10 +153,10 @@ static void merit_scroll_set(Obj profile,unsigned key,const std::wstring &text) 
     merit_scroll_render(s);merit_scroll_ensure_window();
 }
 static void __fastcall merit_profile_tick(Obj profile) { COST_SCOPE("merit_profile_tick");
-    fn<void(__fastcall *)(Obj)>(0x878810)(profile);
+    next_or<void(__fastcall *)(Obj)>(next_merit_profile_tick,GA(GA_878810))(profile);
     for(size_t i=0;i<merit_scrolls.size();++i) {
         MeritScroll &s=merit_scrolls[i];if(s.profile!=profile)continue;
-        s.visible=enabled && fn<unsigned(__fastcall *)(Obj)>(0x86F250)(profile)!=0 && merit_scroll_front();
+        s.visible=enabled && fn<unsigned(__fastcall *)(Obj)>(GA(GA_86F250))(profile)!=0 && merit_scroll_front();
         s.updated=GetTickCount();LONG rows=0;int edge=0;
         if(s.visible)merit_scroll_ensure_window();
         AcquireSRWLockExclusive(&merit_scroll_input_lock);

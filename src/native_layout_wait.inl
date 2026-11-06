@@ -8,11 +8,14 @@
 // Same arguments, same caller thread; the original always runs. Evidence:
 // REA_Analysis/stall_20261018/README.md. Call sites: 676767, 86CFA5, 86DEC9 (E8
 // rel32) and 86E0C0 (whole thin wrapper replaced: its call crosses a 16-byte block).
+// P4 (2026-11-05): every load through the three sites also reports (layout, name, async) to SAN14_Layout.dll
+// (layout_client::note_load) so its built event can name the layout; no timing/keep work when only names are wanted.
+#include "game_addresses.h"
 #include <string>
 namespace layout_wait {
 // 86E0C0 forwards its 7th argument as an 8th, so 86C570 takes eight.
 using Load=void(__fastcall *)(Obj,unsigned,unsigned,Obj,const char *,unsigned long long,int,unsigned long long);
-static const unsigned kLoad=0x86C570,kWrapper=0x86E0C0,kSites[3]={0x676767,0x86CFA5,0x86DEC9};
+static const unsigned kLoad=GA(GA_86C570),kWrapper=GA(GA_86E0C0),kSites[3]={GA(GA_676767),GA(GA_86CFA5),GA(GA_86DEC9)};
 static const unsigned char kWrapperBytes[0x33]={0x48,0x83,0xEC,0x48,0x48,0x8B,0x84,0x24,0x80,0x00,0x00,0x00,0x48,0x89,0x44,0x24,
     0x38,0x8B,0x44,0x24,0x78,0x89,0x44,0x24,0x30,0x48,0x8B,0x44,0x24,0x70,0x48,0xC7,0x44,0x24,0x28,0x00,0x00,0x00,0x00,0x48,
     0x89,0x44,0x24,0x20,0xE8,0x7F,0xE4,0xFF,0xFF,0xB8,0x01};
@@ -25,11 +28,11 @@ static SRWLOCK keep_lock=SRWLOCK_INIT;
 static std::vector<std::string> kept;          // names already held
 static Obj make_holder() {
     // Same construction as the plain CUILayout container in 882540.
-    Obj holder=fn<Obj(__fastcall *)(size_t)>(0x3F6BC0)(0x178);
+    Obj holder=fn<Obj(__fastcall *)(size_t)>(GA(GA_3F6BC0))(0x178);
     if(!holder)return nullptr;
-    fn<void(__fastcall *)(Obj)>(0x864C50)(holder);
-    *reinterpret_cast<Obj *>(holder)=image+0x1342530;
-    fn<void(__fastcall *)(Obj)>(0x92AB70)(holder+0x130);
+    fn<void(__fastcall *)(Obj)>(GA(GA_864C50))(holder);
+    *reinterpret_cast<Obj *>(holder)=image+GA(GA_1342530);
+    fn<void(__fastcall *)(Obj)>(GA(GA_92AB70))(holder+0x130);
     return holder;
 }
 static void keep(const char *name,unsigned a,unsigned b,unsigned long long extra,unsigned long long tail) {
@@ -41,9 +44,12 @@ static void keep(const char *name,unsigned a,unsigned b,unsigned long long extra
     if(!fresh)return;
     if(Obj holder=make_holder())fn<Load>(kLoad)(holder,a,b,nullptr,name,extra,1,tail);   // async: no parent, never shown
 }
-static void __fastcall timed(Obj self,unsigned a,unsigned b,Obj parent,const char *name,unsigned long long extra,int async,unsigned long long tail) { COST_SCOPE("layout_timed");
+static Load next_load[3];   // Layout manager: next of each E8 site (original 86C570 unless another mod chained first)
+static void timed_call(Load next,Obj self,unsigned a,unsigned b,Obj parent,const char *name,unsigned long long extra,int async,unsigned long long tail) { COST_SCOPE("layout_timed");
+    layout_client::note_load(self,name,async);   // P4: layout->name for the Layout built event (the sync load builds inside the original)
+    if(!keep_enabled && file==INVALID_HANDLE_VALUE) {next(self,a,b,parent,name,extra,async,tail);return;}   // names only: no timing
     LARGE_INTEGER begin,end;QueryPerformanceCounter(&begin);
-    fn<Load>(kLoad)(self,a,b,parent,name,extra,async,tail);
+    next(self,a,b,parent,name,extra,async,tail);
     QueryPerformanceCounter(&end);
     const double ms=static_cast<double>(end.QuadPart-begin.QuadPart)*1000.0/static_cast<double>(frequency.QuadPart);
     if(keep_enabled && !async && name && ms>=5.0)keep(name,a,b,extra,tail);
@@ -54,10 +60,15 @@ static void __fastcall timed(Obj self,unsigned a,unsigned b,Obj parent,const cha
     if(n<=0)return;
     AcquireSRWLockExclusive(&lock);DWORD written;WriteFile(file,line,static_cast<DWORD>(n),&written,nullptr);ReleaseSRWLockExclusive(&lock);
 }
-static unsigned long long __fastcall wrapper(Obj self,unsigned a,unsigned b,Obj parent,const char *name,int async,unsigned long long tail) { COST_SCOPE("layout_wait::wrapper");
-    timed(self,a,b,parent,name,0,async,tail);return 1;   // original 86E0C0: 86C570(...,name,0,async,tail); return 1
+template<unsigned I> static void __fastcall timed(Obj self,unsigned a,unsigned b,Obj parent,const char *name,unsigned long long extra,int async,unsigned long long tail) { COST_SCOPE("layout_timed_site");
+    timed_call(next_pick(next_load[I],kLoad),self,a,b,parent,name,extra,async,tail);
 }
-static CodeLink links[4];
+// 8.3 (user 2026-11-05 Layout compatibility design): the 86E0C0 entry patch is gone (R1 FastMenu, IC and others keep
+// fingerprints of that entry); the thin wrapper below is no longer installed, so loads that go through 86E0C0 are
+// neither timed nor kept. layout_keep waits for the 86E320 observation point (P4).
+[[maybe_unused]] static unsigned long long __fastcall wrapper(Obj self,unsigned a,unsigned b,Obj parent,const char *name,int async,unsigned long long tail) { COST_SCOPE("layout_wait::wrapper");
+    timed_call(next_pick(next_load[0],kLoad),self,a,b,parent,name,0,async,tail);return 1;   // original 86E0C0: 86C570(...,name,0,async,tail); return 1
+}
 static bool install() {
     wchar_t path[MAX_PATH];
     if(!GetModuleFileNameW(self_module,path,MAX_PATH))return false;
@@ -65,10 +76,12 @@ static bool install() {
     wchar_t config[MAX_PATH];wcscpy_s(config,path);
     if(wcscat_s(config,L"\\AI_TacticsMod\\기능설정.ini"))return false;
     keep_enabled=mod_features.layout_keep;
+    // 8.7: R1 FastMenu (PinSlowLayouts) already keeps slow layouts resident; yield the keep part, never the timing.
+    if(keep_enabled && layout_client::yield_to_peer("layout_keep",kSites[0]))keep_enabled=false;
     const bool diagnostics=dev_group() && GetPrivateProfileIntW(L"diagnostics",L"layout_wait",0,config)!=0;
-    if(!keep_enabled && !diagnostics)return true;
-    for(unsigned site:kSites)if(image[site]!=0xE8 || site+5+*reinterpret_cast<int *>(image+site+1)!=kLoad)return false;
-    if(memcmp(image+kWrapper,kWrapperBytes,sizeof(kWrapperBytes)))return false;
+    const bool names=layout_client::names_wanted();   // P4: Layout events need the layout names from these three sites
+    if(!keep_enabled && !diagnostics && !names)return true;
+    // The CALL targets are judged by the Layout hook manager; only the 86E0C0 wrapper bytes stay recorded for the static check.
     QueryPerformanceFrequency(&frequency);QueryPerformanceCounter(&origin);
     if(diagnostics && !wcscat_s(path,L"\\AI_TacticsMod\\data\\diagnostics")) {
         CreateDirectoryW(path,nullptr);
@@ -78,15 +91,12 @@ static bool install() {
             const char head[]="session_seconds,thread,wait_ms,async,layout\r\n";DWORD written;WriteFile(file,head,sizeof(head)-1,&written,nullptr);
         }
     }
-    Obj relay=allocate_near(image+kLoad);if(!relay)return false;
-    absolute_jump(relay,reinterpret_cast<void *>(&timed));absolute_jump(relay+32,reinterpret_cast<void *>(&wrapper));
-    DWORD old;bool ok=true;
-    for(unsigned i=0;i<3;++i)ok=ok && prepare_link(links[i],kSites[i],0xE8,relay);
-    ok=ok && prepare_link(links[3],kWrapper,0xE9,relay+32);
-    if(!ok || !VirtualProtect(relay,4096,PAGE_EXECUTE_READ,&old) || !FlushInstructionCache(GetCurrentProcess(),relay,64)) {
-        VirtualFree(relay,0,MEM_RELEASE);return false;
+    layout_client::Transaction tx;
+    if(!layout_client::call(kSites[0],reinterpret_cast<void *>(&timed<0>),reinterpret_cast<void **>(&next_load[0])) ||
+       !layout_client::call(kSites[1],reinterpret_cast<void *>(&timed<1>),reinterpret_cast<void **>(&next_load[1])) ||
+       !layout_client::call(kSites[2],reinterpret_cast<void *>(&timed<2>),reinterpret_cast<void **>(&next_load[2]))) {
+        log_event("layout_wait_register_rejected");return false;
     }
-    for(auto &l:links)if(!publish_link(l)) {for(auto &r:links)restore_link(r);return false;}
-    log_event("layout_wait_diagnostic_installed");return true;
+    tx.done=true;log_event("layout_wait_diagnostic_installed");return true;
 }
 }

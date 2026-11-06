@@ -66,7 +66,7 @@ static bool mouse_device(IDirectInputDevice8W *device) {
     if(mouse_identity_count<64)mouse_identities[mouse_identity_count++]={device,table,yes};else yes=false;
     ReleaseSRWLockExclusive(&mouse_lock);return yes;
 }
-static HRESULT STDMETHODCALLTYPE filtered_device_state(IDirectInputDevice8W *device,DWORD bytes,LPVOID data) {
+static HRESULT STDMETHODCALLTYPE filtered_device_state(IDirectInputDevice8W *device,DWORD bytes,LPVOID data) { COST_SCOPE("filtered_device_state");
     auto original=original_device_state;
     for(const auto &t:mouse_tables)if(t.table==*reinterpret_cast<void ***>(device)){original=t.state;break;}
     HRESULT result=original(device,bytes,data);
@@ -83,7 +83,7 @@ static HRESULT STDMETHODCALLTYPE filtered_device_state(IDirectInputDevice8W *dev
     }
     return result;
 }
-static HRESULT STDMETHODCALLTYPE filtered_device_data(IDirectInputDevice8W *device,DWORD bytes,LPDIDEVICEOBJECTDATA data,LPDWORD count,DWORD flags) {
+static HRESULT STDMETHODCALLTYPE filtered_device_data(IDirectInputDevice8W *device,DWORD bytes,LPDIDEVICEOBJECTDATA data,LPDWORD count,DWORD flags) { COST_SCOPE("filtered_device_data");
     auto original=original_device_data;
     for(const auto &t:mouse_tables)if(t.table==*reinterpret_cast<void ***>(device)){original=t.data;break;}
     DWORD capacity=count?*count:0;HRESULT result=original(device,bytes,data,count,flags);

@@ -1,5 +1,6 @@
 // Convenience-owned 1EC890 entry hook for the corps policy, only when the combat
 // module is absent (see native_district_intercept.inl).
+#include "game_addresses.h"
 namespace district_intercept {
 // Convenience-owned entry hook, only when the combat module is absent.
 static Dispatch original_dispatch;
@@ -11,14 +12,14 @@ static const unsigned char kEntry[16]={0x40,0x55,0x56,0x57,0x41,0x54,0x41,0x55,0
 static bool combat_module_loaded() {return GetModuleHandleW(L"SAN14_CombatAI.dll")!=nullptr;}
 static bool prepare(CodeLink &link,Obj relay) {
     if(combat_module_loaded()) {diag_line("0,0,entry_hook_skipped_combat_module_loaded\r\n");return false;}
-    if(memcmp(image+0x1EC890,kEntry,sizeof(kEntry))) {diag_line("0,0,entry_hook_skipped_bytes_differ\r\n");return false;}
+    if(ga::mcmp(image,GA_1EC890,0,kEntry,sizeof(kEntry))) {diag_line("0,0,entry_hook_skipped_bytes_differ\r\n");return false;}
     Obj stub=relay+3328,gate=stub+32;                       // same entry layout as the combat sortie gate
     absolute_jump(stub,reinterpret_cast<void *>(&dispatch));
-    memcpy(gate,kEntry,6);absolute_jump(gate+6,image+0x1EC896);
+    memcpy(gate,kEntry,6);absolute_jump(gate+6,image+GA(GA_1EC896));
     original_dispatch=reinterpret_cast<Dispatch>(gate);
-    if(!prepare_link(link,0x1EC890,0xE9,stub))return false;
+    if(!prepare_link(link,GA(GA_1EC890),0xE9,stub))return false;
     diag_line("0,0,entry_hook_prepared\r\n");
-    link.modified[0x1EC890-link.block+5]=0x90;              // the sixth displaced byte
+    link.modified[GA(GA_1EC890)-link.block+5]=0x90;              // the sixth displaced byte
     return true;
 }
 // Transport sources (v12.19). Native condition 84 = AEE60(context, subject, args):
@@ -33,17 +34,17 @@ static bool prepare(CodeLink &link,Obj relay) {
 using Condition=unsigned char(__fastcall *)(Obj,Obj,const unsigned *,unsigned);
 static unsigned char __fastcall transport_safety(Obj context,Obj subject,const unsigned *args,unsigned extra) { COST_SCOPE("district_intercept::transport_safety");
     if(enabled && mod_features.district_intercept_block && args && args[0]==5 && args[3]==15) {
-        Obj corps=fn<Obj(__fastcall *)(Obj,Obj)>(0xB60E0)(context,subject);   // same lookup as condition 26
+        Obj corps=fn<Obj(__fastcall *)(Obj,Obj)>(GA(GA_B60E0))(context,subject);   // same lookup as condition 26
         if(restricted_corps(corps)) {COST_SCOPE("transport_safety_override");return 1;}
     }
-    return fn<Condition>(0xAEE60)(context,subject,args,extra);
+    return fn<Condition>(GA(GA_AEE60))(context,subject,args,extra);
 }
 static const unsigned char kSafetyBlock[16]={0x49,0x8B,0xCA,0xE8,0xE8,0xBE,0xFE,0xFF,0x0F,0xB6,0xD0,0x48,0x83,0xC4,0x20,0x5D};
 static const unsigned char kSafetyEntry[10]={0x40,0x57,0x41,0x56,0x41,0x57,0x48,0x83,0xEC,0x40};
 static const unsigned char kCorpsEntry[10]={0x48,0x89,0x5C,0x24,0x08,0x57,0x48,0x83,0xEC,0x20};
 static bool prepare_safety(CodeLink &link,Obj relay) {
-    if(memcmp(image+0xC2F70,kSafetyBlock,16) || memcmp(image+0xAEE60,kSafetyEntry,10) || memcmp(image+0xB60E0,kCorpsEntry,10))return false;
+    if(ga::mcmp(image,GA_C2F70,0,kSafetyBlock,16) || ga::mcmp(image,GA_AEE60,0,kSafetyEntry,10) || ga::mcmp(image,GA_B60E0,0,kCorpsEntry,10))return false;
     absolute_jump(relay+3392,reinterpret_cast<void *>(&transport_safety));
-    return prepare_link(link,0xC2F73,0xE8,relay+3392);
+    return prepare_link(link,GA(GA_C2F73),0xE8,relay+3392);
 }
 }

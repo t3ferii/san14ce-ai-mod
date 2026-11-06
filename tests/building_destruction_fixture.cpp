@@ -48,7 +48,8 @@ static Object command,other_command,region,other_region,force;
 static Object buildings[14],tiles[14],definitions[5];
 static unsigned mode,native_calls,extra_writes;
 static bool native_done;
-static int __fastcall enemy(unsigned a,unsigned b){return a==1 && (b==2 || b==3);}
+static bool any_force_enemy;   // the force-slot loop needs every caster id to be hostile to the primary's owner
+static int __fastcall enemy(unsigned a,unsigned b){return any_force_enemy?a!=b:(a==1 && (b==2 || b==3));}
 static Obj __fastcall area(Obj tile){return pointer(tile,0x20);}
 static void __fastcall durability(Obj b,int left){check(native_done,"extra writer runs after native completion");++extra_writes;put(b,0x14,static_cast<unsigned short>(left));}
 static void __fastcall native_remove(Obj b,Obj effect,int flag){check(native_done && !effect && flag==0,"native removal ABI and caller phase");++extra_writes;b[8]=0;}
@@ -70,13 +71,15 @@ static int __fastcall original(Obj cmd){
     native_done=true;return mode==2?2:1;
 }
 static void *dispatch(unsigned r){
-    switch(r){case 0x1F9DE0:return reinterpret_cast<void *>(&original);
-    case 0x2CA280:return reinterpret_cast<void *>(&enemy);case 0x229EA0:return reinterpret_cast<void *>(&area);
-    case 0x1F42B0:return reinterpret_cast<void *>(&durability);case 0x294B90:return reinterpret_cast<void *>(&native_remove);
-    default:check(false,"unexpected native call");return nullptr;}
+    if(r==GA(GA_1F9DE0))return reinterpret_cast<void *>(&original);
+    if(r==GA(GA_2CA280))return reinterpret_cast<void *>(&enemy);
+    if(r==GA(GA_229EA0))return reinterpret_cast<void *>(&area);
+    if(r==GA(GA_1F42B0))return reinterpret_cast<void *>(&durability);
+    if(r==GA(GA_294B90))return reinterpret_cast<void *>(&native_remove);
+    check(false,"unexpected native call");return nullptr;
 }
 static void reset(){
-    objects.clear();enabled=1;mod_features={true,true};mode=1;native_calls=extra_writes=0;native_done=false;
+    objects.clear();any_force_enemy=false;enabled=1;mod_features={true,true};mode=1;native_calls=extra_writes=0;native_done=false;
     building_destruction::current=nullptr;
     for(unsigned c=0;c<5;++c){definitions[c]=Object{};definitions[c].b[0x2C]=static_cast<unsigned char>(c);objects[{0x73958,c}]=definitions[c].p();}
     force=Object{};put(force.p(),0x10,static_cast<unsigned short>(850));objects[{0xDF30,1}]=force.p();
@@ -114,11 +117,17 @@ static void behavior(){
         check(building_destruction::complete(command.p())==1 && word(buildings[2].p(),0x14)==400,"ruler PERSON id never controls the caster force identity");
     }
     for(unsigned id=1;id<=51;++id) {
-        reset();objects.erase({0xDF30,1});objects[{0xDF30,id}]=force.p();
+        reset();any_force_enemy=true;buildings[1].b[0x13]=60;objects.erase({0xDF30,1});objects[{0xDF30,id}]=force.p();
         building_destruction::Context c={};c.command=command.p();building_destruction::current=&c;
         building_destruction::capture(command.p(),buildings[1].p(),region.p(),500,force.p());
         check(c.captured && c.force==id,"all native force table slots resolve independently of ruler id");
         building_destruction::current=nullptr;
+    }
+    for(unsigned owner:{1u,4u,0u}) {   // local10 G2 3.2 mismatch guard: a primary that is not hostile to the caster means the argument slots are wrong
+        reset();buildings[1].b[0x13]=static_cast<unsigned char>(owner);
+        building_destruction::Context c={};c.command=command.p();building_destruction::current=&c;
+        building_destruction::capture(command.p(),buildings[1].p(),region.p(),500,force.p());
+        check(!c.captured,"primary owned by own/allied/neutral force: capture refused (argument slot mismatch)");building_destruction::current=nullptr;
     }
     reset();objects.erase({0xDF30,1});building_destruction::Context orphan={};orphan.command=command.p();building_destruction::current=&orphan;
     building_destruction::capture(command.p(),buildings[1].p(),region.p(),500,force.p());check(!orphan.captured,"force object absent from native table rejected");building_destruction::current=nullptr;
@@ -126,19 +135,33 @@ static void behavior(){
     for(int damage:{0,-1}){reset();building_destruction::Context c={};c.command=command.p();building_destruction::current=&c;
         building_destruction::capture(command.p(),buildings[1].p(),region.p(),damage,force.p());check(!c.captured,"nonpositive roll rejected");building_destruction::current=nullptr;}
 }
-static void bridge(){
+static void bridge(unsigned form){
     reset();Obj code=allocate_near(nullptr);check(code!=nullptr,"bridge allocation");
-    unsigned n=building_destruction::make_capture_bridge(code);
-    Obj entry=code+512;
-    const unsigned char driver[]={0x55,0x41,0x54,0x41,0x55,0x48,0x81,0xEC,0,1,0,0,
-        0x48,0x8D,0xAC,0x24,0x80,0,0,0,0x48,0x89,0x4D,0xE0,0x48,0x89,0x55,0xA0,
-        0x48,0x8B,0x84,0x24,0x40,1,0,0,0x48,0x89,0x45,0xC0,0x4D,0x8B,0xE8,0x44,0x89,0xCA,
-        0xC7,0x44,0x24,0x78,0x78,0x56,0x34,0x12,0xF9,0x48,0xB8};
-    std::memcpy(entry,driver,sizeof(driver)-3);unsigned at=sizeof(driver)-3;
+    unsigned n=building_destruction::make_capture_bridge(code,form);
+    Obj entry=code+512;unsigned at=0;
+    // Driver frame (both forms): push rbp/r12/r13, sub rsp,100, lea rbp,[rsp+80] (the native RBP-relative slots), RSP 16-byte aligned.
+    const unsigned char frame[]={0x55,0x41,0x54,0x41,0x55,0x48,0x81,0xEC,0,1,0,0,0x48,0x8D,0xAC,0x24,0x80,0,0,0};
+    std::memcpy(entry+at,frame,sizeof(frame));at+=sizeof(frame);
+    if(form==1) {
+        const unsigned char slots[]={0x48,0x89,0x4D,0xE0,0x48,0x89,0x55,0xA0,                          // command [rbp-20], primary [rbp-60]
+            0x48,0x8B,0x84,0x24,0x40,1,0,0,0x48,0x89,0x45,0xC0,                                        // force (5th argument) -> [rbp-40]
+            0x4D,0x8B,0xE8,0x44,0x89,0xCA,                                                             // r13=region, edx=damage
+            0xC7,0x44,0x24,0x78,0x78,0x56,0x34,0x12};                                                  // native [rsp+78]
+        std::memcpy(entry+at,slots,sizeof(slots));at+=sizeof(slots);
+    } else {
+        const unsigned char slots[]={0x48,0x89,0x4D,0xE0,0x48,0x89,0x55,0xA8,                          // command [rbp-20], primary [rbp-58]
+            0x48,0x8B,0x84,0x24,0x40,1,0,0,0x48,0x89,0x45,0xF8,                                        // force -> [rbp-8]
+            0x4D,0x8B,0xE8,                                                                            // r13=region
+            0xBA,0,0,0,0x80,0xC7,0x45,0x90,0,0,0,0,0xC7,0x45,0xE8,0xF4,1,0,0x80,                       // edx=2^31, [rbp-70]=0, [rbp-18]=2^31+500
+            0x41,0xBC,0x78,0x56,0x34,0x12};                                                            // r12d (callee-saved, must survive)
+        std::memcpy(entry+at,slots,sizeof(slots));at+=sizeof(slots);
+    }
     static const unsigned char pattern[16]={1,9,4,8,5,3,2,7,6,11,12,15,13,10,14,16};
     entry[at++]=0x48;entry[at++]=0xB8;put(entry,at,pattern);at+=8;
     for(unsigned xmm=0;xmm<6;++xmm){const unsigned char load[]={0xF3,0x0F,0x6F,static_cast<unsigned char>(xmm*8)};std::memcpy(entry+at,load,4);at+=4;}
-    entry[at++]=0xF9;entry[at++]=0x48;entry[at++]=0xB8;put(entry,at,code);at+=8;
+    // form 1: carry set before the call must survive; form 2: the displaced ADDs produce the carry (2^31+(2^31+500)) and it must survive
+    if(form==1)entry[at++]=0xF9;
+    entry[at++]=0x48;entry[at++]=0xB8;put(entry,at,code);at+=8;
     entry[at++]=0xFF;entry[at++]=0xD0;
     // Sixth argument is an output buffer at native RSP+148 after our frame.
     const unsigned char output[]={0x4C,0x8B,0x9C,0x24,0x48,1,0,0};std::memcpy(entry+at,output,8);at+=8;
@@ -152,12 +175,14 @@ static void bridge(){
     using Driver=unsigned long long(__fastcall *)(Obj,Obj,Obj,int,Obj,Obj);
     const auto result=reinterpret_cast<Driver>(entry)(command.p(),buildings[1].p(),region.p(),500,force.p(),xmm_result);
     building_destruction::current=nullptr;
-    check(result==0x112345678ull,"real bridge preserves carry and loads original stack into R12D");
-    check(c.captured && c.damage==500 && c.force==1 && c.region==region.p() && c.count==4,"real bridge forwards all five arguments");
+    check(result==0x112345678ull,form==1?"real bridge preserves carry and loads original stack into R12D":"real bridge replays the ADDs, preserves their carry and R12D");
+    check(c.captured && c.damage==500 && c.force==1 && c.region==region.p() && c.count==4,"real bridge forwards all five arguments (form 2: final EDX after both ADDs)");
     for(unsigned xmm=0;xmm<6;++xmm)check(!std::memcmp(xmm_result+xmm*16,pattern,16),"real bridge preserves volatile XMM registers");
     check(n<512 && extra_writes==0,"bridge fits relay and capture does not apply writes");
-    std::ofstream("capture_bridge.bin",std::ios::binary).write(reinterpret_cast<char *>(code),n);VirtualFree(code,0,MEM_RELEASE);
+    char name[40];std::snprintf(name,sizeof(name),"capture_bridge_form%u.bin",form);
+    std::ofstream(name,std::ios::binary).write(reinterpret_cast<char *>(code),n);VirtualFree(code,0,MEM_RELEASE);
 }
+static unsigned expected_form;
 static void guards(const char *path){
     std::ifstream f(path,std::ios::binary);std::vector<unsigned char> data((std::istreambuf_iterator<char>(f)),{});check(data.size()>0x1000,"plain PE fixture loaded");
     image=static_cast<Obj>(VirtualAlloc(nullptr,0x4000000,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));check(image!=nullptr,"mapped PE fixture allocated");
@@ -167,12 +192,20 @@ static void guards(const char *path){
         if(raw+size<=data.size() && rva+size<=0x4000000)std::memcpy(image+rva,file+raw,size);}
     check(building_destruction::guards_match(),"all native guard hashes match checked plain CE");
     for(const auto &g:building_destruction::guards){image[g.rva]^=1;check(!building_destruction::guards_match(),"each changed dependency rejects hook");image[g.rva]^=1;}
-    unsigned char before[16];std::memcpy(before,image+0x1FA600,16);publications=0;fail_publication=2;
+    const unsigned form=building_destruction::capture_form(),site=GA(GA_1FA607),block=site&~15u,complete_site=GA(GA_1F91F1);
+    check(form==expected_form,"capture point form of this build");
+    // other shapes are refused: neither form's bytes, and a one-byte change of the form-2 ADD pair
+    image[site+1]^=1;check(building_destruction::capture_form()==0,"unknown capture point shape rejected");image[site+1]^=1;
+    unsigned char before[16];std::memcpy(before,image+block,16);publications=0;fail_publication=2;
     check(!building_destruction::install(),"second publication failure rejects feature");
-    check(!std::memcmp(before,image+0x1FA600,16) && !building_destruction::installed,"first publication rolled back");
+    check(!std::memcmp(before,image+block,16) && !building_destruction::installed,"first publication rolled back");
     publications=fail_publication=0;check(building_destruction::install(),"two scoped CALL hooks published");
-    check(image[0x1F91F1]==0xE8 && image[0x1FA607]==0xE8 && image[0x1FA60C]==0x90 && image[0x1FA60E]==0x90,"correct hook footprints and NOP tail");
+    const unsigned displaced=form==1?8:6;
+    bool nops=true;for(unsigned i=5;i<displaced;++i)nops=nops && image[site+i]==0x90;
+    check(image[complete_site]==0xE8 && image[site]==0xE8 && nops,"correct hook footprints and NOP tail");
+    check(image[site+displaced]==(form==1?image[site+displaced]:0x89),"form 2: the native MOV [rbp-70],EDX stays in place after the NOP");
     check(building_destruction::install() && publications==2,"installation idempotent");VirtualFree(image,0,MEM_RELEASE);
 }
-int main(int argc,char **argv){check(argc==2,"plain executable path supplied");behavior();bridge();guards(argv[1]);
+int main(int argc,char **argv){check(argc==3,"unpacked executable path and expected capture form supplied");expected_form=static_cast<unsigned>(std::atoi(argv[2]));
+    behavior();bridge(expected_form);guards(argv[1]);
     std::printf("{\"status\":\"building_destruction_fixture_verified\",\"checks\":%u,\"live_game_verified\":false}\n",checks);}

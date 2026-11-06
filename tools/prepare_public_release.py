@@ -12,6 +12,27 @@ def read(p):return json.loads(p.read_text(encoding='utf-8-sig'))
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def save(p,v):p.write_text(json.dumps(v,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 
+def enrich_layout(layout):
+    # The build machine gathers release history; runtime packages need no dev files.
+    current={(int(r['ktid']),int(r['offset']),int(r['size'])) for r in layout['records']}
+    hashes=set();records={}
+    historical=[P/'build/public_v15_package/traits9_layout.json']
+    historical += [P/f'build/public_v15_{n}_package/traits9_layout.json' for n in range(1,5)]
+    historical += [P/'updates/v15.3/files/AI_TacticsMod/build/input_package/traits9_layout.json']
+    for source in historical:
+        if not source.is_file(): continue
+        old=read(source)
+        if old.get('bank_sha256'): hashes.add(old['bank_sha256'])
+        for r in old.get('records',[]):
+            key=(int(r['ktid']),int(r['offset']),int(r['size']))
+            if key not in current: records[key]={'ktid':key[0],'offset':key[1],'size':key[2]}
+    layout['legacy_bank_sha256']=sorted(hashes)
+    layout['legacy_records']=[records[k] for k in sorted(records)]
+    for r in layout['records']:
+        try: locator=__import__('re').search(rb'([0-9a-f]+)@([0-9a-f]+)(?:#([0-9a-f]+))?\x00?$',__import__('base64').b64decode(r['original_entry']))
+        except Exception: locator=None
+        assert not locator or not (locator.group(3) and 24 <= int(locator.group(3),16) <= 31), 'original_entry points to mod bank 24..31: '+str(r['ktid'])
+
 def main():
     a=argparse.ArgumentParser()
     a.add_argument('version');a.add_argument('--layout',required=True)
@@ -25,7 +46,9 @@ def main():
     inputs=sources()
     newest=max((P/n).stat().st_mtime for n in inputs if n.startswith('src/'))
     expected={'dinput8.dll':['DirectInput8Create'],'SAN14_CombatAI.dll':['AIInitialize','SAN14CombatGetApi'],
-              'SAN14_Convenience.dll':['AIInitialize','SAN14ConvenienceInitialize'],'SAN14_CCZ.dll':['SAN14CczGetApi']}
+              'SAN14_Convenience.dll':['AIInitialize','SAN14ConvenienceInitialize'],'SAN14_CCZ.dll':['SAN14CczGetApi'],
+              # 2026-11-05 user exception: 5th DLL, loaded first by dinput8; without it the Layout-managed features stay off.
+              'SAN14_Layout.dll':['SAN14LayoutGetApi','SAN14LayoutInitialize','SAN14LayoutPublish']}
     for n,e in expected.items():
         assert exports(binary/n)==e,n
         if n!='dinput8.dll':
@@ -36,13 +59,15 @@ def main():
     assert layout.is_relative_to(P.resolve())
     j=read(layout/'traits9_layout.json')
     assert sha(layout/'traits9_layout.bin')==j['bank_sha256']
+    enrich_layout(j)
     old_layout=read(P/'build/input_package/traits9_layout.json')
     assert all(r in j['records'] for r in old_layout['records'])
     stage.mkdir()
     for n in expected:shutil.copyfile(binary/n,stage/n)
     gui='AI모드_설치관리자.exe'
     shutil.copyfile(P/'build/development/installer'/gui,stage/gui)
-    for n in ('traits9_layout.bin','traits9_layout.json'):shutil.copyfile(layout/n,stage/n)
+    shutil.copyfile(layout/'traits9_layout.bin',stage/'traits9_layout.bin')
+    save(stage/'traits9_layout.json',j)
     # Installer update/rollback colours (user 2026-11-01): feature catalogue of every published release + this one.
     import subprocess,sys
     subprocess.run([sys.executable,'-B','-X','utf8',str(P/'tools/release_features.py'),args.version,str(stage/'release_features.json')],check=True)

@@ -1,6 +1,7 @@
 // Read-only world-map portraits. Inherit the native region-label transform;
 // never construct CDomesticAreaBtnBase or a domestic command/callback.
 // Current-build evidence: research/area_officer_overlay/README.md.
+#include "game_addresses.h"
 #include <unordered_map>
 #include <array>
 #include <string>
@@ -58,7 +59,7 @@ using Frame=void(__fastcall *)(Obj);
 // +1F0 holds the base id at +4E; native 22D500/22A7B0 resolve it as building
 // (world+6DA98) +10 centre hex -> tile +12 area (world+6CAF0). Cities only (<0x34),
 // matching 1ACC40's city/gate split. The city's own area has its own officer.
-constexpr unsigned kFootholdVtable=0x13999B8;
+const unsigned kFootholdVtable=GA(GA_13999B8);
 static Obj label_area(Obj root,Obj layout,bool city) {
     Obj data=pointer(layout,0x1F0);
     if(!city || !data)return data;
@@ -73,7 +74,7 @@ static Obj label_area(Obj root,Obj layout,bool city) {
 using Leave=void(__fastcall *)(Obj,Obj);
 using Destroy=Obj(__fastcall *)(Obj,unsigned);
 static void show_control(Obj control,bool &visible,bool value) {
-    if(control && visible!=value){fn<void(__fastcall *)(Obj,int)>(0x8741D0)(control,value?1:0);visible=value;}
+    if(control && visible!=value){fn<void(__fastcall *)(Obj,int)>(GA(GA_8741D0))(control,value?1:0);visible=value;}
 }
 static void show_outline(Panel &p,bool value);
 static void show(Panel &p,bool value) {
@@ -88,18 +89,18 @@ static void release(Obj layout,Obj context) {
     Obj outline[kTraitMain];memcpy(outline,it->second.outline,sizeof(outline));
     bool begun=it->second.begun,text_begun=it->second.text_begun;panels.erase(it);
     if(text) {
-        if(text_begun)fn<Frame>(0x869850)(text);
-        fn<Leave>(0x877DB0)(text,context);fn<Destroy>(0x865F30)(text,1);
+        if(text_begun)fn<Frame>(GA(GA_869850))(text);
+        fn<Leave>(GA(GA_877DB0))(text,context);fn<Destroy>(GA(GA_865F30))(text,1);
     }
     for(Obj copy:outline)if(copy) {
-        if(text_begun)fn<Frame>(0x869850)(copy);
-        fn<Leave>(0x877DB0)(copy,context);fn<Destroy>(0x865F30)(copy,1);
+        if(text_begun)fn<Frame>(GA(GA_869850))(copy);
+        fn<Leave>(GA(GA_877DB0))(copy,context);fn<Destroy>(GA(GA_865F30))(copy,1);
     }
     if(panels.empty())clear_trait_cache();
     if(face) {
-        if(begun)fn<Frame>(0x869820)(face);
-        fn<Leave>(0x8782E0)(face,context);
-        fn<Destroy>(0x198BE0)(face,1);
+        if(begun)fn<Frame>(GA(GA_869820))(face);
+        fn<Leave>(GA(GA_8782E0))(face,context);
+        fn<Destroy>(GA(GA_198BE0))(face,1);
     }
 }
 struct ViewCache {
@@ -123,13 +124,13 @@ static bool world_view(Obj &root,unsigned &force) {
     if(!enabled || !mod_features.region_officers || !root)return false;
     Obj context=pointer(root,0x871E8);
     if(!context || !(force=context[0x3A]) || force>51)return false;
-    unsigned mode=dword(image,0x21431FC);
+    unsigned mode=dword(image,GA(GA_21431FC));
     if(mode>2 && mode!=8)return false;
     auto &v=view_cache;
     if(v.root!=root || !v.ready) {
         v=ViewCache{};v.root=root;
-        v.camera=fn<Obj(__fastcall *)()>(0x11170)();
-        v.popup=fn<Obj(__fastcall *)()>(0x110E0)();
+        v.camera=fn<Obj(__fastcall *)()>(GA(GA_11170))();
+        v.popup=fn<Obj(__fastcall *)()>(GA(GA_110E0))();
         v.ready=v.camera!=nullptr;
     }
     if(!v.ready)return false;
@@ -138,7 +139,7 @@ static bool world_view(Obj &root,unsigned &force) {
     unsigned minimum=controller?dword(controller,0x24):0;
     memcpy(&distance,controller?controller+0x90:v.camera+0x230,sizeof(distance));
     if(!v.zoom_ready || controller!=v.controller || distance!=v.distance || minimum!=v.minimum) {
-        v.zoom=fn<float(__fastcall *)(Obj)>(0xEDE0)(v.camera);
+        v.zoom=fn<float(__fastcall *)(Obj)>(GA(GA_EDE0))(v.camera);
         v.controller=controller;v.distance=distance;v.minimum=minimum;v.zoom_ready=true;
     }
     // Continuous native stages 0..4. Stage five hides during its transition.
@@ -148,22 +149,22 @@ static bool world_view(Obj &root,unsigned &force) {
 }
 static bool create(Panel &p,Obj parent,unsigned force) { COST_SCOPE("ro_heavy_create_face");HeavyTimer timer;
     p.attempted=true;
-    Obj face=fn<Obj(__fastcall *)(size_t)>(0x3F6BC0)(0x178);
+    Obj face=fn<Obj(__fastcall *)(size_t)>(GA(GA_3F6BC0))(0x178);
     if(!face)return false;
-    fn<Obj(__fastcall *)(Obj)>(0x864C50)(face);
-    *reinterpret_cast<Obj *>(face)=image+0x1342530;
-    fn<void(__fastcall *)(Obj)>(0x92AB70)(face+0x130);
-    *reinterpret_cast<Obj *>(face)=image+0x1397800; // CMapFaceLayout, not a button
+    fn<Obj(__fastcall *)(Obj)>(GA(GA_864C50))(face);
+    *reinterpret_cast<Obj *>(face)=image+GA(GA_1342530);
+    fn<void(__fastcall *)(Obj)>(GA(GA_92AB70))(face+0x130);
+    *reinterpret_cast<Obj *>(face)=image+GA(GA_1397800); // CMapFaceLayout, not a button
     Obj owner=table(0xDF30,force,51);
-    unsigned color=fn<unsigned(__fastcall *)(Obj,int)>(0x2AD010)(owner,0);
-    fn<int(__fastcall *)(Obj,int,int,Obj,unsigned)>(0x1B2E80)(face,0,0,parent,color);
+    unsigned color=fn<unsigned(__fastcall *)(Obj,int)>(GA(GA_2AD010))(owner,0);
+    fn<int(__fastcall *)(Obj,int,int,Obj,unsigned)>(GA(GA_1B2E80))(face,0,0,parent,color);
     p.face=face;p.parent=parent;p.force=force;p.visible=true;
     // Native dimensions and transform preserve the original portrait aspect.
     int w=static_cast<int>(dword(face,0x28)),h=static_cast<int>(dword(face,0x2C));
     if(w<=0 || h<=0 || !pointer(face,0x138))return false;
     p.width=(w*3+2)/4;p.height=(h*3+2)/4;
-    fn<void(__fastcall *)(Obj,int,int)>(0x875B00)(face,p.width,p.height);
-    fn<Frame>(0x866E80)(face);p.begun=true;
+    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_875B00))(face,p.width,p.height);
+    fn<Frame>(GA(GA_866E80))(face);p.begun=true;
     show(p,false);
     return true;
 }
@@ -213,54 +214,56 @@ static void update(Obj layout) {
     bool changed=id!=p.person || art!=p.art || force!=p.force;
     if(changed && person && !heavy_budget(layout)) {show(p,false);return;}
     if(changed) { COST_SCOPE("ro_heavy_set_portrait");HeavyTimer timer;
-        fn<void(__fastcall *)(Obj,Obj)>(0x1B91E0)(p.face,person);
+        fn<void(__fastcall *)(Obj,Obj)>(GA(GA_1B91E0))(p.face,person);
         Obj owner=pointer(root,0xDF30+force*8);
-        unsigned color=person?fn<unsigned(__fastcall *)(Obj,int)>(0x2AD010)(owner,0):0xFF808080;
-        fn<void(__fastcall *)(Obj,int,unsigned)>(0x92FA60)(p.face+0x130,5,color);
+        unsigned color=person?fn<unsigned(__fastcall *)(Obj,int)>(GA(GA_2AD010))(owner,0):0xFF808080;
+        fn<void(__fastcall *)(Obj,int,unsigned)>(GA(GA_92FA60))(p.face+0x130,5,color);
         p.person=id;p.art=art;p.force=force;
     }
     // Local offset only. Never copy the label's screen position: its map
     // controller may project it after this callback or stop framing it hidden.
     x=-p.width-4;y=(h-p.height)/2;
     if(x!=p.x || y!=p.y) {
-        fn<void(__fastcall *)(Obj,int,int)>(0x874650)(p.face,x,y);p.x=x;p.y=y;
+        fn<void(__fastcall *)(Obj,int,int)>(GA(GA_874650))(p.face,x,y);p.x=x;p.y=y;
     }
     update_traits(p,root,person,layout,city?x:INT_MIN,(h+p.height)/2+2);
     show(p,true);
 }
-static void __fastcall frame(Obj layout) { COST_SCOPE("ro_frame");
-    fn<Frame>(0x1A7F50)(layout);
+// Layout manager: the next function of each slot (the original unless R1 RegionOfficer or another mod chained first).
+static Frame next_frame,next_city_frame;static Leave next_leave,next_city_leave;static Destroy next_destroy,next_city_destroy;
+static void __fastcall frame(Obj layout) { COST_SCOPE("ro_frame"); COST_CRUMB("region_officers_layout",layout);
+    next_pick(next_frame,GA(GA_1A7F50))(layout);
     if(InterlockedCompareExchange(&installed,0,0)){update(layout);}
 }
-static void __fastcall leave(Obj layout,Obj context) { COST_SCOPE("ro_leave");
-    release(layout,context);fn<Leave>(0x1A74D0)(layout,context);
+static void __fastcall leave(Obj layout,Obj context) { COST_SCOPE("ro_leave"); COST_CRUMB("region_officers_layout",layout);
+    release(layout,context);next_pick(next_leave,GA(GA_1A74D0))(layout,context);
 }
-static Obj __fastcall destroy(Obj layout,unsigned flags) { COST_SCOPE("region_officers::destroy");
-    release(layout,nullptr);return fn<Destroy>(0x19B1D0)(layout,flags);
+static Obj __fastcall destroy(Obj layout,unsigned flags) { COST_SCOPE("region_officers::destroy"); COST_CRUMB("region_officers_layout",layout);
+    release(layout,nullptr);return next_pick(next_destroy,GA(GA_19B1D0))(layout,flags);
 }
 // City labels: same panel logic, the class's own originals.
-static void __fastcall city_frame(Obj layout) { COST_SCOPE("ro_city_frame");
-    fn<Frame>(0x1A7EA0)(layout);
+static void __fastcall city_frame(Obj layout) { COST_SCOPE("ro_city_frame"); COST_CRUMB("region_officers_layout",layout);
+    next_pick(next_city_frame,GA(GA_1A7EA0))(layout);
     if(InterlockedCompareExchange(&installed,0,0)){update(layout);}
 }
-static void __fastcall city_leave(Obj layout,Obj context) { COST_SCOPE("ro_city_leave");
-    release(layout,context);fn<Leave>(0x1A75A0)(layout,context);
+static void __fastcall city_leave(Obj layout,Obj context) { COST_SCOPE("ro_city_leave"); COST_CRUMB("region_officers_layout",layout);
+    release(layout,context);next_pick(next_city_leave,GA(GA_1A75A0))(layout,context);
 }
-static Obj __fastcall city_destroy(Obj layout,unsigned flags) { COST_SCOPE("region_officers::city_destroy");
-    release(layout,nullptr);return fn<Destroy>(0x19B350)(layout,flags);
+static Obj __fastcall city_destroy(Obj layout,unsigned flags) { COST_SCOPE("region_officers::city_destroy"); COST_CRUMB("region_officers_layout",layout);
+    release(layout,nullptr);return next_pick(next_city_destroy,GA(GA_19B350))(layout,flags);
 }
-struct Hook {unsigned slot,original;void *replacement;};
+struct Hook {unsigned slot,original;void *replacement;void **next;};
 static const Hook hooks[]={
-    {0x139A338,0x1A7F50,reinterpret_cast<void *>(&frame)},
-    {0x139A350,0x1A74D0,reinterpret_cast<void *>(&leave)},
-    {0x139A328,0x19B1D0,reinterpret_cast<void *>(&destroy)},
-    {0x13999C8,0x1A7EA0,reinterpret_cast<void *>(&city_frame)},
-    {0x13999E0,0x1A75A0,reinterpret_cast<void *>(&city_leave)},
-    {0x13999B8,0x19B350,reinterpret_cast<void *>(&city_destroy)}
+    {GA(GA_139A338),GA(GA_1A7F50),reinterpret_cast<void *>(&frame),reinterpret_cast<void **>(&next_frame)},
+    {GA(GA_139A350),GA(GA_1A74D0),reinterpret_cast<void *>(&leave),reinterpret_cast<void **>(&next_leave)},
+    {GA(GA_139A328),GA(GA_19B1D0),reinterpret_cast<void *>(&destroy),reinterpret_cast<void **>(&next_destroy)},
+    {GA(GA_13999C8),GA(GA_1A7EA0),reinterpret_cast<void *>(&city_frame),reinterpret_cast<void **>(&next_city_frame)},
+    {GA(GA_13999E0),GA(GA_1A75A0),reinterpret_cast<void *>(&city_leave),reinterpret_cast<void **>(&next_city_leave)},
+    {GA(GA_13999B8),GA(GA_19B350),reinterpret_cast<void *>(&city_destroy),reinterpret_cast<void **>(&next_city_destroy)}
 };
 #include "region_officer_profile.h"
 static bool guards_match() {
-    for(const auto &h:hooks)if(pointer(image,h.slot)!=image+h.original)return false;
+    // Slot ownership is judged by the Layout hook manager; only the function bodies are fingerprinted here.
     for(const auto &p:profile) {
         unsigned long long hash=0xCBF29CE484222325ull;
         for(unsigned i=0;i<p.size;++i)hash=(hash^image[p.rva+i])*0x100000001B3ull;
@@ -269,16 +272,14 @@ static bool guards_match() {
     return true;
 }
 static bool install() {
-    if(InterlockedCompareExchange(&installed,0,0) || !guards_match())return false;
+    if(InterlockedCompareExchange(&installed,0,0))return false;
+    if(!guards_match()) {log_event("region_officers_guard_rejected");return false;}
     panels.reserve(512);
-    unsigned published=0;
-    for(const auto &h:hooks) {
-        if(!patch_pointer(h.slot,h.original,h.replacement)) {
-            while(published) {const auto &p=hooks[--published];restore_pointer(p.slot,p.original,p.replacement);}
-            return false;
-        }
-        ++published;
-    }
-    InterlockedExchange(&installed,1);return true;
+    layout_client::Transaction tx;
+    // Six vtable slots, all inside this DLL (fog 109-slot table); yields only to R1 RegionOfficer with Face!=0.
+    for(const auto &h:hooks)
+        if(!layout_client::vt(h.slot,h.replacement,h.next)) {log_event("region_officers_register_rejected",h.slot);return false;}
+    tx.done=true;InterlockedExchange(&installed,1);
+    log_event("region_officers_installed",static_cast<unsigned>(sizeof(hooks)/sizeof(hooks[0])));return true;
 }
 }

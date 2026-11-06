@@ -3,6 +3,11 @@ $ErrorActionPreference='Stop'
 $rebuildProject=Split-Path -Parent $PSScriptRoot
 $rebuildOutput=Join-Path $rebuildProject 'build\development\combat_v2'
 [void][IO.Directory]::CreateDirectory($rebuildOutput)
+$rebuildGame=Split-Path -Parent $rebuildProject
+$rebuildProtected=@('dinput8.dll','SAN14_CombatAI.dll','SAN14_Convenience.dll','SAN14CE_KO.exe','AI_TacticsMod/dist/SAN14_AI_v11.7_integrated.zip')
+$rebuildHashes=@{}
+foreach($rebuildName in $rebuildProtected){$rebuildHashes[$rebuildName]=(Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $rebuildGame $rebuildName)).Hash.ToLowerInvariant()}
+$rebuildHashes | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $rebuildOutput 'before_build_hashes.json')
 $rebuildVc='C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231'
 $rebuildSdk='C:\Program Files (x86)\Windows Kits\10';$rebuildSdkVersion='10.0.26100.0'
 $rebuildSavedPath=$env:PATH;$rebuildSavedInclude=$env:INCLUDE;$rebuildSavedLib=$env:LIB

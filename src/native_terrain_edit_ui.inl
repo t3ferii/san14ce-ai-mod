@@ -1,4 +1,5 @@
 // User/Claude 2026-10-29: regional domestic tiles choose officers or terrain; no development mode.
+#include "game_addresses.h"
 #include <stddef.h>
 namespace terrain_edit {
 struct MenuEntry {
@@ -114,36 +115,36 @@ static constexpr unsigned char highlight_update_bytes[]={
     0x48,0x8B,0xC4,0x55,0x41,0x54,0x41,0x55,0x41,0x56,0x41,0x57,0x48,0x8D,0x68,0x98,
     0x48,0x81,0xEC,0x40,0x01,0x00,0x00,0x48,0xC7,0x44,0x24,0x58,0xFE,0xFF,0xFF,0xFF};
 static bool menu_guards_match() {
-    return pointer(image,0x14410C0)==image+0x71E180 &&
-        !memcmp(image+0x73C3C4,highlight_select_bytes,sizeof(highlight_select_bytes)) &&
-        !memcmp(image+0x486359,highlight_lock_bytes,sizeof(highlight_lock_bytes)) &&
-        !memcmp(image+0x486558,highlight_unlock_bytes,sizeof(highlight_unlock_bytes)) &&
-        !memcmp(image+0x71E180,hex_exit_bytes,sizeof(hex_exit_bytes)) &&
-        !memcmp(image+0x924FE0,highlight_update_bytes,sizeof(highlight_update_bytes)) &&
-        pointer(image,0x144D350)==image+0x7A7DB0 &&
-        pointer(image,0x144DD60)==image+0x7A92C0 &&
-        !memcmp(image+0x73C385,domestic_input_bytes,sizeof(domestic_input_bytes)) &&
-        !memcmp(image+0x7321CB,hex_close_bytes,sizeof(hex_close_bytes)) &&
-        !memcmp(image+0x732241,hex_update_bytes,sizeof(hex_update_bytes)) &&
-        !memcmp(image+0x7A92C0,hex_hint_bytes,sizeof(hex_hint_bytes)) &&
-        !memcmp(image+0x6B8A8E,hex_hint_call_bytes,sizeof(hex_hint_call_bytes)) &&
-        !memcmp(image+0x857320,hex_hint_set_bytes,sizeof(hex_hint_set_bytes)) &&
-        !memcmp(image+0x7A7DB0,domestic_click_bytes,sizeof(domestic_click_bytes)) &&
-        !memcmp(image+0x73C350,domestic_state_bytes,sizeof(domestic_state_bytes)) &&
-        !memcmp(image+0x70E940,domestic_area_bytes,sizeof(domestic_area_bytes)) &&
-        !memcmp(image+0x456FE0,hex_complete_bytes,sizeof(hex_complete_bytes)) &&
-        pointer(image,0x13D89D0)==image+0x456C30 &&
-        pointer(image,0x13D89D8)==image+0x456FE0 &&
-        pointer(image,0x14410B8)==image+0x724660 &&
-        pointer(image,0x144DD28)==image+0x7A8060 &&
-        !memcmp(image+0x7A8060,hex_click_bytes,sizeof(hex_click_bytes)) &&
-        !memcmp(image+0x7248D6,menu_call_bytes,sizeof(menu_call_bytes)) &&
-        !memcmp(image+0x7248DC,hex_return_bytes,sizeof(hex_return_bytes)) &&
-        !memcmp(image+0x45767B,hex_open_bytes,sizeof(hex_open_bytes)) &&
-        !memcmp(image+0x433159,hex_destroy_bytes,sizeof(hex_destroy_bytes)) &&
-        pointer(image,0x13D89C8)==image+0x456C30 &&
-        pointer(image,0x13D89E8)==image+0x65DFE0 &&
-        pointer(image,0x143C8C8)==image+0x6EB5C0;
+    return pointer(image,GA(GA_14410C0))==image+GA(GA_71E180) &&
+        !ga::mcmp(image,GA_73C3C4,0,highlight_select_bytes,sizeof(highlight_select_bytes)) &&
+        !ga::mcmp(image,GA_486359,0,highlight_lock_bytes,sizeof(highlight_lock_bytes)) &&
+        !ga::mcmp(image,GA_486558,0,highlight_unlock_bytes,sizeof(highlight_unlock_bytes)) &&
+        !ga::mcmp(image,GA_71E180,0,hex_exit_bytes,sizeof(hex_exit_bytes)) &&
+        !ga::mcmp(image,GA_924FE0,0,highlight_update_bytes,sizeof(highlight_update_bytes)) &&
+        pointer(image,GA(GA_144D350))==image+GA(GA_7A7DB0) &&
+        pointer(image,GA(GA_144DD60))==image+GA(GA_7A92C0) &&
+        !ga::mcmp(image,GA_73C385,0,domestic_input_bytes,sizeof(domestic_input_bytes)) &&
+        !ga::mcmp(image,GA_7321CB,0,hex_close_bytes,sizeof(hex_close_bytes)) &&
+        !ga::mcmp(image,GA_732241,0,hex_update_bytes,sizeof(hex_update_bytes)) &&
+        !ga::mcmp(image,GA_7A92C0,0,hex_hint_bytes,sizeof(hex_hint_bytes)) &&
+        !ga::mcmp(image,GA_6B8A8E,0,hex_hint_call_bytes,sizeof(hex_hint_call_bytes)) &&
+        !ga::mcmp(image,GA_857320,0,hex_hint_set_bytes,sizeof(hex_hint_set_bytes)) &&
+        !ga::mcmp(image,GA_7A7DB0,0,domestic_click_bytes,sizeof(domestic_click_bytes)) &&
+        !ga::mcmp(image,GA_73C350,0,domestic_state_bytes,sizeof(domestic_state_bytes)) &&
+        !ga::mcmp(image,GA_70E940,0,domestic_area_bytes,sizeof(domestic_area_bytes)) &&
+        !ga::mcmp(image,GA_456FE0,0,hex_complete_bytes,sizeof(hex_complete_bytes)) &&
+        pointer(image,GA(GA_13D89D0))==image+GA(GA_456C30) &&
+        pointer(image,GA(GA_13D89D8))==image+GA(GA_456FE0) &&
+        pointer(image,GA(GA_14410B8))==image+GA(GA_724660) &&
+        pointer(image,GA(GA_144DD28))==image+GA(GA_7A8060) &&
+        !ga::mcmp(image,GA_7A8060,0,hex_click_bytes,sizeof(hex_click_bytes)) &&
+        !ga::mcmp(image,GA_7248D6,0,menu_call_bytes,sizeof(menu_call_bytes)) &&
+        !ga::mcmp(image,GA_7248DC,0,hex_return_bytes,sizeof(hex_return_bytes)) &&
+        !ga::mcmp(image,GA_45767B,0,hex_open_bytes,sizeof(hex_open_bytes)) &&
+        !ga::mcmp(image,GA_433159,0,hex_destroy_bytes,sizeof(hex_destroy_bytes)) &&
+        pointer(image,GA(GA_13D89C8))==image+GA(GA_456C30) &&
+        pointer(image,GA(GA_13D89E8))==image+GA(GA_65DFE0) &&
+        pointer(image,GA(GA_143C8C8))==image+GA(GA_6EB5C0);
 }
 static int menu_entries(MenuEntry *out,int *actions,unsigned terrain) {
     for(unsigned i=0;i<26;++i) {
@@ -162,12 +163,12 @@ static int menu_entries(MenuEntry *out,int *actions,unsigned terrain) {
     return 26;
 }
 // Existing native state computes the original four entries and positions first.
-static uint64_t __fastcall hex_menu_state(Obj state) {
+static uint64_t __fastcall hex_menu_state(Obj state) { COST_CRUMB("terrain_edit::hex_menu_state",state);
     Obj previous=menu_scope;
     if(active())check_world();
     menu_scope=state;clear_menu_context();
     uint64_t result;
-    __try {result=fn<MenuState>(0x724660)(state);}
+    __try {result=fn<MenuState>(GA(GA_724660))(state);}
     __finally {menu_scope=previous;opening_tile=nullptr;}
     return result;
 }
@@ -175,7 +176,7 @@ static uint64_t __fastcall hex_menu_state(Obj state) {
 static uint64_t menu_build_from(Obj caller,Obj menu,int x,int y,uint64_t flag,MenuEntry *entries,int count) {
     if(active() && menu_scope && entries) {
         Obj target=pointer(menu_scope,0x470);
-        if(caller==image+0x7248DC && count==4 && target && target==opening_tile) {
+        if(caller==image+GA(GA_7248DC) && count==4 && target && target==opening_tile) {
             MenuEntry extended[26];int actions[26];
             int extended_count=menu_entries(extended,actions,target[0x10]);
 #ifndef NO_RUNTIME_LOG
@@ -187,7 +188,7 @@ static uint64_t menu_build_from(Obj caller,Obj menu,int x,int y,uint64_t flag,Me
             expanded_state=menu_scope;expanded_tile=target;expanded_menu=menu;
             expanded_count=extended_count;
             memcpy(expanded_actions,actions,sizeof(actions));
-            uint64_t result=fn<MenuBuild>(0x6EB5C0)(menu,x,y,flag,extended,extended_count);
+            uint64_t result=fn<MenuBuild>(GA(GA_6EB5C0))(menu,x,y,flag,extended,extended_count);
             if(!result)clear_menu_context();
             opening_tile=nullptr;
             return result;
@@ -197,7 +198,7 @@ static uint64_t menu_build_from(Obj caller,Obj menu,int x,int y,uint64_t flag,Me
     if(menu_scope)log_event("terrain_menu_build",static_cast<unsigned>(caller-image),count,0);
 #endif
     if(menu_scope && menu_scope==expanded_state)clear_menu_context();
-    return fn<MenuBuild>(0x6EB5C0)(menu,x,y,flag,entries,count);
+    return fn<MenuBuild>(GA(GA_6EB5C0))(menu,x,y,flag,entries,count);
 }
 static uint64_t __fastcall menu_build(Obj menu,int x,int y,uint64_t flag,MenuEntry *entries,int count) { COST_SCOPE("terrain_edit::menu_build");
     return menu_build_from(static_cast<Obj>(_ReturnAddress()),menu,x,y,flag,entries,count);
@@ -232,7 +233,7 @@ static uint64_t __fastcall hex_menu_click(Obj functor,void **arg) { COST_SCOPE("
             return 0; // Expanded hex callbacks, including groups, never reach native indices.
         }
     }
-    return fn<MenuClick>(0x7A8060)(functor,arg);
+    return fn<MenuClick>(GA(GA_7A8060))(functor,arg);
 }
 static uint64_t __fastcall hex_menu_hint(Obj functor,void **arg) { COST_SCOPE("terrain_edit::hex_menu_hint");
     // User 2026-10-29 (local45 crash, odd tooltips): the hint event's [arg] is the
@@ -245,11 +246,11 @@ static uint64_t __fastcall hex_menu_hint(Obj functor,void **arg) { COST_SCOPE("t
         int index=*arg?*reinterpret_cast<int *>(static_cast<Obj>(*arg)+0x80):0;
         // Safety net: the native table has four rows; never let it read past them.
         if(picker || index>=4) {
-            if(Obj menu=pointer(state,0x4A0))fn<void(__fastcall *)(Obj,const wchar_t *)>(0x857320)(menu,nullptr);
+            if(Obj menu=pointer(state,0x4A0))fn<void(__fastcall *)(Obj,const wchar_t *)>(GA(GA_857320))(menu,nullptr);
             return 0;
         }
     }
-    return fn<MenuClick>(0x7A92C0)(functor,arg);
+    return fn<MenuClick>(GA(GA_7A92C0))(functor,arg);
 }
 struct HexParams {uint64_t tile,res18,zero;};
 struct HexFunctor {uint64_t slots[8];};
@@ -260,27 +261,27 @@ static_assert(sizeof(HexFunctor)==0x40 && offsetof(HexFunctor,slots[7])==0x38,"n
 alignas(16) static unsigned char hex_completion[0x500]={};
 // 73C3C4..73C428: selectable flagged object wins, otherwise use the tile's area.
 static void lock_highlight(Obj tile) {
-    Obj manager=fn<Obj(__fastcall *)()>(0x18F10)();
+    Obj manager=fn<Obj(__fastcall *)()>(GA(GA_18F10))();
     if(*reinterpret_cast<unsigned *>(manager+0x118)!=0)return;
-    Obj target=fn<Obj(__fastcall *)(Obj)>(0x230FD0)(tile);
-    if(!fn<int(__fastcall *)(Obj)>(0x32F500)(target) || !(target[0x5F]&1))
-        target=fn<Obj(__fastcall *)(Obj)>(0x229EA0)(tile);
+    Obj target=fn<Obj(__fastcall *)(Obj)>(GA(GA_230FD0))(tile);
+    if(!fn<int(__fastcall *)(Obj)>(GA(GA_32F500))(target) || !(target[0x5F]&1))
+        target=fn<Obj(__fastcall *)(Obj)>(GA(GA_229EA0))(tile);
     *reinterpret_cast<Obj *>(manager+0x110)=target;
     *reinterpret_cast<unsigned *>(manager+0x118)=1;
     highlight_locked=true;highlight_obj=target;highlight_hex=tile_hex(tile);
-    fn<void(__fastcall *)(Obj)>(0x924FE0)(manager);
+    fn<void(__fastcall *)(Obj)>(GA(GA_924FE0))(manager);
 #ifndef NO_RUNTIME_LOG
     log_event("terrain_highlight",1,highlight_hex,0);
 #endif
 }
 // Shared native exit destroys the menu and invokes completion before we release our lock.
 static uint64_t __fastcall hex_menu_exit(Obj state,uint64_t rdx) { COST_SCOPE("terrain_edit::hex_menu_exit");
-    uint64_t result=fn<uint64_t(__fastcall *)(Obj,uint64_t)>(0x71E180)(state,rdx);
+    uint64_t result=fn<uint64_t(__fastcall *)(Obj,uint64_t)>(GA(GA_71E180))(state,rdx);
     if(highlight_locked) {
-        Obj manager=fn<Obj(__fastcall *)()>(0x18F10)();
+        Obj manager=fn<Obj(__fastcall *)()>(GA(GA_18F10))();
         *reinterpret_cast<unsigned *>(manager+0x118)=0;
         if(pointer(manager,0x110)==highlight_obj)*reinterpret_cast<Obj *>(manager+0x110)=nullptr;
-        fn<void(__fastcall *)(Obj)>(0x924FE0)(manager);
+        fn<void(__fastcall *)(Obj)>(GA(GA_924FE0))(manager);
 #ifndef NO_RUNTIME_LOG
         log_event("terrain_highlight",0,highlight_hex,0);
 #endif
@@ -289,26 +290,26 @@ static uint64_t __fastcall hex_menu_exit(Obj state,uint64_t rdx) { COST_SCOPE("t
     return result;
 }
 static void open_hex_menu(Obj tile) {
-    alignas(16) unsigned char a8[16];memcpy(a8,image+0x1342D30,sizeof(a8));
+    alignas(16) unsigned char a8[16];memcpy(a8,image+GA(GA_1342D30),sizeof(a8));
     uint64_t res18=0;
-    if(fn<int(__fastcall *)(Obj,uint64_t *,void *,int)>(0x0F560)(tile,&res18,a8,1)==0) {
-        Obj view=fn<Obj(__fastcall *)()>(0x11290)();memcpy(&res18,view+0x34,sizeof(res18));
+    if(fn<int(__fastcall *)(Obj,uint64_t *,void *,int)>(GA(GA_F560))(tile,&res18,a8,1)==0) {
+        Obj view=fn<Obj(__fastcall *)()>(GA(GA_11290))();memcpy(&res18,view+0x34,sizeof(res18));
     }
     HexParams params={reinterpret_cast<uint64_t>(tile),res18,0};
-    HexFunctor functor={};functor.slots[0]=reinterpret_cast<uint64_t>(image+0x13D89C8);
+    HexFunctor functor={};functor.slots[0]=reinterpret_cast<uint64_t>(image+GA(GA_13D89C8));
     functor.slots[1]=reinterpret_cast<uint64_t>(hex_completion);functor.slots[7]=reinterpret_cast<uint64_t>(&functor);
     opening_tile=tile;
     // 4576F0..457702: RCX=110E0(), RDX=name, R8=&params, R9=&functor.
     // 433020 clones the small functor, then destroys its stack source with vt+20(f,0).
     lock_highlight(tile);
-    fn<void(__fastcall *)(Obj,const char *,HexParams *,HexFunctor *)>(0x433020)(
-        fn<Obj(__fastcall *)()>(0x110E0)(),"CStrategyAreaHexState",&params,&functor);
+    fn<void(__fastcall *)(Obj,const char *,HexParams *,HexFunctor *)>(GA(GA_433020))(
+        fn<Obj(__fastcall *)()>(GA(GA_110E0))(),"CStrategyAreaHexState",&params,&functor);
 }
 static uint64_t __fastcall domestic_click(Obj functor,void **arg) { COST_SCOPE("terrain_edit::domestic_click");
-    Obj input=fn<Obj(__fastcall *)()>(0x11290)();
-    if(fn<int(__fastcall *)(Obj,int)>(0x3F3B60)(input,1)==0 ||
-        fn<int(__fastcall *)(Obj)>(0x3F4050)(input)!=0)
-        return fn<MenuClick>(0x7A7DB0)(functor,arg);
+    Obj input=fn<Obj(__fastcall *)()>(GA(GA_11290))();
+    if(fn<int(__fastcall *)(Obj,int)>(GA(GA_3F3B60))(input,1)==0 ||
+        fn<int(__fastcall *)(Obj)>(GA(GA_3F4050))(input)!=0)
+        return fn<MenuClick>(GA(GA_7A7DB0))(functor,arg);
     Obj state=functor?pointer(functor,8):nullptr;
     Obj tile=arg?static_cast<Obj>(*arg):nullptr;
     bool intervene=false;unsigned hex=HexCount;
@@ -317,11 +318,11 @@ static uint64_t __fastcall domestic_click(Obj functor,void **arg) { COST_SCOPE("
         if(state && tile && valid(tile) && allowed(tile[0x10])) {
             hex=tile_hex(tile);
             if(hex<HexCount && !occupied(hex)) {
-                Obj area=fn<Obj(__fastcall *)(Obj)>(0x229EA0)(tile);
+                Obj area=fn<Obj(__fastcall *)(Obj)>(GA(GA_229EA0))(tile);
                 // No proven city-ID field. Native membership predicate (state, area):
                 // research/decomp_cache/1fbe6be7466a6646/0070E940_c.txt:11-28.
-                intervene=area && fn<int(__fastcall *)(Obj,Obj)>(0x70E940)(state,area)!=0 &&
-                    fn<int(__fastcall *)(int)>(0x17A3E0)(0x3A)==0;
+                intervene=area && fn<int(__fastcall *)(Obj,Obj)>(GA(GA_70E940))(state,area)!=0 &&
+                    fn<int(__fastcall *)(int)>(GA(GA_17A3E0))(0x3A)==0;
             }
         }
     }
@@ -331,7 +332,7 @@ static uint64_t __fastcall domestic_click(Obj functor,void **arg) { COST_SCOPE("
         tile && valid(tile)?tile[0x10]:0,intervene?1:0);
 #endif
     if(intervene) {open_hex_menu(tile);return 0;}
-    return fn<MenuClick>(0x7A7DB0)(functor,arg);
+    return fn<MenuClick>(GA(GA_7A7DB0))(functor,arg);
 }
 }
 static bool terrain_edit_guards_match() {return terrain_edit::menu_guards_match();}

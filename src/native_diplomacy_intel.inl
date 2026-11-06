@@ -1,5 +1,6 @@
 // Convenience DLL only. All native calls run on the existing diplomacy UI thread.
 // Evidence and state/ABI map: docs/DIPLOMACY_INTEL.md.
+#include "game_addresses.h"
 #include "diplomacy_intel.h"
 #include "diplomacy_intel_profile.h"
 #include <cstddef>
@@ -11,33 +12,69 @@ namespace diplomacy_intel {
 struct KnownPatch {unsigned rva,size;unsigned char original[8],patched[8];bool any_rel32_jump;};
 static const KnownPatch known_patches[]={
     // modpack ability 200 cap (modpack_tables.h 0x230098) inside 22FCE0.
-    {0x230098,8,{0x74,0x48,0x66,0x0F,0x1F,0x44,0x00,0x00},{0x75,0x06,0x83,0xFE,0x64,0x7C,0x43,0x90},false},
+    {GA(GA_230098),8,{0x74,0x48,0x66,0x0F,0x1F,0x44,0x00,0x00},{0x75,0x06,0x83,0xFE,0x64,0x7C,0x43,0x90},false},
     // advisor_briefing text relay: first MOV of 930D20 replaced by JMP rel32.
-    {0x930D20,5,{0x48,0x89,0x5C,0x24,0x08},{0xE9},true},
+    {GA(GA_930D20),5,{0x48,0x89,0x5C,0x24,0x08},{0xE9},true},
 };
-static unsigned char guarded_byte(unsigned rva,bool &ok) {
+// Short form of the same cap (1a4a447d, docs/BUILD_25953386_REMAP.md 5.2): JE rel8 + NOP3, the JE target MOV ESI,100 (5 bytes) is
+// patched to an E9 by stats200. Found at run time exactly as native_modpack.inl modpack_clamp_short() does (never a raw RVA); 0 = long form.
+static unsigned clamp_short_target() {
+    unsigned r=GA(GA_230098);const unsigned char nop3[]={0x0F,0x1F,0x00},mov[]={0xBE,0x64,0x00,0x00,0x00};
+    if(!r || image[r]!=0x74 || ga::mcmp_at(image,r+2,nop3,3))return 0;
+    unsigned t=r+2+static_cast<unsigned>(static_cast<int>(static_cast<signed char>(image[r+1])));
+    if(!(t>r+5 && t<r+0x80))return 0;
+    return image[t]==0xE9 || !ga::mcmp_at(image,t,mov,5)?t:0;
+}
+static unsigned char guarded_byte(unsigned rva,bool &ok,unsigned t) {   // t = clamp_short_target(), computed once per guards_match
+    if(t && rva>=t && rva<t+5) {
+        static const unsigned char mov[]={0xBE,0x64,0x00,0x00,0x00};
+        if(!ga::mcmp_at(image,t,mov,5) || image[t]==0xE9)return mov[rva-t];
+        ok=false;return image[rva];
+    }
     for(const auto &k:known_patches)if(rva>=k.rva && rva<k.rva+k.size) {
         const unsigned char *p=image+k.rva;
         if(!memcmp(p,k.original,k.size))return k.original[rva-k.rva];
         if(k.any_rel32_jump?p[0]==0xE9:!memcmp(p,k.patched,k.size))return k.original[rva-k.rva];
-        ok=false;return image[rva];
+        return image[rva];   // neither the original nor this module's own patch: the guard hash decides (G1-d: the window moves with the build)
     }
     return image[rva];
 }
 static bool guards_match() {
-    if(memcmp(image+final_tail,final_tail_bytes,sizeof(final_tail_bytes)))return false;
+    if(ga::mcmp_at(image,final_tail,final_tail_bytes,sizeof(final_tail_bytes)))return false;
+    const unsigned clamp_target=clamp_short_target();
     for(const auto &g:guards) {
         unsigned long long h=0xcbf29ce484222325ull;bool ok=true;
-        for(unsigned i=0;i<g.size;++i)h=(h^guarded_byte(g.rva+i,ok))*0x100000001b3ull;
+        for(unsigned i=0;i<g.size;++i)h=(h^guarded_byte(g.rva+i,ok,clamp_target))*0x100000001b3ull;
         if(!ok || h!=g.hash)return false;
     }
     for(const auto &s:slots)if(pointer(image,s.rva)!=image+s.original)return false;
     for(const auto &s:sites)if(image[s.rva]!=0xE8 || s.rva+5+*reinterpret_cast<int *>(image+s.rva+1)!=s.original)return false;
     return true;
 }
+// local10 G4 5.2. 1a4a447d 324BC0 (old 322B30) has an 8th int argument [rsp+0x68] (cmp at +0xA9): non-zero scales the amount term by the global
+// read at +0xC0 (movd xmm0,[rip+disp], 70) /100. Returns that global's rva, or 0 for the 7-argument form (1fbe6be7). Plain memcmp (the mcmp_at
+// family ignores `expected` in build 1); the 322B30 guard hash pins the whole function.
+static unsigned rate_reduce_rva() {
+    static const unsigned char cmp8[]={0x83,0x7C,0x24,0x68,0x00},movd[]={0x66,0x0F,0x6E,0x05};
+    const unsigned r=GA(GA_322B30);
+    if(!r || memcmp(image+r+0xA9,cmp8,5) || memcmp(image+r+0xC0,movd,4))return 0;
+    return r+0xC8+static_cast<unsigned>(*reinterpret_cast<const int *>(image+r+0xC4));
+}
+// The four coefficient blocks of 322B30/324BC0 (k=4/5/8/9): each field is its own global (1a4a447d: +8/+0x14/+0x28 from the first one, not +12/+24/+44).
+struct CoefficientIds {unsigned divisor,multiplier,offset,rate_divisor,floor;};
+static bool coefficient_ids(int k,CoefficientIds &o) {
+    switch(k) {
+    case 4:o={GA(GA_1A48548),GA(GA_1A48554),GA(GA_1A48560),GA(GA_1A48574),GA(GA_27D2564)};return true;
+    case 5:o={GA(GA_1A487AC),GA(GA_1A487B8),GA(GA_1A487C4),GA(GA_1A487D8),GA(GA_27D257C)};return true;
+    case 8:o={GA(GA_1A485B0),GA(GA_1A485BC),GA(GA_1A485C8),GA(GA_1A485DC),GA(GA_27D2568)};return true;
+    case 9:o={GA(GA_1A4870C),GA(GA_1A48718),GA(GA_1A48724),GA(GA_1A48738),GA(GA_27D2574)};return true;
+    default:return false;
+    }
+}
 #if (defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)) || defined(DIPLOMACY_INTEL_FIXTURE)
 using namespace diplomacy_intel_core;
-using Rate=int(__fastcall *)(Obj,Obj,Obj,int,int,int,int);
+using Rate=int(__fastcall *)(Obj,Obj,Obj,int,int,int,int,int);
+static unsigned rate_reduce;   // 0 = 7-argument form
 using Resolve=int(__fastcall *)(Obj,Obj,Obj,int,Obj,int,int);
 struct FinalArgs {Obj force=nullptr,person=nullptr,target=nullptr,object=nullptr;int kind=0;};
 struct Pending {Obj state=nullptr;Round round;FinalArgs args;DWORD thread=0;
@@ -85,7 +122,7 @@ static int native_resolve(Obj force,Obj person,Obj target,int k,Obj object,int v
     TraceScope scope(pending.state);
     if(trace_owner())log_event("diplomacy_resolve_enter",k,value,special);
 #endif
-    int result=fn<Resolve>(0x324E20)(force,person,target,k,object,value,special);
+    int result=fn<Resolve>(GA(GA_324E20))(force,person,target,k,object,value,special);
 #ifndef NO_RUNTIME_LOG
     if(trace_owner())log_event("diplomacy_resolve_return",k,value,result);
 #endif
@@ -106,9 +143,9 @@ static void trace_snapshot(Obj state){
 #endif
 }
 #ifndef NO_RUNTIME_LOG
-static int __fastcall native_roll(int bound,int mode,int force,int person,int target,int threshold){
+static int __fastcall native_roll(int bound,int mode,int force,int person,int target,int threshold){ COST_SCOPE("native_roll");
     // Same six arguments, exactly one original draw, unchanged return value.
-    int roll=fn<int(__fastcall *)(int,int,int,int,int,int)>(0x3FB600)(bound,mode,force,person,target,threshold);
+    int roll=fn<int(__fastcall *)(int,int,int,int,int,int)>(GA(GA_3FB600))(bound,mode,force,person,target,threshold);
     if(trace_owner()){
         log_event("diplomacy_rng_roll",roll,threshold,roll<threshold);
         log_event("diplomacy_rng_seed",force,person,target);
@@ -125,41 +162,44 @@ static bool incoming(Obj w) {
     if(!w || w!=window())return false;
     const int k=kind(pointer(w,0x1D8));
     if(k!=4 && k!=5 && k!=8 && k!=9)return false;
-    auto is_player=fn<int(__fastcall *)(Obj)>(0x2337B0);
+    auto is_player=fn<int(__fastcall *)(Obj)>(GA(GA_2337B0));
     return !is_player(pointer(w,0x180)) && is_player(pointer(w,0x190));
 }
 static bool over(Obj w) {
     return mod_features.diplomacy_overinvest && incoming(w) && number(w,0x220)==0;
 }
-static unsigned __fastcall enter(Obj state) {
+static unsigned __fastcall enter(Obj state) { COST_SCOPE("enter");
     pending={};
-    unsigned r=fn<unsigned(__fastcall *)(Obj)>(0x810CA0)(state);
+    unsigned r=fn<unsigned(__fastcall *)(Obj)>(GA(GA_810CA0))(state);
     pending.state=state;pending.thread=GetCurrentThreadId();return r;
 }
-static void __fastcall leave(Obj state,Obj second,Obj third) {
+static void __fastcall leave(Obj state,Obj second,Obj third) { COST_SCOPE("leave");
     if(pending.state==state)pending={};
-    fn<void(__fastcall *)(Obj,Obj,Obj)>(0x810640)(state,second,third);
+    fn<void(__fastcall *)(Obj,Obj,Obj)>(GA(GA_810640))(state,second,third);
 }
 // Reproduce the native amount coefficient selection from the ASSEMBLY, not the
 // incomplete Ghidra SSE pseudocode. Numeric balance tables remain game-owned.
 static Coefficients coefficients(Obj person,Obj target,int k,bool defending) {
     if(defending)person=table(0x158,word(target,0x52),6000);
     if(!person)return {};
-    int stat=fn<int(__fastcall *)(Obj,int,int)>(0x22FCE0)(person,3,0xFFF);
-    unsigned weight=stat>=number(image,0x1A48844)?0x1A48850:
-        stat>=number(image,0x1A4885C)?0x1A48868:stat>=number(image,0x1A48874)?0x1A48880:0x1A4888C;
-    unsigned a=k==4?0x1A48548:k==5?0x1A487AC:k==8?0x1A485B0:k==9?0x1A4870C:0;
-    unsigned floor_rva=k==4?0x27D2564:k==5?0x27D257C:k==8?0x27D2568:0x27D2574;
-    if(!a)return {};
-    return {static_cast<double>(number(image,weight)),static_cast<double>(number(image,a)),
-        static_cast<double>(number(image,a+12)),static_cast<double>(number(image,a+24)),
-        static_cast<double>(number(image,a+44)),static_cast<double>(number(image,floor_rva))};
+    int stat=fn<int(__fastcall *)(Obj,int,int)>(GA(GA_22FCE0))(person,3,0xFFF);
+    unsigned weight=stat>=number(image,GA(GA_1A48844))?GA(GA_1A48850):
+        stat>=number(image,GA(GA_1A4885C))?GA(GA_1A48868):stat>=number(image,GA(GA_1A48874))?GA(GA_1A48880):GA(GA_1A4888C);
+    CoefficientIds f;
+    if(!coefficient_ids(k,f) || !f.divisor)return {};
+    return {static_cast<double>(number(image,weight)),static_cast<double>(number(image,f.divisor)),
+        static_cast<double>(number(image,f.multiplier)),static_cast<double>(number(image,f.offset)),
+        static_cast<double>(number(image,f.rate_divisor)),static_cast<double>(number(image,f.floor))};
 }
-static int __fastcall rate(Obj force,Obj person,Obj target,int k,int base,int amount,int defending) {
+static int __fastcall rate(Obj force,Obj person,Obj target,int k,int base,int amount,int defending,int reduced) { COST_SCOPE("rate");
+    if(!rate_reduce)reduced=0;   // 7-argument original: the 8th slot is not ours to read
     Obj w=window();
     bool modified=over(w) && target==pointer(w,0x190) && force==pointer(w,0x180) && defending;
     Coefficients c=modified?coefficients(person,target,k,true):Coefficients{};
-    int result=modified && usable(c)?score(base,amount,true,c):fn<Rate>(0x322B30)(force,person,target,k,base,amount,defending);
+    const double reduce_percent=reduced?static_cast<double>(number(image,rate_reduce)):0.0;
+    int result=modified && usable(c) && (!reduced || reduce_percent>0)?score(base,amount,true,c,reduce_percent)
+        :fn<Rate>(GA(GA_322B30))(force,person,target,k,base,amount,defending,reduced);
+    if(reduced && modified)log_event("diplomacy_rate_reduced",base,amount,result);
 #ifndef NO_RUNTIME_LOG
     if(trace_owner() && (pending.rate_base!=base || pending.rate_amount!=amount || pending.rate_kind!=k || pending.rate_defending!=defending)){
         pending.rate_base=base;pending.rate_amount=amount;pending.rate_kind=k;pending.rate_defending=defending;
@@ -168,18 +208,18 @@ static int __fastcall rate(Obj force,Obj person,Obj target,int k,int base,int am
 #endif
     return result;
 }
-static int __fastcall ai_response(int phase,Obj command,int spent,int *value) {
+static int __fastcall ai_response(int phase,Obj command,int spent,int *value) { COST_SCOPE("ai_response");
     int raw=*value;
     const bool keep=over(window()) && final_scope==pending.state && command==pointer(pending.state,0x4B0);
     if(keep)*value=probability(raw);
-    int amount=fn<int(__fastcall *)(int,Obj,int,int *)>(0x804770)(phase,command,spent,value);
+    int amount=fn<int(__fastcall *)(int,Obj,int,int *)>(GA(GA_804770))(phase,command,spent,value);
     if(keep)*value=preserve_reserve(raw,*value);
 #ifndef NO_RUNTIME_LOG
     if(trace_owner())log_event("diplomacy_ai_response",raw,*value,amount);
 #endif
     return amount;
 }
-static int __fastcall resolve(Obj force,Obj person,Obj target,int k,Obj object,int value,int special) {
+static int __fastcall resolve(Obj force,Obj person,Obj target,int k,Obj object,int value,int special) { COST_SCOPE("resolve");
     Obj w=window();
     if(final_scope==pending.state && w && pending.round.defer(mod_features.diplomacy_counterturn,incoming(w),number(w,0x220)!=0)) {
         pending.args={force,person,target,object,k};log_event("diplomacy_resolve_deferred",k,value,number(pending.state,0x594));return 0;
@@ -188,9 +228,9 @@ static int __fastcall resolve(Obj force,Obj person,Obj target,int k,Obj object,i
 }
 // Native final stage sends this close event before its result is applied on the
 // next frame. Suppress only that one event while returning the final player turn.
-static void __fastcall event(Obj layout,int value) {
+static void __fastcall event(Obj layout,int value) { COST_SCOPE("event");
     if(layout==view() && value==0x7FFFFFFD && final_scope==pending.state && pending.round.deferred)return;
-    fn<void(__fastcall *)(Obj,int)>(0x805010)(layout,value);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_805010))(layout,value);
 }
 static void restore_extra_ui(Obj state,bool initial) {
     if(state!=pending.state || !pending.round.extra || number(state,0x4D8)!=8)return;
@@ -198,7 +238,7 @@ static void restore_extra_ui(Obj state,bool initial) {
         int was_out=number(actors,0x1DC+slot*4);
         if((initial || was_out) && pointer(actors,0x178+slot*8)) {
             // Native face-in cancels the matching pending face-out animation.
-            fn<void(__fastcall *)(Obj,int)>(0x83BFD0)(actors,slot);
+            fn<void(__fastcall *)(Obj,int)>(GA(GA_83BFD0))(actors,slot);
             log_event("diplomacy_actor_rearm",slot,was_out,number(actors,0x1DC+slot*4));
         }
     }
@@ -208,18 +248,18 @@ static void restore_extra_ui(Obj state,bool initial) {
         if(initial || mode==1 || mode==2) {
             // Same resume entry as native 814380. 856500 deliberately skips
             // hidden modes 1/2; 856620 handles their full/fade-in restoration.
-            fn<void(__fastcall *)(Obj)>(0x856620)(bar);
+            fn<void(__fastcall *)(Obj)>(GA(GA_856620))(bar);
             if(initial || number(bar,0x188)!=mode)
                 log_event("diplomacy_footer_rearm",mode,number(bar,0x188),number(bar,0x178));
         }
     }
 }
-static void __fastcall frame(Obj state,Obj second,Obj third,Obj fourth) {
+static void __fastcall frame(Obj state,Obj second,Obj third,Obj fourth) { COST_SCOPE("frame");
 #ifndef NO_RUNTIME_LOG
     TraceScope scope(state);
 #endif
     trace_snapshot(state);
-    fn<void(__fastcall *)(Obj,Obj,Obj,Obj)>(0x811210)(state,second,third,fourth);
+    fn<void(__fastcall *)(Obj,Obj,Obj,Obj)>(GA(GA_811210))(state,second,third,fourth);
     // Message completion can arrive after rearm; repair only the extra input
     // phase. A completed/ordinary negotiation must keep native exit behavior.
     restore_extra_ui(state,false);
@@ -238,11 +278,11 @@ static void rearm(Obj state) {
         if(Obj child=pointer(button,0x180))number(child,0x40)|=2;
     }
     show(v,1);show(w,1);
-    fn<void(__fastcall *)(Obj,int)>(0x824880)(state,1);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_824880))(state,1);
     window_call(w,0x1C8,1);window_call(w,0x1D0,0);
     (*reinterpret_cast<void(__fastcall **)(Obj,float)>(pointer(w,0)+0x1D8))(w,-1.0f);
     restore_extra_ui(state,true);
-    fn<void(__fastcall *)(Obj,int)>(0x841180)(pointer(state,0x478),1);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_841180))(pointer(state,0x478),1);
     log_event("diplomacy_counterturn",static_cast<unsigned>(number(state,0x594)));
 }
 static void finish_extra(Obj state) {
@@ -253,60 +293,64 @@ static void finish_extra(Obj state) {
     }
     const int result=native_resolve(a.force,a.person,a.target,a.kind,a.object,probability(number(state,0x594)),0);
     number(state,0x4F8)=result?1:0;number(state,0x4D8)=result?12:13;
-    fn<void(__fastcall *)(Obj,int)>(0x824880)(state,0);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_824880))(state,0);
     event(view(),0x7FFFFFFD);
-    fn<void(__fastcall *)(Obj)>(0x806950)(state);
-    fn<void(__fastcall *)(Obj,int)>(0x841180)(pointer(state,0x478),0);
+    fn<void(__fastcall *)(Obj)>(GA(GA_806950))(state);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_841180))(pointer(state,0x478),0);
     log_event("diplomacy_counterturn_done",result);
 }
-static void __fastcall final_phase(Obj state) {
-    if(state!=pending.state || !incoming(window())) {fn<void(__fastcall *)(Obj)>(0x815EA0)(state);return;}
+static void __fastcall final_phase(Obj state) { COST_SCOPE("final_phase");
+    if(state!=pending.state || !incoming(window())) {fn<void(__fastcall *)(Obj)>(GA(GA_815EA0))(state);return;}
     if(pending.round.extra) {finish_extra(state);return;}
     Obj saved=final_scope;final_scope=state;
-    fn<void(__fastcall *)(Obj)>(0x815EA0)(state);
+    fn<void(__fastcall *)(Obj)>(GA(GA_815EA0))(state);
     if(pending.round.deferred)rearm(state);
     final_scope=saved;
 }
-static void text(Obj w,int id,const wchar_t *value) {fn<void(__fastcall *)(Obj,int,const wchar_t *,int)>(0x930D20)(w+0x130,id,value,1);}
-template<unsigned Original> static void __fastcall refresh(Obj w) {
+static void text(Obj w,int id,const wchar_t *value) {fn<void(__fastcall *)(Obj,int,const wchar_t *,int)>(GA(GA_930D20))(w+0x130,id,value,1);}
+// 1a4a447d: the four amount-screen refresh functions take a second int (state 9 passes 1, the others 0; 1 or states 10/11 make 324960 receive arg8=1).
+// The native fall-through forwards it unchanged; the 1fbe6be7 originals ignore EDX.
+template<unsigned Original> static void __fastcall refresh(Obj w,int mode) {
     if(!over(w) || number(pending.state,0x4D8)!=8 || number(w,0x224)!=0 || number(w,0x208)>=number(w,0x20C)) {
-        fn<void(__fastcall *)(Obj)>(Original)(w);return;
+        fn<void(__fastcall *)(Obj,int)>(GA(Original))(w,mode);return;
     }
     // Native 82C510/82C960/82CD60/82D170 amount-controls branch, using the
     // available resource as maximum instead of 3228F0's 100%-threshold amount.
     const int available=number(w,0x20C);
-    constexpr int amount_id=Original==0x82C960?0x3C:Original==0x82CD60?0x7A:0x4A;
-    constexpr int total_id=Original==0x82C960?0x42:Original==0x82CD60?0x80:0x50;
-    constexpr int slider_id=Original==0x82C960?0x4D:Original==0x82CD60?0x8B:0x5B;
-    constexpr int marker_id=Original==0x82C960?0x49:Original==0x82CD60?0x87:0x57;
+    const int amount_id=Original==GA_82C960?0x3C:Original==GA_82CD60?0x7A:0x4A;
+    const int total_id=Original==GA_82C960?0x42:Original==GA_82CD60?0x80:0x50;
+    const int slider_id=Original==GA_82C960?0x4D:Original==GA_82CD60?0x8B:0x5B;
+    const int marker_id=Original==GA_82C960?0x49:Original==GA_82CD60?0x87:0x57;
     int selected=number(w,0x210);if(selected<0)selected=0;if(selected>available)selected=available;
     number(w,0x210)=selected;number(w,0x21C)=available;
-    fn<void(__fastcall *)(Obj,int,int)>(0x92F7B0)(w+0x130,amount_id,1);
+    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_92F7B0))(w+0x130,amount_id,1);
     wchar_t value[64];swprintf_s(value,L"%d",selected);text(w,amount_id,value);
     swprintf_s(value,L"/%d",available);text(w,total_id,value);
-    Obj slider=fn<Obj(__fastcall *)(Obj,int)>(0x92CEE0)(w+0x130,slider_id);
+    Obj slider=fn<Obj(__fastcall *)(Obj,int)>(GA(GA_92CEE0))(w+0x130,slider_id);
     if(!slider)return;
     (*reinterpret_cast<void(__fastcall **)(Obj,int)>(pointer(slider,0)+0xD0))(slider,1);
-    fn<void(__fastcall *)(Obj,int)>(0x85B160)(slider,available);
-    fn<void(__fastcall *)(Obj,int)>(0x85B1A0)(slider,available);
-    fn<void(__fastcall *)(Obj,int)>(0x85CF80)(slider,selected);
-    fn<void(__fastcall *)(Obj,int,int)>(0x92F810)(w+0x130,marker_id,0);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_85B160))(slider,available);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_85B1A0))(slider,available);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_85CF80))(slider,selected);
+    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_92F810))(w+0x130,marker_id,0);
 }
 template<unsigned Original> static void __fastcall redraw(Obj w,float value) {
-    fn<void(__fastcall *)(Obj,float)>(Original)(w,value);
+    fn<void(__fastcall *)(Obj,float)>(GA(Original))(w,value);
     if(!over(w))return;
     int raw=number(w,0x218);if(raw>=0)return;
-    constexpr int defense_id=Original==0x82D880?0x75:Original==0x82DB90?0x56:0x83;
+    const int defense_id=Original==GA_82D880?0x75:Original==GA_82DB90?0x56:0x83;
     wchar_t label[64];swprintf_s(label,L"%d%%",100-raw);text(w,defense_id,label);
 }
 static void *replacements[]={reinterpret_cast<void *>(&frame),reinterpret_cast<void *>(&enter),reinterpret_cast<void *>(&leave),reinterpret_cast<void *>(&event),
-    reinterpret_cast<void *>(&refresh<0x82C960>),reinterpret_cast<void *>(&redraw<0x82D880>),
-    reinterpret_cast<void *>(&refresh<0x82C510>),reinterpret_cast<void *>(&redraw<0x82D570>),
-    reinterpret_cast<void *>(&refresh<0x82CD60>),reinterpret_cast<void *>(&redraw<0x82DB90>),
-    reinterpret_cast<void *>(&refresh<0x82D170>),reinterpret_cast<void *>(&redraw<0x82D570>)};
+    reinterpret_cast<void *>(&refresh<GA_82C960>),reinterpret_cast<void *>(&redraw<GA_82D880>),
+    reinterpret_cast<void *>(&refresh<GA_82C510>),reinterpret_cast<void *>(&redraw<GA_82D570>),
+    reinterpret_cast<void *>(&refresh<GA_82CD60>),reinterpret_cast<void *>(&redraw<GA_82DB90>),
+    reinterpret_cast<void *>(&refresh<GA_82D170>),reinterpret_cast<void *>(&redraw<GA_82D570>)};
 static CallLink links[sizeof(sites)/sizeof(sites[0])];
 static bool install() {
     if(!guards_match())return false;
+    rate_reduce=rate_reduce_rva();
+    log_event("diplomacy_rate_form",rate_reduce!=0,rate_reduce?number(image,rate_reduce):-1);
     Obj relay=allocate_near(image+sites[0].rva);if(!relay)return false;
     void *targets[]={reinterpret_cast<void *>(&rate),reinterpret_cast<void *>(&rate),reinterpret_cast<void *>(&rate),
         reinterpret_cast<void *>(&rate),reinterpret_cast<void *>(&ai_response),reinterpret_cast<void *>(&resolve),reinterpret_cast<void *>(&final_phase)

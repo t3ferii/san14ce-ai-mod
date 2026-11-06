@@ -1,3 +1,4 @@
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import ga_expand  # user 2026-11-05 patch resilience: sources spell addresses as GA(GA_x)
 """ccz_sprites static check (2026-10-31 user: 조조전 병종 그림을 우리 모드가 직접 그린다).
 Guard constants in src/native_ccz_sprites.inl against the DRM-free analysis EXE and the captured
 running .text, the decoded field layout it relies on, and the CCZU asset it loads.
@@ -32,6 +33,7 @@ checks = 0; fail = []
 def ok(cond, what):
     global checks; checks += 1
     if not cond: fail.append(what)
+ok('kSlots=512,kTextures=512' in src and 'static thread_local Vertex labels[kSlots*2][4]' in src, '2026-11-04: 512 cached cells and per-thread label buffer')
 slot, submit, size, h = num('kSubmitSlot'), num('kSubmit'), num('kSubmitSize'), num('kSubmitHash')
 ok(q(slot) == BASE+submit, 'display vtable slot 5 -> army submit 1C6EC0')
 ok(slot == num('kDisplayVtable')+5*8, 'submit is slot 5 of the army display vtable')
@@ -116,7 +118,8 @@ ok('ccz_combat::install(mod_features.ccz_block,mod_features.ccz_critical)' in (P
 # wiring: one owner (convenience), guard code 32, three installer catalogs (SESSION_RULES 2)
 inst = (P/'src/native_split_install.inl').read_text(encoding='utf-8'); adapter = (P/'src/native_adapter.cpp').read_text(encoding='utf-8')
 ok('ccz_sprites_guards_match())split_disable(f.ccz_sprites,32)' in inst and 'ccz_sprites::install(' in inst, 'guard 32 + install in split_activate')
-ok('f.ccz_block = on &&' in adapter and 'f.ccz_critical = on &&' in adapter and 'f.ccz_hide_model = f.ccz_sprites &&' in adapter and 'f.ccz_depth = f.ccz_sprites &&' in adapter, 'child keys depend on ccz_sprites')
+# User 2026-11-03: hide-model and depth are merged into 병종 그림 (ccz_sprites).
+ok('f.ccz_block = on &&' in adapter and 'f.ccz_critical = on &&' in adapter and 'f.ccz_hide_model = f.ccz_sprites;' in adapter and 'f.ccz_depth = f.ccz_sprites;' in adapter and 'L"ccz_hide_model"' not in adapter and 'L"ccz_depth"' not in adapter, 'child keys derive from ccz_sprites (user 2026-11-03: merged into 병종 그림)')
 ok('%x' % submit not in ' '.join('%x' % int(m, 16) for m in re.findall(r'\{0x[0-9A-Fa-f]+,0x([0-9A-Fa-f]+),', inst)), 'submit slot not in split_pointers (single owner)')
 for cat in ('installer/InstallerGui.cs', 'distribution/FeatureSelect.ps1', 'FeatureSelect.ps1'):
     t = (P/cat).read_text(encoding='utf-8-sig')
@@ -124,13 +127,13 @@ for cat in ('installer/InstallerGui.cs', 'distribution/FeatureSelect.ps1', 'Feat
 # 2026-11-01 user: 조조전 탭 = SAN14_CCZ.dll. Convenience keeps the Present hook and the 169F8B CALL; the module owns 13A03D0.
 ok('native_ccz_bridge.inl' in adapter and 'native_ccz_sprites.inl' not in adapter and '#include "native_ccz_sprites.inl"' in module, 'sprites code only in SAN14_CCZ.dll')
 ok('L"SAN14_CCZ.dll"' in bridge and 'found->abi!=ccz_module_abi' in bridge and 'combat_fix' in bridge and 'call_publish(link)' in bridge and 'call_publish' not in src, 'bridge loads the module, publishes the combat CALL')
-ok('SAN14CczGetApi' in module and 'patch_pointer(kSubmitSlot' in src and 'overlay_install();' in src and 'unified_overlay::' not in src, 'module exports its API; overlay via callback')
+ok('SAN14CczGetApi' in module and 'layout_client::vt(kSubmitSlot' in src and 'overlay_install();' in src and 'unified_overlay::' not in src, 'module exports its API; overlay via callback; user 2026-11-05 Layout compatibility design 8: the army-display slot is registered through layout_client (manager), not patch_pointer')
 # User 2026-11-02: opt-in retention must not gate the independent local14 render rescue.
 ok('far_position(u.army,pos,yaw)' in src and 'if(far_keep_enabled && !count && scene && armed>0 && distance<=armed*kFarFactor)' in src and '__except(EXCEPTION_EXECUTE_HANDLER)' in src and 'kFarFactor=2.0f' in src, 'far-zoom fallback keeps known armies only when enabled')
 ok('if(!far_keep_enabled || armed<=0' in src and 'else if(far_keep_enabled && !count && recent' in src,
    'OFF disables stale-camera refresh and far-distance arming')
-ok('bool ccz_far_keep = false;' in adapter and 'f.ccz_far_keep = f.ccz_sprites && feature_key(config, L"ccz", L"ccz_far_keep", false)' in adapter,
-   'far keep defaults OFF and requires sprites')
+ok('bool ccz_far_keep = false;' in adapter and 'f.ccz_far_keep = false;' in adapter,
+   'far keep remains OFF regardless of config (user 2026-11-03)')
 ok('ccz_module_abi=2' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8') and
    'install_sprites(hide,depth,far_keep)' in bridge and 'ccz_sprites::install(hide,depth,far_keep)' in module,
    'ABI 2 carries far flag; mismatched module is rejected')
@@ -142,7 +145,7 @@ rescue=src[src.index('// The failed zoom path'):src.index('if(main_rtv && rtv[0]
 ok('far_keep_enabled' not in rescue and 'ccz_sprites_zoom_fallback' in rescue,
    'local14 rescue is independent of far keep')
 render_hook=src[src.index('static void STDMETHODCALLTYPE set_targets('):src.index('static void hook_context(')]
-ok(hashlib.sha256(render_hook.encode('utf-8')).hexdigest()=='da0c30d9793f771077e39ff774d4b5b11ba817c760ed63fb528e9d6326b784fb',
+ok('COST_SCOPE("ccz_set_targets");' in render_hook and hashlib.sha256(render_hook.replace(' COST_SCOPE("ccz_set_targets");','').encode('utf-8')).hexdigest()=='da0c30d9793f771077e39ff774d4b5b11ba817c760ed63fb528e9d6326b784fb',
    '2026-11-02: entire local14 normal/rescue render-target hook unchanged')
 # Original damage stage: attacker is a pointer; defender is INLINE at pair+8.
 cache=P/'research/decomp_cache/1fbe6be7466a6646'

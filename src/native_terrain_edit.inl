@@ -1,5 +1,6 @@
 // Convenience engine only. Call on the native UI/save host caller thread.
 // Menu binding is separate in native_terrain_edit_ui.inl. No worker is used.
+#include "game_addresses.h"
 #include "terrain_edit_policy.h"
 #include "terrain_call_profile.h"
 #if defined(SPLIT_BASE)
@@ -48,8 +49,8 @@ static void clear_cost_cache() {
 #ifdef TERRAIN_EDIT_FIXTURE_COST_CACHE
     terrain_edit_fixture_cost_cache_clear();
 #else
-    if(memcmp(image+0xC05A8,cost_cache_clear_bytes,sizeof(cost_cache_clear_bytes)))return;
-    Obj cache=pointer(image,0x1B9A4A0);
+    if(ga::mcmp(image,GA_C05A8,0,cost_cache_clear_bytes,sizeof(cost_cache_clear_bytes)))return;
+    Obj cache=pointer(image,GA(GA_1B9A4A0));
     if(cache)memset(cache+0xC0,0,500u*500u*4u);
 #ifndef NO_RUNTIME_LOG
     log_event("terrain_cost_cache_clear",cache?1:0,0,0);

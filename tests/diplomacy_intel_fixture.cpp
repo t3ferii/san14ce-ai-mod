@@ -33,7 +33,8 @@ static void __fastcall mock_max(Obj p,int n) {check(p==slider_mem,"slider maximu
 static void __fastcall mock_total(Obj p,int n) {check(p==slider_mem,"slider total target");slider_total=n;}
 static void __fastcall mock_value(Obj p,int n) {check(p==slider_mem,"slider selection target");slider_value=n;}
 static void __fastcall mock_paint(Obj) {++paints;}
-static int __fastcall mock_rate(Obj,Obj,Obj,int,int base,int amount,int defending) {return base+(defending?-amount:amount);}
+static int rate_reduced_seen;
+static int __fastcall mock_rate(Obj,Obj,Obj,int,int base,int amount,int defending,int reduced) {rate_reduced_seen=reduced;return base+(defending?-amount:amount);}   // local10 G4: 8-argument form
 static int __fastcall mock_ai(int phase,Obj cmd,int,int *value) {check(phase==11 && cmd==cmd_mem,"AI phase and command forwarded");++ai_calls;check(*value>=0 && *value<=100,"AI receives bounded probability");*value+=25;return 100;}
 static int forced_roll,rng_calls;
 #ifndef NO_RUNTIME_LOG
@@ -140,6 +141,7 @@ int main(int argc,char **argv) {
     check(tail_gate(window_mem)==1,"another state cannot skip native teardown");pending.round.deferred=false;
     Coefficients c{100,100,100,1,100,0};
     check(score(50,150,true,c)==-50,"150 points produce a 50-point defense reserve");
+    check(score(50,150,true,c,70.0)==-20 && score(50,150,true,c,0.0)==-50,"324BC0 8th argument scales the amount term by 70/100 before the coefficient ratio");
     check(score(-50,100,true,c)==-150,"second user investment accumulates reserve");
     check(preserve_reserve(-80,25)==-55,"AI 25-point response consumes only part of reserve");
     check(probability(-55)==0 && probability(160)==100,"final probabilities bounded");
@@ -157,18 +159,29 @@ int main(int argc,char **argv) {
     }
     setup();check(enter(state_mem)==17 && pending.state==state_mem && !pending.round.extra,"fresh negotiation resets lifetime state");
     setup();number(state_mem,0x594)=-80;number(window_mem,0x214)=-80;number(window_mem,0x210)=INT32_MAX;
-    refresh<0x82CD60>(window_mem);
+    refresh<GA_82CD60>(window_mem,0);
     check(slider_max==10000 && slider_total==10000 && slider_value==10000 && last_lookup==0x8B,"prisoner slider uses correct IDs and available balance");
     check(labels[0x7A]==L"10000" && labels[0x80]==L"/10000","prisoner selected and remaining labels");
-    refresh<0x82C960>(window_mem);check(last_lookup==0x4D,"goodwill slider IDs");
-    refresh<0x82C510>(window_mem);check(last_lookup==0x5B,"alliance slider IDs");
-    refresh<0x82D170>(window_mem);check(last_lookup==0x5B,"attack request slider IDs");
-    redraw<0x82DB90>(window_mem,-1);check(labels[0x56]==L"180%","prisoner reserve is visible");
-    redraw<0x82D880>(window_mem,-1);check(labels[0x75]==L"180%","goodwill reserve is visible");
-    redraw<0x82D570>(window_mem,-1);check(labels[0x83]==L"180%","alliance/request reserve is visible");
-    check(rate(force_mem,person_mem,target_mem,8,-50,100,1)==-150,"native rate wrapper preserves reserve");
-    const unsigned before_paint=paints;mod_features.diplomacy_overinvest=false;refresh<0x82CD60>(window_mem);check(paints==before_paint+1,"disabled investment feature uses native painter");
-    check(rate(force_mem,person_mem,target_mem,8,50,10,1)==40,"disabled rate forwards to original");
+    refresh<GA_82C960>(window_mem,0);check(last_lookup==0x4D,"goodwill slider IDs");
+    refresh<GA_82C510>(window_mem,0);check(last_lookup==0x5B,"alliance slider IDs");
+    refresh<GA_82D170>(window_mem,0);check(last_lookup==0x5B,"attack request slider IDs");
+    redraw<GA_82DB90>(window_mem,-1);check(labels[0x56]==L"180%","prisoner reserve is visible");
+    redraw<GA_82D880>(window_mem,-1);check(labels[0x75]==L"180%","goodwill reserve is visible");
+    redraw<GA_82D570>(window_mem,-1);check(labels[0x83]==L"180%","alliance/request reserve is visible");
+    check(rate(force_mem,person_mem,target_mem,8,-50,100,1,0)==-150,"native rate wrapper preserves reserve");
+    {   // local10 G4: the 8-argument form (synthetic global holding 70); the 7-argument form (rate_reduce==0) never reads the 8th slot
+        check(rate_reduce==0,"7-argument form by default");number(image,0x3000)=70;rate_reduce=0x3000;rate_reduced_seen=-1;
+        check(rate(force_mem,person_mem,target_mem,8,-50,100,1,1)==-120,"reduced investment term (70 percent) in the modified rate");
+        check(rate(force_mem,person_mem,target_mem,8,-50,100,1,0)==-150,"unreduced call keeps the full term");
+        mod_features.diplomacy_overinvest=false;rate_reduced_seen=-1;
+        check(rate(force_mem,person_mem,target_mem,8,50,10,1,1)==40 && rate_reduced_seen==1,"unmodified rate forwards the 8th argument to the original");
+        mod_features.diplomacy_overinvest=true;number(image,0x3000)=0;
+        check(rate(force_mem,person_mem,target_mem,8,-50,100,1,1)==-150 && rate_reduced_seen==1,"non-positive reduction falls back to the native call");
+        rate_reduce=0;rate_reduced_seen=-1;mod_features.diplomacy_overinvest=false;
+        check(rate(force_mem,person_mem,target_mem,8,50,10,1,7)==40 && rate_reduced_seen==0,"without the 8-argument form the stray slot is forced to 0");
+    }
+    const unsigned before_paint=paints;mod_features.diplomacy_overinvest=false;refresh<GA_82CD60>(window_mem,0);check(paints==before_paint+1,"disabled investment feature uses native painter");
+    check(rate(force_mem,person_mem,target_mem,8,50,10,1,0)==40,"disabled rate forwards to original");
     setup();last_player=false;check(!incoming(window_mem),"player-initiated negotiation excluded");
     setup();command_kind=7;check(!incoming(window_mem),"surrender excluded");
     setup();number(window_mem,0x220)=1;check(!over(window_mem),"fixed result excludes overinvestment");
@@ -226,6 +239,15 @@ int main(int argc,char **argv) {
     auto size=input.tellg();check(size>0 && size<0x133F000,"retained text size");input.seekg(0);input.read(reinterpret_cast<char *>(image+0x1000),size);check(static_cast<bool>(input),"retained native text loaded");
     for(const auto &slot:slots)point(image,slot.rva,image+slot.original);
     check(guards_match(),"real native functions, callers, tail and slots match before installation");
+    check(rate_reduce_rva()==0,"1fbe6be7 322B30 is the 7-argument form");
+    {   // synthetic 8-argument form: cmp dword [rsp+0x68],0 at +0xA9, movd xmm0,[rip+disp] at +0xC0
+        const unsigned r=GA(GA_322B30);unsigned char saved[0x30];memcpy(saved,image+r+0xA0,sizeof(saved));
+        const unsigned char cmp8[]={0x83,0x7C,0x24,0x68,0x00},movd[]={0x66,0x0F,0x6E,0x05};
+        memcpy(image+r+0xA9,cmp8,5);memcpy(image+r+0xC0,movd,4);*reinterpret_cast<int *>(image+r+0xC4)=0x1A4B884-(static_cast<int>(r)+0xC8);
+        check(rate_reduce_rva()==0x1A4B884,"8-argument form decodes the percentage global");
+        image[r+0xC1]^=1;check(rate_reduce_rva()==0,"changed movd opcode rejects the 8-argument form");image[r+0xC1]^=1;
+        memcpy(image+r+0xA0,saved,sizeof(saved));check(rate_reduce_rva()==0 && guards_match(),"synthetic form restored");
+    }
     image[final_tail]^=1;check(!diplomacy_intel::install() && !final_tail_link.published,"foreign tail prevents every hook publication");image[final_tail]^=1;
     check(diplomacy_intel::install() && final_tail_link.published && image[final_tail]==0xE9,"actual native tail gate and existing hooks publish together");
     Obj installed_relay=image+sites[0].rva+5+links[0].redirected;

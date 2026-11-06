@@ -1,6 +1,7 @@
 // Convenience-only. Called synchronously by the native type-20 stratagem caller.
 // Capture the successful, unclamped roll, then expand AFTER native presentation,
 // primary damage and the optional trap removal have finished.
+#include "game_addresses.h"
 namespace building_destruction {
 using Complete=int(__fastcall *)(Obj);
 struct Target {Obj object;unsigned id,hex,type,owner;};
@@ -20,9 +21,9 @@ static bool hostile(Obj b,unsigned force,Obj region) {
     Obj definition=table(0x73958,b[0x12],30);
     if(!valid(definition) || definition[0x2C]<2 || definition[0x2C]>4)return false; // never cities/gates
     const unsigned hex=word(b,0x10);
-    if(hex>=48400 || !fn<int(__fastcall *)(unsigned,unsigned)>(0x2CA280)(force,b[0x13]))return false;
+    if(hex>=48400 || !fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(force,b[0x13]))return false;
     Obj tile=table(0xE270,hex,48399);
-    return valid(tile) && fn<Obj(__fastcall *)(Obj)>(0x229EA0)(tile)==region;
+    return valid(tile) && fn<Obj(__fastcall *)(Obj)>(GA(GA_229EA0))(tile)==region;
 }
 static void __fastcall capture(Obj command,Obj primary,Obj region,int damage,Obj force) { COST_SCOPE("building_destruction::capture");
     Context *c=current;
@@ -33,6 +34,11 @@ static void __fastcall capture(Obj command,Obj primary,Obj region,int damage,Obj
     unsigned own=0;
     for(unsigned id=1;id<=51;++id)if(table(0xDF30,id,51)==force) {own=id;break;}
     if(!own) {log_event("building_destruction_force_unknown",word(force,0x10));return;}
+    // local10 G2 3.2: the capture bridge reads its arguments from per-build frame slots; a wrong slot shows up here as an owner that is
+    // not a hostile of our force, and the roll is then not expanded.
+    if(own==primary[0x13] || !fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(own,primary[0x13])) {
+        log_event("building_destruction_capture_mismatch",own,primary[0x13]);return;
+    }
     c->captured=true;c->region=region;c->force=own;c->damage=damage;
     for(unsigned id=1;id<=3000;++id) {
         Obj b=table(0x6DA98,id,3000);
@@ -52,26 +58,29 @@ static void apply(const Context &c) {
         if(b!=t.object || !valid(b) || word(b,0x10)!=t.hex || b[0x12]!=t.type || b[0x13]!=t.owner ||
            !hostile(b,c.force,c.region))continue;
         const int remaining=static_cast<int>(word(b,0x14))-c.damage;
-        if(remaining<=0)fn<void(__fastcall *)(Obj,Obj,int)>(0x294B90)(b,nullptr,0);
-        else fn<void(__fastcall *)(Obj,int)>(0x1F42B0)(b,remaining);
+        if(remaining<=0)fn<void(__fastcall *)(Obj,Obj,int)>(GA(GA_294B90))(b,nullptr,0);
+        else fn<void(__fastcall *)(Obj,int)>(GA(GA_1F42B0))(b,remaining);
         ++hits;
     }
     log_event("building_destruction_area",c.force,hits,static_cast<unsigned>(c.damage));
 }
 static int __fastcall complete(Obj command) { COST_SCOPE("building_destruction::complete");
-    if(!active() || current)return fn<Complete>(0x1F9DE0)(command);
+    if(!active() || current)return fn<Complete>(GA(GA_1F9DE0))(command);
     Context context={};context.command=command;
     struct Scope {Scope(Context &c){current=&c;} ~Scope(){current=nullptr;}} scope(context);
-    const int result=fn<Complete>(0x1F9DE0)(command);
+    const int result=fn<Complete>(GA(GA_1F9DE0))(command);
     apply(context);
     log_event("building_destruction_result",static_cast<unsigned>(result),context.count,context.captured?1u:0u);
     return result;
 }
-// CALL at 1FA607 pushes eight bytes; the original RSP was 16-byte aligned.
-// Save flags, volatile GPRs and XMM0..5, reserve shadow/arg5, then reproduce both
-// displaced instructions with the native [RSP+78] adjusted to [RSP+80].
-static unsigned make_capture_bridge(Obj at) {
+// CALL at GA_1FA607 pushes eight bytes; the original RSP was 16-byte aligned (both builds: five pushes, SUB RSP multiple of 16).
+// Save flags, volatile GPRs and XMM0..5, reserve shadow/arg5, then reproduce the displaced instructions.
+// Form 1 (1fbe6be7): displaced `mov [rbp-10],edx; mov r12d,[rsp+78]` (native [RSP+78] adjusted to [RSP+80]); frame slots force [rbp-40],
+// primary [rbp-60]. Form 2 (1a4a447d): the two displaced ADDs run first (before the flag save; they use RBP only), EDX is then the final
+// damage; the following native MOV stays in place, so the bridge only returns; force [rbp-8], primary [rbp-58].
+static unsigned make_capture_bridge(Obj at,unsigned form) {
     unsigned n=0;
+    if(form==2) {const unsigned char head[]={0x03,0x55,0x90,0x03,0x55,0xE8};memcpy(at+n,head,sizeof(head));n+=sizeof(head);}
     const unsigned char push[]={0x9C,0x50,0x51,0x52,0x41,0x50,0x41,0x51,0x41,0x52,0x41,0x53,
                                 0x48,0x81,0xEC,0x98,0,0,0};
     memcpy(at+n,push,sizeof(push));n+=sizeof(push);
@@ -81,9 +90,9 @@ static unsigned make_capture_bridge(Obj at) {
         if(xmm==5) {const unsigned char last[]={0xF3,0x0F,0x7F,0xAC,0x24,0x80,0,0,0};memcpy(at+n,last,sizeof(last));n+=sizeof(last);}
         else {memcpy(at+n,save,sizeof(save));n+=sizeof(save);}
     }
-    const unsigned char args[]={0x48,0x8B,0x45,0xC0,0x48,0x89,0x44,0x24,0x20, // arg5 = native force
+    const unsigned char args[]={0x48,0x8B,0x45,static_cast<unsigned char>(form==2?0xF8:0xC0),0x48,0x89,0x44,0x24,0x20, // arg5 = native force
                                 0x41,0x89,0xD1,0x4D,0x8B,0xC5, // R9D = full damage; R8 = region R13
-                                0x48,0x8B,0x55,0xA0,0x48,0x8B,0x4D,0xE0,0x48,0xB8};
+                                0x48,0x8B,0x55,static_cast<unsigned char>(form==2?0xA8:0xA0),0x48,0x8B,0x4D,0xE0,0x48,0xB8};
     memcpy(at+n,args,sizeof(args));n+=sizeof(args);
     *reinterpret_cast<void **>(at+n)=reinterpret_cast<void *>(&capture);n+=8;
     at[n++]=0xFF;at[n++]=0xD0;
@@ -92,31 +101,33 @@ static unsigned make_capture_bridge(Obj at) {
         if(xmm==5) {const unsigned char last[]={0xF3,0x0F,0x6F,0xAC,0x24,0x80,0,0,0};memcpy(at+n,last,sizeof(last));n+=sizeof(last);}
         else {memcpy(at+n,load,sizeof(load));n+=sizeof(load);}
     }
-    const unsigned char pop[]={0x48,0x81,0xC4,0x98,0,0,0,0x41,0x5B,0x41,0x5A,0x41,0x59,0x41,0x58,0x5A,0x59,0x58,0x9D,
-                               0x89,0x55,0xF0,0x44,0x8B,0xA4,0x24,0x80,0,0,0,0xC3};
-    memcpy(at+n,pop,sizeof(pop));return n+sizeof(pop);
+    const unsigned char pop[]={0x48,0x81,0xC4,0x98,0,0,0,0x41,0x5B,0x41,0x5A,0x41,0x59,0x41,0x58,0x5A,0x59,0x58,0x9D};
+    memcpy(at+n,pop,sizeof(pop));n+=sizeof(pop);
+    if(form==1) {
+        const unsigned char tail[]={0x89,0x55,0xF0,0x44,0x8B,0xA4,0x24,0x80,0,0,0,0xC3};
+        memcpy(at+n,tail,sizeof(tail));n+=sizeof(tail);
+    } else at[n++]=0xC3;
+    return n;
 }
 #include "building_destruction_profile.h"
-static bool guards_match() {
-    for(const auto &g:guards) {
-        unsigned long long h=0xCBF29CE484222325ull;
-        for(unsigned i=0;i<g.size;++i)h=(h^image[g.rva+i])*0x100000001B3ull;
-        if(h!=g.hash)return false;
-    }
-    return true;
-}
 static bool install() {
     if(InterlockedCompareExchange(&installed,0,0))return true;
-    if(!guards_match()) {log_event("building_destruction_guard_rejected");return false;}
-    Obj relay=allocate_near(image+0x1F91F1);if(!relay)return false;
+    if(!guards_match()) {log_event("building_destruction_guard_rejected");log_event("building_destruction_guard_failed",guard_failed_row);return false;}
+    const unsigned form=capture_form();
+    log_event("building_destruction_form",form);
+    if(!form)return false;
+    Obj relay=allocate_near(image+GA(GA_1F91F1));if(!relay)return false;
     absolute_jump(relay,reinterpret_cast<void *>(&complete));
-    const unsigned length=make_capture_bridge(relay+64);
+    const unsigned length=make_capture_bridge(relay+64,form);
     CodeLink capture_link,complete_link;DWORD old;
-    if(!prepare_link(capture_link,0x1FA607,0xE8,relay+64) ||
-       !prepare_link(complete_link,0x1F91F1,0xE8,relay) ||
+    if(!prepare_link(capture_link,GA(GA_1FA607),0xE8,relay+64) ||
+       !prepare_link(complete_link,GA(GA_1F91F1),0xE8,relay) ||
        !VirtualProtect(relay,4096,PAGE_EXECUTE_READ,&old) ||
        !FlushInstructionCache(GetCurrentProcess(),relay,64+length)) {VirtualFree(relay,0,MEM_RELEASE);return false;}
-    memset(capture_link.modified+12,0x90,3); // 1FA60C..1FA60E: tail of displaced MOV
+    {   // the CALL covers five bytes of the displaced code; the rest of it (form 1: 3 bytes, form 2: 1 byte) becomes NOPs
+        const unsigned displaced=form==1?sizeof(capture_form_a):6,off=GA(GA_1FA607)-capture_link.block;
+        memset(capture_link.modified+off+5,0x90,displaced-5);
+    }
     if(!publish_link(capture_link)) {VirtualFree(relay,0,MEM_RELEASE);return false;}
     if(!publish_link(complete_link)) {
         restore_link(capture_link);

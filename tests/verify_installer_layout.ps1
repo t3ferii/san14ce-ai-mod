@@ -17,9 +17,13 @@ $taskClock=[Diagnostics.Stopwatch]::StartNew()
 $taskIndex=Read-LayoutIndex $taskRaw
 $taskResults.parse_ms=$taskClock.Elapsed.TotalMilliseconds
 $taskClock.Restart()
-# Restore all matching fixture entries to the provided original bytes.
-[void](Reset-TraitLayout $taskIndex $taskPatch.records 30)
-[void](Reset-TraitLayout $taskIndex $taskPatch.records 0)
+# The snapshot may contain an older installed layout. Construct the fixture's
+# starting index from the current package's original entries, on the in-memory copy.
+foreach($taskRecord in $taskPatch.records){
+    $taskKtid=[uint32]$taskRecord.ktid
+    if(-not $taskIndex.ByKtid.ContainsKey($taskKtid) -or $taskIndex.ByKtid[$taskKtid] -lt 0){throw "Fixture target missing or duplicated: $taskKtid"}
+    $taskIndex.Entries[$taskIndex.ByKtid[$taskKtid]]=[Convert]::FromBase64String($taskRecord.original_entry)
+}
 $taskOriginal=Build-LayoutIndex $taskIndex
 $taskResults.reset_ms=$taskClock.Elapsed.TotalMilliseconds
 $taskResults.original=Digest-Bytes $taskOriginal

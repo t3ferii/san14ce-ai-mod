@@ -1,3 +1,4 @@
+import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__))); import ga_expand  # user 2026-11-05 patch resilience: sources spell addresses as GA(GA_x)
 """사용자 결정 2026-10-30: 통합패치·발탁장수 공존을 위해 첫머리 훅을 호출 자리로 이동."""
 import functools
 import hashlib
@@ -109,19 +110,16 @@ check(0x301BD9 in native_calls(0x1843E0) and 0x301BD9 in search,
 check(0x5CC37E in native_calls(0x2C0820), 'info native E8 target')
 check('log_event("sortie_call_skip"' in source, 'skipped sortie calls logged')
 split = (P/'src/native_split_install.inl').read_text(encoding='utf-8')
-check('log_event("info_call_skip"' in split, 'skipped info calls logged')
 check('code.links[i],e.rva,0xE9' not in source, 'no former eight-entry publication loop')
 check('0x2C0820,0xE9' not in split, 'no info entry publication')
 check('relay+4096+k*16' in source and 4096+call_count*16 <= 8192 and
       '4096+kSortieCallCount*16<=8192' in source, 'all disjoint 16-byte tail relays fit existing allocation')
 check('relay+2432,gate=stub+32' in source, 'dispatch retains old reserved region')
-check('relay+3200' in split and 'relay+3232' in split and 'relay+3264' not in split,
-      'info relays retain offsets without relocated entry')
+check('prepare_info(' not in split and '0x14AB2D0' not in split and '0x8DF900' not in split,
+      'user decision 2026-11-03: removed officer roster hooks leave their caller links untouched')
 adapter = (P/'src/native_adapter.cpp').read_text(encoding='utf-8-sig')
 check('Obj call,unsigned bytes=0x1000' in adapter and 'combat_relay,0x2000' in adapter,
       'only requested relay allocation paths extended')
-check('fn<InfoListCreate>(0x2C0820)' in (P/'src/native_officer_info.inl').read_text(),
-      'officer fallback keeps native entry')
 graph_record = dict(derived, search_call_count=len(search), outside_search_calls=100-len(search),
                     depth_limit=8, tail_jump_cost=0, gameplay_verified=False)
 (P/'build/development/sortie_search_callgraph_verified.json').write_text(

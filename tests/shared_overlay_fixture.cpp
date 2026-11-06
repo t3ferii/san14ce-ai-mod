@@ -61,5 +61,5 @@ int main() {
     show(false);SendMessageW(target,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(x,y));SendMessageW(target,WM_LBUTTONUP,0,MAKELPARAM(x,y));
     check(!take_click(),"hidden overlay cannot open a dialog");
     staging->Release();view->Release();back->Release();test_context->Release();test_device->Release();chain->Release();DestroyWindow(target);
-    printf("{\"status\":\"unified_overlay_fixture_passed\",\"checks\":%u,\"real_d3d11_pixel_readback\":true,\"gameplay_verified\":false}\n",checks);
+    printf("{\"status\":\"shared_overlay_fixture_passed\",\"checks\":%u,\"real_d3d11_pixel_readback\":true,\"gameplay_verified\":false}\n",checks);
 }

@@ -1,5 +1,6 @@
 // A retreat command alone does not make a nearby enemy cease to exist.
 // Keep original damage, morale, depleted-unit and safety decisions intact.
+#include "game_addresses.h"
 #include "native_target_retreat_profile.h"
 using TargetRetreatDaily=void(__fastcall *)(Obj);
 static TargetRetreatDaily original_target_retreat_daily;
@@ -13,13 +14,13 @@ static bool target_retreat_nearby_enemy(Obj army) {
     if(army[0x3C]!=0xFF && (army[0x3C]!=27 || word(army,0x3E)!=id))return false;
     Obj enemy=table(0x7E838,id,500);
     if(!valid(enemy) || enemy==army || !word(enemy,0x16) ||
-       fn<int(__fastcall *)(Obj)>(0x233440)(enemy))return false;
+       fn<int(__fastcall *)(Obj)>(GA(GA_233440))(enemy))return false;
     if(enemy[0x37]!=11 && enemy[0x37]!=12)return false;
-    if(!fn<int(__fastcall *)(unsigned,unsigned)>(0x2CA280)(army_force(army),army_force(enemy)))return false;
+    if(!fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(army_force(army),army_force(enemy)))return false;
     unsigned own_hex=word(army,0x2A),enemy_hex=word(enemy,0x2A);
     return own_hex<48400 && enemy_hex<48400 && distance(own_hex,enemy_hex)<=6;
 }
-static void __fastcall target_retreat_daily(Obj army) {
+static void __fastcall target_retreat_daily(Obj army) { COST_SCOPE("target_retreat_daily");
     bool trace=diagnostic_logging && army && army[0x38]==27;
     unsigned before_order=trace?(army[0x37]+(static_cast<unsigned>(army[0x38])<<8)):0;
     unsigned before_target=trace?word(army,0x3A):0,enemy_action=255;
@@ -48,7 +49,7 @@ static void __fastcall target_retreat_daily(Obj army) {
 }
 struct TargetRetreatCode {CodeLink daily,filters[2];};
 static bool target_retreat_guards_match() {
-    for(const auto &guard:target_retreat_guards)if(memcmp(image+guard.rva,guard.bytes,guard.size))return false;
+    for(const auto &guard:target_retreat_guards)if(ga::mcmp_at(image,guard.rva,guard.bytes,guard.size))return false;
     return true;
 }
 static bool prepare_target_retreat(TargetRetreatCode &code,Obj relay) {
@@ -56,23 +57,23 @@ static bool prepare_target_retreat(TargetRetreatCode &code,Obj relay) {
     absolute_jump(relay,reinterpret_cast<void *>(&target_retreat_daily));
     // MOV RAX,RSP; PUSH RBP; LEA RBP,[RAX-8E8h], complete 11-byte prolog.
     // RAX and argument registers survive the branch back to the native SUB.
-    memcpy(relay+64,image+0x272190,11);
-    relay[75]=0x49;relay[76]=0xBB;Obj continuation=image+0x27219B;
+    memcpy(relay+64,image+GA(GA_272190),11);
+    relay[75]=0x49;relay[76]=0xBB;Obj continuation=image+GA(GA_27219B);
     memcpy(relay+77,&continuation,8);relay[85]=0x41;relay[86]=0xFF;relay[87]=0xE3;
     original_target_retreat_daily=reinterpret_cast<TargetRetreatDaily>(relay+64);
     auto runtime=reinterpret_cast<RUNTIME_FUNCTION *>(relay+96);
     runtime->BeginAddress=64;runtime->EndAddress=88;runtime->UnwindData=112;
     const unsigned char unwind[]={1,11,1,0,4,0x50,0,0};
     memcpy(relay+112,unwind,sizeof(unwind));
-    if(!prepare_link(code.daily,0x272190,0xE9,relay))return false;
+    if(!prepare_link(code.daily,GA(GA_272190),0xE9,relay))return false;
     memset(code.daily.modified+5,0x90,6);
     // Original LEA EAX,[RCX-11]; CMP AL,1; JBE rejects actions 11/12.
     // MOV AL,2; NOP removes only that test, retaining ECX for the following
     // action 2/3 + actual home-region exclusion. EAX is overwritten before
     // later use on both paths. All validity/range/risk scoring stays native.
     const unsigned char command_is_not_disappearance[]={0xB0,2,0x90};
-    return prepare_bytes(code.filters[0],0x6A26A,command_is_not_disappearance,3) &&
-           prepare_bytes(code.filters[1],0x6A948,command_is_not_disappearance,3);
+    return prepare_bytes(code.filters[0],GA(GA_6A26A),command_is_not_disappearance,3) &&
+           prepare_bytes(code.filters[1],GA(GA_6A948),command_is_not_disappearance,3);
 }
 static void restore_target_retreat(TargetRetreatCode &code) {
     InterlockedExchange(&target_retreat_active,0);
@@ -91,7 +92,7 @@ static bool install_target_retreat() {
     if(wcscat_s(config,L"\\AI_TacticsMod\\target_retreat.ini"))return false;
     if(!GetPrivateProfileIntW(L"target_retreat",L"enabled",1,config)) {log_event("target_retreat_disabled");return true;}
     if(!target_retreat_guards_match()) {log_event("target_retreat_guard_rejected");return false;}
-    Obj relay=allocate_near(image+0x272190);if(!relay)return false;
+    Obj relay=allocate_near(image+GA(GA_272190));if(!relay)return false;
     TargetRetreatCode code;
     if(!prepare_target_retreat(code,relay)) {VirtualFree(relay,0,MEM_RELEASE);return false;}
     DWORD old;

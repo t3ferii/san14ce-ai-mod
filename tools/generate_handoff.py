@@ -34,7 +34,7 @@ def write_current_split(manifest,state,share,share_check,pair):
         '| 해당 Apply 버전 ZIP/고유 release proof 해시 | '+str(installed_zip_matches)+' |',
         '| 최신 공유 ZIP | '+share_version+' |',
         '| 최신 ZIP/share_package/share_verification 해시 | '+str(share_matches)+' |',
-        '| 원본 EXE/manifest 기준 해시 | '+str(digest(GAME/'SAN14CE_KO.exe')==manifest.get('supported_original_exe_sha256'))+' |','',
+        '| 원본 EXE/manifest 기준 해시 | '+str(digest(GAME/'SAN14CE_KO.exe') in set([manifest.get('supported_original_exe_sha256'),*manifest.get('supported_original_exe_sha256_all',[])]))+' |','',
         '설치 기록과 Apply 버전이 다르면 준비/승격 중 상태일 수 있다. 해시가 같아도 설치 완료로 추정하지 않는다.','',
         '## 현재 기능과 검사 기록','',
         '- 세 DLL 경계 유지. 설치기 기능 '+str(manifest.get('feature_switches',{}).get('count','미기록'))+'개, 종속 키는 부모와 AND.',
@@ -207,7 +207,7 @@ def main():
                 '계산·입력·저장·훅 소유권 변경 없음. 편의 DLL이 해당 UI를 단독 소유.',
                 '검사: expert-combat(native, split-module), 세 DLL release build, ZIP apply/restore fixture.',
                 '실제 게임 화면의 긴 툴팁 배치·입력·저장 재로드는 미확인.',
-                '기능설정.ini 유지. 기존 combat=0·unified=0 등 사용자 설정 보존.',
+                '기능설정.ini 유지. 기존 combat=0· 등 사용자 설정 보존.',
                 '배포: '+str(archive), '설치 백업: '+str(state.get('install_backup')), '',
                 *[n+': '+str(digest(GAME/n)) for n in split['files']], '',
                 '근거: build/v12_work/baseline.json, expert-check.log, split-build.log, release-proof.json.',
@@ -231,7 +231,7 @@ def main():
         crash=read_json(PROJECT/'data/diagnostics/v11_10_crash_rollback.json')
         field_crash=read_json(PROJECT/'data/diagnostics/v11_11_crash_rollback.json')
         if manifest.get('modpack_v16'):
-            report=read_json(PROJECT/(manifest['unified_personnel_revision'].get('installation_report','build/unified_personnel_installation.json') if manifest.get('unified_personnel_revision') else 'build/traits9_installation.json' if manifest.get('traits9_revision') else 'build/modpack_installation.json'))
+            report=read_json(PROJECT/('build/traits9_installation.json' if manifest.get('traits9_revision') else 'build/modpack_installation.json'))
             archive=PROJECT/'dist'/('SAN14_AI_'+manifest['release_version']+'_integrated.zip')
             archive_matches=bool(archive.exists() and digest(archive)==share_check.get('zip_sha256')==report.get('zip_sha256'))
             assets=all(digest(GAME/n)==digest(package/n)==h for n,h in manifest.get('assets',{}).items())
@@ -256,39 +256,6 @@ def main():
                     '기존 무장 u16×9 저장칸 사용. 세이브 구조·논공/명품 보조 저장 코드 변경 없음. 실 저장 재로드는 미확인.',
                     '0002/ScreenLayout.rdb 네 항목과 신규 bin31 관리. 원본 인덱스 백업, 해제 시 복구.',
                     'tools/release_traits9.py prepare|install; docs/TRAITS9_v11_22.md; research/traits9/INTEGRATION.md.']
-            if manifest.get('unified_personnel_revision'):
-                lines[0]='# '+manifest['release_version']+' 게임 내부 통합 인사'
-                lines += ['', '진행 오른쪽·명령서 아래 통합 인사: 12조건 검색, 7개 일괄 작업, 무력형/지력형 출진 전법 우선순위.',
-                    '통합 인사와 전법 자동 선택 모두 SAN14_Convenience.dll 소유. 로더/전투 실행 코드(.text)는 v11.22와 동일.',
-                    '통합 인사 정책28·설정/전법13·UI 어댑터'+str(manifest['unified_personnel_revision']['candidate_verification']['focused_checks']['engine']['checks'])+'·소스/바이너리 경계'+str(manifest['unified_personnel_revision']['candidate_verification']['checks'])+' 검사 통과. 새 배치·실제 비용·저장 재로드 미확인.',
-                    'tools/release_unified_personnel.py prepare|install; docs/UNIFIED_PERSONNEL.md; '+manifest['unified_personnel_revision'].get('installation_report','build/unified_personnel_installation.json')+'.']
-                if manifest['unified_personnel_revision'].get('hud_visibility_fix'):
-                    lines += ['v11.23 버튼 미표시 수정: 팝업 관리자와 전략 상태 혼동 제거. 실행 중 게임에서 기존 훅 연결·빈 팝업 상태 확인, 회귀 검사로 실패 재현 후 수정. 실제 수정 화면은 미확인.']
-                if manifest['unified_personnel_revision'].get('hud_registration_fix'):
-                    lines += ['v11.24 버튼 생성 후 미표시 수정: 원작 추가 컨트롤 목록에 HUD 등록, 부모 leave에서 원작 소유권으로 분리·삭제. 기존 화면 메타데이터 수정 없음.']
-                if manifest['unified_personnel_revision'].get('hud_overlay_entry'):
-                    lines += ['진입 버튼만 무술대회 방식의 작은 D3D11 텍스처로 표시. 검색·선택·작업·입력은 기존 게임 목록창 재사용.',
-                        '실제 D3D11 픽셀/클릭/좌표 검사23 통과. 전체 화면 복사·매 프레임 버튼 이미지 재생성 없음. 게임 함수 호출은 UI 스레드.',
-                        'REA 사용 허용(2026-10-18 금지 해제). 현재는 한 단계씩 UI 배치부터 구현; 최적화·함수별 로그는 후속 작업.']
-                    observed=read_json(PROJECT/'data/diagnostics/unified_ui_validation.json')
-                    if observed.get('version')==manifest['release_version'] and observed.get('files')==split['files']:
-                        lines += ['실제 게임 화면 관찰: 버튼 표시='+str(observed.get('entry_button_visible'))+', 원작 통합 목록창 표시='+str(observed.get('native_personnel_dialog_visible'))+'.',
-                            '자동 클릭은 사용자 입력 감지로 실행되지 않음. 검색 조건 메뉴·일괄 작업 비용·저장 재로드는 미확인.']
-                if manifest['unified_personnel_revision'].get('two_pane_layout'):
-                    if manifest['unified_personnel_revision']['two_pane_layout'].get('native_list_panes'):
-                        lines += ['v11.30: 전체 화면 호스트 하나 안에 원작 CDataList 두 개. 왼쪽(64,200,1200,690), 오른쪽(1344,200,496,690). 별도 전체 화면 목록창/배경 생성 제거.',
-                            '왼쪽 소속열9개·전법/정책/개성 너비 조절, 모든12탭 너비≤1200 검증. 각 패널 스크롤바 독립. 네이티브 클래스·크기 함수 실제 EXE 대조30/수명·입력92검사.',
-                            '실제 좌우 배치·게임 입력 확인은 진단 기록 참조. 우측 드롭다운과 결과만 갱신하는 개선은 별도 후속.']
-                    else:
-                        lines += ['좌측 무장 일람과 우측 검색 조건은 둘 다 원작 목록창. 원작 자동 너비 설정+자식 레이아웃 재사용; 추가 모달 상태/채널/외부 창 없음.',
-                        '오른쪽 조건/현재값을 선택한 후 하단 선택 조건 변경. 조건 팝업 중 우측 갱신 중단; 부모 파괴 전에 자식 분리·삭제.',
-                        'v11.26에서 진입 버튼과 원작 목록은 실제 관찰됨. 새 좌우 배치/우측 입력은 게임에서 확인 필요.']
-                if manifest['unified_personnel_revision'].get('native_slot_fix'):
-                    lines += ['v11.27 버튼 소멸 원인: generic dialog frame 슬롯을 +38로 잘못 지정해 편의 DLL 전체 등록 거부. 실제 EXE 대조 검사로 회귀 재현.',
-                        'v11.28: frame +10/13AC588→2FB440 수정, controls +38/13AC5B0→258170 별도 연결. 실제 EXE의 모든 split pointer guard 대조 포함.']
-                if manifest['unified_personnel_revision'].get('native_sortie_relations'):
-                    lines += ['v11.29: 출진 원작7D6AC0/30BED0 연계 판정·기호·정렬 재사용. 실제 무장일람에서 기준 선택 → 원작 등급 선택. 연계 탭에 부친·모친·배우자·의형제 열 포함.',
-                        '비교 결과는 기준 무장별 캐시, 일괄 작업 후 폐기. 어댑터16/현재 EXE 호출 경로14검사 통과. 드롭다운 상시 패널·목록만 갱신하는 조작 개선은 아직 남음. 실게임 화면 확인 전.']
             (PROJECT/'development/CURRENT.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
             print(json.dumps({'handoff':str(PROJECT/'development/CURRENT.md'),'installed_files_match':pair,'assets_match':assets,'archive_matches':archive_matches}));return
         if manifest.get('function_cost_profile'):
