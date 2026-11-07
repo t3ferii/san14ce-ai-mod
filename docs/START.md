@@ -6,13 +6,13 @@
 
 UI 자료를 바꾸거나 OFF/해제 후 버튼이 남으면 [UI 리소스 복원 기준](UI_RESOURCE_LIFECYCLE.md)을 먼저 확인한다. DLL OFF와 디스크 리소스 복원은 별개다.
 
-UI를 수정할 때는 [UI 실패 기록과 해결 방식](UI_FAILURES_AND_RECIPES.md)의 증상표에서 해당 항목부터 확인한다. 버튼 생성 시점·선택 모드·전체 저장·내부 클리핑·외교 퇴장 처리를 이미 실패한 방식으로 되돌리지 않는다.
+새 기능(모드)을 설계하기 전에는 [모드 개발 시행착오](MOD_DEV_LESSONS.md)를 한 번 읽는다(구조체 오프셋 근거, 편집 버퍼, UI 생성·소멸 순서, 진단 장치, 사양 확정, 에이전트 검사 방식). **기능을 추가·수정·삭제할 때는 [기능 추가·수정 필수 체크리스트](FEATURE_CHANGE_CHECKLIST.md)를 그대로 따른다.** UI를 수정할 때는 [UI 실패 기록과 해결 방식](UI_FAILURES_AND_RECIPES.md)의 증상표에서 해당 항목부터 확인한다. 버튼 생성 시점·선택 모드·전체 저장·내부 클리핑·외교 퇴장 처리를 이미 실패한 방식으로 되돌리지 않는다.
 
 1. [SESSION_RULES](SESSION_RULES.md) → CURRENT → [MODULES](MODULES.md)의 관련 행 → 해당 소스·[NATIVE_FUNCTIONS](NATIVE_FUNCTIONS.md).
 2. 이번 기능 조사 범위와 정의 후보는 [FUNCTION_AUDIT](../development/FUNCTION_AUDIT.md). 자동 색인은 개별 함수 검증 완료를 뜻하지 않는다.
 3. 외부 근거는 [REFERENCE_MODS](REFERENCE_MODS.md)의 관련 자료 하나부터 선택한다. research와 원시 추적 자료는 미래 기능 개발 근거로 보존한다.
 4. 검사·배포는 [WORKFLOW](WORKFLOW.md). 오래된 승격 도구를 현재 빌드에 재사용하지 않는다.
-5. 원작 전체 분석 저장본의 위치·자동분석 없는 함수 조회 명령은 [GHIDRA_PERSISTENT](GHIDRA_PERSISTENT.md). UI 조회 검증과 자동 함수 인식의 한계는 [GHIDRA_UI_CACHE_TEST](GHIDRA_UI_CACHE_TEST.md).
+5. 원작 전체 분석 저장본의 위치·자동분석 없는 함수 조회 명령은 [GHIDRA_PERSISTENT](GHIDRA_PERSISTENT.md). UI 조회 검증과 자동 함수 인식의 한계는 [docs/HISTORY.md](HISTORY.md).
 
 ## 작업 중 문서 갱신
 
@@ -20,7 +20,7 @@ UI를 수정할 때는 [UI 실패 기록과 해결 방식](UI_FAILURES_AND_RECIP
 - 구현 단계가 끝나면 같은 세션에서 `CURRENT.md`를 갱신한다. 실제 게임 실행·설치·배포를 하지 않았으면 반드시 그렇게 적고, fixture·정적 검사·빌드 결과를 실게임 검증과 구분한다.
 - `START.md`에는 장기 규칙과 읽기 순서만 둔다. 일시적인 버전·해시·진행 상태·다음 확인 작업은 `CURRENT.md`에만 기록한다.
 
-Luna Main Coder로 시작한 메인 세션만 [Luna–Sol 작업 흐름](LUNA_SOL_WORKFLOW.md)을 따른다. 기존 Claude 작업서로 시작된 Codex 작업과 일반 하위 에이전트는 [CODEX_WORKER](CODEX_WORKER.md) 또는 자신에게 주어진 작업서의 허용 범위와 반환 형식을 우선한다.
+Claude 작업서로 시작된 Codex 작업자는 [CODEX_WORKER](CODEX_WORKER.md)와 작업서의 허용 범위·반환 형식을 따른다.
 
 ## 현재 유지할 결정
 

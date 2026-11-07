@@ -11,7 +11,7 @@
 | 탭 | 섹션.키 | 기본값 | 묶음 / 필요 기능 | 기능 |
 |---|---|---:|---|---|
 | 편의성 | game_flow.advisor_briefing | 1 | groups.convenience | 군사의 열흘 보고(시험, v14부터 기본 ON). 통지·보고를 알림함에 모음. 선택 창 유지, 다음 진행 때 초기화. 설명 |
-| 게임성 | real_estate.terrain_edit | 1 | groups.convenience | 부동산 계획: 지역내정에서 도시권 칸 지형 변경(무료·무제한). 바닥 재질·높이·부대 높이·나무·절벽·수면 즉시 반영, `.terrain` 보조 저장. 격류 흰 물살 미반영, 급류 이동불가 테두리는 재로드 후 표시 |
+| 게임성 | real_estate.terrain_edit | 1 | groups.convenience + game_flow.advisor_briefing | 부동산 개발: 군사의 열흘 보고 창의 「부동산 개발」 버튼 → 보유 성 목록 → 성 선택 → 그 성의 지역내정에서 땅을 클릭해 지형 변경(무료·무제한). 일반 지역내정의 땅클릭은 원작 그대로. 바닥 재질·높이·부대 높이·나무·절벽·수면 즉시 반영, `.terrain` 보조 저장. 격류 흰 물살 미반영, 급류 이동불가 테두리는 재로드 후 표시 |
 | 숨김·사용 중지 | diplomacy.diplomacy_overinvest | 0 | groups.convenience | v15.3: 원작 한도·표식 복원. 이전 값 1도 적용하지 않음 |
 | 게임성 | diplomacy.diplomacy_counterturn | 1 | groups.convenience | 컴퓨터의 마지막 응답 뒤 플레이어 추가 군정 대응 1회 |
 | 게임성 | stratagem.building_destruction_all | 0 | groups.convenience | 건물파괴 성공 시 선택 지역의 모든 적 군사시설·장애물·함정에 원래 피해량을 각각 적용. 성·관문·아군·동맹·중립 제외. 실패는 원작 처리, 플레이어·컴퓨터 공통. [설명](BUILDING_DESTRUCTION.md) |
@@ -54,6 +54,7 @@
 | 편의성 | officer_ui.mediation_plus | 1 | groups.convenience | 중개 확장 (의형제 3인, 일부다처, 이혼). 근거·원작 위치: src/native_mediation_plus.inl |
 | 편의성 | officer_ui.drag_learn | 1 | groups.convenience | 전법서 습득 다중 선택 (여러 무장 × 여러 전법서 한 번에). 근거·원작 위치: src/native_drag_learn.inl |
 | 편의성 | officer_ui.lord_change | 1 | groups.convenience | 시작 전 군주 변경 (세력 선택 하단 「반란」 버튼). 근거·원작 위치: src/native_lord_change.inl |
+| 편의성 | officer_ui.tactic_priority | 1 | groups.convenience | 출진 화면 전법 우선순위·출진 기억 (그리드 팝업으로 순위 지정, 무장별 「출진 기억」 토글은 세이브별). 칸 마우스오버 전법 설명은 `extensions.tooltip_collab`(trait-hover)가 켜져 있을 때만 나오며, 꺼져도 순위·기억은 동작한다(소프트 의존, Requires 아님). 원시값 `[tactic_priority] profile=`(v2). 근거: docs/TACTIC_PRIORITY.md, src/native_tactic_priority.inl, src/native_tactic_priority_grid.inl |
 | 편의성 | extensions.scenery_skip | 1 | groups.convenience | 명승지 연출 생략 |
 | 편의성 | officer_ui.unified | 0 (사용 중지) | — | 통합 인사·무장 검색·출진 전법 자동 선택 — 2026-11-03 개발 중지로 제거, 이전 설정이 1이어도 꺼짐 |
 | 성능 | groups.performance | 1 | — | 성능 가속 전체 |
@@ -80,7 +81,7 @@
 | 기타(개발용) | diagnostics.enabled | 0 | groups.diagnostics | 진단 로그 기록 (SAN14_*.log) |
 | 기타(개발용) | diagnostics.reuse_handle | 1 | groups.diagnostics | 로그 파일 핸들 재사용 |
 | 기타(개발용) | diagnostics.ai_trace | 0 | groups.diagnostics | 원작 AI 행동 추적 (CSV) |
-| 기타(개발용) | diagnostics.ai_trace_original | 0 | groups.diagnostics | 원작만 추적 (모드 훅 연결 안 함) |
+| 기타(개발용) | diagnostics.ai_trace_original | 0 | groups.diagnostics + diagnostics.ai_trace | 원작만 추적 (모드 훅 연결 안 함) |
 | 기타(개발용) | diagnostics.layout_wait | 0 | groups.diagnostics | 화면 레이아웃 대기 기록 |
 | 기타(개발용) | diagnostics.day_stage | 0 | groups.diagnostics | 하루 처리 단계 기록: 하루 처리 단계별 머문 시간·계산 시간(day_stage), 진단판·진행 속도 버튼 필요 (2026-10-25) |
 | 기타(개발용) | diagnostics.cost_profile | 0 | groups.diagnostics | 함수 시간 측정 (CSV): function_cost_*.csv(모드 함수), node_cost_*.csv(원작 판단 노드), 부대 깃발 얼굴 지정 1B91E0 호출 지점 7곳(face_1B91E0_*, 2026-10-25), 진단판에서만 동작 |
@@ -92,7 +93,7 @@
 ## 해석과 종속 관계
 
 - 키 우선순위: `[해당 섹션] 키` → 이전 `[features] 키` → 상속값/기본값. `recruit_ai`, `injury_herbal`는 키가 없는 옛 파일에서 각각 recruit/injury 값을 상속한다(`captive_dialog`는 2026-11-06 삭제, 옛 키는 무시). **상속은 필수 종속과 다르다.**
-- 필수 종속은 DLL에서 부모와 AND한다: awards_ai→awards, domestic_free/direct→domestic, region_officer_traits→region_officers, stats200_growth→stats200. 설치기는 체크할 때 필요한 묶음/부모도 켠다.
+- 필수 종속은 DLL에서 부모와 AND한다: builder_ruler_fill→mission_v2, region_officer_traits→region_officers, merit_friendship→merit, awards_ai→awards, domestic_free/direct→domestic, stats200_growth→stats200, face_prefetch→face_keep, ai_trace_original→ai_trace. 설치기는 체크할 때 필요한 묶음/부모도 켠다. **상속은 필수 종속과 다르다.**
 - combat=0이면 전투 DLL을 로드하지 않는다. 세 묶음이 모두 0이면 기능 모듈을 로드하지 않는다. 성능만 켜도 편의 DLL을 로드한다. convenience=0이면 그 DLL은 편의 기능을 게시하지 않고 필요한 조정·성능 경로만 맡는다.
 - 내정 틱은 자동 내정·명품 배분·본초학이 공유한다. 내부에서 각각 스위치를 판정한다. 논공/명품 보조 저장 연결은 보존한다.
 - 숙련 공방/인접효과와 툴팁/콜라보 해금은 각각 같은 코드 경로라 한 항목이다. 자료 설치와 기능 훅 선택은 별도이며 개성9·속도 레이아웃 자료가 남는 것만으로 기능이 켜지지는 않는다.
