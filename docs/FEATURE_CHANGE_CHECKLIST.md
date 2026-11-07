@@ -18,6 +18,7 @@
 | `src/native_adapter.cpp` | `f.자식 = f.부모 && feature_key(config, ...)` | `feature_deps --check` D1 |
 
 - **설치기 `Requires`와 모듈 `depends`는 같은 방향이어야 한다.** D9가 불일치를 실패시킨다.
+- **`└` 종속 행은 부모와 자식이 같은 탭에 있어야 보인다.** `Requires`만 걸고 자식을 다른 탭에 두면 자동 켜짐은 되지만 설치기 목록에는 들여쓰기로 보이지 않는다. 진입점이 부모 UI라면 자식도 부모 탭으로 옮긴다. 예: 부동산 개발은 게임성 → 편의성 탭으로 옮겨 군사보고 아래에 표시한다.
 - **DLL의 실제 코드 의존 방향도 모듈 `depends`와 같아야 한다.** D1이 새 역방향 엣지를 실패시킨다.
 - UI만의 종속이라도 설치기 `Requires`와 모듈 `depends`에 적는다. 코드 의존이 반대 방향이면 공용 상태를 중립 헤더나 부모 모듈 소유 헤더로 옮겨 순환을 만들지 않는다. 예: `src/advisor_terrain_bridge.h`는 advisor-briefing 소유, terrain-edit이 include한다.
 - `inherit`은 부모 스위치 값을 그대로 물려받는 좁은 경우에만 쓴다. 일반 종속은 `Requires`다.
@@ -59,7 +60,7 @@ python -B -X utf8 tests/verify_installer_gui.py
 
 부동산 개발을 군사보고 버튼으로 옮겼는데 설치기 행은 최상위 `real_estate.terrain_edit`로 남겨 두었다. 그래서 보고를 꺼도 부동산 개발이 따로 켜질 수 있었다. 수정은 세 방향을 동시에 맞췄다.
 
-- 설치기: `real_estate.terrain_edit` → `Requires='game_flow.advisor_briefing'`
+- 설치기: `real_estate.terrain_edit` → `Requires='game_flow.advisor_briefing'`, 탭도 게임성 → 편의성으로 옮겨 `└`로 보이게 함
 - 모듈: `terrain-edit` → `depends`에 `advisor-briefing`
 - DLL: `f.terrain_edit = f.advisor_briefing && feature_key(...)`
 - 공용 arm 상태는 `src/advisor_terrain_bridge.h`(advisor-briefing 소유)로 옮겨 코드 엣지도 `terrain-edit → advisor-briefing`으로 맞췄다.
