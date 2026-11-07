@@ -11,7 +11,7 @@
 | 탭 | 섹션.키 | 기본값 | 묶음 / 필요 기능 | 기능 |
 |---|---|---:|---|---|
 | 편의성 | game_flow.advisor_briefing | 1 | groups.convenience | 군사의 열흘 보고(시험, v14부터 기본 ON). 통지·보고를 알림함에 모음. 선택 창 유지, 다음 진행 때 초기화. 설명 |
-| 게임성 | real_estate.terrain_edit | 1 | groups.convenience + game_flow.advisor_briefing | 부동산 개발: 군사의 열흘 보고 창의 「부동산 개발」 버튼 → 보유 성 목록 → 성 선택 → 그 성의 지역내정에서 땅을 클릭해 지형 변경(무료·무제한). 일반 지역내정의 땅클릭은 원작 그대로. 바닥 재질·높이·부대 높이·나무·절벽·수면 즉시 반영, `.terrain` 보조 저장. 격류 흰 물살 미반영, 급류 이동불가 테두리는 재로드 후 표시 |
+| 편의성 | real_estate.terrain_edit | 1 | groups.convenience + game_flow.advisor_briefing | 부동산 개발: 군사의 열흘 보고 창의 「부동산 개발」 버튼 → 보유 성 목록 → 성 선택 → 그 성의 지역내정에서 땅을 클릭해 지형 변경(무료·무제한). 일반 지역내정의 땅클릭은 원작 그대로. 바닥 재질·높이·부대 높이·나무·절벽·수면 즉시 반영, `.terrain` 보조 저장. 격류 흰 물살 미반영, 급류 이동불가 테두리는 재로드 후 표시 |
 | 숨김·사용 중지 | diplomacy.diplomacy_overinvest | 0 | groups.convenience | v15.3: 원작 한도·표식 복원. 이전 값 1도 적용하지 않음 |
 | 게임성 | diplomacy.diplomacy_counterturn | 1 | groups.convenience | 컴퓨터의 마지막 응답 뒤 플레이어 추가 군정 대응 1회 |
 | 게임성 | stratagem.building_destruction_all | 0 | groups.convenience | 건물파괴 성공 시 선택 지역의 모든 적 군사시설·장애물·함정에 원래 피해량을 각각 적용. 성·관문·아군·동맹·중립 제외. 실패는 원작 처리, 플레이어·컴퓨터 공통. [설명](BUILDING_DESTRUCTION.md) |
