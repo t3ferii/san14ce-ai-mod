@@ -30,6 +30,7 @@
 | 전투 | combat.combat_cut | 1 | groups.combat | 컴퓨터 군세의 플레이어 병참선 차단 |
 | 전투 | combat.hit_response | 1 | groups.combat | 피격 대응 (적 성·관문 피격 시 공성 고정, 피격 부대 보호) |
 | 전투 | combat.obstacle | 1 | groups.combat | 중립 장애물 파괴 판단 |
+| 전투 | combat.path_wall | 1 | groups.combat + combat.obstacle | 장애물 돌파(경로상 중립 방벽 하나 파괴, 2026-11-09 분리) |
 | 전투 | combat.recall_veto | 1 | groups.combat | 갓 출진한 공격 군단의 회군 방지 |
 | 편의성 | groups.convenience | 1 | — | 편의·게임성 기능 전체 (SAN14_Convenience.dll) |
 | 편의성 | battle_rules.battle_rules | 1 | groups.convenience | 숙련 모드 공방 설정 + 인접지역 효과 |
