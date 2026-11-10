@@ -30,7 +30,6 @@
 | 전투 | combat.combat_cut | 1 | groups.combat | 컴퓨터 군세의 플레이어 병참선 차단 |
 | 전투 | combat.hit_response | 1 | groups.combat | 피격 대응 (적 성·관문 피격 시 공성 고정, 피격 부대 보호) |
 | 전투 | combat.obstacle | 1 | groups.combat | 중립 장애물 파괴 판단 |
-| 전투 | combat.path_wall | 1 | groups.combat + combat.obstacle | 장애물 돌파(경로상 중립 방벽 하나 파괴, 2026-11-09 분리) |
 | 전투 | combat.recall_veto | 1 | groups.combat | 갓 출진한 공격 군단의 회군 방지 |
 | 편의성 | groups.convenience | 1 | — | 편의·게임성 기능 전체 (SAN14_Convenience.dll) |
 | 편의성 | battle_rules.battle_rules | 1 | groups.convenience | 숙련 모드 공방 설정 + 인접지역 효과 |
@@ -48,7 +47,7 @@
 | 성능 | performance.fast_menu | 1 | groups.performance | 지도 메뉴 클릭 대기 감소 (메뉴를 닫은 뒤 바로 다음 클릭). 근거·원작 위치: src/native_fast_menu.inl |
 | 성능 | performance.appear_batch | 1 | groups.performance | 부대 등장 묶음 처리 (전략중 뒤 0일 대기 단축) (2026-10-25) |
 | 성능 | performance.area_index | 1 | groups.performance | 지역 칸 목록 캐시 (AI 건설 검사 가속): 원작 2C9E30과 같은 시설 수 판정, 맵 고정 지역 목록만 캐시 (2026-10-25) |
-| 성능 | performance.face_keep | 1 | groups.performance | 부대 깃발 지휘관 얼굴 상주 (0일 대기 단축). 최대 256명(약 600MB 이하), 상한이면 오래 안 쓴 얼굴부터 교체, 메모리가 부족하면(사용률 85% 이상 또는 남은 램 1.5GB 미만) 절반을 해제하고 새로 붙잡지 않음. 적재 대기 중인 얼굴 제외, 메모리 확인 최대 10초 1회(사용자 결정 2026-10-25, 다른 PC 약 10턴 튕김 보고·원인 미확정, 상한 256 유지) |
+| 성능 | performance.face_keep | 1 | groups.performance | 작은 무장 얼굴 상주 (깃발·선택·전략 화면). 최대 256명(약 600MB 이하), 상한이면 오래 안 쓴 얼굴부터 교체, 메모리가 부족하면(사용률 85% 이상 또는 남은 램 1.5GB 미만) 절반을 해제하고 새로 붙잡지 않음. 적재 대기 중인 얼굴 제외, 메모리 확인 최대 10초 1회(사용자 결정 2026-10-25, 다른 PC 약 10턴 튕김 보고·원인 미확정, 상한 256 유지) |
 | 성능 | performance.face_prefetch | 1 | performance.face_keep | 출진 지휘관 얼굴 미리 요청 (0일 대기 단축) (2026-10-25) |
 | 편의성 | officer_ui.stat_exp | 1 | groups.convenience | 능력치 경험치 표시 (오각형 그래프 숫자 뒤 /N%). 근거·원작 위치: src/native_stat_exp.inl |
 | 편의성 | officer_ui.dispatch_days | 1 | groups.convenience | 파견 남은 일수 표시 (파견 목록에 귀환까지 N일). 근거·원작 위치: src/native_dispatch_days.inl |
