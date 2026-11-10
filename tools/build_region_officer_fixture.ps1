@@ -13,7 +13,7 @@ try {
     try {
         & cl.exe /nologo /W4 /WX /wd4505 /utf-8 /O2 /MT /std:c++17 /EHsc (Join-Path $taskProject 'tests\region_officer_fixture.cpp') /Feregion_officer_fixture.exe /link kernel32.lib
         if($LASTEXITCODE -ne 0){throw 'Region officer fixture compilation failed.'}
-        $taskResult=& '.\region_officer_fixture.exe' (Join-Path $taskProject 'build\ui_native_analysis\editor83_plain\game.exe.unpacked.exe')
+        $taskResult=& '.\region_officer_fixture.exe' (Join-Path $taskProject 'build\ui_native_analysis\editor83_b25953386\game.exe.unpacked.exe')
         if($LASTEXITCODE -ne 0){throw 'Region officer fixture failed.'}
         [IO.File]::WriteAllText((Join-Path $taskBuild 'result.json'),($taskResult | Select-Object -Last 1),(New-Object Text.UTF8Encoding($false)))
         $taskResult

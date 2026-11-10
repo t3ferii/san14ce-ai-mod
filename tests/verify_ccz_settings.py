@@ -6,9 +6,9 @@ P=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(P/'research/ui_atlas'));from build_catalog import PE
 from build_layouts import parse_layout
 sys.path.insert(0,str(P/'tools'));import prepare_ccz_title_layout as layout
-source=(P/'src/native_ccz_title.inl').read_text(encoding='utf-8');pe=PE(P/'build/ui_native_analysis/editor83_plain/game.exe.unpacked.exe')
+source=(P/'src/native_ccz_title.inl').read_text(encoding='utf-8');pe=PE(P/'build/ui_native_analysis/editor83_b25953386/game.exe.unpacked.exe')
 split=(P/'src/native_split_install.inl').read_text(encoding='utf-8')
-running=(P/'legacy/FogMod_Source/native_game_analysis/running_code_text.bin').read_bytes();checks=0
+running=(P/'build/ui_native_analysis/fixture/1a4a447d_text.bin').read_bytes();checks=0
 def check(value,label):
     global checks
     assert value,label;checks+=1
@@ -21,9 +21,9 @@ check(len(guards)==12,'all native guards parsed')
 for a,n,h in guards:
     a=int(a,16);n=int(n,0);b=pe.read(a,n)
     check(b==running[a-0x1000:a-0x1000+n] and fnv(b)==int(h,16),'guard vs independent executable + running code '+hex(a))
-for slot,target in [(8,0x504670),(16,0x4F9310),(40,0x50B800)]:check(struct.unpack('<Q',pe.read(0x13E4E08+slot,8))[0]==0x140000000+target,'CTitleState native slot '+str(slot))
-asm=(P/'research/decomp_cache/1fbe6be7466a6646/004E81D0_asm.txt').read_text(encoding='utf-8')
-for site in ('1404e831d CALL 0x14086e0c0','1404e8341 CALL 0x14092e430','1404e836e CALL 0x14092e0b0','1404e8461 CALL 0x140867300'):check(site in asm,'retained title builder ABI call '+site)
+for slot,target in [(8,0x506ED0),(16,0x4FBB70),(40,0x50DEC0)]:check(struct.unpack('<Q',pe.read(0x13E7E98+slot,8))[0]==0x140000000+target,'CTitleState native slot '+str(slot))
+calls=(P/'research/ghidra_full/1a4a447d14e68c40/calls.tsv').read_text(encoding='utf-8')
+for site in ('004EAB5D	00870470','004EAB81	009309C0','004EABAE	00930640','004EACA1	00869690'):check('004EAA10	'+site+'	direct' in calls,'title builder ABI call (ghidra export) '+site)
 # 2026-11-04: the title layout stage (build/development/ccz_title_right_layout) was merged; check the install package itself.
 stage=P/'build/input_package';j=json.loads((stage/'traits9_layout.json').read_text(encoding='utf-8-sig'));bank=(stage/'traits9_layout.bin').read_bytes()
 check(hashlib.sha256(bank).hexdigest()==j['bank_sha256'],'merged layout bank hash')
@@ -48,28 +48,29 @@ for n in ['installer/InstallerGui.cs','distribution/FeatureSelect.ps1','FeatureS
 asset=(P/'assets/ccz/ccz_units.bin').read_bytes();_,_,count,table=struct.unpack_from('<4s3I',asset)
 cells={struct.unpack_from('<H',asset,table+i*16)[0] for i in range(count)}
 check(all(c*3 in cells for c in range(190)),'every selectable common class exists in current sprite atlas')
-check('ccz_module_abi=2' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8').replace(' ',''),'existing CCZ API ABI unchanged')
-check(source.index('current=pane=button=nullptr')<source.index('next_pick(next_leave,0x4F9310)'),'clear title references before native destruction')
+check('ccz_module_abi=3' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8').replace(' ',''),'CCZ API ABI 3 (local17 sprite_fallback flag)')
+check(source.index('current=pane=button=nullptr')<source.index('next_pick(next_leave,0x4FBB70)'),'clear title references before native destruction')
 check('ccz_settings::show();' in source and 'GetForegroundWindow' not in source,'native asynchronous title entry without Windows popup')
-check('kAttachSite=0x4E83F3' in source and 'layout_client::call(kAttachSite' in source,'last native title-row attach callsite registered with the Layout manager (user 2026-11-05 Layout compatibility design 8: target judged by the manager)')
-callsite_bytes=b'\xE8\x38\xDE\x37\x00';check(pe.read(0x4E83F3,5)==callsite_bytes,'plain executable title attach callsite bytes')
-check(running[0x4E83F3-0x1000:0x4E83F3-0x1000+5]==callsite_bytes,'retained running code title attach callsite bytes')
-check(0x4E83F3+5+struct.unpack('<i',callsite_bytes[1:])[0]==0x866230,'independent callsite target calculation')
-check('next_pick(next_attach,0x866230)(root,id,object,order);' in source,'native row attach executes before mod insertion')
+check('kAttachSite=0x4EAC33' in source and 'layout_client::call(kAttachSite' in source,'last native title-row attach callsite registered with the Layout manager (user 2026-11-05 Layout compatibility design 8: target judged by the manager)')
+callsite_bytes=b'\xE8\x88\xD9\x37\x00';check(pe.read(0x4EAC33,5)==callsite_bytes,'plain executable title attach callsite bytes')
+check(running[0x4EAC33-0x1000:0x4EAC33-0x1000+5]==callsite_bytes,'retained running code title attach callsite bytes')
+check(0x4EAC33+5+struct.unpack('<i',callsite_bytes[1:])[0]==0x8685C0,'independent callsite target calculation')
+check('next_pick(next_attach,0x8685C0)(root,id,object,order);' in source,'native row attach executes before mod insertion')
 check('if(id!=32 || !initializing || initializing_button_added)return;' in source and 'if(add_button(initializing))initializing_button_added=true;' in source,'only last native row triggers one in-constructor CCZ insertion')
-check('initializing=nullptr;return result;' in source and 'next_pick(next_initialize,0x504670)(state);add_button(state)' not in source,'late post-constructor insertion removed')
-check(split.index('if(mod_features.ccz_sprites)ccz_title::install();') < split.index('layout_wait::install();'),'title hook is registered before layout_wait (86E0C0 entry patch removed, user 2026-11-05 Layout compatibility design 8.3)')
+check('initializing=nullptr;return result;' in source and 'next_pick(next_initialize,0x506ED0)(state);add_button(state)' not in source,'late post-constructor insertion removed')
+import registry_text as R
+check('ccz_title::install()' in R.row('ccz_title') and R.index('ccz_title') < R.index('layout_wait'),'title hook is registered before layout_wait (86E0C0 entry patch removed, user 2026-11-05 Layout compatibility design 8.3)')
 editor=(P/'src/native_ccz_editor.inl').read_text(encoding='utf-8')
 check('unified_dialogs::choices' in editor and 'unified_dialogs::number' in editor and 'DialogBox' not in editor and 'CreateWindow' not in editor,'game-native list and numeric editors')
 check('ccz_preview::picture' in editor and 'session->catalog.entries' not in editor and 's.catalog.entries' in editor,'all source shapes and actual representative images')
-adapter=(P/'src/native_adapter.cpp').read_text(encoding='utf-8')
+adapter=R.adapter_text()   # W5: the adapter plus the generated unity include lists
 check('#include "native_ccz_editor.inl"' in adapter and '#include "native_ccz_settings.inl"' not in adapter,'old Windows dialog no longer compiled into the game module')
 meta=json.loads((P/'assets/ccz/ccz_catalog.json').read_text(encoding='utf-8'))
 catalog=(P/'assets/ccz/ccz_catalog.bin').read_bytes()
 check(hashlib.sha256(catalog).hexdigest()==meta['sha256'] and meta['count']==1078,'full catalog hash and nonempty source count')
 check(meta['counts']['신조조전']['nonempty']==686 and meta['counts']['조조전']['nonempty']==392,'both source folders included')
 check(catalog[16:1040]==asset[16:1040],'existing default-source palette and team mask unchanged')
-check('ccz_module_abi=2' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8').replace(' ',''),'new cell settings do not change DLL API')
+check('ccz_module_abi=3' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8').replace(' ',''),'new cell settings do not change DLL API')
 preview=(P/'src/native_ccz_preview.inl').read_text(encoding='utf-8')
 check('release_pending' in preview and 'std::vector<unsigned>().swap(pixels)' in preview,'preview resources released after leaving editor')
 print(json.dumps(dict(status='ccz_settings_static_passed',checks=checks,live_game=False)))

@@ -1,5 +1,5 @@
 // [performance] appear_batch (2026-10-25, user request): faster 0-day army appearance after 전략중.
-// Evidence (REA carrier REA_Analysis/turnstart_20261025, unpacked 1fbe6be7..., measurements in
+// Evidence (REA carrier REA_Analysis/turnstart_20261025, (근거: 1a4a447d 이전 기록, docs/HISTORY.md), measurements in
 // data/diagnostics/turn_start_wait_20261025.md): CAppearArmyState (vtable 13D7298) slot 5 (+0x28) =
 // 44AC80, called once per frame on the UI thread (571F90). Each call: +480 set -> clear it and return
 // (a rested frame); otherwise, while 332E90()==0 and the list +478 is not empty, one army runs through
@@ -11,10 +11,9 @@
 // original call of a later frame. UI thread only (the original caller).
 #include "game_addresses.h"
 #include "appear_batch.h"
-namespace face_keep {static void prefetch(Obj state);}   // native_face_keep.inl: [performance] face_prefetch
 namespace appear_batch {
-static const unsigned kSlot=GA(GA_13D72C0),kUpdate=GA(GA_44AC80),kStop=GA(GA_332E90);
-static const unsigned long long kUpdateHash=GH(0x2b3ba4c85e82964eull),kStopHash=GH(0xa2521e4dd50f954full);
+static const unsigned kSlot=GA(GA_13DA350),kUpdate=GA(GA_44CEC0),kStop=GA(GA_335110);
+static const unsigned long long kUpdateHash=GH(0x7f3312eadb2ff5b8ull),kStopHash=GH(0x16b534d88df2511aull);
 // 2026-10-25 user: 12 -> 100 -> 50 ms. One army costs 15-40 ms here (measured): 12 ms still gave one
 // army per frame; 100 ms (3-5 per frame, ~10 fps) felt choppy; 50 ms gives about 2-3 per frame (~20 fps).
 static constexpr long long kBudgetUs=50000;
@@ -38,7 +37,7 @@ static void __fastcall update(Obj state,unsigned long long a,unsigned long long 
     Native native{state,a,b,c};
     // Faces of the armies still to appear are requested first, inside this frame's budget.
     const long long begin=native.now();
-    face_keep::prefetch(state);
+    services::run_appear_prefetch(state);   // face_keep subscribes ([performance] face_prefetch)
     const long long left=kBudgetUs-(native.now()-begin);
     const unsigned steps=appear_batch_core::run_frame(native,left>0?left:0);
     if(steps>1)log_event("appear_batch",steps);

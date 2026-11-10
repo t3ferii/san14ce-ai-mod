@@ -63,22 +63,22 @@ static void __fastcall ui_preview_text(Obj graph,unsigned id,const wchar_t *text
 }
 static void __fastcall ui_result_notice(unsigned speaker,const wchar_t *text) {
     if(ui_track_dispatch) {
-        expect(!ui_native_started && pointer(ui_layout,0)==image+0x1440E48);
-        ui_dispatch_events.push_back(0x1F09E0);
+        expect(!ui_native_started && pointer(ui_layout,0)==image+0x1443ED0);
+        ui_dispatch_events.push_back(0x1F1DA0);
     }
     ++ui_notices;ui_speaker=speaker;ui_notice=text;
 }
 static void __fastcall ui_reset_display(Obj layout) {
     expect(layout==ui_layout && recruit_multi.count==0 && !ui_native_started);
-    ++ui_reset_calls;ui_dispatch_events.push_back(0x6BD740);
+    ++ui_reset_calls;ui_dispatch_events.push_back(0x6BFEA0);
     auto &actors=*reinterpret_cast<GameList *>(layout+0x190);
-    list_free(actors);list_init(actors,0x13436B0);
+    list_free(actors);list_init(actors,0x13466B0);
     putptr(layout,0x188,nullptr);put32(layout,0x180,0);
 }
 static void __fastcall ui_close_display(Obj layout,unsigned code) {
     expect(layout==ui_layout && code==0x7FFFFFFD && !pointer(layout,0x188) &&
            dword(layout,0x180)==0 && !list_first(*reinterpret_cast<GameList *>(layout+0x190)));
-    expect(!ui_dispatch_events.empty() && ui_dispatch_events.back()==0x6BD740);
+    expect(!ui_dispatch_events.empty() && ui_dispatch_events.back()==0x6BFEA0);
     ++ui_display_close_calls;ui_dispatch_events.push_back(0x190);
     // A read after the direct close must fault, just like the native close.
     DWORD old=0;expect(VirtualProtect(layout,4096,PAGE_NOACCESS,&old)!=0);
@@ -87,15 +87,15 @@ static void __fastcall ui_state_native(Obj state) {
     ++ui_original_calls;expect(recruit_district==ui_district);
     Obj layout=pointer(state,0x478);unsigned operation=dword(layout,0x180);
     if(ui_track_dispatch) {
-        ui_native_started=true;ui_dispatch_events.push_back(0x733BD0);
+        ui_native_started=true;ui_dispatch_events.push_back(0x735F60);
         expect(recruit_multi.count==0);
     }
     expect(recruit_target_pick==(operation==2));
     expect(recruit_pick_layout==(operation==2?layout:nullptr));
     if(operation==2) {
-        GameList out;list_init(out,0x13436B0);
+        GameList out;list_init(out,0x13466B0);
         unsigned char config[0x400]={};
-        putptr(config,8,image+0x1A31330);putptr(config,16,image+0x1A2B850);
+        putptr(config,8,image+0x1A34310);putptr(config,16,image+0x1A2E830);
         put32(config,0x18,1);put32(config,0x1C,1);putptr(config,0x80,&out);
         recruit_selector_init(ui_dialog,config);
         putptr(ui_dialog,0x1A8,ui_config_copy);
@@ -130,41 +130,41 @@ static void test_ui() {
     ui_layout=static_cast<Obj>(VirtualAlloc(nullptr,4096,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));
     ui_dialog=static_cast<Obj>(calloc(1,0x300));ui_body=object(1);
     Obj state=static_cast<Obj>(calloc(1,0x600));ui_widget=static_cast<Obj>(calloc(1,0x300));
-    putptr(ui_layout,0,image+0x1440E48);putptr(ui_layout,0x1A0,ui_district);
+    putptr(ui_layout,0,image+0x1443ED0);putptr(ui_layout,0x1A0,ui_district);
     putptr(state,0x478,ui_layout);putptr(state,0x470,ui_district);
-    auto &actors=*reinterpret_cast<GameList *>(ui_layout+0x190);list_init(actors,0x13436B0);list_add(actors,ui_actor);
-    native_functions[0x6F1D10]=reinterpret_cast<void *>(&ui_layout_native);
-    native_functions[0x2C0820]=reinterpret_cast<void *>(&ui_setup_native);
-    native_functions[0x6BE8E0]=reinterpret_cast<void *>(&ui_close);
-    native_functions[0x92CEE0]=reinterpret_cast<void *>(&ui_label_lookup);
-    native_functions[0x22EEC0]=reinterpret_cast<void *>(&ui_person_name);
-    native_functions[0x6DD290]=reinterpret_cast<void *>(&ui_collect);
-    native_functions[0x733BD0]=reinterpret_cast<void *>(&ui_state_native);
-    native_functions[0x6BD740]=reinterpret_cast<void *>(&ui_reset_display);
-    putptr(image+0x1440E48,0x190,reinterpret_cast<void *>(&ui_close_display));
-    native_functions[0x1F09E0]=reinterpret_cast<void *>(&ui_result_notice);
-    native_functions[0x930D20]=reinterpret_cast<void *>(&ui_preview_text);
-    native_functions[0x6D3660]=reinterpret_cast<void *>(&ui_order_cost);
+    auto &actors=*reinterpret_cast<GameList *>(ui_layout+0x190);list_init(actors,0x13466B0);list_add(actors,ui_actor);
+    native_functions[0x6F3FF0]=reinterpret_cast<void *>(&ui_layout_native);
+    native_functions[0x2C2BA0]=reinterpret_cast<void *>(&ui_setup_native);
+    native_functions[0x6C1040]=reinterpret_cast<void *>(&ui_close);
+    native_functions[0x92F390]=reinterpret_cast<void *>(&ui_label_lookup);
+    native_functions[0x230950]=reinterpret_cast<void *>(&ui_person_name);
+    native_functions[0x5C1430]=reinterpret_cast<void *>(&ui_collect);
+    native_functions[0x735F60]=reinterpret_cast<void *>(&ui_state_native);
+    native_functions[0x6BFEA0]=reinterpret_cast<void *>(&ui_reset_display);
+    putptr(image+0x1443ED0,0x190,reinterpret_cast<void *>(&ui_close_display));
+    native_functions[0x1F1DA0]=reinterpret_cast<void *>(&ui_result_notice);
+    native_functions[0x9332B0]=reinterpret_cast<void *>(&ui_preview_text);
+    native_functions[0x6D5A50]=reinterpret_cast<void *>(&ui_order_cost);
     // Exercise isolated column data: literal heading, native alias entries,
     // terminated tab lists, original caller settings and pointers preserved.
-    for(unsigned i=0;i<213;++i)put32(image+0x1A2B850,i*0x60,i);
-    put32(image+0x1A2B850,13*0x60,8);put32(image+0x1A2B850,3*0x60+0x20,3);
+    for(unsigned i=0;i<213;++i)put32(image+0x1A2E830,i*0x60,i);
+    put32(image+0x1A2E830,13*0x60,8);put32(image+0x1A2E830,3*0x60+0x20,3);
     static const int ids[3][4]={{0,1,3,-1},{0,61,62,-1},{0,29,28,-1}};
-    auto tabs=reinterpret_cast<RecruitTab *>(image+0x1A31330);
+    auto tabs=reinterpret_cast<RecruitTab *>(image+0x1A34310);
     for(unsigned i=0;i<3;++i)tabs[i]={ids[i],nullptr,static_cast<int>(i),0};
     tabs[3]={};expect(recruit_prepare_columns());
     expect(dword(recruit_columns[13],0)==8 && dword(recruit_columns[213],0)==213);
     expect(wcscmp(*reinterpret_cast<const wchar_t **>(recruit_columns[213]+8),L"등용가능성")==0);
     for(unsigned i=0;i<3;++i)expect(recruit_tabs[i].ids[0]==0 && recruit_tabs[i].ids[3]==213 && recruit_tabs[i].ids[4]==-1);
     expect(dword(recruit_columns[213],0x10)==240);
-    unsigned char config[0x400]={};putptr(config,8,image+0x1A31330);putptr(config,16,image+0x1A2B850);
+    unsigned char config[0x400]={};putptr(config,8,image+0x1A34310);putptr(config,16,image+0x1A2E830);
     put32(config,0x18,1);put32(config,0x1C,1);
     {RecruitScope scope(ui_district);expect(recruit_selector_init(ui_dialog,config)==1);}
     expect(pointer(ui_config_copy,8)==reinterpret_cast<Obj>(recruit_tabs));
     expect(pointer(ui_config_copy,16)==reinterpret_cast<Obj>(recruit_columns));
     expect(dword(ui_config_copy,0x18)==1 && dword(ui_config_copy,0x1C)==1);
-    expect(pointer(config,8)==image+0x1A31330 && pointer(config,16)==image+0x1A2B850);
-    recruit_selector_init(ui_dialog,config);expect(pointer(ui_config_copy,16)==image+0x1A2B850);
+    expect(pointer(config,8)==image+0x1A34310 && pointer(config,16)==image+0x1A2E830);
+    recruit_selector_init(ui_dialog,config);expect(pointer(ui_config_copy,16)==image+0x1A2E830);
     expect(wcscmp(recruit_reason_text(ui_target),L"")==0);
     {RecruitScope scope(ui_district);
         expect(wcscmp(recruit_reason_text(ui_target),L"가능성 있음")==0);
@@ -258,8 +258,8 @@ static void test_ui() {
     {RecruitScope scope(ui_district);recruit_selector_init(ui_dialog,config);}
     expect(recruit_district==nullptr && recruit_display_district()==ui_district);
     expect(wcscmp(recruit_reason_text(ui_target),L"가능성 있음")==0);
-    Obj prior_world=world();putptr(image,0x277DF18,image);
-    expect(recruit_display_district()==nullptr);putptr(image,0x277DF18,prior_world);
+    Obj prior_world=world();putptr(image,0x2780F60,image);
+    expect(recruit_display_district()==nullptr);putptr(image,0x2780F60,prior_world);
     Obj prior_district=table(0xE0D0,1,51);slot(0xE0D0,1,nullptr);
     expect(recruit_display_district()==nullptr);slot(0xE0D0,1,prior_district);
     recruit_selector_init(ui_dialog,config);expect(recruit_display_district()==nullptr);
@@ -278,7 +278,7 @@ static void test_ui() {
     // storage remains untouched; close capture no longer depends on it.
     unsigned char original_config[0x400];
     for(unsigned scenario=0;scenario<10;++scenario) {
-        memset(config,0,sizeof(config));putptr(config,8,image+0x1A31330);putptr(config,16,image+0x1A2B850);
+        memset(config,0,sizeof(config));putptr(config,8,image+0x1A34310);putptr(config,16,image+0x1A2E830);
         put32(config,0x18,1);put32(config,0x1C,1);
         memset(config+0x2C8,0xA5,56); // preserve nonzero unused inline bytes
         if(scenario==1)put32(config,0x18,2);
@@ -308,7 +308,7 @@ static void test_ui() {
     {RecruitScope scope(ui_district);RecruitTargetScope target_scope(ui_layout,true);
         expect(recruit_selector_init(ui_dialog,config)==1);}
     expect(dword(ui_config_copy,0x1C)==5 && memcmp(config,original_config,sizeof(config))==0);
-    GameList selected;list_init(selected,0x13436B0);putptr(ui_config_copy,0x80,&selected);
+    GameList selected;list_init(selected,0x13466B0);putptr(ui_config_copy,0x80,&selected);
     putptr(ui_dialog,0x1A8,ui_config_copy);
     unsigned closes_before=ui_close_calls,revision_before=recruit_multi_revision;
     // A different dialog must pass through exactly once without dereferencing
@@ -318,7 +318,7 @@ static void test_ui() {
            recruit_pick_dialog==ui_dialog && recruit_multi_revision==revision_before);
     for(unsigned code:{0x7FFFFFFDu,0x7FFFFFFEu}) {
         for(unsigned count:{3u,0u,1u}) {
-            list_free(selected);list_init(selected,0x13436B0);
+            list_free(selected);list_init(selected,0x13466B0);
             ui_pick_list=count==3?std::vector<Obj>{ui_target,second,last}:
                          count==1?std::vector<Obj>{ui_target}:std::vector<Obj>{};
             ui_collect(ui_body,&selected);
@@ -368,7 +368,7 @@ static void test_ui() {
     Obj foreign_district=object(50);foreign_district[0x14]=99;putptr(ui_layout,0x1A0,foreign_district);
     list_add(actors,other_actor);put32(ui_layout,0x180,1);recruit_state_update(state);
     expect(ui_preview[0xAB]==L"8" && ui_preview[0xAC]==L"(^03-4^00)");
-    list_free(actors);list_init(actors,0x13436B0);list_add(actors,ui_actor);
+    list_free(actors);list_init(actors,0x13466B0);list_add(actors,ui_actor);
     putptr(ui_layout,0x1A0,ui_district);free(foreign_district);
     // Empty cancellation output retains the previous confirmed target.
     ui_accept=false;put32(ui_layout,0x180,2);recruit_state_update(state);ui_accept=true;
@@ -404,7 +404,7 @@ static void test_ui() {
         ui_send=native_send;ui_track_dispatch=true;ui_native_started=false;ui_dispatch_events.clear();
         ui_poison_layout=operation==3;
         put32(ui_layout,0x180,operation);recruit_state_update(state);
-        std::vector<unsigned> expected={403,401,0x1F09E0,0x733BD0};
+        std::vector<unsigned> expected={403,401,0x1F1DA0,0x735F60};
         if(native_send)expected.push_back(404);
         expect(ui_dispatch_events==expected && ui_original_calls==originals+1 && ui_notices==notices+1);
         expect(batch_orders.size()==(native_send?3u:2u) && batch_orders[0]==std::make_pair(403u,406u) &&
@@ -426,7 +426,7 @@ static void test_ui() {
     list_add(actors,other_actor);batch_orders.clear();ui_send=true;
     ui_track_dispatch=true;ui_native_started=false;ui_dispatch_events.clear();
     put32(ui_layout,0x180,4);recruit_state_update(state);ui_track_dispatch=false;
-    expect(ui_dispatch_events==std::vector<unsigned>({403,0x1F09E0,0x733BD0,404,404}));
+    expect(ui_dispatch_events==std::vector<unsigned>({403,0x1F1DA0,0x735F60,404,404}));
     expect(batch_orders.size()==3 && batch_orders[0]==std::make_pair(403u,406u) &&
            batch_orders[1]==std::make_pair(404u,402u) && batch_orders[2]==std::make_pair(404u,405u) &&
            ui_district[0x14]==9);
@@ -446,7 +446,7 @@ static void test_ui() {
     ui_district[0x14]=2;put32(ui_layout,0x180,2);recruit_state_update(state);batch_orders.clear();
     ui_track_dispatch=true;ui_native_started=false;ui_dispatch_events.clear();
     put32(ui_layout,0x180,4);recruit_state_update(state);ui_track_dispatch=false;
-    expect(ui_dispatch_events==std::vector<unsigned>({0x1F09E0,0x733BD0,404,404}));
+    expect(ui_dispatch_events==std::vector<unsigned>({0x1F1DA0,0x735F60,404,404}));
     expect(batch_orders.size()==2 && ui_district[0x14]==0 && ui_notice.find(L"내리지 못했습니다")!=std::wstring::npos);
     batch_issue_observer=nullptr;
     // User decision 2026-10-25: no recommended screen actor (including an
@@ -456,7 +456,7 @@ static void test_ui() {
     for(unsigned operation:{3u,4u})for(unsigned screen_actors:{0u,1u,2u})for(bool extras:{false,true}) {
         advice.clear();if(extras)advice[{403,402}]=true;
         for(Obj actor:envoys)put16(actor,0x15E,0);
-        list_free(actors);list_init(actors,0x13436B0);
+        list_free(actors);list_init(actors,0x13466B0);
         if(screen_actors)list_add(actors,ui_actor);
         if(screen_actors==2)list_add(actors,other_actor);
         ui_district[0x14]=1;ui_pick_list={ui_target,second,last};
@@ -469,7 +469,7 @@ static void test_ui() {
         put32(ui_layout,0x180,operation);recruit_state_update(state);
         std::vector<unsigned> expected;
         if(extras)expected.push_back(403);
-        expected.push_back(0x1F09E0);expected.push_back(0x6BD740);
+        expected.push_back(0x1F1DA0);expected.push_back(0x6BFEA0);
         if(operation==3)expected.push_back(0x190);
         expect(ui_dispatch_events==expected && ui_original_calls==originals && ui_notices==notices+1 &&
                ui_reset_calls==resets+1 && ui_display_close_calls==closes+(operation==3?1u:0u));
@@ -485,7 +485,7 @@ static void test_ui() {
         ui_track_dispatch=false;batch_issue_observer=nullptr;
     }
     advice=saved_advice;
-    list_free(actors);list_init(actors,0x13436B0);list_add(actors,ui_actor);
+    list_free(actors);list_init(actors,0x13466B0);list_add(actors,ui_actor);
     // One-person confirmation clears a prior multi snapshot; its dispatch is
     // wholly native, with no batch notice or preview replacement.
     for(Obj actor:envoys)put16(actor,0x15E,0);
@@ -532,16 +532,16 @@ static void test_ui() {
     bool close_registered=false;
     for(const auto &link:recruit_ui_links) {
         putptr(image,link.slot,image+link.original);
-        if(link.slot==0x13AC708)close_registered=link.original==0x6BE8E0 &&
+        if(link.slot==0x13AF798)close_registered=link.original==0x6C1040 &&
             link.replacement==reinterpret_cast<void *>(&recruit_selector_close);
     }
     expect(close_registered);
     expect(recruit_ui_guards_match());expect(publish_recruit_ui());expect(!recruit_ui_guards_match());
     restore_recruit_ui();expect(recruit_ui_guards_match());
     const unsigned char loyalty_number[]={0x48,0x0F,0x4E,0xC2},loyalty_string[]={0x0F,0x4F,0xD8};
-    memcpy(image+0x34A8D6,loyalty_number,4);memcpy(image+0x35CA35,loyalty_string,3);
-    expect(loyalty_guards_match());image[0x34A8D6]^=1;expect(!loyalty_guards_match());image[0x34A8D6]^=1;
-    image[0x35CA35]^=1;expect(!loyalty_guards_match());image[0x35CA35]^=1;
+    memcpy(image+0x34CB96,loyalty_number,4);memcpy(image+0x35EF25,loyalty_string,3);
+    expect(loyalty_guards_match());image[0x34CB96]^=1;expect(!loyalty_guards_match());image[0x34CB96]^=1;
+    image[0x35EF25]^=1;expect(!loyalty_guards_match());image[0x35EF25]^=1;
     list_free(actors);free(state);VirtualFree(ui_layout,0,MEM_RELEASE);free(ui_dialog);free(ui_widget);free(ui_body);free(batch_city);
 }
 static Obj alert_player,alert_hidden;
@@ -560,10 +560,10 @@ static void test_alert() {
     Obj district=table(0xE0D0,1,51),force=table(0xDF30,1,51);
     Obj target=object(2100),other_ruler=object(2101),context=object(1);
     slot(0x158,2101,other_ruler);putptr(root,0x871E8,context);alert_player=force;
-    native_functions[0x32E910]=reinterpret_cast<void *>(&alert_get_player);
-    native_functions[0x1EF680]=reinterpret_cast<void *>(&alert_native_candidate);
-    native_functions[0x231C60]=reinterpret_cast<void *>(&alert_native_location);
-    native_functions[0x2B2F10]=reinterpret_cast<void *>(&alert_native_search);
+    native_functions[0x330B90]=reinterpret_cast<void *>(&alert_get_player);
+    native_functions[0x1F0A30]=reinterpret_cast<void *>(&alert_native_candidate);
+    native_functions[0x233600]=reinterpret_cast<void *>(&alert_native_location);
+    native_functions[0x2B5290]=reinterpret_cast<void *>(&alert_native_search);
     target[0xE6]=5;unsigned ruler=word(force,0x10);
     expect(recruit_alert_candidate(target,district)==7);
     for(unsigned i=0;i<8;++i) {
@@ -590,7 +590,7 @@ static void test_alert() {
     put16(target,0xD0,ruler);target[0xE6]=5;
     recruit_alert_search(&areas,&people,&items,&scenery,&selected);expect(people==1);
     // Actual emitted JMP stubs preserve RCX/RDX/R8/R9 and argument five.
-    Obj relay=allocate_near(image+0x2DF204);
+    Obj relay=allocate_near(image+0x2E1534);
     expect(relay!=nullptr);RecruitAlertCode code;
     for(const auto &entry:recruit_alert_entries)memcpy(image+(entry.rva&~15u),entry.block,16);
     expect(recruit_alert_guards_match());

@@ -261,7 +261,7 @@ static void test_ai(Obj ruler,Obj p,Obj q,Obj district) {
 static void test_hooks() {
     for(const auto &entry:award_entries)memcpy(image+entry.rva,entry.bytes,16);
     const unsigned char ai[]={0x48,0x89,0x5C,0x24,0x10,0x57,0x48,0x83,0xEC,0x30,0x33,0xC0,0x48,0x8B,0xF9,0x48};
-    memcpy(image+0x535E0,ai,16);putptr(image,0x13491B0,image+0x535E0);putptr(image,0x134C6E8,image+0x333320);
+    memcpy(image+0x54250,ai,16);putptr(image,0x134C1D0,image+0x54250);putptr(image,0x134F708,image+0x3355A0);
     Obj relay=image+0x2000000;AwardCode code={};expect(prepare_awards(code,relay));
     expect(publish_awards(code));restore_awards(code);expect(award_guards_match());
     for(unsigned i=0;i<sizeof(award_entries)/sizeof(award_entries[0]);++i) {
@@ -269,29 +269,29 @@ static void test_hooks() {
         expect(!award_guards_match() && !publish_awards(code));restore_awards(code);
         image[award_entries[i].rva]^=1;expect(award_guards_match());
     }
-    expect(prepare_awards(code,relay));putptr(image,0x13491B0,nullptr);
-    expect(!publish_awards(code));restore_awards(code);putptr(image,0x13491B0,image+0x535E0);expect(award_guards_match());
+    expect(prepare_awards(code,relay));putptr(image,0x134C1D0,nullptr);
+    expect(!publish_awards(code));restore_awards(code);putptr(image,0x134C1D0,image+0x54250);expect(award_guards_match());
     // Execute the actual transfer trampoline's captured prologue on a private
     // page, with a balanced synthetic continuation returning the argument.
-    Obj at=image+0x1F0300;const unsigned char tail[]={0x48,0x8B,0xC1,0x48,0x83,0xC4,0x20,0x5B,0xC3};
+    Obj at=image+0x1F16B0;const unsigned char tail[]={0x48,0x8B,0xC1,0x48,0x83,0xC4,0x20,0x5B,0xC3};
     memcpy(at+6,tail,sizeof(tail));FlushInstructionCache(GetCurrentProcess(),image,0x2800000);
     auto gate=reinterpret_cast<Obj(__fastcall *)(Obj)>(relay+1728+32);
     Obj token=root;expect(gate(token)==token);memcpy(at,award_entries[0].bytes,16);
 }
 int main() {
     image=static_cast<Obj>(VirtualAlloc(nullptr,0x2800000,MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE));
-    root=static_cast<Obj>(calloc(1,0x90000));putptr(image,0x277DF18,root);putptr(image,0x27D10E8,root);
-    putptr(image,0x27D10F0,heads);put32(image,0x27D1120,4096);enabled=1;
-    native_functions={{0x32F500,reinterpret_cast<void *>(&mock_valid)},{0x21E2B0,reinterpret_cast<void *>(&mock_list_init)},
-        {0x18DF0,reinterpret_cast<void *>(&mock_list_add)},{0x335060,reinterpret_cast<void *>(&mock_remove)},
-        {0x424D60,reinterpret_cast<void *>(&mock_list_free)},{0x22CE20,reinterpret_cast<void *>(&a_force)},
-        {0x22AA70,reinterpret_cast<void *>(&a_army)},{0x233110,reinterpret_cast<void *>(&a_busy)},
-        {0x232240,reinterpret_cast<void *>(&a_idle)},{0x22DF80,reinterpret_cast<void *>(&a_post_id)},
-        {0x6DC0A0,reinterpret_cast<void *>(&a_occupant)},{0x333320,reinterpret_cast<void *>(&a_pred)},
-        {0x40160,reinterpret_cast<void *>(&a_resource)},{0x22CA00,reinterpret_cast<void *>(&a_force_object)},{0x22E7E0,reinterpret_cast<void *>(&a_force_resource)},{0x6D3670,reinterpret_cast<void *>(&mock_cost)},
-        {0x22FCE0,reinterpret_cast<void *>(&a_ability)},{0x32E8D0,reinterpret_cast<void *>(&a_control)},
-        {0x1F09E0,reinterpret_cast<void *>(&a_notice)}, {0x32BA50,reinterpret_cast<void *>(&a_idle)},
-        {0x79DFB0,reinterpret_cast<void *>(&a_refresh)}};
+    root=static_cast<Obj>(calloc(1,0x90000));putptr(image,0x2780F60,root);putptr(image,0x27D4138,root);
+    putptr(image,0x27D4140,heads);put32(image,0x27D4170,4096);enabled=1;
+    native_functions={{0x331780,reinterpret_cast<void *>(&mock_valid)},{0x01AC60,reinterpret_cast<void *>(&mock_list_init)},
+        {0x18D50,reinterpret_cast<void *>(&mock_list_add)},{0x21A350,reinterpret_cast<void *>(&mock_remove)},
+        {0x1BFFF0,reinterpret_cast<void *>(&mock_list_free)},{0x22E870,reinterpret_cast<void *>(&a_force)},
+        {0x22C4B0,reinterpret_cast<void *>(&a_army)},{0x234AB0,reinterpret_cast<void *>(&a_busy)},
+        {0x233BE0,reinterpret_cast<void *>(&a_idle)},{0x22FA10,reinterpret_cast<void *>(&a_post_id)},
+        {0x6DE3D0,reinterpret_cast<void *>(&a_occupant)},{0x3355A0,reinterpret_cast<void *>(&a_pred)},
+        {0x40160,reinterpret_cast<void *>(&a_resource)},{0x22E450,reinterpret_cast<void *>(&a_force_object)},{0x230270,reinterpret_cast<void *>(&a_force_resource)},{0x6D5A60,reinterpret_cast<void *>(&mock_cost)},
+        {0x231770,reinterpret_cast<void *>(&a_ability)},{0x330B50,reinterpret_cast<void *>(&a_control)},
+        {0x1F1DA0,reinterpret_cast<void *>(&a_notice)}, {0x32DD00,reinterpret_cast<void *>(&a_idle)},
+        {0x7A0100,reinterpret_cast<void *>(&a_refresh)}};
     original_award_transfer=&a_transfer;original_award_items=&a_list;original_award_recipients=&a_list;
     original_post_people=&a_people;original_post_batch=&a_batch;original_post_select=&a_select;
     Obj force=object(10);slot(0xDF30,1,force);Obj ruler=add_person(10,1,true),p=add_person(20,1),q=add_person(30,1);

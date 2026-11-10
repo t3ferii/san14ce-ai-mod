@@ -3,12 +3,13 @@
 #include "../src/advisor_briefing.h"
 namespace briefing_overlay {
 using advisor_briefing_core::Rect;
-struct Model {std::wstring adviser=L"군사",title=L"열흘 보고",body;unsigned unread=0,page=0,pages=0,generation=0;bool collecting=false,open=false,detail=false;std::vector<std::wstring> names;};
+struct Model {std::wstring adviser=L"군사",title=L"열흘 보고",body;unsigned unread=0,page=0,pages=0,generation=0;bool collecting=false,open=false,city_list=false;std::vector<std::wstring> names,cities;};
 static bool gpu_ready=true,shown=false;static unsigned action=0,ticket=0;static Model displayed;
 static bool available(){return gpu_ready;}
 static bool is_visible(){return gpu_ready && shown;}
 static unsigned take(unsigned &g){g=ticket;unsigned a=action;action=0;return a;}
 static void publish(const Model &m,bool show,bool=false){displayed=m;shown=show;}
+static void toast(const std::wstring &){}
 static void forget(){action=0;}
 static int captured_serial=-1,requested_serial=-1;static unsigned portrait_requests;
 static bool captured(int serial){return captured_serial==serial;}
@@ -17,6 +18,8 @@ static bool scene_clean=false;
 static void progress_flags(bool show,bool clean,bool update=true){scene_clean=clean;if(update)shown=show;}
 static bool report_mask=false;
 static void mask_report(bool value){report_mask=value;}
+static void set_extended(bool){}
+template<class T> static void offer_face(T *texture,int){if(texture)texture->Release();}   // local17 briefing16 U6 (no GPU in the fixture)
 static unsigned context_calls;
 static void player_context(bool player){++context_calls;shown=player;if(!player){displayed.open=false;action=0;}}
 }
@@ -42,7 +45,7 @@ static int relayed_mode=0,relayed_speaker=0;
 static std::array<unsigned char,0x1B4> native_message_context;
 static int __fastcall mock_message_mode(){return native_message_mode;}
 static void entry_native_effects() {
-    Obj c=pointer(image,0x27842A0);
+    Obj c=pointer(image,0x27872F0);
     if(!native_message_mode && (!c || !dword(c,0x1B0)) && caller_available){++entry_suspends;++entry_pushes;++entry_yields;}
 }
 static void __fastcall mock_message_call(const wchar_t *text,int mode){++entry_relays[0];relayed_text=text;relayed_mode=mode;entry_native_effects();}
@@ -200,49 +203,49 @@ static void __fastcall mock_income_values(Obj income,Obj district) {
 }
 static void *fixture_function(unsigned rva) {
     switch(rva) {
-    case 0x842A90:return reinterpret_cast<void *>(&mock_picture_show);
-    case 0x835230:return reinterpret_cast<void *>(&mock_picture_close);
-    case 0x32E910:return reinterpret_cast<void *>(&mock_force);
-    case 0x32E8D0:return reinterpret_cast<void *>(&mock_district);
-    case 0x32F500:case 0x233750:return reinterpret_cast<void *>(&mock_valid);
-    case 0x22DBC0:return reinterpret_cast<void *>(&mock_id);
-    case 0x332E90:return reinterpret_cast<void *>(&mock_message_mode);
-    case 0x56EE40:return reinterpret_cast<void *>(&mock_tutorial);
-    case 0x110E0:return reinterpret_cast<void *>(&mock_manager);
-    case 0x12540:return reinterpret_cast<void *>(&mock_pop);
-    case 0x861480:return reinterpret_cast<void *>(&mock_acknowledge);
-    case 0x863C70:return reinterpret_cast<void *>(&mock_page);
-    case 0x83BE30:return reinterpret_cast<void *>(&mock_wait);
-    case 0x32BA50:return reinterpret_cast<void *>(&mock_day);
-    case 0x56FE50:return reinterpret_cast<void *>(&mock_player_state);
-    case 0x56FC20:return reinterpret_cast<void *>(&mock_modal);
-    case 0x44CAF0:return reinterpret_cast<void *>(&mock_user_frame);
-    case 0x44A0F0:return reinterpret_cast<void *>(&mock_user_enter);
-    case 0x448E40:case 0x448A70:case 0x67B1E0:return reinterpret_cast<void *>(&mock_user_leave);
-    case 0x862E40:case 0x67B7C0:case 0x66F7C0:return reinterpret_cast<void *>(&mock_original_notice);
-    case 0x1F15F0:case 0x8108C0:return reinterpret_cast<void *>(&mock_simple_enter);
-    case 0x874650:return reinterpret_cast<void *>(&mock_move);
-    case 0x67B420:return reinterpret_cast<void *>(&mock_report_enter);
-    case 0x67AE80:return reinterpret_cast<void *>(&mock_report_results);
-    case 0x2213C0:return reinterpret_cast<void *>(&mock_record_construct);
-    case 0x2220A0:return reinterpret_cast<void *>(&mock_record_destroy);
-    case 0x67C990:return reinterpret_cast<void *>(&mock_phase);
-    case 0x67D1F0:return reinterpret_cast<void *>(&mock_income_values);
-    case 0x30CF80:return reinterpret_cast<void *>(&mock_label);
-    case 0x67B600:return reinterpret_cast<void *>(&mock_report_tick);
-    case 0x86F250:return reinterpret_cast<void *>(&mock_visible);
-    case 0x92CF90:return reinterpret_cast<void *>(&mock_size);
-    case 0x66F3E0:case 0x893720:return reinterpret_cast<void *>(&mock_user_leave);
-    case 0x92CB10:return reinterpret_cast<void *>(&mock_position);
-    case 0x22EEC0:return reinterpret_cast<void *>(&mock_name);
-    case 0x3F5A0:return reinterpret_cast<void *>(&mock_scene_handle);
-    case 0x925B0:return reinterpret_cast<void *>(&mock_scene_ground);
-    case 0x22ECC0:return reinterpret_cast<void *>(&mock_force_name);
-    case 0x22CA00:return reinterpret_cast<void *>(&mock_person_force);
-    case 0x842380:return reinterpret_cast<void *>(&mock_recruit_speech);
-    case 0x88C1C0:return reinterpret_cast<void *>(&mock_original_notice);
-    case 0x1F16A0:return reinterpret_cast<void *>(&mock_person_enter);
-    case 0x861450:return reinterpret_cast<void *>(&mock_person_acknowledge);
+    case 0x844F70:return reinterpret_cast<void *>(&mock_picture_show);
+    case 0x837710:return reinterpret_cast<void *>(&mock_picture_close);
+    case 0x330B90:return reinterpret_cast<void *>(&mock_force);
+    case 0x330B50:return reinterpret_cast<void *>(&mock_district);
+    case 0x331780:case 0x2350F0:return reinterpret_cast<void *>(&mock_valid);
+    case 0x22F650:return reinterpret_cast<void *>(&mock_id);
+    case 0x335110:return reinterpret_cast<void *>(&mock_message_mode);
+    case 0x571630:return reinterpret_cast<void *>(&mock_tutorial);
+    case 0x11040:return reinterpret_cast<void *>(&mock_manager);
+    case 0x124A0:return reinterpret_cast<void *>(&mock_pop);
+    case 0x8637B0:return reinterpret_cast<void *>(&mock_acknowledge);
+    case 0x865FC0:return reinterpret_cast<void *>(&mock_page);
+    case 0x83E300:return reinterpret_cast<void *>(&mock_wait);
+    case 0x32DD00:return reinterpret_cast<void *>(&mock_day);
+    case 0x5726B0:return reinterpret_cast<void *>(&mock_player_state);
+    case 0x572480:return reinterpret_cast<void *>(&mock_modal);
+    case 0x44ED30:return reinterpret_cast<void *>(&mock_user_frame);
+    case 0x44C340:return reinterpret_cast<void *>(&mock_user_enter);
+    case 0x44B090:case 0x44ACC0:case 0x67D8A0:return reinterpret_cast<void *>(&mock_user_leave);
+    case 0x865170:case 0x67DEE0:case 0x671E90:return reinterpret_cast<void *>(&mock_original_notice);
+    case 0x1F29B0:case 0x812FF0:return reinterpret_cast<void *>(&mock_simple_enter);
+    case 0x876AD0:return reinterpret_cast<void *>(&mock_move);
+    case 0x67DB40:return reinterpret_cast<void *>(&mock_report_enter);
+    case 0x67D540:return reinterpret_cast<void *>(&mock_report_results);
+    case 0x222E30:return reinterpret_cast<void *>(&mock_record_construct);
+    case 0x223AD0:return reinterpret_cast<void *>(&mock_record_destroy);
+    case 0x67F0B0:return reinterpret_cast<void *>(&mock_phase);
+    case 0x67F910:return reinterpret_cast<void *>(&mock_income_values);
+    case 0x30F010:return reinterpret_cast<void *>(&mock_label);
+    case 0x67DD20:return reinterpret_cast<void *>(&mock_report_tick);
+    case 0x871600:return reinterpret_cast<void *>(&mock_visible);
+    case 0x92F440:return reinterpret_cast<void *>(&mock_size);
+    case 0x671AB0:case 0x895A10:return reinterpret_cast<void *>(&mock_user_leave);
+    case 0x92EFC0:return reinterpret_cast<void *>(&mock_position);
+    case 0x230950:return reinterpret_cast<void *>(&mock_name);
+    case 0x40060:return reinterpret_cast<void *>(&mock_scene_handle);
+    case 0x935F0:return reinterpret_cast<void *>(&mock_scene_ground);
+    case 0x230750:return reinterpret_cast<void *>(&mock_force_name);
+    case 0x22E450:return reinterpret_cast<void *>(&mock_person_force);
+    case 0x844860:return reinterpret_cast<void *>(&mock_recruit_speech);
+    case 0x88E4B0:return reinterpret_cast<void *>(&mock_original_notice);
+    case 0x1F2A60:return reinterpret_cast<void *>(&mock_person_enter);
+    case 0x863780:return reinterpret_cast<void *>(&mock_person_acknowledge);
     default:return nullptr;
     }
 }
@@ -255,7 +258,7 @@ static void cycle() {
 #ifndef NO_RUNTIME_LOG
     stalls.clear();
 #endif
-    native_message_mode=0;caller_available=true;point(image,0x27842A0,nullptr);
+    native_message_mode=0;caller_available=true;point(image,0x27872F0,nullptr);
     mod_features.advisor_briefing=true;enabled=1;briefing_overlay::gpu_ready=true;inbox.fallback=false;
     manager_stack[0]=state_a.data();point(manager_mem.data(),0x20,manager_stack);*reinterpret_cast<unsigned long long *>(manager_mem.data()+0x10)=1;
     user_leave(state_a.data(),nullptr);check(inbox.collecting && inbox.events.empty(),"accepted progress starts one new empty cycle");
@@ -268,8 +271,8 @@ template<unsigned Branch> static void __fastcall mock_disaster_yield(Obj){++disa
 static void scene_site_checks() {
     // 사용자 2026-10-30: every E8 site accepts native or external target independently.
     reinterpret_cast<IMAGE_DOS_HEADER *>(image)->e_lfanew=0x80;
-    reinterpret_cast<IMAGE_NT_HEADERS64 *>(image+0x80)->OptionalHeader.SizeOfImage=0x29FF000;
-    Obj relay=allocate_near(image+0x298413);check(relay!=nullptr,"scene caller relays allocated near the image");
+    reinterpret_cast<IMAGE_NT_HEADERS64 *>(image+0x80)->OptionalHeader.SizeOfImage=0x2A0B000;
+    Obj relay=allocate_near(image+0x29A323);check(relay!=nullptr,"scene caller relays allocated near the image");
     unsigned char entries[scene_site_count][16],original[scene_site_count][5];
     for(unsigned i=0;i<scene_site_count;++i){memcpy(entries[i],image+scene_sites[i].original,16);memcpy(original[i],image+scene_sites[i].rva,5);}
     auto redirect=[&](unsigned i,Obj target){int delta=static_cast<int>(target-(image+scene_sites[i].rva+5));image[scene_sites[i].rva]=0xE8;memcpy(image+scene_sites[i].rva+1,&delta,4);};
@@ -293,9 +296,9 @@ static void scene_site_checks() {
         prepare_scene_calls(relay);publish_scene_calls();image[scene_sites[index].rva]=0x90;
         restore_scene_calls();check(image[scene_sites[index].rva]==0x90,"restore preserves a foreign non-E8 opcode");memcpy(image+scene_sites[index].rva,original[index],5);
     }
-    // The two calls at 298805/29880D share a CAS16 block; restore keeps neighbour edits.
-    prepare_scene_calls(relay);publish_scene_calls();unsigned char adjacent=image[0x29880A];image[0x29880A]^=1;
-    restore_scene_calls();check(image[0x29880A]==static_cast<unsigned char>(adjacent^1),"restoring individual calls preserves a later adjacent instruction edit");image[0x29880A]=adjacent;
+    // The two calls at 29A715/29A71D share a CAS16 block; restore keeps neighbour edits.
+    prepare_scene_calls(relay);publish_scene_calls();unsigned char adjacent=image[0x29A71A];image[0x29A71A]^=1;
+    restore_scene_calls();check(image[0x29A71A]==static_cast<unsigned char>(adjacent^1),"restoring individual calls preserves a later adjacent instruction edit");image[0x29A71A]=adjacent;
     prepare_scene_calls(relay);int foreign=0;memcpy(image+scene_sites[0].rva+1,&foreign,4);publish_scene_calls();
     check(!scene_calls[0].published && scene_calls[1].published,"target changed between preparation and publication skips only the raced site");restore_scene_calls();memcpy(image+scene_sites[0].rva,original[0],5);
     VirtualFree(relay,0,MEM_RELEASE);for(auto &call:scene_calls)call={};
@@ -331,7 +334,7 @@ static void scene_collection_checks() {
         point(root.data(),0xDF30+8,force_mem.data());point(root.data(),0x6DA98+8,building.data());point(root.data(),0x6CAF0+8,place.data());
     }
     data[0]=data[1]=1;data[4]=0x5EE4;
-    auto push=[&](unsigned branch,Obj list,Obj type=nullptr){if(!type)type=image+0x13ACE30;if(branch)disaster_push<1>(manager_mem.data(),type,list,state_c.data());else disaster_push<0>(manager_mem.data(),type,list,state_c.data());};
+    auto push=[&](unsigned branch,Obj list,Obj type=nullptr){if(!type)type=image+0x13AFEA0;if(branch)disaster_push<1>(manager_mem.data(),type,list,state_c.data());else disaster_push<0>(manager_mem.data(),type,list,state_c.data());};
     auto yield=[&](unsigned branch,Obj caller){if(branch)disaster_yield<1>(caller);else disaster_yield<0>(caller);};
     for(unsigned branch=0;branch<2;++branch) {
         cycle();reset_pages(state_a.data(),branch?L"진류에 메뚜기가 발생했습니다.":L"진류에 역병이 발생했습니다.",L"진류의 군량 피해를 입었습니다.");
@@ -344,7 +347,7 @@ static void scene_collection_checks() {
         yield(branch,state_a.data());check(entry_yields==yields+2,"next unpaired yield runs native once");
         for(unsigned failure=0;failure<7;++failure) {
             cycle();reset_pages(state_a.data());scene_calls[2+branch*2].published=failure!=0;
-            Obj input=state_a.data()+0x478,type=image+0x13ACE30;
+            Obj input=state_a.data()+0x478,type=image+0x13AFEA0;
             if(failure==1)a.value=nullptr;
             if(failure==2)b.next=&a;
             if(failure==3)*reinterpret_cast<unsigned long long *>(state_a.data()+0x480)=300;
@@ -395,7 +398,7 @@ static void time_wait_checks() {
     }
     // All six diplomatic caller families share interaction(), including a
     // time-dialog top with a diplomatic parent beneath it.
-    for(unsigned caller:{0x814380u,0x814AD0u,0x814FF0u,0x815970u,0x815EA0u,0x8168A0u}){
+    for(unsigned caller:{0x814380u,0x814AD0u,0x814FF0u,0x8180C0u,0x818600u,0x8168A0u}){
         (void)caller;cycle();result=7;
         strcpy_s(reinterpret_cast<char *>(state_b.data()+0x70),128,"CTreatDiplomacyState");
         strcpy_s(reinterpret_cast<char *>(state_a.data()+0x70),128,"CDialogGameStateBase<CCmnWaitTimeDialog>");
@@ -410,7 +413,7 @@ static void time_wait_checks() {
     point(state_a.data(),0,image+0x13A4308);strcpy_s(reinterpret_cast<char *>(state_a.data()+0x70),128,"CCmnYesNoState");
     unsigned called=briefing_overlay::context_calls;log_frame(dialog_mem.data());
     check(briefing_overlay::context_calls==called+1 && !open && !rendered_open && !display_cache.open && !briefing_overlay::displayed.open && !briefing_overlay::shown && !briefing_overlay::action,"log frame closes native/cache/model and cancels pending input under YesNo");
-    point(state_a.data(),0,image+0x13D63A0);strcpy_s(reinterpret_cast<char *>(state_a.data()+0x70),128,"CUserStrategyState");
+    point(state_a.data(),0,image+0x13D9430);strcpy_s(reinterpret_cast<char *>(state_a.data()+0x70),128,"CUserStrategyState");
     log_frame(dialog_mem.data());check(briefing_overlay::shown && !open && !briefing_overlay::displayed.open,"player log frame restores head with panel closed");
     cycle();called=briefing_overlay::context_calls;log_frame(dialog_mem.data());
     check(briefing_overlay::context_calls==called,"progress collection bypasses covered-player reset");
@@ -485,6 +488,7 @@ static void scene_entry_checks() {
     for(unsigned success:{0u,1u}) {
         number(employ_params.data(),0x10,success);
         captured(0,success?L"조조가 유도 등용에 성공했습니다.":L"조조가 유도 등용에 실패했습니다.");
+        check(inbox.events.back().row==recruitment_scene_row(L"조조",L"유도",success!=0) && valid_row(inbox.events.back().row) && has(inbox.events.back().row,success?L"성공":L"실패"),"recruitment scene stores a structured row next to its sentence (user 2026-11-07 table)");
         unsigned applied=0;Obj applied_target=nullptr;
         // A minimal caller retains its predetermined result and applies it once.
         auto caller=[&](){bool result=success!=0;Obj target=pointer(employ_params.data(),8);employ_scene(employ_params.data());if(result){++applied;applied_target=target;}};
@@ -494,6 +498,7 @@ static void scene_entry_checks() {
     for(unsigned type=0;type<=5;++type) {
         number(discovery_params.data(),0,type);captured(1,discovery_scene_summary(type,L"조조",found[type],L"",true));
         check(inbox.events.back().kind==(type==0 || type==2?Kind::Treasure:type==1?Kind::Recruitment:Kind::News),"each discovery type has the correct independent summary group");
+        check(inbox.events.back().row==discovery_scene_row(type,L"조조",found[type],L"",true) && valid_row(inbox.events.back().row) && inbox.events.back().row[0]==(type==1?L'R':L'D'),"each discovery type stores a valid table row (person discoveries as recruitment rows)");
     }
     number(discovery_params.data(),0,1);number(discovery_params.data(),0x38,0);
     captured(1,L"조조가 유도를 발견했으며, 등용에 실패했습니다.");
@@ -572,42 +577,42 @@ static void portrait_sample_checks() {
 int main(int argc,char **argv) {
     portrait_sample_checks();
     check(argc==2,"independent captured text supplied");
-    image=static_cast<Obj>(VirtualAlloc(nullptr,0x29FF000,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));check(image!=nullptr,"synthetic image allocated");
+    image=static_cast<Obj>(VirtualAlloc(nullptr,0x2A0B000,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));check(image!=nullptr,"synthetic image allocated");
     FILE *f=nullptr;check(fopen_s(&f,argv[1],"rb")==0,"retained capture opened");
     check(fread(image+0x1000,1,kTextSize,f)==kTextSize,"retained capture loaded");fclose(f);
     for(const auto &s:slots)point(image,s.rva,image+s.original);
     check(guards_match(),"native original code and slots accepted");
     scene_site_checks();
-    for(const auto &g:guards)for(unsigned offset:{0u,g.size-1}){image[g.rva+offset]^=1;bool yielded_scene=(offset==0 && (g.rva==0x6C43B0 || g.rva==0x6C4670));check(guards_match()==yielded_scene,"only changed scene entry prologues yield; other briefing dependencies remain strict");if(yielded_scene)check(scene_yield,"scene prologue mismatch sets yield mode");image[g.rva+offset]^=1;}
+    for(const auto &g:guards)for(unsigned offset:{0u,g.size-1}){image[g.rva+offset]^=1;bool yielded_scene=(offset==0 && (g.rva==0x6C6B10 || g.rva==0x6C6DD0));check(guards_match()==yielded_scene,"only changed scene entry prologues yield; other briefing dependencies remain strict");if(yielded_scene)check(scene_yield,"scene prologue mismatch sets yield mode");image[g.rva+offset]^=1;}
     for(const auto &s:slots){image[s.rva]^=1;check(!guards_match(),"foreign slot rejects briefing");image[s.rva]^=1;}
-    image[0x81133D]^=1;check(!guards_match(),"foreign opcode at diplomacy-owned phase call rejects briefing");image[0x81133D]^=1;
-    image[0x81133E]^=1;check(!guards_match(),"unknown phase-call redirection is not accepted as a local counterturn");image[0x81133E]^=1;
+    image[0x813A6D]^=1;check(!guards_match(),"foreign opcode at diplomacy-owned phase call rejects briefing");image[0x813A6D]^=1;
+    image[0x813A6E]^=1;check(!guards_match(),"unknown phase-call redirection is not accepted as a local counterturn");image[0x813A6E]^=1;
     // Entry fingerprints fail closed before either hook is posted.
-    for(unsigned entry:{0x304640u,0x1F0AD0u,0x1F09E0u,0x1F0DD0u,0x842380u,0x6C43B0u,0x6C4670u,0x41D550u}) {
+    for(unsigned entry:{0x306A30u,0x1F1E90u,0x1F1DA0u,0x1F2190u,0x844860u,0x6C6B10u,0x6C6DD0u,0x41F8C0u}) {
         image[entry+16]^=1;
-        check(!advisor_briefing::install() && !time_wait_link.published && !message_links[0].published && !message_links[1].published && !message_links[2].published && !event_link.published && !scene_links[0].published && !scene_links[1].published && !scene_links[2].published && image[0x1F0AD0]==0x48 && image[0x1F09E0]==0x48,"whole-function mismatch prevents all entry publications including time wait");
+        check(!advisor_briefing::install() && !time_wait_link.published && !message_links[0].published && !message_links[1].published && !message_links[2].published && !event_link.published && !scene_links[0].published && !scene_links[1].published && !scene_links[2].published && image[0x1F1E90]==0x48 && image[0x1F1DA0]==0x48,"whole-function mismatch prevents all entry publications including time wait");
         image[entry+16]^=1;
     }
-    Obj entry_relay=allocate_near(image+0x1F0AD0);check(entry_relay!=nullptr,"entry relay allocation");
+    Obj entry_relay=allocate_near(image+0x1F1E90);check(entry_relay!=nullptr,"entry relay allocation");
     CodeLink probe_link{};
-    check(!prepare_message_link(probe_link,0x1F0AD0,narration_prologue,sizeof(narration_prologue),entry_relay,reinterpret_cast<void *>(&message_call)) && !probe_link.published,"wrong prologue cannot prepare or publish a relay");
-    check(!prepare_message_link(probe_link,0x1F0AD0,message_prologue,4,entry_relay,reinterpret_cast<void *>(&message_call)) && !probe_link.published,"invalid displaced length cannot prepare or publish a relay");
-    for(unsigned entry:{0x451FF0u,0x43FF90u}) {
-        unsigned length=entry==0x451FF0?sizeof(picture_show_bytes):sizeof(picture_close_bytes);
+    check(!prepare_message_link(probe_link,0x1F1E90,narration_prologue,sizeof(narration_prologue),entry_relay,reinterpret_cast<void *>(&message_call)) && !probe_link.published,"wrong prologue cannot prepare or publish a relay");
+    check(!prepare_message_link(probe_link,0x1F1E90,message_prologue,4,entry_relay,reinterpret_cast<void *>(&message_call)) && !probe_link.published,"invalid displaced length cannot prepare or publish a relay");
+    for(unsigned entry:{0x4541E0u,0x4421F0u}) {
+        unsigned length=entry==0x4541E0?sizeof(picture_show_bytes):sizeof(picture_close_bytes);
         for(unsigned i=0;i<length;++i) {
             image[entry+i]^=1;
             check(!advisor_briefing::install() && !picture_links[0].published && !picture_links[1].published && !message_links[0].published,"any full tail-wrapper byte mismatch publishes no picture or existing entry hook");
             image[entry+i]^=1;
         }
     }
-    for(unsigned target:{0x842A90u,0x835230u}) {
+    for(unsigned target:{0x844F70u,0x837710u}) {
         image[target+0x20]^=1;
         check(!advisor_briefing::install() && !picture_links[0].published && !picture_links[1].published && !message_links[0].published,"target prefix FNV mismatch prevents every hook publication");
         image[target+0x20]^=1;
     }
     check(advisor_briefing::install(),"all guarded entry links and existing slots publish together");
     Obj wait_relay=reinterpret_cast<Obj>(original_time_wait);
-    check(time_wait_link.published && image[0x304640]==0xE9 && !memcmp(wait_relay,narration_prologue,sizeof(narration_prologue)) && pointer(wait_relay,sizeof(narration_prologue)+6)==image+0x30464B,"time wait relay displaces eleven whole non-relative bytes and resumes at exact native instruction");
+    check(time_wait_link.published && image[0x306A30]==0xE9 && !memcmp(wait_relay,narration_prologue,sizeof(narration_prologue)) && pointer(wait_relay,sizeof(narration_prologue)+6)==image+0x306A3B,"time wait relay displaces eleven whole non-relative bytes and resumes at exact native instruction");
     for(unsigned i=0;i<2;++i) {
         const auto &link=picture_links[i];Obj at=image+link.rva+5+*reinterpret_cast<int *>(image+link.rva+1);
         unsigned size=i?sizeof(picture_close_bytes):sizeof(picture_show_bytes);
@@ -637,25 +642,25 @@ int main(int argc,char **argv) {
     check(guards_match(),"rollback restores both full entry functions, five-byte links and native slots");
     // A publication conflict on the second entry must roll the first one back.
     CodeLink pair[2]{};
-    check(prepare_message_link(pair[0],0x1F0AD0,message_prologue,sizeof(message_prologue),entry_relay,reinterpret_cast<void *>(&message_call)) &&
-          prepare_message_link(pair[1],0x1F09E0,narration_prologue,sizeof(narration_prologue),entry_relay+64,reinterpret_cast<void *>(&narration_call)),"both entry relays prepare before any publication");
-    image[0x1F09E0+12]^=1;
+    check(prepare_message_link(pair[0],0x1F1E90,message_prologue,sizeof(message_prologue),entry_relay,reinterpret_cast<void *>(&message_call)) &&
+          prepare_message_link(pair[1],0x1F1DA0,narration_prologue,sizeof(narration_prologue),entry_relay+64,reinterpret_cast<void *>(&narration_call)),"both entry relays prepare before any publication");
+    image[0x1F1DA0+12]^=1;
     check(publish_link(pair[0]) && !publish_link(pair[1]),"second entry CAS conflict is detected");
-    restore_link(pair[1]);restore_link(pair[0]);image[0x1F09E0+12]^=1;
+    restore_link(pair[1]);restore_link(pair[0]);image[0x1F1DA0+12]^=1;
     check(guards_match(),"failed pair publication leaves both entries native after rollback");
     unsigned char saved_employ[sizeof(scene_prologue)],saved_discovery[sizeof(scene_prologue)];
-    memcpy(saved_employ,image+0x6C43B0,sizeof(saved_employ));memcpy(saved_discovery,image+0x6C4670,sizeof(saved_discovery));
-    image[0x6C43B0]^=0xFF;image[0x6C4670]^=0xFF;scene_yield=false;scene_links[0].published=scene_links[1].published=false;
+    memcpy(saved_employ,image+0x6C6B10,sizeof(saved_employ));memcpy(saved_discovery,image+0x6C6DD0,sizeof(saved_discovery));
+    image[0x6C6B10]^=0xFF;image[0x6C6DD0]^=0xFF;scene_yield=false;scene_links[0].published=scene_links[1].published=false;
     check(guards_match()&&scene_yield,"two foreign scene prologues yield only their own hashes and links");
     check(advisor_briefing::install(),"scene-yield mode still installs the remaining briefing hooks");
     check(!scene_links[0].published&&!scene_links[1].published&&scene_links[2].published,"scene-yield mode leaves exactly the two foreign-owned links unpublished");
     restore_link(time_wait_link);for(unsigned i=2;i;)restore_link(picture_links[--i]);for(unsigned i=3;i;)restore_link(scene_links[--i]);restore_link(event_link);for(unsigned i=3;i;)restore_link(message_links[--i]);
     for(unsigned i=0;i<sizeof(slots)/sizeof(*slots);++i)restore_pointer(slots[i].rva,slots[i].original,replacements[i]);
     call_restore(report_results_call);restore_link(speech_link);restore_link(text_link);
-    memcpy(image+0x6C43B0,saved_employ,sizeof(saved_employ));memcpy(image+0x6C4670,saved_discovery,sizeof(saved_discovery));scene_yield=false;
+    memcpy(image+0x6C6B10,saved_employ,sizeof(saved_employ));memcpy(image+0x6C6DD0,saved_discovery,sizeof(saved_discovery));scene_yield=false;
     check(guards_match(),"scene-yield fixture restores both native prologues and original guards");
     VirtualFree(entry_relay,0,MEM_RELEASE);
-    point(image,0x277DF18,root.data());point(root.data(),0x871E8,context.data());point(root.data(),0xE0D0+8,district_mem.data());
+    point(image,0x2780F60,root.data());point(root.data(),0x871E8,context.data());point(root.data(),0xE0D0+8,district_mem.data());
     // User 2026-10-26: normal live game has 15/16 orders at context+454.
     // That value must not disable notification collection or report skipping.
     number(context.data(),0x454,15);
@@ -701,7 +706,7 @@ int main(int argc,char **argv) {
     };
     for(unsigned path=0;path<2;++path)captured_entry(path);
     check(briefing_overlay::displayed.collecting && briefing_overlay::displayed.unread==2,"badge updates during progress without command HUD frames");
-    point(image,0x27842A0,native_message_context.data());
+    point(image,0x27872F0,native_message_context.data());
     for(unsigned path=0;path<2;++path)captured_entry(path);
     auto passed_entry=[&](unsigned path,MessageReason reason,const wchar_t *text=L"원작 통지") {
         auto events=inbox.events.size();unsigned calls=entry_relays[path];
@@ -760,7 +765,7 @@ int main(int argc,char **argv) {
     // 사용자 2026-10-28 설계 전환: 직접 pop으로 CProgressState 소실, 원작 유지.
     // Replace immediate-close assertions with native pass-through for all message states.
     for(unsigned type=0;type<2;++type) {
-        cycle();reset_pages(state_a.data());point(state_a.data(),0,image+(type?0x13A2F98:0x13A2F00));
+        cycle();reset_pages(state_a.data());point(state_a.data(),0,image+(type?0x13A5FD8:0x13A5F40));
         number(dialog_mem.data(),0x20,21);number(dialog_mem.data(),0x24,34);
         before=pops;unsigned entered_before=original_enters;unsigned acks=acknowledgements;
         check((type?person_notice_enter(state_a.data()):simple_enter(state_a.data()))==1 && original_enters==entered_before+1,"general/person Enter always invokes the native implementation");
@@ -861,6 +866,18 @@ int main(int argc,char **argv) {
     briefing_overlay::ticket=inbox.generation;briefing_overlay::action=6;hud(nullptr,true,false);check(inbox.events.empty(),"clear button deletes this cycle only");
     cycle();store({{Kind::News,L"유비가 금 200을 발견했습니다."},{Kind::News,L"관우가 금을 발견했습니다."}});user_enter(state_a.data(),nullptr);hud(nullptr,true,false);
     check(!has(briefing_overlay::displayed.body,L"발견한 금 합계") && has(briefing_overlay::displayed.body,L"관우가 금을"),"unknown amounts stay visible and a partial sum is never presented as the full total");
+    {   // user 2026-11-07: tables in the displayed body, one text line for every message without a valid row
+        cycle();
+        Event ea,eb,ec,ed;ea.kind=eb.kind=ec.kind=ed.kind=Kind::Treasure;ea.day=eb.day=ec.day=ed.day=3;
+        ea.text=ea.report=L"관우가 명품 청룡언월도를 발견했습니다.";ea.row=discovery_scene_row(0,L"관우",L"청룡언월도",L"",true);
+        eb.text=eb.report=L"장비가 물품 호로병를 발견했습니다.";eb.row=discovery_scene_row(2,L"장비",L"호로병",L"",true);
+        ec.text=ec.report=L"유비가 명품 쌍검을 발견했습니다.";ec.row=L"D\t유비";   // broken row: falls back to the sentence
+        ed.text=ed.report=L"조운이 명품 용담창을 발견했습니다.";ed.row=discovery_scene_row(0,L"조운",L"용담창",L"",true);
+        store({ea,eb,ec,ed});user_enter(state_a.data(),nullptr);open=false;hud(nullptr,true,false);
+        const auto &body=briefing_overlay::displayed.body;
+        check(has(body,L"일차\t무장\t발견\t결과\n3일차\t관우\t청룡언월도\t명품 발견\n3일차\t장비\t호로병\t물품 발견\n3일차\t조운\t용담창\t명품 발견\n\n") && !has(body,L"장소"),"discovery table: day column, header, rows in order, empty place column dropped");
+        check(has(body,L"용담창\t명품 발견\n\n• 3일차 · 유비가 명품 쌍검을 발견했습니다.") && body.find(L"• 3일차")>body.find(L"조운\t용담창"),"a message without a valid row keeps its text line after the one merged table, nothing is dropped");
+    }
     cycle();store({{Kind::News,L"통솔이 성장했습니다."}});user_enter(state_a.data(),nullptr);open=false;
     briefing_overlay::ticket=inbox.generation;briefing_overlay::action=1;unsigned frames=original_frames;user_frame(state_a.data());
     check(original_frames==frames+1 && open && !briefing_overlay::action && inbox.unread()==0,"next player frame opens and reads the bubble without a command-HUD update");
@@ -896,8 +913,8 @@ int main(int argc,char **argv) {
     check(display_text(L"^02유비^00가 ^05금^00 1,200을 발견했습니다.")==L"유비가 금 1,200을 발견했습니다.","native formatting controls do not appear as literal caret codes in the bubble");
     Inbox colored;colored.begin(1,1);colored.append({{Kind::News,L"^02유비^00가 금 ^051,200^00을 발견했습니다."}});
     check(colored.events[0].gold==1200 && compact(colored.events[0])==L"유비  ·  1200" && has(colored.events[0].text,L"^02"),"presentation removes controls without changing retained source text or gold totals");
-    cycle();point(state_b.data(),0,image+0x145DBB8);number(state_b.data(),0x4D8,11);
-    manager_stack[0]=state_b.data();point(state_a.data(),0,image+0x145F9E8);
+    cycle();point(state_b.data(),0,image+0x1460C48);number(state_b.data(),0x4D8,11);
+    manager_stack[0]=state_b.data();point(state_a.data(),0,image+0x1462A78);
     strcpy_s(reinterpret_cast<char *>(state_a.data()+0x70),128,"CDialogGameStateBase<CCmnDlgMsgDialog_TreatDiplomacy>");
     reset_pages(state_a.data(),L"거절의 뜻은 알겠소.",L"그럼 다음을 기약하겠소.");
     unsigned pages=native_pages;check(diplomatic_enter(state_a.data())==1 && inbox.events.size()==2 && inbox.events[0].kind==Kind::Diplomacy,"message-only diplomacy pages are retained even when their text is a refusal");
@@ -908,19 +925,20 @@ int main(int argc,char **argv) {
     check(native_pages==pages+2 && native_close_pending && pops==before,"diplomacy pages use original consumption and original closing without direct pop");mock_native_close_event();
     cycle();point(state_b.data(),0x478,event_layout.data());point(event_layout.data(),0x190,speech_left.data());point(event_layout.data(),0x198,speech_right.data());
     point(state_b.data(),0x4C0,diplomacy_view.data());point(diplomacy_view.data(),0x188,diplomacy_window.data());
-    point(diplomacy_window.data(),0x180,other_force.data());point(diplomacy_window.data(),0x190,force_mem.data());point(diplomacy_window.data(),0x1D8,command_mem.data());point(command_mem.data(),0,command_vt);command_vt[19]=reinterpret_cast<void *>(&mock_command_kind);
+    // user 2026-11-07: the player is the proposer (from-side) here, so nobody decides for the player and the result is still hidden/auto-confirmed; the responder case follows below.
+    point(diplomacy_window.data(),0x180,force_mem.data());point(diplomacy_window.data(),0x190,other_force.data());point(diplomacy_window.data(),0x1D8,command_mem.data());point(command_mem.data(),0,command_vt);command_vt[19]=reinterpret_cast<void *>(&mock_command_kind);
     *reinterpret_cast<unsigned short *>(force_mem.data()+0x10)=100;*reinterpret_cast<unsigned short *>(own_person.data()+0x10)=100;*reinterpret_cast<unsigned short *>(other_person.data()+0x10)=200;
     number(speech_left.data(),0x20,40);number(speech_left.data(),0x24,30);number(state_b.data(),0x4D8,13);manager_stack[0]=state_b.data();
     unsigned spoken=native_speeches;diplomatic_speech(state_b.data(),3,own_person.data(),L"그런 교환에는 응할 수 없소.",nullptr);
     check(native_speeches==spoken+1 && inbox.events.size()==1 && inbox.events[0].kind==Kind::Diplomacy && speech_waiting && dword(speech_left.data(),0x20)==10000,"final result speech is copied and hidden only after the original display setup ran");
-    check(has(compact(inbox.events[0]),L"주군께서 유도 측의 교환 요청을 거절하셨습니다.") && has(inbox.events[0].text,L"조조\n그런 교환에는 응할 수 없소."),"own ruler dialogue becomes an adviser report while the full original remains available");
+    check(has(compact(inbox.events[0]),L"주군께서 제안하신 교환 교섭이 성사되지 않았습니다.") && has(inbox.events[0].text,L"조조\n그런 교환에는 응할 수 없소."),"own ruler dialogue becomes an adviser report while the full original remains available");
     DiplomaticFacts facts;facts.counterpart=L"유도";facts.kind=7;facts.result=0;facts.known_sides=true;facts.incoming=true;facts.friendly=facts.ruler=true;
     check(has(diplomatic_report(L"곤란하오.",facts),L"주군께서") && !has(diplomatic_report(L"곤란하오.",facts),L"곤란하오"),"briefing does not impersonate the player's ruler");
     facts.incoming=false;check(has(diplomatic_report(L"유감이군.",facts),L"제안하신 교환 교섭이 성사되지"),"a failed outgoing request is not reported as the player refusing an incoming one");
     facts.incoming=true;facts.result=1;check(has(diplomatic_report(L"거절할 까닭이 없소.",facts),L"받아들이셨습니다"),"a known successful result takes precedence over an ambiguous quoted keyword");
     facts.friendly=facts.ruler=false;auto reaction=diplomatic_report(L"나를 이토록 무시하다니. 일단은 물러나겠소.",facts);
     check(has(reaction,L"유도 측이 불만을 표하고 물러났습니다.") && !has(reaction,L"관계"),"reported displeasure does not invent a numerical diplomatic relationship loss");
-    point(state_a.data(),0,image+0x1465260);strcpy_s(reinterpret_cast<char *>(state_a.data()+0x70),128,"EventView::CInputWaitState");
+    point(state_a.data(),0,image+0x14682F0);strcpy_s(reinterpret_cast<char *>(state_a.data()+0x70),128,"EventView::CInputWaitState");
     manager_stack[1]=state_a.data();*reinterpret_cast<unsigned long long *>(manager_mem.data()+0x10)=2;number(state_a.data(),0x478,0x7FFFFFFF);
     before=pops;wait_ready=false;diplomatic_wait(state_a.data());check(pops==before && speech_waiting,"native input/animation gates still control result speech continuation");
     wait_ready=true;wait_reenter=true;diplomatic_wait(state_a.data());
@@ -935,6 +953,51 @@ int main(int argc,char **argv) {
     manager_stack[1]=state_c.data();manager_stack[2]=state_a.data();*reinterpret_cast<unsigned long long *>(manager_mem.data()+0x10)=3;
     diplomatic_speech(state_b.data(),4,nullptr,L"다시 결정하시겠소?",nullptr);diplomatic_wait(state_a.data());
     check(inbox.events.size()==retained && pops==before && dword(state_a.data(),0x478)==0x7FFFFFFF,"a real decision nested in a result scene cannot be auto-confirmed");
+    {   // user 2026-11-07: after a player choice the rest of the diplomacy conversation follows the original game flow; only the briefing keeps a copy of the lines
+        auto set_count=[&](unsigned long long n){*reinterpret_cast<unsigned long long *>(manager_mem.data()+0x10)=n;};
+        auto arrange=[&](bool responder,unsigned phase) {
+            cycle();point(state_b.data(),0,image+0x1460C48);number(state_b.data(),0x4D8,phase);
+            point(state_b.data(),0x478,event_layout.data());point(event_layout.data(),0x190,speech_left.data());point(event_layout.data(),0x198,speech_right.data());
+            point(state_b.data(),0x4C0,diplomacy_view.data());point(diplomacy_view.data(),0x188,diplomacy_window.data());
+            point(diplomacy_window.data(),0x180,responder?other_force.data():force_mem.data());point(diplomacy_window.data(),0x190,responder?force_mem.data():other_force.data());
+            point(diplomacy_window.data(),0x1D8,command_mem.data());number(speech_left.data(),0x20,40);number(speech_left.data(),0x24,30);
+            manager_stack[0]=state_b.data();set_count(1);
+        };
+        auto input_wait=[&]() {
+            point(state_a.data(),0,image+0x14682F0);strcpy_s(reinterpret_cast<char *>(state_a.data()+0x70),128,"EventView::CInputWaitState");
+            manager_stack[1]=state_a.data();set_count(2);number(state_a.data(),0x478,0x7FFFFFFF);
+        };
+        // The player is the responder (the original shows accept/refuse in the Decide window, no YesNo state): result lines are kept but never hidden or confirmed.
+        arrange(true,13);unsigned spoken2=native_speeches;auto kept=inbox.events.size();
+        diplomatic_speech(state_b.data(),3,own_person.data(),L"그렇다면 받아들이겠소.",nullptr);
+        check(native_speeches==spoken2+1 && inbox.events.size()==kept+1 && inbox.events.back().kind==Kind::Diplomacy && dword(speech_left.data(),0x20)==40 && !speech_waiting && !speech_owner,"responder conversation: result line is stored for the briefing, shown natively, never hidden or awaited");
+        input_wait();before=pops;wait_ready=true;diplomatic_wait(state_a.data());
+        check(pops==before && dword(state_a.data(),0x478)==0x7FFFFFFF,"responder conversation: the input wait keeps its native timer");
+        arrange(true,12);point(state_a.data(),0,image+0x1462A78);strcpy_s(reinterpret_cast<char *>(state_a.data()+0x70),128,"CDialogGameStateBase<CCmnDlgMsgDialog_TreatDiplomacy>");
+        reset_pages(state_a.data(),L"좋소.",L"그럼 이만.");manager_stack[1]=state_a.data();set_count(2);
+        unsigned moved=native_moves,acked=acknowledgements;kept=inbox.events.size();
+        check(diplomatic_enter(state_a.data())==1 && inbox.events.size()==kept+2 && simple_states.empty() && native_moves==moved,"responder conversation: reply pages are stored but the dialog is neither hidden nor registered for auto-close");
+        const unsigned consumed=native_pages;   // the mock's own Enter shows the first page
+        simple_frame(state_a.data());check(acknowledgements==acked && native_pages==consumed,"responder conversation: no page is consumed or closed for the player");
+        // Own proposal first hidden as designed, then a choice state appears and is answered: the rest is left to the original, and the next conversation is skipped again.
+        arrange(false,13);kept=inbox.events.size();
+        diplomatic_speech(state_b.data(),3,own_person.data(),L"첫 번째 대사.",nullptr);
+        check(inbox.events.size()==kept+1 && speech_waiting && dword(speech_left.data(),0x20)==10000 && diplomatic_choice_parent==nullptr,"before any choice the line is hidden and awaited as designed");
+        strcpy_s(reinterpret_cast<char *>(state_c.data()+0x70),128,"CDialogGameStateBase<CCmnDlgMsgYesNo>");
+        manager_stack[1]=state_c.data();set_count(2);kept=inbox.events.size();
+        diplomatic_speech(state_b.data(),4,nullptr,L"어찌하시겠소?",nullptr);
+        check(inbox.events.size()==kept && diplomatic_choice_parent==state_b.data(),"a stacked choice state is left alone and remembered for its conversation");
+        manager_stack[1]=nullptr;set_count(1);hud(nullptr,true,false);   // the player chose; the YesNo state is gone
+        check(dword(speech_left.data(),0x20)==40 && !speech_owner && !speech_waiting,"after the choice the earlier hidden speech window is restored");
+        kept=inbox.events.size();spoken2=native_speeches;diplomatic_speech(state_b.data(),3,own_person.data(),L"선택을 존중하겠소.",nullptr);
+        check(native_speeches==spoken2+1 && inbox.events.size()==kept+1 && dword(speech_left.data(),0x20)==40 && !speech_waiting && !speech_owner,"after the choice the follow-up line is kept but shown natively");
+        input_wait();before=pops;diplomatic_wait(state_a.data());
+        check(pops==before && dword(state_a.data(),0x478)==0x7FFFFFFF,"after the choice the follow-up input wait is not auto-confirmed");
+        set_count(0);check(diplomatic_parent(true)==nullptr && diplomatic_choice_parent==nullptr,"the choice memory ends with the conversation");
+        manager_stack[0]=state_b.data();set_count(1);kept=inbox.events.size();
+        diplomatic_speech(state_b.data(),3,own_person.data(),L"새 교섭의 대사.",nullptr);
+        check(inbox.events.size()==kept+1 && speech_waiting && dword(speech_left.data(),0x20)==10000,"a later conversation without a player choice is hidden and awaited again");
+    }
     // 사용자 2026-10-28 설계 전환 2단계: replace recruitment/passive display,
     // hide/restore and timer auto-advance assertions with entry-only collection.
     cycle();before=pops;unsigned pushes=entry_pushes,yields=entry_yields;
@@ -948,11 +1011,11 @@ int main(int argc,char **argv) {
     }
     native_message_mode=0;
     {   // 사용자 2026-11-01: duel lines are collected and still shown natively; duel timers are not expired.
-        cycle();std::array<unsigned char,0x20> duel{};*reinterpret_cast<unsigned *>(duel.data()+0x10)=1;point(image,0x2783730,duel.data());
+        cycle();std::array<unsigned char,0x20> duel{};*reinterpret_cast<unsigned *>(duel.data()+0x10)=1;point(image,0x2786780,duel.data());
         unsigned calls=entry_relays[1];person_call(5012,L"일기토다!");
         check(inbox.events.size()==1 && has(inbox.events.back().text,L"일기토다!") && entry_relays[1]==calls+1,"duel person line stored and relayed");
         unsigned waits=time_wait_relays;int result=7;time_wait(500,&result,1);check(time_wait_relays==waits+1,"duel wait relays to the native timer instead of expiring");
-        point(image,0x2783730,nullptr);
+        point(image,0x2786780,nullptr);
     }
     const wchar_t *extra=L"extra";
     auto event_call=[&](Obj person=other_person.data(),const wchar_t *text=L"무슨 일이냐!？") {event_speech(state_b.data(),person,text,0x123456789ABCull,extra,7);};
@@ -978,7 +1041,7 @@ int main(int argc,char **argv) {
         briefing_overlay::gpu_ready=false;check_event_relay();briefing_overlay::gpu_ready=true;
         inbox.fallback=true;check_event_relay();inbox.fallback=false;
     }
-    cycle();manager_stack[0]=state_b.data();point(state_b.data(),0,image+0x1440FF8);
+    cycle();manager_stack[0]=state_b.data();point(state_b.data(),0,image+0x1444080);
     for(unsigned phase:{1u,2u,3u}) {
         number(state_b.data(),0x4C8,phase);Obj person=phase==1?own_person.data():other_person.data();
         event_call(person,L"등용 대사");
@@ -986,8 +1049,8 @@ int main(int argc,char **argv) {
     }
     number(state_b.data(),0x4C8,4);check_event_relay();number(state_b.data(),0x4C8,1);check_event_relay();
     // An owner's name cannot grant collection; only its independently verified vtable can.
-    for(unsigned rva:{0x1465410u,0x13A2EA8u,0x145DBB8u,0x1300000u}){point(state_b.data(),0,image+rva);check_event_relay();}
-    point(state_b.data(),0,image+0x14471E8);
+    for(unsigned rva:{0x1465410u,0x13A2EA8u,0x1460C48u,0x1300000u}){point(state_b.data(),0,image+rva);check_event_relay();}
+    point(state_b.data(),0,image+0x144A270);
     for(const char *name:{"CStrategyDiplomacyState","CTreatPrisonerState","CCmnDlgMsgYesNoState","CSelectState","CInputState","CTutorialState","CStrategyFirstExplainTalkState"}) {
         strcpy_s(reinterpret_cast<char *>(state_c.data()+0x70),128,name);manager_stack[1]=state_c.data();*reinterpret_cast<unsigned long long *>(manager_mem.data()+0x10)=2;
         check_event_relay();unsigned calls=entry_relays[1];person_call(5012,L"protected person");check(entry_relays[1]==calls+1,"interaction protects the new person entry");
@@ -999,7 +1062,7 @@ int main(int argc,char **argv) {
     auto saved_events=std::move(inbox.events);inbox.events.assign(Inbox::limit,{Kind::News,L"full"});check_event_relay();
     check(inbox.fallback,"store failure restores native EventView on the same call");inbox.events=std::move(saved_events);inbox.fallback=false;
     // Removed collectors must no longer shorten arbitrary native InputWait states.
-    speech_waiting=false;point(state_a.data(),0,image+0x1465260);strcpy_s(reinterpret_cast<char *>(state_a.data()+0x70),128,"EventView::CInputWaitState");
+    speech_waiting=false;point(state_a.data(),0,image+0x14682F0);strcpy_s(reinterpret_cast<char *>(state_a.data()+0x70),128,"EventView::CInputWaitState");
     manager_stack[1]=state_a.data();*reinterpret_cast<unsigned long long *>(manager_mem.data()+0x10)=2;number(state_a.data(),0x478,0x7FFFFFFF);
     before=pops;diplomatic_wait(state_a.data());check(pops==before && dword(state_a.data(),0x478)==0x7FFFFFFF,"non-diplomatic wait has no recruitment/passive auto-confirm path");
     // Legacy coordinates move only on a transition; stable frames stay put.
@@ -1045,5 +1108,84 @@ int main(int argc,char **argv) {
     for(int frame_index=0;frame_index<300;++frame_index)ui_scroll.advance(1.0/60,2000);
     check(ui_scroll.shown==0 && ui_scroll.velocity==0 && !ui_scroll.active(),"released overscroll returns to the boundary and stops");
     check(ease_back(0)==0 && ease_back(1)==1 && ease_back(.7)>1,"opening easing has exact endpoints and a subtle overshoot");
+    {   // ---- table rows, shapes, columns (user 2026-11-07) ----
+        using std::wstring;
+        wstring r1=discovery_scene_row(0,L"관우",L"청룡언월도",L"",true),r2=discovery_scene_row(2,L"장비",L"호로병",L"낙양",true);
+        check(r1==L"D\t관우\t\t청룡언월도\t명품 발견" && valid_row(r1) && valid_row(r2),"discovery rows keep an optional empty place cell");
+        check(discovery_scene_row(6,L"a",L"b",L"",true).empty() && discovery_scene_row(0,L"",L"b",L"",true).empty() && discovery_scene_row(0,L"a",L"",L"",true).empty(),"discovery rows need a known type, actor and found object");
+        check(table_block({r1})==L"무장\t발견\t결과\n관우\t청룡언월도\t명품 발견" && table_block({r1,r2})==L"무장\t장소\t발견\t결과\n관우\t—\t청룡언월도\t명품 발견\n장비\t낙양\t호로병\t물품 발견","place column appears only when some row knows a place, unknown cells show a dash");
+        check(discovery_scene_row(3,L"조조",L"형주",L"",true)==L"D\t조조\t\t형주\t지리 이점 발견" && discovery_scene_row(4,L"조조",L"형주",L"",true)==L"D\t조조\t\t형주\t지리 이점 상실" && discovery_scene_row(5,L"조조",L"태산",L"",true)==L"D\t조조\t\t태산\t명승 발견","geography and scenery discoveries have their own result words");
+        wstring person=discovery_scene_row(1,L"조조",L"유도",L"",false),hired=recruitment_scene_row(L"조조",L"유도",true),city=discovery_scene_row(1,L"가후",L"조루",L"진창",true);
+        check(person[0]==L'R' && hired==L"R\t조조\t유도\t\t성공" && recruitment_scene_row(L"",L"유도",true).empty() && recruitment_scene_row(L"조조",L"",true).empty(),"recruitment rows: person discovery and hiring share the recruitment shape");
+        check(table_block({hired,person})==L"실행 무장\t대상\t결과\n조조\t유도\t성공\n조조\t유도\t발견 후 등용 실패" && table_block({hired,city})==L"실행 무장\t대상\t도시\t결과\n조조\t유도\t—\t성공\n가후\t조루\t진창\t발견 후 등용 성공","recruitment table: executor, target, optional city, result");
+        check(table_block({L"X\ta",wstring(L"D\t\t\tb\tc"),r1})==table_block({r1}) && table_block({}).empty() && table_block({L"junk"}).empty(),"invalid rows are skipped, no valid row gives no table");
+        check(table_block({r1,hired})==table_block({r1}),"a block holds one shape only (card_body starts a new table for the next shape)");
+        check(valid_row(make_row(L'D',L"a\tb",L"",L"c\nd",L"e")) && make_row(L'D',L"a\tb",L"",L"c\nd",L"e")==L"D\ta b\t\tc d\te","cell text can never break the row format");
+        DiplomaticFacts df;df.friendly=true;df.known_sides=true;df.kind=5;df.counterpart=L"유표";df.result=1;
+        check(diplomatic_row(df)==L"P\t유표\t동맹\t아군 제안\t성사","own accepted proposal");
+        df.result=0;check(diplomatic_row(df)==L"P\t유표\t동맹\t아군 제안\t불발","own failed proposal");
+        df.incoming=true;check(diplomatic_row(df)==L"P\t유표\t동맹\t상대 요청\t거절","refused incoming request");
+        df.result=1;df.counterpart.clear();check(diplomatic_row(df)==L"P\t상대\t동맹\t상대 요청\t수락","accepted incoming request without a known counterpart");
+        df.known_sides=false;check(diplomatic_row(df).empty(),"unknown sides stay a text line");
+        df.known_sides=true;df.result=-1;check(diplomatic_row(df).empty(),"unknown result stays a text line");
+        df.result=1;df.friendly=false;check(diplomatic_row(df).empty(),"non-negotiation diplomacy (anger, thanks) stays a text line");
+        check(table_block({diplomatic_row(DiplomaticFacts{true,false,true,false,1,4,L"손권"}),diplomatic_row(DiplomaticFacts{true,false,true,false,1,4,L"손권"})})==L"상대\t안건\t구분\t결과\n손권\t친선\t아군 제안\t성사","a negotiation that speaks several lines gives one diplomacy row");
+        Card card;card.kind=Kind::Treasure;
+        Event e1,e2,e3,e4;e1.day=e2.day=e3.day=e4.day=4;
+        e1.text=e1.report=L"A 발견";e1.row=r1;e2.text=e2.report=L"B 발견";e2.row=r2;e3.text=e3.report=L"C 발견";e4.text=e4.report=L"D 발견";e4.row=hired;
+        card.events={e1,e2,e3,e4};
+        check(card_body(card)==L"일차\t실행 무장\t대상\t결과\n4일차\t조조\t유도\t성공\n\n일차\t무장\t장소\t발견\t결과\n4일차\t관우\t—\t청룡언월도\t명품 발견\n4일차\t장비\t낙양\t호로병\t물품 발견\n\n• 4일차 · C 발견\n\n","card body: one table per shape (recruitment first) with a day column, then the text line; every event appears once");
+        Card gold;gold.kind=Kind::Gold;Event g;g.kind=Kind::Gold;g.text=L"유비가 금 200을 발견했습니다.";g.gold=200;g.day=5;gold.events={g};gold.gold=200;
+        check(card_body(gold)==L"발견한 금 합계 200\n\n• 5일차 · 유비  ·  200\n","gold cards keep their sum line and compact amounts");
+        // ---- rows parsed from the original message templates (user 2026-11-07; templates from msggame_exce, see parse_row) ----
+        check(parse_row(L"최림, 격려의 서 발견")==L"D\t최림\t\t격려의 서\t발견" && parse_row(L"^02최림^00, ^05격려의 서^00 발견")==parse_row(L"최림, 격려의 서 발견") && valid_row(parse_row(L"채염, 교란의 서 발견")),"tactic book discovery (111/50077/51579) becomes a discovery row, colour codes ignored");
+        check(parse_row(L"정욱, 양양의 탐색에 실패")==L"D\t정욱\t양양\t\t실패" && parse_row(L"정욱, 양양의 탐색을 단념")==L"D\t정욱\t양양\t\t단념","failed (50089) and abandoned (50100) searches become discovery rows with the place and no found object");
+        check(parse_row(L"최림, 금 100 발견").empty() && parse_row(L"최림, 발견").empty() && parse_row(L"조범군과 김선군, 유비군에 항복").empty() && parse_row(L"한현군, 유비군에 항복").empty() && parse_row(L"조조,「관창해」를 읊음").empty(),"the gold line and other report lines that are no row template stay text");
+        check(parse_row(L"정욱\n최림, 격려의 서 발견").empty() && parse_row(L"천시가 변했습니다.").empty() && parse_row(L"").empty(),"a log line must be the whole single-line message");
+        check(parse_row(L"조휴부대, 병사감소에 의해 퇴각")==L"M\t조휴부대\t병사감소\t퇴각\t" && parse_row(L"장합부대, 비어에 의해 출진불가")==L"M\t장합부대\t비어\t출진불가\t" && parse_row(L"장합부대, 독에 의해 상태가 약화").empty(),"unit retreat (12850) and sortie ban (13508) become military rows, other 'by' lines stay text");
+        check(parse_row(L"조조군, 유도군의 교환요청 거부")==L"P\t유도군\t교환\t조조군 응답\t거부" && parse_row(L"조조군, 유도군의 교환요청 승낙")==L"P\t유도군\t교환\t조조군 응답\t승낙","exchange answers (13081/13088) name both sides and the result");
+        check(parse_row(L"조조군, 유표군의 공격요청 승낙")==L"P\t유표군\t공격\t조조군 응답\t승낙" && parse_row(L"조조군, 손권군의 포로반환 승낙")==L"P\t손권군\t포로 반환\t조조군 응답\t승낙" && parse_row(L"조조군, 손권군의 반환요청 거부")==L"P\t손권군\t포로 반환\t조조군 응답\t거부","attack (12729) and prisoner-return (12752/12764) answers use the same diplomacy row");
+        check(parse_row(L"조조군, 유표군측과 동맹 실패")==L"P\t유표군\t동맹\t조조군 제안\t실패" && parse_row(L"조조군, 유표군측과 동맹 연장 실패")==L"P\t유표군\t동맹 연장\t조조군 제안\t실패" && parse_row(L"조조군, 손권군간의 친선 성공").empty() && parse_row(L"조조군, 유표군의 공격요청 달성").empty(),"alliance failures (12708/12709) are rows, goodwill and attack-request outcomes whose roles are unclear stay text");
+        check(parse_row(L"조조, 유도의 등용에 성공")==recruitment_scene_row(L"조조",L"유도",true) && parse_row(L"조조, 유도의 등용에 실패")==recruitment_scene_row(L"조조",L"유도",false),"hiring log lines (50065/50066) share the recruitment row");
+        const wstring envoy=make_row(L'E',L"김선군",L"알현 요청",L"",L"");
+        check(parse_row(L"보고드립니다.\n김선군의 사자가\n조조님께 알현을 요청하였습니다.")==envoy && parse_row(L"전령\n보고드립니다.\n김선군의 사자가\n조조님께 알현을 요청하였습니다.")==envoy && parse_row(L"보고드립니다.\n^02김선^00군의 사자가\n^02조조^00님께 알현을 요청하였습니다.")==envoy,"envoy notice (50222): wrapped lines are joined, greeting and speaker name allowed, colour codes ignored");
+        check(parse_row(L"유도군의 사자가\n조조님께 알현을 요청하였습니다.")==make_row(L'E',L"유도군",L"알현 요청",L"",L"") && parse_row(L"유도군의 사자가\n뵙기를 청하고 있습니다.")==make_row(L'E',L"유도군",L"알현 요청",L"",L"") && parse_row(L"유도군의 사자가 찾아왔습니다.")==make_row(L'E',L"유도군",L"방문",L"",L"") && parse_row(L"보고드립니다.\n유도군의 사자가 방문했습니다.\n만나러 가보시지요.")==make_row(L'E',L"유도군",L"방문",L"",L""),"the other envoy variants of 50222 are rows too");
+        check(parse_row(L"유도군의 사자가 도착했습니다.").empty() && parse_row(L"보고드립니다.\n유도군의 사자가\n조조님께 알현을 요청하였습니다.\n만나보시겠습니까？").empty() && parse_row(L"어제 있었던 일을 길게 설명하는 대사\n유도군의 사자가\n조조님께 알현을 요청하였습니다.").empty(),"an envoy line with other content is never guessed into a row");
+        check(event_row([&]{Event e;e.text=L"최림, 격려의 서 발견";return e;}())==L"D\t최림\t\t격려의 서\t발견" && event_row([&]{Event e;e.text=L"최림, 격려의 서 발견";e.report=L"요약";return e;}()).empty() && event_row([&]{Event e;e.text=L"최림, 격려의 서 발견";e.row=L"D\t최림";return e;}()).empty() && event_row([&]{Event e;e.row=r1;return e;}())==r1,"an event's own row wins, a broken own row means text, a plain message is parsed");
+        // ---- one table per kind, day column, day order (user 2026-11-07) ----
+        {
+            Card mixed;mixed.kind=Kind::News;
+            auto msg=[&](unsigned day,const wchar_t *text){Event e;e.day=day;e.text=text;mixed.events.push_back(e);};
+            msg(8,L"전령\n보고드립니다.\n김선군의 사자가\n조조님께 알현을 요청하였습니다.");
+            {Event e;e.day=8;e.text=e.report=L"한기가 여궁에서 명승을 발견했습니다.";e.row=discovery_scene_row(0,L"한기",L"여궁",L"",true);mixed.events.push_back(e);}
+            msg(10,L"정욱, 양양의 탐색에 실패");msg(7,L"천시가 변했습니다.");msg(10,L"최림, 격려의 서 발견");msg(10,L"조휴부대, 병사감소에 의해 퇴각");
+            msg(3,L"채염, 교란의 서 발견");msg(10,L"조조군, 유도군의 교환요청 거부");msg(9,L"한현군, 유비군에 항복");msg(5,L"유도군의 사자가\n조조님께 알현을 요청하였습니다.");
+            msg(0,L"서서, 풍운의 서 발견");
+            const wstring tables=L"일차\t무장\t장소\t발견\t결과\n—\t서서\t—\t풍운의 서\t발견\n3일차\t채염\t—\t교란의 서\t발견\n8일차\t한기\t—\t여궁\t명품 발견\n10일차\t정욱\t양양\t—\t실패\n10일차\t최림\t—\t격려의 서\t발견\n\n"
+                L"일차\t상대\t안건\t구분\t결과\n10일차\t유도군\t교환\t조조군 응답\t거부\n\n"
+                L"일차\t세력\t내용\n5일차\t유도군\t알현 요청\n8일차\t김선군\t알현 요청\n\n"
+                L"일차\t부대\t사유\t조치\n10일차\t조휴부대\t병사감소\t퇴각\n\n";
+            check(card_body(mixed)==tables+L"• 7일차 · 천시가 변했습니다.\n\n• 9일차 · 한현군, 유비군에 항복\n\n","interleaved messages merge into one table per kind (day order, unknown day first), then the remaining text lines in arrival order");
+            check(card_body(mixed).find(L"\n\n일차\t무장")==std::wstring::npos,"no second table of a kind appears");
+            Card same;same.kind=Kind::Recruitment;
+            for(unsigned i=0;i<3;++i){Event e;e.day=2+i;e.text=L"조조, 유도의 등용에 성공";same.events.push_back(e);Event t;t.day=2+i;t.text=L"문장 소식";same.events.push_back(t);}
+            check(card_body(same)==L"일차\t실행 무장\t대상\t결과\n2일차\t조조\t유도\t성공\n3일차\t조조\t유도\t성공\n4일차\t조조\t유도\t성공\n\n• 2일차 · 문장 소식\n\n• 3일차 · 문장 소식\n\n• 4일차 · 문장 소식\n\n","text lines between rows of one kind no longer split it into one-row tables");
+            Card monthly;monthly.kind=Kind::Income;Event ie;ie.kind=Kind::Income;ie.day=10;ie.text=ie.report=income_summary(L"제1군단",{{10,L"1000"},{11,L"(+5)"},{12,L"20"},{13,L"15"},{19,L"2000"},{20,L"(+0)"},{21,L"0"},{22,L"0"},{28,L"300"},{29,L"(+0)"},{30,L"0"},{31,L"—"},{37,L"0"},{38,L"(+0)"},{39,L"0"},{40,L"—"}});monthly.events={ie};
+            check(starts_with(card_body(monthly),L"• 10일차 · 제1군단\n항목\t보유량") && card_body(monthly).find(L"일차\t항목")==std::wstring::npos,"income tables keep the per-corps caption carrying the day and get no day column");
+        }
+        check(numeric_cell(L"56,105") && numeric_cell(L"+12") && numeric_cell(L"-3,665") && numeric_cell(L"(+0)") && numeric_cell(L"(-3,665)") && numeric_cell(L"12%") && !numeric_cell(L"—") && !numeric_cell(L"") && !numeric_cell(L"+") && !numeric_cell(L",") && !numeric_cell(L"1a") && !numeric_cell(L"성공"),"numeric cell grammar");
+        std::vector<std::vector<wstring>> grid={{L"항목",L"보유",L"변동"},{L"금",L"1,200",L"(+5)"},{L"군량",L"—",L"(-30)"}};
+        check(!column_numeric(grid,0) && column_numeric(grid,1) && column_numeric(grid,2) && !column_numeric({{L"h"},{L"—"}},0) && !column_numeric(grid,7),"a column is numeric when its body cells are numbers or dashes");
+        check(cell_tone(L"+5")==1 && cell_tone(L"(-30)")==2 && cell_tone(L"(+0)")==0 && cell_tone(L"0")==0 && cell_tone(L"1,200")==0 && cell_tone(L"성공")==1 && cell_tone(L"발견 후 등용 성공")==1 && cell_tone(L"실패")==2 && cell_tone(L"거절")==2 && cell_tone(L"거부")==2 && cell_tone(L"승낙")==1 && cell_tone(L"단념")==2 && cell_tone(L"명품 발견")==0,"result words and non-zero signed numbers are toned");
+        auto total=[](const std::vector<int> &w,int gap){int t=gap*(static_cast<int>(w.size())-1);for(int v:w)t+=v;return t;};
+        auto fit=table_column_widths({100,80,60},1000,28,48,60);
+        check(fit==std::vector<int>({160,140,120}) && total(fit,28)<=1000,"columns that fit keep their content width plus equal spare room (capped)");
+        auto tight=table_column_widths({100,900,60},600,28,48,60);
+        check(tight.size()==3 && tight[0]==100 && tight[2]==60 && tight[1]>=48 && total(tight,28)<=600 && tight[1]==600-56-160,"an over-wide column shrinks first (water-filling), short columns keep their width");
+        auto even=table_column_widths({500,500,500},700,28,48,60);
+        check(even[0]==even[1] && even[1]==even[2] && total(even,28)<=700,"equally wide columns share the room equally");
+        auto hopeless=table_column_widths({500,500,500},40,28,48,60);
+        check(hopeless[0]>=48 && hopeless[1]>=48 && hopeless[2]>=48 && table_column_widths({},500,28,48,60).empty(),"degenerate widths never go below the minimum");
+    }
     printf("{\"status\":\"advisor_briefing_fixture_passed\",\"checks\":%u,\"live_game\":false}\n",checks);return 0;
 }

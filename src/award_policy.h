@@ -16,9 +16,35 @@ inline unsigned slots(unsigned ability,unsigned bonus,unsigned effect) {
 inline bool may_award(bool active,unsigned mask,int strength,int equipped) {
     return !active || (mask && mask<=8 && !(mask&(mask-1)) && strength>equipped);
 }
-inline bool may_post(bool active,bool deployed,unsigned post,unsigned capacity,unsigned previous) {
+// local17 awards_v16: post 73 is allowed for a busy officer that is not deployed; off = v15.7.1 rule.
+inline bool may_post(bool active,bool deployed,unsigned post,unsigned capacity,unsigned previous,bool release73=false) {
     if(post==73 && deployed)return false;
+    if(post==73 && release73)return true;
     return !active || capacity>=previous;
+}
+// Retreat-certain horses (item ids 1..10) go to a fixed priority list first
+// (user 2026-11-09). people is that list in priority order; horses is the
+// force's horse list: stored ones are warehouse stock, the others are held by
+// a serving officer (busy = award_active, priority = holder is on the list).
+// A stored horse wins over a held one, then the lowest item id; a held horse
+// is never taken from a priority officer or from a busy one.
+struct HorsePerson {uint16_t id;bool has_horse;bool busy;};
+struct HorseItem {uint16_t item;uint16_t holder;bool stored;bool busy;bool priority;};
+struct HorsePick {bool found;uint16_t recipient;uint16_t item;unsigned source;};
+inline HorsePick horse_pick(const std::vector<HorsePerson> &people,const std::vector<HorseItem> &horses) {
+    for(const HorsePerson &p:people) {
+        if(p.has_horse || p.busy)continue;
+        int best=-1;unsigned source=0;
+        for(unsigned i=0;i<horses.size();++i)
+            if(horses[i].stored && (best<0 || horses[i].item<horses[best].item)) {best=static_cast<int>(i);source=1;}
+        if(best<0)for(unsigned i=0;i<horses.size();++i) {
+            const HorseItem &h=horses[i];
+            if(!h.stored && !h.busy && !h.priority && h.holder!=p.id && (best<0 || h.item<horses[best].item)) {best=static_cast<int>(i);source=2;}
+        }
+        if(best<0)continue;
+        return HorsePick{true,p.id,horses[best].item,source};
+    }
+    return HorsePick{false,0,0,0};
 }
 inline std::vector<uint8_t> encode(const Inventory &inventory,const std::array<uint8_t,32> &binding) {
     std::vector<uint8_t> bytes(40+MaxItems*2);

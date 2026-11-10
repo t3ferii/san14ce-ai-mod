@@ -17,30 +17,30 @@ def ok(value, label):
 def read(rel):
     return (P / rel).read_text(encoding='utf-8-sig')
 
-overlay = (P / 'src/native_unified_overlay.inl').read_bytes()
+overlay = (P / 'src/native_unified_overlay.inl').read_bytes().replace(b'\r\n', b'\n')   # line-ending independent (checkouts may be CRLF)
 # User/Claude 2026-10-29 local49: remove only explicitly marked diagnostic blocks.
 # Keep the original preimage hash and every existing R1/R2 assertion unchanged.
 perf_blocks = re.findall(rb'(?m)^// perf-begin\n#ifndef NO_RUNTIME_LOG\n[\s\S]*?\n#endif\n// perf-end\n', overlay)
 ok(len(perf_blocks) == overlay.count(b'// perf-begin\n') == overlay.count(b'// perf-end\n'),
    'every perf marker encloses a complete NO_RUNTIME_LOG diagnostic block')
 overlay = re.sub(rb'(?m)^// perf-begin\n#ifndef NO_RUNTIME_LOG\n[\s\S]*?\n#endif\n// perf-end\n', b'', overlay)
-line = b'    terrain_render::on_device(device);\n'
-ok(overlay.count(line) == 1, 'exactly one device observer call')
-# User R2 follow-up explicitly authorizes exactly the upload and dirty gate lines.
-upload_line = b'    terrain_render::on_present(context);\n'
-gate = b' && !terrain_render::needs_present()'
-ok(overlay.count(upload_line) == 1 and overlay.count(gate) == 1, 'exactly two authorized R2 overlay changes')
-ok(line + upload_line in overlay, 'upload immediately follows device observation')
-# 사용자 결정 2026-11-03: 통합 인사 제거. The exact shared overlay hash excludes its removed officer panel.
-ok(hashlib.sha256(overlay.replace(upload_line, b'').replace(gate, b'').replace(line, b'')).hexdigest() ==
-   '762b9f37bb5e734caa4374bc3a5010f3b5070fd6d245ada66fd908810d3dda7e',
-   'shared overlay source hash matches after undoing the R1 observer and two R2 lines')
-ok(b'} else current->Release();\n' + line in overlay, 'observer follows device acquisition')
+# W4-3 (2026-11-07): the terrain observer is a subscription of the overlay service (development/module_registry.json); the generic
+# draw loop replaced the hard-coded device/upload/dirty-gate lines, so the shared overlay is pinned again without any terrain name.
+terrain_subs = [s['expr'] for s in json.loads(read('development/module_registry.json'))['subscriptions'] if s['service'] == 'overlay' and s['owner'] == 'terrain_render']
+ok(len(terrain_subs) == 1 and 'terrain_render::on_device(d);terrain_render::on_present(c);' in terrain_subs[0] and '&terrain_render::needs_present' in terrain_subs[0] and
+   'kOverlayTerrain' in terrain_subs[0] and 'services::OverlaySub{services::kOverlayPerfTerrain,services::kGateTerrain,&terrain_render::needs_present,nullptr,' in terrain_subs[0] and
+   'kOverlayContext' not in terrain_subs[0].split('[](')[0] and ',nullptr,services::kOverlayTerrain)' in terrain_subs[0],
+   'one terrain subscription: device observation, upload immediately after, dirty gate probe, no context requirement and no per-frame needs filter (as the former unconditional calls), always active')
+ok(b'terrain_render::' not in overlay, 'shared overlay source names no terrain renderer')
+ok(hashlib.sha256(overlay).hexdigest() == '264419e3a46fc1b2df68da2512ab94c83ac7b12933b4dc4ed7fee2fd9926f77f',
+   'shared overlay source hash matches (re-pinned 2026-11-07 for the overlay service loop)')
+ok(b'} else current->Release();\n    for(unsigned i=0;i<services::overlay.count;++i) {' in overlay, 'observers run right after device acquisition')
 native = read('src/native_terrain_render.inl')
 adapter = read('src/native_adapter.cpp')
 split = read('src/native_split_install.inl')
 terrain = read('src/native_terrain_edit.inl')
-ok(re.search(r'#if !defined\(SPLIT_COMBAT\)\n#include "native_terrain_render.inl"\n#endif', adapter), 'observer absent from combat compilation')
+import registry_text as R   # W5: includes come from the generated per-DLL lists
+ok(R.hosts('native_terrain_render.inl')==['convenience'], 'observer absent from combat compilation')
 ok('CreateTexture2DSlot=5' in native, 'COM ABI slot five')
 ok('InterlockedCompareExchangePointer(table+CreateTexture2DSlot' in native, 'atomic publication preserves competing owner')
 # User 2026-10-29: a forwarding game-folder proxy may own the basename;
@@ -91,12 +91,15 @@ ok('terrain_render::before_world_change();' in terrain.split('static void before
 ok('#ifndef NO_RUNTIME_LOG\nstruct TextureRecord' in native and '#ifndef NO_RUNTIME_LOG\n    if(SUCCEEDED' in native, 'release omits records and logs')
 entry = json.loads(read('development/features.json'))['modules']['terrain-edit']
 ok('terrain-render' in entry['tests'] and 'src/native_terrain_render.inl' in entry['sources'], 'feature route registered')
-ok("'terrain-render'" in read('tools/check_feature.ps1'), 'dispatcher registered')
+ok(json.loads(read('development/features.json'))['routes']['terrain-render'].get('steps'), 'route steps registered in features.json')
 # User 2026-10-29 R1b: install on the existing initialization worker, before UI.
 activate = split.split('static void split_activate() {', 1)[1]
-ok(activate.count('terrain_render::install_early();') == 1 and
-   activate.index('InterlockedExchange(&enabled,1);') < activate.index('terrain_render::install_early();') < activate.index('if(mod_features.distance)'),
-   'one early call immediately in initial convenience activation, after enabled gate')
+import registry_text as R
+ok('(terrain_render::install_early(),true)' in R.row('terrain_render_early') and R.table().count('terrain_render::install_early()') == 1 and
+   activate.count('split_run_modules();') == 1 and
+   activate.index('InterlockedExchange(&enabled,1);') < activate.index('split_run_modules();') and
+   R.index('terrain_render_early') < R.index('progress_native'),
+   'one early call immediately in initial convenience activation (first rows of the registry), after enabled gate')
 loader = read('src/module_loader.cpp')
 worker = loader.split('static DWORD WINAPI initialize_modules(LPVOID) {', 1)[1].split('BOOL WINAPI DllMain', 1)[0]
 ok('CreateThread(nullptr,0,initialize_modules' in loader and
@@ -122,7 +125,11 @@ print(json.dumps({'terrain_render_source_checks': checks, 'failed': 0}))
 
 # Every panel keeps its original independent visibility gate in draw_locked.
 text = overlay.decode('utf-8-sig')
-for condition in ['if(context && briefing_overlay::needs_draw() && bind(swap.OutputWindow))',
+briefing_subs = [s['expr'] for s in json.loads(read('development/module_registry.json'))['subscriptions'] if s['service'] == 'overlay' and s['owner'] == 'advisor_briefing']
+ok(len(briefing_subs) == 1 and 'kOverlayContext|services::kOverlayWindow' in briefing_subs[0] and '&briefing_overlay::needs_draw,&briefing_overlay::needs_draw' in briefing_subs[0],
+   'panel visibility guard preserved: the briefing subscription needs a context, a bound window and needs_draw (service loop below)')
+for condition in ['if((sub.flags&services::kOverlayContext) && !context)continue;', 'if(sub.needs && !sub.needs())continue;',
+                  'if((sub.flags&services::kOverlayWindow) && !bind(swap.OutputWindow))continue;',
                   'if(context && read_flag(&visible) && next.width>0 && next.height>0)']:
     ok(condition in text, 'panel visibility guard preserved: ' + condition)
 ok('InterlockedCompareExchange(&present_pending,0,0)' in native,
@@ -148,7 +155,7 @@ ok('context->CopySubresourceRegion(readback_texture,0,0,0,0,ctrl_texture,0,&pixe
    'context->Unmap(readback_texture,0)' in reader, 'one-pixel synchronous GPU copy/read/unmap is diagnostic only')
 ok('log_event("terrain_render_readback",hex,value,expected)' in reader and
    'if(written && cells==0)readback_locked(context,hex)' in native, 'only first uploaded cell is read and compared per frame')
-ok('ctrl_create(ctrl_device,&d,nullptr,&readback_texture)' in reader, 'staging creation bypasses wrapper lock re-entry')
+ok('native_create(ctrl_device,&d,nullptr,&readback_texture)' in reader, 'staging creation bypasses wrapper lock re-entry')
 ok('D3D11_USAGE_STAGING' in reader and 'D3D11_CPU_ACCESS_READ' in reader and
    'd.Width=d.Height=d.MipLevels=d.ArraySize=d.SampleDesc.Count=1' in reader, 'staging is one pixel, read-only CPU access')
 ok('if(readback_texture){readback_texture->Release();readback_texture=nullptr;}' in native, 'readback resource released with captured resource')

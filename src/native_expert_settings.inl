@@ -28,6 +28,28 @@ template<class T> static T expert_next(void *next,unsigned rva) {return next?rei
 static bool expert_setting_id(unsigned id) {return id==4 || id==5 || id==61 || id==62;}
 static bool expert_base_id(unsigned id) {return id==61 || id==62;}
 static unsigned expert_force_key(unsigned id) {return id==4 || id==61?4:5;}
+// User 2026-11-09: in the in-game settings view (system menu, layout mode 1)
+// only the four rows above stay editable while expert_ingame is on. An accepted
+// change also writes the live option object that combat and the game's own save
+// path use (image+GA(GA_1A49C98)); no other key and no other byte is touched.
+static bool expert_in_game(Obj layout) {return mod_features.expert_ingame && dword(layout,0x19C)==1;}
+#ifndef NO_RUNTIME_LOG
+static unsigned expert_ingame_writes;
+#endif
+static bool expert_write_ui(Obj layout,unsigned id,int value,unsigned encoded) {
+    // PW30 (user 2026-11-09): every edit changes only the view copy. 확인 copies the two option dwords to the live
+    // object (expert_ingame_commit); 뒤로 therefore leaves the live settings untouched.
+    *reinterpret_cast<unsigned *>(expert_option(layout+0x1C8,expert_force_key(id)))=encoded;
+#ifndef NO_RUNTIME_LOG
+    if(expert_in_game(layout) && expert_ingame_writes<100) {
+        ++expert_ingame_writes;
+        log_event("expert_ingame_write",id,static_cast<unsigned>(value),encoded);
+    }
+#else
+    (void)value;
+#endif
+    return true;
+}
 static const wchar_t *expert_tooltip(unsigned id) {
     switch(id) {
     case 4:return L"완전 점령 지역 1개당 공/방 증가율. 범위 0~200%.\n"
@@ -46,7 +68,7 @@ static const wchar_t *expert_tooltip(unsigned id) {
     }
 }
 static bool expert_layout_valid(Obj layout) {
-    return layout && pointer(layout,0)==image+GA(GA_141BE88);
+    return layout && pointer(layout,0)==image+GA(GA_141EF18);
 }
 static expert_combat::Settings expert_ui_settings(Obj layout,unsigned id) {
     return expert_combat::decode(dword(expert_option(layout+0x1C8,expert_force_key(id)),0));
@@ -57,8 +79,7 @@ static bool expert_ui_store(Obj layout,unsigned id,int value) {
     auto settings=expert_ui_settings(layout,id);
     if(expert_base_id(id))settings.base=static_cast<unsigned>(value);
     else {settings.region=static_cast<unsigned>(value);settings.tenth=0;}
-    *reinterpret_cast<unsigned *>(expert_option(layout+0x1C8,expert_force_key(id)))=expert_combat::encode(settings);
-    return true;
+    return expert_write_ui(layout,id,value,expert_combat::encode(settings));
 }
 static unsigned expert_ui_value(Obj layout,unsigned id) {
     auto settings=expert_ui_settings(layout,id);
@@ -68,12 +89,11 @@ static bool expert_apply_preset(Obj layout,unsigned id) {
     auto found=expert_choices.find(layout);
     if(!expert_layout_valid(layout) || (id!=4 && id!=5) || found==expert_choices.end())return false;
     int choice=found->second.selected[id-4];
-    unsigned difficulty=fn<unsigned(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_3EA400))(layout+0x1C8,43,0);
-    if(choice<0 || choice>2 || difficulty>4 || dword(layout,0x19C)!=0)return false;
+    unsigned difficulty=fn<unsigned(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_3EC920))(layout+0x1C8,43,0);
+    if(choice<0 || choice>2 || difficulty>4 || !(dword(layout,0x19C)==0 || expert_in_game(layout)))return false;
     unsigned rate=expert_combat::preset_tenths(id,difficulty,static_cast<unsigned>(choice));
     auto settings=expert_ui_settings(layout,id);settings.region=rate/10;settings.tenth=rate%10;
-    *reinterpret_cast<unsigned *>(expert_option(layout+0x1C8,id))=expert_combat::encode(settings);
-    return true;
+    return expert_write_ui(layout,id,static_cast<int>(rate),expert_combat::encode(settings));
 }
 static void expert_create_presets(Obj row,Obj pane) {
     // Create beside the numeric control while its numeric pane is being built,
@@ -86,14 +106,14 @@ static void expert_create_presets(Obj row,Obj pane) {
     // it below 112); local9's style 5 crashed on click (ADC009). 2026-10-25 user
     // decision: one standard-sized plain button (style 3, kind 0, like 5F150C)
     // cycles 소->중->대. The object is only 0x198 bytes: no radio setters (85AD20).
-    Obj button=fn<Obj(__fastcall *)(Obj,int,int,int,int,int)>(GA(GA_92E430))(pane+0x130,48,3,0,1,0);
+    Obj button=fn<Obj(__fastcall *)(Obj,int,int,int,int,int)>(GA(GA_9309C0))(pane+0x130,48,3,0,1,0);
     if(button) {
         expert_preset_panels[row].button=button;
         alignas(8) unsigned char callback[64]={};
-        *reinterpret_cast<Obj *>(callback)=image+GA(GA_1429638);
+        *reinterpret_cast<Obj *>(callback)=image+GA(GA_142C6C8);
         *reinterpret_cast<Obj *>(callback+8)=row;
         *reinterpret_cast<Obj *>(callback+56)=callback;
-        fn<void(__fastcall *)(Obj,int,Obj)>(GA(GA_1A3CB0))(button,0x7FFFFFFE,callback);
+        fn<void(__fastcall *)(Obj,int,Obj)>(GA(GA_1A4FB0))(button,0x7FFFFFFE,callback);
         // No hide here. local9 runtime: after create-hide then bind-show the
         // skin parts 1..14 stayed hidden (flag 00, standard 11) and only the
         // label drew. Rows that are not adjacency rows are hidden at bind.
@@ -101,10 +121,10 @@ static void expert_create_presets(Obj row,Obj pane) {
     log_event("expert_preset_controls_created",button?1:0,53,1);
 }
 static Obj __fastcall expert_number_factory(Obj table,int id,int style,int kind,int layer,int order) { COST_SCOPE("expert_number_factory");
-    Obj number=expert_next<Obj(__fastcall *)(Obj,int,int,int,int,int)>(next_expert_number_factory,GA(GA_92E430))(table,id,style,kind,layer,order);
+    Obj number=expert_next<Obj(__fastcall *)(Obj,int,int,int,int,int)>(next_expert_number_factory,GA(GA_9309C0))(table,id,style,kind,layer,order);
     Obj pane=table?pointer(table,0x18):nullptr;
     Obj row=pane?pointer(pane,8):nullptr;
-    if(number && id==7 && row && pointer(row,0)==image+GA(GA_141BCF8) && pointer(row,0x178)==pane)
+    if(number && id==7 && row && pointer(row,0)==image+GA(GA_141ED88) && pointer(row,0x178)==pane)
         expert_create_presets(row,pane);
     return number;
 }
@@ -117,31 +137,31 @@ static void expert_preset_controls(Obj layout,Obj row,unsigned id,Obj help,int m
     bool complete=button!=nullptr;
     const wchar_t *labels[]={L"소",L"중",L"대"};
     if(button) {
-        fn<void(__fastcall *)(Obj,int)>(GA(GA_8741D0))(button,regional?1:0);
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_876580))(button,regional?1:0);
         if(regional) {
             // Unselected on entry; each click sends the next choice 소->중->대->소.
-            fn<void(__fastcall *)(Obj,const wchar_t *)>(GA(GA_85C9C0))(button,choice>=0?labels[choice]:L"소·중·대");
+            fn<void(__fastcall *)(Obj,const wchar_t *)>(GA(GA_85ECF0))(button,choice>=0?labels[choice]:L"소·중·대");
             *reinterpret_cast<unsigned *>(button+0x80)=choice<0?0:(choice+1)%3;
             *reinterpret_cast<unsigned *>(button+0x84)=1;
             *reinterpret_cast<unsigned *>(button+0x88)=expert_choice_key+id;
             *reinterpret_cast<unsigned *>(button+0x8C)=1;
-            fn<void(__fastcall *)(Obj,int)>(GA(GA_141E0))(button,mode==0);
-            if(help)fn<void(__fastcall *)(Obj,Obj,const wchar_t *,const wchar_t *)>(GA(GA_89B1C0))(
+            fn<void(__fastcall *)(Obj,int)>(GA(GA_14140))(button,mode==0);
+            if(help)fn<void(__fastcall *)(Obj,Obj,const wchar_t *,const wchar_t *)>(GA(GA_89D3F0))(
                 help,button,L"누를 때마다 소→중→대로 바뀝니다. 표준을 누르면 현재 난이도의 인접효과를 적용합니다.",nullptr);
         }
     }
-    if(regional && standard)fn<void(__fastcall *)(Obj,int)>(GA(GA_141E0))(standard,mode==0 && complete && choice>=0);
+    if(regional && standard)fn<void(__fastcall *)(Obj,int)>(GA(GA_14140))(standard,mode==0 && complete && choice>=0);
     if(regional) {
         auto settings=expert_ui_settings(layout,id);
         if(settings.tenth && pointer(row,0x198)) {
             wchar_t text[24];swprintf_s(text,L"%u.%u",settings.region,settings.tenth);
-            fn<void(__fastcall *)(Obj,const wchar_t *)>(GA(GA_85C9C0))(pointer(row,0x198),text);
+            fn<void(__fastcall *)(Obj,const wchar_t *)>(GA(GA_85ECF0))(pointer(row,0x198),text);
         }
     }
 }
 static int __fastcall expert_number_current(Obj list,unsigned id) { COST_SCOPE("expert_expert_number_current");
     if(expert_popup_layout)return static_cast<int>(expert_ui_value(expert_popup_layout,expert_popup_id));
-    return expert_next<int(__fastcall *)(Obj,unsigned)>(next_expert_number_current,GA(GA_5BEC40))(list,id);
+    return expert_next<int(__fastcall *)(Obj,unsigned)>(next_expert_number_current,GA(GA_5C15D0))(list,id);
 }
 static void expert_project_rows(Obj layout,float scroll=-1.0f) {
     if(!enabled || !expert_layout_valid(layout) || dword(layout,0x1AC)!=1)return;
@@ -155,22 +175,35 @@ static void expert_project_rows(Obj layout,float scroll=-1.0f) {
             *reinterpret_cast<unsigned *>(rows[i].bytes)=61+i;
             *reinterpret_cast<const wchar_t **>(rows[i].bytes+0x18)=names[i];
         }
-        GameList projected;list_init(projected,GA(GA_1421570));
+        GameList projected;list_init(projected,GA(GA_1424600));
         bool complete=projected.handle!=nullptr;
         for(unsigned i=0;i<8 && complete;++i) {
             if(i==3)complete=list_add(projected,rows[0].bytes) && list_add(projected,rows[1].bytes);
             if(complete)complete=list_add(projected,layout+0xC30+i*0x60);
         }
         if(complete) {
-            fn<void(__fastcall *)(Obj,GameList *)>(GA(GA_466220))(list,&projected);
+            fn<void(__fastcall *)(Obj,GameList *)>(GA(GA_58B6F0))(list,&projected);
             *reinterpret_cast<unsigned *>(list+0x1B8)=10;
-            fn<void(__fastcall *)(Obj,float,int)>(GA(GA_875BC0))(list,scroll,1);
+            fn<void(__fastcall *)(Obj,float,int)>(GA(GA_877F70))(list,scroll,1);
         }
         list_free(projected);
     } catch(...) {log_event("expert_settings_rows_failed");}
 }
+#ifndef NO_RUNTIME_LOG
+static std::map<Obj,unsigned char> expert_ingame_views;
+#endif
 static void expert_populate_after(Obj layout) {
-    if(enabled && expert_layout_valid(layout))expert_project_rows(layout,*reinterpret_cast<float *>(layout+0x1B4));
+    if(enabled && expert_layout_valid(layout)) {
+#ifndef NO_RUNTIME_LOG
+        if(!expert_ingame_views[layout]) {
+            expert_ingame_views[layout]=1;
+            unsigned mode=dword(layout,0x19C);
+            log_event("expert_ingame_view",mode,
+                static_cast<unsigned>(mode==0 || expert_in_game(layout)?4:0),0);
+        }
+#endif
+        expert_project_rows(layout,*reinterpret_cast<float *>(layout+0x1B4));
+    }
 }
 // Split fixtures: the entry-jump relay of 6566E0 still calls this.
 static void __fastcall expert_populate(Obj layout,Obj second,Obj third,Obj fourth) { COST_SCOPE("expert_populate");
@@ -187,18 +220,18 @@ static void __fastcall expert_bind_row(Obj row,Obj source,Obj help,int preset,in
 static void __fastcall expert_list_bind(Obj list,Obj item,unsigned index) { COST_SCOPE("expert_expert_list_bind");
     Obj layout=pointer(list,0x1C0);
     if(!enabled || !expert_layout_valid(layout)) {
-        expert_next<void(__fastcall *)(Obj,Obj,unsigned)>(next_expert_list_bind,GA(GA_5B9110))(list,item,index);return;
+        expert_next<void(__fastcall *)(Obj,Obj,unsigned)>(next_expert_list_bind,GA(GA_5BBA10))(list,item,index);return;
     }
-    Obj source=fn<Obj(__fastcall *)(Obj,Obj)>(GA(GA_86B270))(list,item);
-    Obj row=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_86B6F0))(list,index);
+    Obj source=fn<Obj(__fastcall *)(Obj,Obj)>(GA(GA_86D620))(list,item);
+    Obj row=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_86DAA0))(list,index);
     if(!source || !row)return;
     using Get=unsigned(__fastcall *)(Obj,unsigned,unsigned);
     unsigned id=dword(source,0);
     *reinterpret_cast<unsigned *>(source+4)=expert_setting_id(id)?expert_ui_value(layout,id):
-        fn<Get>(GA(GA_3EA400))(layout+0x1C8,id,0);
+        fn<Get>(GA(GA_3EC920))(layout+0x1C8,id,0);
     Obj previous=expert_binding_layout;
     expert_binding_layout=layout;
-    expert_bind_row(row,source,pointer(layout,0x8C8),static_cast<int>(fn<Get>(GA(GA_3EA400))(layout+0x1C8,43,0)),
+    expert_bind_row(row,source,pointer(layout,0x8C8),static_cast<int>(fn<Get>(GA(GA_3EC920))(layout+0x1C8,43,0)),
                     static_cast<int>(dword(layout,0x19C)));
     expert_binding_layout=previous;
 }
@@ -209,8 +242,8 @@ static void __fastcall expert_bind_row(Obj row,Obj source,Obj help,int preset,in
     if(!enabled || !expert_layout_valid(layout) || !expert_setting_id(id)) {
         auto found=expert_preset_panels.find(row);
         if(found!=expert_preset_panels.end() && found->second.button)
-            fn<void(__fastcall *)(Obj,int)>(GA(GA_8741D0))(found->second.button,0);
-        fn<Bind>(GA(GA_640F20))(row,source,help,preset,mode);return;
+            fn<void(__fastcall *)(Obj,int)>(GA(GA_876580))(found->second.button,0);
+        fn<Bind>(GA(GA_643720))(row,source,help,preset,mode);return;
     }
     ExpertRow display;memcpy(display.bytes,source,0x60);
     // Native key 4 supplies 50..200 controls; key 7 supplies 0..200.
@@ -218,20 +251,23 @@ static void __fastcall expert_bind_row(Obj row,Obj source,Obj help,int preset,in
     *reinterpret_cast<unsigned *>(display.bytes)=expert_base_id(id)?4:7;
     unsigned value=expert_ui_value(layout,id);
     *reinterpret_cast<unsigned *>(display.bytes+4)=value;
+    // User 2026-11-09: in the in-game view these four rows behave exactly like
+    // the new-game dialog; every other row keeps the native read-only mode.
+    int row_mode=expert_in_game(layout)?0:mode;
     ++expert_binding_depth;
-    fn<Bind>(GA(GA_640F20))(row,display.bytes,help,preset,mode);
+    fn<Bind>(GA(GA_643720))(row,display.bytes,help,preset,row_mode);
     *reinterpret_cast<unsigned *>(row+0x220)=id;
     *reinterpret_cast<unsigned *>(row+0x224)=value;
-    fn<void(__fastcall *)(Obj,int)>(GA(GA_85C860))(pointer(row,0x190),expert_base_id(id)?100:4);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_85EB90))(pointer(row,0x190),expert_base_id(id)?100:4);
     --expert_binding_depth;
-    expert_preset_controls(layout,row,id,help,mode || dword(source,0xC)?1:0);
+    expert_preset_controls(layout,row,id,help,row_mode || dword(source,0xC)?1:0);
     if(help) {
         Obj slider=pointer(row,0x190);
         // 89B110 resolves a message ID then calls 89B1C0 with UTF-16 text.
         // Reuse that text overload for the same five native hover targets.
         for(Obj control:{pointer(slider,0x1C0),pointer(slider,0x1C8),
                          pointer(row,0x178),pointer(row,0x198),pointer(row,0x1A0)})
-            if(control)fn<void(__fastcall *)(Obj,Obj,const wchar_t *,const wchar_t *)>(GA(GA_89B1C0))(
+            if(control)fn<void(__fastcall *)(Obj,Obj,const wchar_t *,const wchar_t *)>(GA(GA_89D3F0))(
                 help,control,expert_tooltip(id),nullptr);
     }
 }
@@ -241,14 +277,14 @@ static void __fastcall expert_choice_event(Obj callback,Obj *event) { COST_SCOPE
         if(expert_binding_depth)return;
         if(data && (dword(data,0x88)==expert_choice_key+4 || dword(data,0x88)==expert_choice_key+5)) {
             unsigned id=dword(data,0x88)-expert_choice_key,choice=dword(data,0x80);
-            if(choice<=2 && dword(layout,0x19C)==0) {
+            if(choice<=2 && (dword(layout,0x19C)==0 || expert_in_game(layout))) {
                 expert_choices[layout].selected[id-4]=static_cast<int>(choice);
                 expert_project_rows(layout);
             }
             return;
         }
     }
-    expert_next<void(__fastcall *)(Obj,Obj *)>(next_expert_choice,GA(GA_65EDD0))(callback,event);
+    expert_next<void(__fastcall *)(Obj,Obj *)>(next_expert_choice,GA(GA_661470))(callback,event);
 }
 static void __fastcall expert_slider_event(Obj callback,Obj *event) { COST_SCOPE("expert_slider_event");
     Obj layout=pointer(callback,8),data=event?*event:nullptr;
@@ -258,13 +294,13 @@ static void __fastcall expert_slider_event(Obj callback,Obj *event) { COST_SCOPE
             expert_ui_store(layout,dword(data,0x88),static_cast<int>(dword(data,0x80)));return;
         }
     }
-    expert_next<void(__fastcall *)(Obj,Obj *)>(next_expert_slider,GA(GA_65E810))(callback,event);
+    expert_next<void(__fastcall *)(Obj,Obj *)>(next_expert_slider,GA(GA_660E20))(callback,event);
 }
 static void __fastcall expert_number_event(Obj callback,Obj *event,Obj third,Obj fourth) { COST_SCOPE("expert_number_event");
     Obj layout=pointer(callback,8),data=event?*event:nullptr;
     unsigned id=data?dword(data,0x88):0;
     if(!enabled || !expert_layout_valid(layout) || !expert_setting_id(id)) {
-        expert_next<void(__fastcall *)(Obj,Obj *,Obj,Obj)>(next_expert_number_event,GA(GA_65F890))(callback,event,third,fourth);return;
+        expert_next<void(__fastcall *)(Obj,Obj *,Obj,Obj)>(next_expert_number_event,GA(GA_661ED0))(callback,event,third,fourth);return;
     }
     if(static_cast<int>(dword(data,0x80))==-1000) {
         if(expert_base_id(id))expert_ui_store(layout,id,100);
@@ -278,7 +314,7 @@ static void __fastcall expert_number_event(Obj callback,Obj *event,Obj third,Obj
     *reinterpret_cast<unsigned *>(mapped+0x88)=expert_base_id(id)?4:7;
     Obj previous_layout=expert_popup_layout;unsigned previous_id=expert_popup_id;
     expert_popup_layout=layout;expert_popup_id=id;
-    fn<void(__fastcall *)(Obj,Obj,Obj,Obj)>(GA(GA_636250))(layout,mapped,third,fourth);
+    fn<void(__fastcall *)(Obj,Obj,Obj,Obj)>(GA(GA_638B00))(layout,mapped,third,fourth);
     expert_popup_layout=previous_layout;expert_popup_id=previous_id;
     *reinterpret_cast<unsigned *>(layout+0x1A4)=id;
 }
@@ -289,7 +325,7 @@ static void __fastcall expert_number_confirm(Obj callback) { COST_SCOPE("expert_
         expert_ui_store(layout,id,static_cast<int>(dword(layout,0x1A8)));
         expert_project_rows(layout);return;
     }
-    expert_next<void(__fastcall *)(Obj)>(next_expert_number_confirm,GA(GA_65E8C0))(callback);
+    expert_next<void(__fastcall *)(Obj)>(next_expert_number_confirm,GA(GA_660F00))(callback);
 }
 static void expert_release_panel(Obj row) {
     // The pane's native layout registry owns rendering and control teardown.
@@ -298,17 +334,110 @@ static void expert_release_panel(Obj row) {
 static void __fastcall expert_row_leave(Obj row,Obj context) { COST_SCOPE("expert_row_leave");
     // Native 6475C0 destroys the numeric panel, including its native children.
     expert_release_panel(row);
-    expert_next<void(__fastcall *)(Obj,Obj)>(next_expert_row_leave,GA(GA_6475C0))(row,context);
+    expert_next<void(__fastcall *)(Obj,Obj)>(next_expert_row_leave,GA(GA_649CD0))(row,context);
 }
 static Obj __fastcall expert_row_destroy(Obj row,unsigned flags) { COST_SCOPE("expert_row_destroy");
     expert_release_panel(row);
-    return expert_next<Obj(__fastcall *)(Obj,unsigned)>(next_expert_row_destroy,GA(GA_5A7450))(row,flags);
+    return expert_next<Obj(__fastcall *)(Obj,unsigned)>(next_expert_row_destroy,GA(GA_5A9A60))(row,flags);
+}
+// PW30 (user 2026-11-09): the in-game view decides with a 확인 button. Native facts: CSetUpScenarioSeniorState vtable
+// 0x141F248; slot 1 (0x141F250) = 609100 enter (builds the rows at state+0x470 and the footer at state+0x488;
+// *(u32*)(state+0x490)==1 is the in-game mode) and slot 5 (0x141F270) = 60EF50 frame (switches on the command code
+// at state+0x498; case 8 leaves the view). Inside 609100 the footer call at 609543 is 862280(footer,1,1,-1).
+// 862280(footer,id,kind,text) creates/shows a round footer button; a footer click writes the command code to
+// state+0x498 and the clicked id to footer+0x80. PW32 (user 2026-11-09): we add the native round slot
+// 862280(footer,2,0,-1), called directly (not through the redirect), and treat clicked id 2 as 확인; then we
+// copy option dwords 4 and 5 from rows+0x1C8 to the live object image+GA(GA_1A49C98) and set command 8 like 뒤로.
+static void *next_expert_ingame_build,*next_expert_ingame_frame,*next_expert_footer_add;
+static Obj expert_ingame_building;                       // state whose slot-1 enter is running
+struct ExpertIngameFooter {Obj state=nullptr;Obj footer=nullptr;};
+static ExpertIngameFooter expert_ingame_footer;
+static bool expert_ingame_installed;
+#ifndef NO_RUNTIME_LOG
+static unsigned expert_ingame_cmd_lines;
+static unsigned expert_ingame_cmd_last=~0u;
+#endif
+static bool expert_ingame_commit(Obj rows) {
+    if(!rows || !expert_layout_valid(rows))return false;
+    Obj view=rows+0x1C8;
+    unsigned v4=dword(expert_option(view,4),0),v5=dword(expert_option(view,5),0);
+    *reinterpret_cast<unsigned *>(expert_option(image+GA(GA_1A49C98),4))=v4;
+    *reinterpret_cast<unsigned *>(expert_option(image+GA(GA_1A49C98),5))=v5;
+#ifndef NO_RUNTIME_LOG
+    log_event("expert_ingame_commit",v4,v5,0);
+#endif
+    return true;
+}
+static unsigned long long __fastcall expert_ingame_build(Obj state) {
+    expert_ingame_building=state;
+    unsigned long long result=expert_next<unsigned long long(__fastcall *)(Obj)>(next_expert_ingame_build,GA(GA_609100))(state);
+    expert_ingame_building=nullptr;
+    return result;
+}
+static void __fastcall expert_footer_button(Obj footer,unsigned id,int kind,int text) {
+    expert_next<void(__fastcall *)(Obj,unsigned,int,int)>(next_expert_footer_add,GA(GA_862280))(footer,id,kind,text);
+    bool made=false;
+    Obj state=expert_ingame_building;
+    if(mod_features.expert_ingame && state && footer && footer==pointer(state,0x488) && dword(state,0x490)==1 &&
+       !(expert_ingame_footer.state==state && expert_ingame_footer.footer==footer)) {
+        fn<void(__fastcall *)(Obj,unsigned,int,int)>(GA(GA_862280))(footer,2,0,-1);
+        expert_ingame_footer={state,footer};
+        made=true;
+    }
+#ifndef NO_RUNTIME_LOG
+    log_event("expert_ingame_confirm_button",made?1u:0u,0,0);
+#else
+    (void)made;
+#endif
+}
+static void __fastcall expert_ingame_frame(Obj state,Obj second,Obj third,Obj fourth) {
+    // Forget a pair as soon as a different state frames; never dereference a forgotten state.
+    if(expert_ingame_footer.state && expert_ingame_footer.state!=state)expert_ingame_footer={};
+    if(expert_ingame_footer.state==state && state) {
+        Obj footer=expert_ingame_footer.footer;
+        unsigned command=dword(state,0x498),clicked=footer?dword(footer,0x80):0;
+        if(command) {
+#ifndef NO_RUNTIME_LOG
+            unsigned packed=(command&0xFFFFu)|(clicked<<16);
+            if(packed!=expert_ingame_cmd_last && expert_ingame_cmd_lines<200) {
+                expert_ingame_cmd_last=packed;++expert_ingame_cmd_lines;
+                log_event("expert_ingame_cmd",command,clicked,0);
+            }
+#endif
+            if(clicked==2) {
+                expert_ingame_commit(pointer(state,0x470));
+                *reinterpret_cast<unsigned *>(state+0x498)=8;
+                *reinterpret_cast<unsigned *>(footer+0x80)=0;
+                expert_ingame_footer={};
+            }
+        }
+    }
+    expert_next<void(__fastcall *)(Obj,Obj,Obj,Obj)>(next_expert_ingame_frame,GA(GA_60EF50))(state,second,third,fourth);
+}
+static bool expert_ingame_install() {
+    if(!mod_features.expert_ingame || expert_ingame_installed)return true;
+    layout_client::Transaction tx;
+    if(layout_client::vt(GA(GA_141F250),reinterpret_cast<void *>(&expert_ingame_build),
+                         reinterpret_cast<void **>(&next_expert_ingame_build))<=0 ||
+       layout_client::call(GA(GA_609543),reinterpret_cast<void *>(&expert_footer_button),
+                           reinterpret_cast<void **>(&next_expert_footer_add))<=0 ||
+       layout_client::vt(GA(GA_141F270),reinterpret_cast<void *>(&expert_ingame_frame),
+                         reinterpret_cast<void **>(&next_expert_ingame_frame))<=0) {
+        log_event("expert_ingame_register_rejected",0,0,0);return false;
+    }
+    tx.done=true;expert_ingame_installed=true;log_event("expert_ingame_registered",0,0,0);
+    return true;
 }
 static Obj __fastcall expert_destroy(Obj layout,unsigned flags) { COST_SCOPE("expert_destroy");
+    // PW30: the dialog that owns the remembered 확인 pair is going away; never keep (or dereference) it.
+    if(expert_ingame_footer.state && pointer(expert_ingame_footer.state,0x470)==layout)expert_ingame_footer={};
     // Discard borrowed pointers before native teardown of the pane registry.
     for(auto it=expert_preset_panels.begin();it!=expert_preset_panels.end();)
         if(it->second.layout==layout){Obj row=it->first;++it;expert_release_panel(row);}else ++it;
-    Obj result=expert_next<Obj(__fastcall *)(Obj,unsigned)>(next_expert_destroy,GA(GA_5A73A0))(layout,flags);
+    Obj result=expert_next<Obj(__fastcall *)(Obj,unsigned)>(next_expert_destroy,GA(GA_5A9950))(layout,flags);
     expert_rows.erase(layout);expert_choices.erase(layout);
+#ifndef NO_RUNTIME_LOG
+    expert_ingame_views.erase(layout);
+#endif
     return result;
 }

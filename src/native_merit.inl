@@ -2,6 +2,11 @@
 /* Isolated merit candidate: original eight friends stay native. No remote
  * game calls; these wrappers execute synchronously on native caller threads. */
 #include "merit_bond.h"
+// native_ui::officer_notice (shared UI call). The module include lists pull native_ui_common.inl in before this file
+// only under RECRUITMENT_UI_CANDIDATE; the merit fixture compiles without it, so provide it here.
+#if !defined(RECRUITMENT_UI_CANDIDATE)
+#include "native_ui_common.inl"
+#endif
 using MeritHas=int(__fastcall *)(Obj,Obj);
 using MeritList=unsigned(__fastcall *)(Obj,GameList *,int);
 using MeritBatch=unsigned(__fastcall *)(Obj);
@@ -49,12 +54,75 @@ static merit::Context merit_context(unsigned id,void *) {
     Obj district=table(0xE0D0,person[0xE0],51);
     if(!valid(district))return out;
     unsigned force_id=district[0x10];
-    Obj force=fn<Obj(__fastcall *)(Obj)>(GA(GA_22CA00))(person);
+    Obj force=fn<Obj(__fastcall *)(Obj)>(GA(GA_22E450))(person);
     if(force_id==0 || force_id>51 || !valid(force) || table(0xDF30,force_id,51)!=force)return out;
     out.force=force_id;out.ruler=word(force,0x10);return out;
 }
+// Extension family is derived live (never stored): father +0xB4, mother +0xB6, spouse +0xBA and sworn brothers
+// (same +0xBC value). Bounded by the world/ruler/game day so the sworn scan runs at most once per cache slot.
+static Obj merit_family_world;
+static int merit_family_day=-1;
+static std::map<unsigned,std::vector<uint16_t>> merit_family_map;
+static void merit_family_forget() {merit_family_map.clear();merit_family_world=nullptr;merit_family_day=-1;}
 static void merit_check_world() {
-    Obj current=world();if(current!=merit_world) {merit_bonds.clear();merit_world=current;}
+    Obj current=world();if(current!=merit_world) {merit_bonds.clear();merit_world=current;merit_family_forget();}
+}
+static std::vector<uint16_t> merit_family(unsigned ruler,void *) {
+    std::vector<uint16_t> result;
+    if(!friendship::valid_id(ruler))return result;
+    merit::Context ruler_context=merit_context(ruler,nullptr);
+    if(!ruler_context.alive || ruler_context.grade<3)return result;
+    int day=game_day();Obj current=world();
+    if(current!=merit_family_world || day!=merit_family_day) {
+        merit_family_map.clear();merit_family_world=current;merit_family_day=day;
+    }
+    auto found=merit_family_map.find(ruler);
+    if(found!=merit_family_map.end())return found->second;
+    Obj person=table(0x158,ruler,6000);
+    if(valid(person) && word(person,0x10)==ruler) {
+        auto add=[&](unsigned id) {
+            if(!friendship::valid_id(id) || id==ruler)return;
+            merit::Context context=merit_context(id,nullptr);
+            if(!context.alive || context.force!=ruler_context.force)return;
+            for(uint16_t existing:result)if(existing==id)return;
+            result.push_back(static_cast<uint16_t>(id));
+        };
+        add(word(person,0xB4));add(word(person,0xB6));add(word(person,0xBA));
+        unsigned sworn=word(person,0xBC);
+        if(friendship::valid_id(sworn))
+            for(unsigned id=1;id<=merit::MaxOfficer;++id) {
+                if(id==ruler)continue;
+                Obj candidate=table(0x158,id,6000);
+                if(!valid(candidate) || word(candidate,0x10)!=id || word(candidate,0xBC)!=sworn)continue;
+                add(id);
+            }
+    }
+    merit_family_map[ruler]=result;return result;
+}
+static bool merit_player_force(unsigned force_id) {
+    if(!force_id || force_id>merit::MaxForce)return false;
+    Obj force=table(0xDF30,force_id,51);
+    return valid(force) && fn<int(__fastcall *)(Obj)>(GA(GA_235150))(force)!=0;
+}
+// Person hate list: u16[8] at +0xD0 (ids, 0 = empty). Awarding friendship removes the mutual hate entries.
+static unsigned merit_clear_hate_entries(Obj person,unsigned other) {
+    uint16_t *slots=reinterpret_cast<uint16_t *>(person+0xD0);
+    unsigned kept=0,removed=0;
+    for(unsigned i=0;i<8;++i) {
+        unsigned id=slots[i];
+        if(!id)continue;
+        if(id==other) {++removed;continue;}
+        slots[kept++]=static_cast<uint16_t>(id);
+    }
+    for(unsigned i=kept;i<8;++i)slots[i]=0;
+    return removed;
+}
+static void merit_clear_hate(unsigned a,unsigned b) {
+    if(!friendship::valid_id(a) || !friendship::valid_id(b) || a==b)return;
+    Obj pa=table(0x158,a,6000),pb=table(0x158,b,6000);
+    if(!valid(pa) || word(pa,0x10)!=a || !valid(pb) || word(pb,0x10)!=b)return;
+    unsigned removed=merit_clear_hate_entries(pa,b)+merit_clear_hate_entries(pb,a);
+    if(removed)log_event("merit_hate_cleared",a,b,removed);
 }
 static bool merit_is_world_person(Obj person,unsigned id) {
     // Also safe on the native archive worker: storage identity only.
@@ -69,7 +137,7 @@ static int __fastcall merit_has(Obj person,Obj other) {
     try {
         merit_check_world();
         merit_bonds.prune_pair(word(person,0x10),word(other,0x10),merit_context,nullptr,merit_remove_native_slot);
-        found=merit_bonds.contains(word(person,0x10),word(other,0x10),merit_context,nullptr);
+        found=merit_bonds.contains_ext(word(person,0x10),word(other,0x10),merit_context,mod_features.merit_bond16?merit_family:nullptr,nullptr);
     }
     catch(...) {found=false;}
     ReleaseSRWLockExclusive(&merit_lock);return found?1:original_merit_has(person,other);
@@ -82,7 +150,7 @@ static unsigned __fastcall merit_list(Obj person,GameList *out,int templates) {
     AcquireSRWLockExclusive(&merit_lock);
     try {
         merit_check_world();merit_bonds.prune_person(word(person,0x10),merit_context,nullptr,merit_remove_native_slot);
-        ids=merit_bonds.list(word(person,0x10),merit_context,nullptr);
+        ids=merit_bonds.list_ext(word(person,0x10),merit_context,mod_features.merit_bond16?merit_family:nullptr,nullptr);
     }
     catch(...) {ReleaseSRWLockExclusive(&merit_lock);return original_merit_list(person,out,templates);}
     ReleaseSRWLockExclusive(&merit_lock);
@@ -255,11 +323,11 @@ static void __fastcall merit_dialog_toggle(Obj data,Obj event) { COST_SCOPE("mer
     if(!watch)return;
     try {
         if(merit_map_rows(data+0x198,after) && merit_dialog_enforce(before,after)) {
-            auto refresh=fn<MeritDialogRefresh>(GA(GA_781DA0));if(refresh)refresh(data);
+            auto refresh=fn<MeritDialogRefresh>(GA(GA_783F50));if(refresh)refresh(data);
         }
     } catch(...) {log_event("merit_dialog_guard_failed");}
 }
-// Native lock display (user 2026-11-06, local8; docs/INSTALL_LOCAL2_TRIAGE.md 16). The row refresh (old 8A3140 / new 8A5380, the
+// Native lock display (user 2026-11-06, local8; docs/HISTORY.md 16). The row refresh (old 8A3140 / new 8A5380, the
 // only caller) asks 6D9790 (new 6DBAA0)(dialog, person, int out[6]) for six slot states, military 0..2 then civil 3..5:
 // 0 = grey button (not selectable), 1 = selectable/picked, 2 = held, 3 = locked (lock icon row+0x218, lock text row+0x1E8 and
 // an empty disabled button; natively used for tiers above the officer's rank, text "unlock: <rank>" from 356810(slot+1)).
@@ -321,7 +389,7 @@ static void __fastcall merit_autofill(Obj data,int mode) { COST_SCOPE("merit_aut
     original_merit_autofill(data,mode);
     if(!enabled || !data)return;
     try {
-        if(merit_autofill_fix(data,mode)) {auto refresh=fn<MeritDialogRefresh>(GA(GA_781DA0));if(refresh)refresh(data);}
+        if(merit_autofill_fix(data,mode)) {auto refresh=fn<MeritDialogRefresh>(GA(GA_783F50));if(refresh)refresh(data);}
     } catch(...) {log_event("merit_autofill_guard_failed");}
 }
 static unsigned __fastcall merit_batch(Obj command) { COST_SCOPE("merit_batch");
@@ -329,7 +397,7 @@ static unsigned __fastcall merit_batch(Obj command) { COST_SCOPE("merit_batch");
     if(enabled)try {before=merit_batch_snapshot(command);merit_route_lock(before);}catch(...) {before.clear();}
     unsigned result=original_merit_batch(command);
     if(!enabled || before.empty())return result;
-    unsigned awards=0;
+    unsigned awards=0,extension_ruler=0,extension_force=0;
     AcquireSRWLockExclusive(&merit_lock);
     try {
         merit_check_world();merit_bonds.prune(merit_context,nullptr,merit_remove_native_slot);
@@ -338,11 +406,29 @@ static unsigned __fastcall merit_batch(Obj command) { COST_SCOPE("merit_batch");
             auto now=merit_context(old.id,nullptr);
             // Native can apply part of a batch before returning failure.
             // Only a real, same-force transition to military grade 3 awards.
-            if(mod_features.merit_friendship && now.force==old.force && now.ruler==old.ruler &&
-                merit_bonds.award(old.id,old.grade,merit_context,nullptr)) {merit_use_native_slot(old.id,now.ruler);++awards;}
+            if(mod_features.merit_friendship && now.force==old.force && now.ruler==old.ruler) {
+                // The ruler himself reaching stage 3 turns the extension on for this batch (local17 merit_bond16 only).
+                if(mod_features.merit_bond16 && old.id==now.ruler && old.grade<3 && now.alive && old.person[0x1C2]>=3 && now.force && !extension_ruler)
+                    {extension_ruler=now.ruler;extension_force=now.force;}
+                if(merit_bonds.award(old.id,old.grade,merit_context,nullptr)) {
+                    merit_use_native_slot(old.id,now.ruler);++awards;
+                    if(mod_features.merit_bond16) {
+                        merit_clear_hate(old.id,now.ruler);
+                        for(uint16_t member:merit_family(now.ruler,nullptr))merit_clear_hate(old.id,member);
+                    }
+                }
+            }
+        }
+        if(extension_ruler) {
+            std::vector<uint16_t> family=merit_family(extension_ruler,nullptr);
+            std::vector<uint16_t> officers=merit_bonds.list(extension_ruler,merit_context,nullptr);
+            for(uint16_t member:family)for(uint16_t officer:officers)merit_clear_hate(officer,member);
+            log_event("merit_extension_on",extension_ruler,static_cast<unsigned>(family.size()),static_cast<unsigned>(officers.size()));
         }
     } catch(...) {log_event("merit_bond_award_failed");}
     ReleaseSRWLockExclusive(&merit_lock);
+    if(extension_ruler && merit_player_force(extension_force))
+        native_ui::officer_notice(extension_ruler,L"논공친애 확장\n이제부터 논공 친애가 군주의 의형제·배우자·부·모에게도 적용됩니다.");
     if(awards)log_event("merit_bond_awarded",awards);return result;
 }
 static uint64_t __fastcall merit_join(Obj person,Obj district,Obj city,Obj event,
@@ -359,11 +445,12 @@ static uint64_t __fastcall merit_join(Obj person,Obj district,Obj city,Obj event
     return result;
 }
 // local5/local6: merit_effects() checks the 7 effect rows at world()+0x85DF0 (24-byte rows in one contiguous 7-element array that the
-// world constructor allocates identically in both builds, see docs/INSTALL_LOCAL2_TRIAGE.md 14; types and values come from the
+// world constructor allocates identically in both builds, see docs/HISTORY.md 14; types and values come from the
 // scenario/save archive, never from code). Fixed by structure: row pointers contiguous, one vtable, +8 == 0, types 0,1,1,S,2,2,3,
 // rows 0 and 4..6 values 0,1,1,1. S (row 3 = stage 3 military effect) tells the shape:
 //   shape A (S == 1, troops; old build and old saves) : row 3 value 1000 (original) or 0 (changed by this mod)
-//   shape B (S in merit_new_stage3_types, value 1)     : patch 25953386 stage 3 = city administration level +1, never rewritten
+//   shape B (S in merit_new_stage3_types)              : patch 25953386 stage 3 = city administration level +1;
+//                                                        value 1 original, 0 while merit_friendship is on
 // Rows 1..2 (stage 1/2 troops) are set to the chosen troops (merit_troops_level) in both shapes; accepted current values are the
 // original 500, the patched 1000 and any selectable value (older saves keep earlier choices). Row 3 of shape A follows
 // merit_friendship: on = 0 troops (friendship replaces it), off = 1000 (original). Failing step (merit_effect_reject_step):
@@ -371,7 +458,8 @@ static uint64_t __fastcall merit_join(Obj person,Obj district,Obj city,Obj event
 // 3 row 1..3 value not a known table, 4 row 0 / 4..6 value. Diagnostic builds dump all 7 rows once on rejection.
 static constexpr unsigned merit_troops_choices[]={1500,2000,2500,3000};
 static constexpr unsigned merit_new_stage3_types[]={2,3};
-static volatile LONG merit_effect_reject_step=0,merit_effect_reject_index=0,merit_effect_applied_logged=0,merit_effect_new_original=0;
+static volatile LONG merit_effect_reject_step=0,merit_effect_reject_index=0,merit_effect_applied_logged=0,merit_effect_new_original=0,
+    merit_effect_stage3_logged=0;
 static bool merit_effect_reject(unsigned step,unsigned index) {
     InterlockedExchange(&merit_effect_reject_step,step);InterlockedExchange(&merit_effect_reject_index,index);return false;
 }
@@ -418,27 +506,67 @@ static unsigned merit_effect_state() {
     const bool shape_a=records[3][0x10]==1;
     const unsigned stage3=word(records[3],0x12);
     if(!merit_troops_known(word(records[1],0x12)) || !merit_troops_known(word(records[2],0x12)) ||
-        (shape_a?(stage3!=1000 && stage3!=0):stage3!=1))return fail(3,word(records[1],0x12));
+        (shape_a?(stage3!=1000 && stage3!=0):(stage3!=0 && stage3!=1)))return fail(3,word(records[1],0x12));
     if(word(records[0],0x12)!=0 ||
         word(records[4],0x12)!=1 || word(records[5],0x12)!=1 || word(records[6],0x12)!=1)return fail(4,0);
     const unsigned troops=merit_troops_choices[(mod_features.merit_troops_level-1)&3];
-    const unsigned want3=mod_features.merit_friendship?0u:1000u;
+    const unsigned want3=shape_a?(mod_features.merit_friendship?0u:1000u):(mod_features.merit_bond16 && mod_features.merit_friendship?0u:1u);
     *reinterpret_cast<uint16_t *>(records[1]+0x12)=static_cast<uint16_t>(troops);
     *reinterpret_cast<uint16_t *>(records[2]+0x12)=static_cast<uint16_t>(troops);
-    if(shape_a)*reinterpret_cast<uint16_t *>(records[3]+0x12)=static_cast<uint16_t>(want3);
+    *reinterpret_cast<uint16_t *>(records[3]+0x12)=static_cast<uint16_t>(want3);
     if(!shape_a && !InterlockedExchange(&merit_effect_new_original,1))
         log_event("merit_effect_table_new_original",records[3][0x10],stage3,troops);
+#ifndef NO_RUNTIME_LOG
+    if(!InterlockedExchange(&merit_effect_stage3_logged,1))
+        log_event("merit_effect_stage3_set",records[3][0x10],stage3,want3);
+#endif
     if(!InterlockedExchange(&merit_effect_applied_logged,1))
         log_event("merit_effect_table_applied",shape_a?1:2,troops,mod_features.merit_friendship?1:0);
     return shape_a?1:2;
 }
-static bool merit_effects() {return merit_effect_state()!=0;}
+// local24 (user 2026-11-10 lag analysis: merit_query ran 7.7M times in 95 s, 7% of each day's stall).
+// merit_effect_state() re-validated and re-wrote all 7 rows on every query. Once a validation succeeded, a
+// later query reuses its result while the same world, the same row pointers, the same stage-3 type and the
+// already-written row 1..3 values are still in place and the switches are unchanged; anything else (load,
+// new world, option change, a value the save rewrote) runs the full validation again. Same values written,
+// same once-only logs; only the repeated checks are skipped.
+struct MeritEffectCache {Obj world,rows;unsigned config,state;uint16_t troops,stage3;unsigned char type3;};
+static MeritEffectCache merit_effect_cache{};
+static unsigned merit_effect_config() {
+    return (mod_features.merit_troops_level&0xFFu)|(mod_features.merit_friendship?0x100u:0u)|(mod_features.merit_bond16?0x200u:0u);
+}
+static bool merit_effect_cached_locked(Obj current,unsigned config) {
+    const MeritEffectCache &c=merit_effect_cache;
+    if(!c.state || !current || c.world!=current || c.config!=config)return false;
+    Obj rows=pointer(current,0x85DF0);
+    if(!rows || rows!=c.rows)return false;
+    for(unsigned i=1;i<7;++i)if(pointer(current,0x85DF0+i*8)!=rows+i*24)return false;
+    return rows[3*24+0x10]==c.type3 && word(rows+24,0x12)==c.troops && word(rows+48,0x12)==c.troops &&
+        word(rows+72,0x12)==c.stage3 && word(rows,0x12)==0 && word(rows+96,0x12)==1 && word(rows+120,0x12)==1 &&
+        word(rows+144,0x12)==1;
+}
+static unsigned merit_effect_state_cached() {
+    Obj current=world();const unsigned config=merit_effect_config();
+    AcquireSRWLockShared(&merit_effect_lock);
+    const bool hit=merit_effect_cached_locked(current,config);const unsigned cached=merit_effect_cache.state;
+    ReleaseSRWLockShared(&merit_effect_lock);
+    if(hit)return cached;
+    AcquireSRWLockExclusive(&merit_effect_lock);
+    const unsigned state=merit_effect_state();
+    merit_effect_cache={};
+    if(state && current==world()) {
+        Obj rows=pointer(current,0x85DF0);
+        merit_effect_cache={current,rows,config,state,word(rows+24,0x12),word(rows+72,0x12),rows[3*24+0x10]};
+    }
+    ReleaseSRWLockExclusive(&merit_effect_lock);
+    return state;
+}
+[[maybe_unused]] static bool merit_effects() {return merit_effect_state()!=0;}
 static uint64_t __fastcall merit_query(Obj person,unsigned effect) {
     COST_SCOPE("merit_query");
     if(enabled && person && person[0x1C2] && person[0x1C3])merit_dual_note(person);
     if(enabled) {
-        AcquireSRWLockExclusive(&merit_effect_lock);unsigned state=merit_effect_state();
-        ReleaseSRWLockExclusive(&merit_effect_lock);
+        unsigned state=merit_effect_state_cached();
         if(!state) {static volatile LONG warned;if(!InterlockedExchange(&warned,1))log_event("merit_effect_table_rejected",merit_effect_reject_step,merit_effect_reject_index);}
     }
     uint64_t result;
@@ -453,8 +581,10 @@ static uint64_t __fastcall merit_query(Obj person,unsigned effect) {
 static const wchar_t *__fastcall merit_effect_text(int stage) { COST_SCOPE("merit_effect_text");
     unsigned state=0;
     if(enabled) {
-        AcquireSRWLockExclusive(&merit_effect_lock);state=merit_effect_state();ReleaseSRWLockExclusive(&merit_effect_lock);
+        state=merit_effect_state_cached();
     }
+    if(state && stage==3 && mod_features.merit_friendship && mod_features.merit_bond16)
+        return L"논공친애";
     if(state && stage==3 && mod_features.merit_friendship) {
         if(state==1)return L"군주와 상호 친애";   // shape A: the troops effect is replaced
         // shape B: native "city administration level +1" stays, friendship is added to it.
@@ -476,7 +606,7 @@ static unsigned char __fastcall merit_person_read(Obj person,Obj archive) { COST
     unsigned old=word(person,0x10);bool reading=dword(archive,0x20)==1;
     bool old_owned=enabled && reading && merit_is_world_person(person,old);
     using Read=unsigned char(__fastcall *)(Obj,Obj);
-    unsigned char result=next_or<Read>(next_merit_person_read,GA(GA_2390B0))(person,archive);
+    unsigned char result=next_or<Read>(next_merit_person_read,GA(GA_23AA60))(person,archive);
     if(enabled && reading && result) {
         unsigned id=word(person,0x10);bool new_owned=merit_is_world_person(person,id);
         if(new_owned && person[0x1C2] && person[0x1C3])merit_dual_note(person);
@@ -489,18 +619,18 @@ static unsigned char __fastcall merit_person_read(Obj person,Obj archive) { COST
     return result;
 }
 #include "native_merit_scroll.inl"
-static void __fastcall merit_profile(Obj profile,Obj person) { COST_SCOPE("merit_profile");
-    for(auto &state:merit_scrolls)if(state.profile==profile)state.visible=false;
+static void __fastcall merit_profile(Obj screen,Obj person) { COST_SCOPE("merit_profile");
+    for(auto &state:merit_scrolls)if(state.screen==screen)state.visible=false;
     merit_scroll_reset_input();
     // Render the eight ordinary native friends with their original slots.
     // Gameplay enumeration outside this scope still includes merit bonds.
     struct ProfileScope {ProfileScope(){++in_merit_profile;}~ProfileScope(){--in_merit_profile;}};
-    {ProfileScope scope;next_or<void(__fastcall *)(Obj,Obj)>(next_merit_profile,GA(GA_908820))(profile,person);}
+    {ProfileScope scope;next_or<void(__fastcall *)(Obj,Obj)>(next_merit_profile,GA(GA_90ACC0))(screen,person);}
     if(!enabled || !mod_features.merit_friendship || !valid(person) || person[0xE6]==7 || person[0xE6]==9)return;
     try {
         // Match the native biography visibility predicates.
-        if(fn<int(__fastcall *)(Obj)>(GA(GA_2323D0))(person) || fn<int(__fastcall *)(Obj)>(GA(GA_232400))(person))return;
-        const wchar_t *original=fn<const wchar_t *(__fastcall *)(unsigned)>(GA(GA_30C020))(word(person,0x10));
+        if(fn<int(__fastcall *)(Obj)>(GA(GA_233D70))(person) || fn<int(__fastcall *)(Obj)>(GA(GA_233DA0))(person))return;
+        const wchar_t *original=fn<const wchar_t *(__fastcall *)(unsigned)>(GA(GA_30E0B0))(word(person,0x10));
         if(!original)return;
         // Native 930E30 has a bounded stack text buffer. Keep the complete
         // biography intact in UI state and render bounded scrolling pages.
@@ -509,7 +639,7 @@ static void __fastcall merit_profile(Obj profile,Obj person) { COST_SCOPE("merit
         AcquireSRWLockExclusive(&merit_lock);
         try {
             merit_check_world();merit_bonds.prune_person(word(person,0x10),merit_context,nullptr);
-            ids=merit_bonds.list(word(person,0x10),merit_context,nullptr);
+            ids=merit_bonds.list_ext(word(person,0x10),merit_context,mod_features.merit_bond16?merit_family:nullptr,nullptr);
         } catch(...) {ReleaseSRWLockExclusive(&merit_lock);throw;}
         ReleaseSRWLockExclusive(&merit_lock);
         std::wstring label=L"논공 친애: ";
@@ -517,7 +647,7 @@ static void __fastcall merit_profile(Obj profile,Obj person) { COST_SCOPE("merit
         unsigned displayed=0;
         for(unsigned id:ids) {
             Obj other=table(0x158,id,6000);if(!valid(other))continue;
-            const wchar_t *name=fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_22EEC0))(other);
+            const wchar_t *name=fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_230950))(other);
             if(!name)continue;
             size_t n=wcsnlen(name,64);if(n==64)continue;
             // Bounded text, with explicit total when an unusually large
@@ -528,10 +658,10 @@ static void __fastcall merit_profile(Obj profile,Obj person) { COST_SCOPE("merit
         if(displayed<ids.size())label+=L" 외 "+std::to_wstring(ids.size()-displayed)+L"명";
         if(ids.size()>1)label+=L" (총 "+std::to_wstring(ids.size())+L"명)";
         label+=L"\n\n";label+=biography;
-        auto key_fn=*reinterpret_cast<unsigned(__fastcall **)(Obj,unsigned)>(pointer(profile,0)+0x198);
-        unsigned key=key_fn(profile,0x30);Obj graph=profile+0x130;
+        auto key_fn=*reinterpret_cast<unsigned(__fastcall **)(Obj,unsigned)>(pointer(screen,0)+0x198);
+        unsigned key=key_fn(screen,0x30);Obj graph=screen+0x130;
         if(key>=dword(graph,0x10) || !pointer(graph,8) || !pointer(pointer(graph,8),key*8))return;
         // Native 930D20 copies into the descriptor and live text widget.
-        merit_scroll_set(profile,key,label);
+        merit_scroll_set(screen,key,label);
     } catch(...) {log_event("merit_profile_label_failed");}
 }

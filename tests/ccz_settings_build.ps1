@@ -15,7 +15,7 @@ try {
             $taskExe="ccz_settings_$taskMode.exe"
             & cl.exe @taskFlags (Join-Path $PSScriptRoot 'ccz_settings_fixture.cpp') "/Fe$taskExe" /link kernel32.lib user32.lib gdi32.lib d3d11.lib dxguid.lib
             if($LASTEXITCODE -ne 0){throw "CCZ $taskMode fixture build failed"}
-            & ".\$taskExe" (Join-Path $taskProject 'legacy/FogMod_Source/native_game_analysis/running_code_text.bin') (Join-Path (Get-Location) "ccz_settings_$taskMode.ini") (Join-Path (Get-Location) "ccz_settings_$taskMode.bmp")
+            & ".\$taskExe" (Join-Path $taskProject 'build/ui_native_analysis/fixture/1a4a447d_text.bin') (Join-Path (Get-Location) "ccz_settings_$taskMode.ini") (Join-Path (Get-Location) "ccz_settings_$taskMode.bmp")
             if($LASTEXITCODE -ne 0){throw "CCZ $taskMode fixture failed"}
 
         }

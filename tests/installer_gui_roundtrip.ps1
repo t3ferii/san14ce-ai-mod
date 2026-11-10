@@ -168,7 +168,7 @@ Check (-not $taskEffective.Invoke($taskForm.psobject.BaseObject,[object[]]@($tas
 $taskShow=$taskForm.GetType().GetMethod('ShowTab',$taskFlags)
 $taskForm.GetType().GetMethod('LoadValues',$taskFlags).Invoke($taskForm.psobject.BaseObject,$null)
 $taskIndex=0
-foreach($tab in @('전투','편의성','성능','게임성','조조전','기타(개발용)','출처','업데이트','작업 기록')){
+foreach($tab in @('게임렉제거(성능)','전투','편의성','게임성','조조전','기타(개발용)','출처','업데이트','작업 기록')){
     $taskShow.Invoke($taskForm.psobject.BaseObject,[object[]]@($tab.psobject.BaseObject));[Windows.Forms.Application]::DoEvents()
     $taskBitmap=New-Object Drawing.Bitmap $taskForm.Width,$taskForm.Height
     $taskForm.DrawToBitmap($taskBitmap,(New-Object Drawing.Rectangle 0,0,$taskForm.Width,$taskForm.Height))

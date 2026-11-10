@@ -2,18 +2,18 @@
 // Actual hostile castle damage locks a castle attack. A rallied cohort
 // stationary for thirty days locks its shared formation advance.
 #include "game_addresses.h"
-static Obj campaign_assault_goal(unsigned city) {
+static Obj campaign_assault_goal(unsigned city) { COST_SCOPE("campaign_assault:campaign_assault_goal");
     if(!city || city>61)return nullptr;
-    Obj goal=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32C130))(world(),city);
+    Obj goal=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32E3B0))(world(),city);
     return valid(goal) && word(goal,0x4E)==city?goal:nullptr;
 }
-static bool campaign_assault_hostile(Obj army,unsigned city) {
-    Obj goal=campaign_assault_goal(city),force=goal?fn<Obj(__fastcall *)(Obj)>(GA(GA_22C990))(goal):nullptr;
+static bool campaign_assault_hostile(Obj army,unsigned city) { COST_SCOPE("campaign_assault:campaign_assault_hostile");
+    Obj goal=campaign_assault_goal(city),force=goal?fn<Obj(__fastcall *)(Obj)>(GA(GA_22E3E0))(goal):nullptr;
     if(!valid(force))return false;
     unsigned owner=(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(force,0)+0x60))(force);
-    return fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(army_force(army),owner)!=0;
+    return fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(army_force(army),owner)!=0;
 }
-static bool campaign_commit_castle(Obj army,Progress &p,unsigned city,unsigned reason) {
+static bool campaign_commit_castle(Obj army,Progress &p,unsigned city,unsigned reason) { COST_SCOPE("campaign_assault:campaign_commit_castle");
     if(!campaign_controlled(army) || word(army,0x16)<1000 || p.forced_return || p.returning || !campaign_assault_hostile(army,city))return false;
     p.forced_siege_city=static_cast<unsigned short>(city);p.forced_siege_reason=static_cast<unsigned char>(reason);
     p.city=p.siege_city=p.combat_city=static_cast<unsigned short>(city);p.campaign=true;
@@ -32,17 +32,17 @@ static bool campaign_commit_castle(Obj army,Progress &p,unsigned city,unsigned r
     // Skip reissuing an already correct order; the native path owns travel.
     unsigned action=city<=51?4:5,kind=city<=51?5:6;
     if(army[0x37]!=action || army[0x38]!=kind || word(army,0x3A)!=city) {
-        fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
-        fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(army,static_cast<int>(action));
-        fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(army,static_cast<int>(kind),static_cast<int>(city));
-        fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);
+        fn<void(__fastcall *)(Obj)>(GA(GA_A3370))(army);
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_2ECEA0))(army,static_cast<int>(action));
+        fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2ECF00))(army,static_cast<int>(kind),static_cast<int>(city));
+        fn<void(__fastcall *)(Obj)>(GA(GA_26E260))(army);
     }
 #ifdef SORTIE_FORMATION
     AcquireSRWLockExclusive(&sortie_state_lock);sortie_escorts[army_id(army)]={};ReleaseSRWLockExclusive(&sortie_state_lock);
 #endif
     return true;
 }
-static void campaign_prepare_group_march(Obj a,Progress &m,unsigned city) {
+static void campaign_prepare_group_march(Obj a,Progress &m,unsigned city) { COST_SCOPE("campaign_assault:campaign_prepare_group_march");
     bool was_building=m.facility || a[0x37]==8 || a[0x37]==9;
     m.city=m.forced_siege_city=static_cast<unsigned short>(city);m.forced_siege_reason=3;
     m.campaign=true;m.siege_city=0;m.combat_city=0;m.combat_target=0;
@@ -54,15 +54,15 @@ static void campaign_prepare_group_march(Obj a,Progress &m,unsigned city) {
     // cancelling construction. Its current tile is always a real destination.
     if(was_building) {
         unsigned here=word(a,0x2A);
-        fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(a);
-        fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(a,1);
-        fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(a,9,static_cast<int>(here));
-        fn<void(__fastcall *)(Obj,int,unsigned)>(GA(GA_2EE1E0))(a,0,here);
+        fn<void(__fastcall *)(Obj)>(GA(GA_A3370))(a);
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_2ECEA0))(a,1);
+        fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2ECF00))(a,9,static_cast<int>(here));
+        fn<void(__fastcall *)(Obj,int,unsigned)>(GA(GA_2F05A0))(a,0,here);
     }
     Obj group=table(0x7F8D8,word(a,0x58),500);
     if(valid(group)) {*reinterpret_cast<unsigned short *>(group+0x14)=10;*reinterpret_cast<unsigned short *>(group+0x16)=static_cast<unsigned short>(city);}
 }
-static bool campaign_forced_siege_priority(Obj army,Progress &p) {
+static bool campaign_forced_siege_priority(Obj army,Progress &p) { COST_SCOPE("campaign_assault:campaign_forced_siege_priority");
     if(native_search_depth || !campaign_controlled(army) || word(army,0x16)<1000 || p.forced_return || p.returning)return false;
     const CampaignHit &hit=campaign_hits[army_id(army)];
     bool castle_hit=hit.present && hit.root==world() && hit.victim==army && hit.commander==word(army,0x12) && hit.force==army_force(army) &&

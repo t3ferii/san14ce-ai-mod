@@ -31,6 +31,9 @@ static void log_event(const char *name,unsigned a=0,unsigned b=0,unsigned c=0) {
 static int today=10;
 static int game_day() {return today;}
 #define SPLIT_BASE
+// instrumentation is supplied by the adapter in production
+#define COST_SCOPE(name) do {} while(0)
+#define COST_SCOPE_HOT(name) do {} while(0)
 #include "../src/native_path_count.inl"
 static unsigned checks;
 static void check(bool yes,const char *why) {++checks;if(!yes) {fprintf(stderr,"FAIL %s\n",why);exit(1);}}

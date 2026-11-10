@@ -1,14 +1,14 @@
 // [diagnostics] cost_profile only (2026-10-25, user: 0-day wait after 전략중 in 영웅난무). Times the
 // original face setter 1B91E0(face node, person) at each of its 7 direct call sites; results go to the
 // function_cost CSV as face_1B91E0_<site> (calls, total, max per 1 s window). No behaviour change.
-// Evidence (REA carrier REA_Analysis/turnstart_20261025, unpacked 1fbe6be7...): 1B91E0 sets five face
+// Evidence (REA carrier REA_Analysis/turnstart_20261025, (근거: 1a4a447d 이전 기록, docs/HISTORY.md)): 1B91E0 sets five face
 // images (sizes 7/0x10/0x18/0x1E/0x20) through 9307B0; CPU samples of the 0-day wait put ~0.9 s of
 // 4.7 s in its 9307B0->930840->872170->8A6DE0->8AB113 path. Army flag panels reach it via 1B3523.
 // Sites (caller): 1990EF/199203 (198FA0), 199727 (1995E0), 19A0A1/19A0C1 (19A080), 1A95CB (1A957D
 // chunk), 1B3523 (1B3450). Args: RCX, RDX only (1B91E0 prologue); callers ignore RAX.
 #include "game_addresses.h"
 namespace face_timing {
-static const unsigned kFace=GA(GA_1B91E0),kSites[7]={GA(GA_1990EF),GA(GA_199203),GA(GA_199727),GA(GA_19A0A1),GA(GA_19A0C1),GA(GA_1A95CB),GA(GA_1B3523)};
+static const unsigned kFace=GA(GA_1BA4E0),kSites[7]={GA(GA_19A3BF),GA(GA_19A4D3),GA(GA_19A9F7),GA(GA_19B371),GA(GA_19B391),GA(GA_1AA8CB),GA(GA_1B4823)};
 using Face=void(__fastcall *)(Obj,Obj);
 static void __fastcall s0(Obj f,Obj p) {COST_SCOPE("face_1B91E0_1990EF");fn<Face>(kFace)(f,p);}
 static void __fastcall s1(Obj f,Obj p) {COST_SCOPE("face_1B91E0_199203");fn<Face>(kFace)(f,p);}

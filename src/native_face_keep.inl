@@ -1,5 +1,5 @@
 // [performance] face_keep (2026-10-25, user request): army flag commander faces stay loaded.
-// Evidence (REA carriers REA_Analysis/facepipe_20261025 + facekeep_20261025, unpacked 1fbe6be7...,
+// Evidence (REA carriers REA_Analysis/facepipe_20261025 + facekeep_20261025, (근거: 1a4a447d 이전 기록, docs/HISTORY.md),
 // measurements in data/diagnostics/turn_start_wait_20261025.md): the army flag panel (1B3450) sets the
 // commander face at CALL 1B91E0(face node, person) 1B3523. 1B91E0 reads person+A6 (face) and sets five
 // nodes through 9307B0 -> 930840, which takes resource id 8A83A0(manager 27D4390, kind 10, face) and
@@ -10,7 +10,10 @@
 // 8A6DE0, once per id, at most face_keep_core::kMax (256). User decision 2026-10-25 after another PC's
 // ~10-turn crash report (cause unknown): retain 256, replace LRU pins and trim under RAM pressure.
 // Frequently used commanders keep the no-reload benefit. A new manager/count array starts over.
-// UI thread only (the original caller). Owns CALL 1B3523 (face_timing skips that site when on).
+// Original UI callers only. Owns CALL 1B3523 (face_timing skips that site when on).
+// U35 local29: selection/strategy kind-10 portraits use 85AE70, not 1BA4E0. Four
+// CALL sites are owned by Layout's face_keep_portrait; after next returns they
+// reuse the SAME Pins/Memory/Pending policy (no new pool or larger memory cap).
 // [performance] face_prefetch (2026-10-25, user request; REA carrier REA_Analysis/faceasync_20261025):
 // a new face costs one frame (face_set: 16.7 ms median) because 8AAD70 waits for its job at CALL 14D90
 // 8AB11B (+ Sleep(0)/14D90 loop to 8AB13D). At the start of each frame of CAppearArmyState (appear_batch)
@@ -25,14 +28,16 @@
 #include <psapi.h>
 #endif
 namespace face_keep {
-static const unsigned kSite=GA(GA_1B3523),kFace=GA(GA_1B91E0),kAdd=GA(GA_8A6DE0),kId=GA(GA_8A83A0),kRelease=GA(GA_8A7EA0),kManager=GA(GA_27D4390);
-static const unsigned long long kFaceHash=GH(0x48b0735f99258031ull),kAddHash=GH(0x0aeca3e5d3d8f863ull),
-    kIdHash=GH(0x3f79d63ec71cc249ull),kReleaseHash=GH(0xe9fe6c32e37f87d3ull);
+static const unsigned kSite=GA(GA_1B4823),kFace=GA(GA_1BA4E0),kAdd=GA(GA_8A8FA0),kId=GA(GA_8AA550),kRelease=GA(GA_8AA060),kManager=GA(GA_27D73E0);
+static const unsigned long long kFaceHash=GH(0x6b1db9c92b0cdc98ull),kAddHash=GH(0x8426e179f2662066ull),
+    kIdHash=GH(0x0449197367e41a32ull),kReleaseHash=GH(0xe7c500e45bae6e66ull);
 static const int kFaceKind=10;
+static const unsigned kPortrait=GA(GA_85AE70);
+static const unsigned long long kPortraitHash=GH(0xacca596ac9555f86ull);
 using Face=void(__fastcall *)(Obj,Obj);
 static face_keep_core::Pins pins;   // UI thread only
-static const unsigned kPumpSite=GA(GA_8AB11B),kPump=GA(GA_14D90),kLoad=GA(GA_8AAD70),kPersons=GA(GA_277DF18);
-static const unsigned long long kLoadHash=GH(0x9ddcb888371c8c54ull);   // 8AAD70..8AB216 with its chunks
+static const unsigned kPumpSite=GA(GA_8AD2CB),kPump=GA(GA_14CF0),kLoad=GA(GA_8ACF20),kPersons=GA(GA_2780F60);
+static const unsigned long long kLoadHash=GH(0x796391e81f9b4925ull);   // 8AAD70..8AB216 with its chunks
 static constexpr long long kPrefetchUs=6000;   // request time per frame (part of the appear budget)
 using Pump=unsigned long long(__fastcall *)(Obj,unsigned long long,Obj);
 static face_keep_core::Pending pending;      // UI thread only
@@ -113,7 +118,7 @@ static void log_memory() {
 static LONGLONG clock_hz;
 #endif
 static int face_id(Obj manager,Obj person) {
-    if(!manager || !person || !fn<int(__fastcall *)(Obj)>(GA(GA_32F500))(person))return 0;   // as 1B91E0
+    if(!manager || !person || !fn<int(__fastcall *)(Obj)>(GA(GA_331780))(person))return 0;   // as 1B91E0
     const int face=static_cast<int>(*reinterpret_cast<unsigned short *>(person+0xA6));
     return fn<int(__fastcall *)(Obj,int,int)>(kId)(manager,kFaceKind,face);   // table lookup only
 }
@@ -155,6 +160,36 @@ static void finish_request(Obj manager,int id) {
     QueryPerformanceCounter(&b);
     log_event("face_prefetch_wait",static_cast<unsigned>(id),static_cast<unsigned>((b.QuadPart-a.QuadPart)*1000000/(prefetch_hz?prefetch_hz:1)));
 }
+static void retain_loaded(Obj manager,int id) {
+    if(!mod_features.face_keep || !id)return;
+    const void *table=nullptr;const int *refs=count_of(manager,id,&table);
+    if(!prepare_pin(manager,table,id,refs?*refs:0,false))return;
+    fn<void(__fastcall *)(Obj,int)>(kAdd)(manager,id);   // count > 0: reference only, no load
+    face_keep_core::add_pin(pins,id);
+#ifndef NO_RUNTIME_LOG
+    if(pins.count%32==1)log_memory();
+#endif
+}
+static Face next_portrait[4];
+template<unsigned I> static void __fastcall portrait(Obj node,Obj person) { COST_SCOPE("face_keep::portrait");
+    face_keep_core::set_then_retain(next_pick(next_portrait[I],kPortrait),[](Obj who) {
+        if(!mod_features.face_keep)return;
+        Obj manager=pointer(image,kManager);
+        retain_loaded(manager,face_id(manager,who));
+    },node,person);
+}
+static bool portrait_guards_match() {return fingerprint(kPortrait,0x74)==kPortraitHash;}
+static bool install_portraits() {
+    if(!portrait_guards_match()){log_event("face_keep_portrait_guard_rejected");return false;}
+    layout_client::Transaction tx;
+    if(!layout_client::call(GA(GA_892234),reinterpret_cast<void *>(&portrait<0>),reinterpret_cast<void **>(&next_portrait[0])) ||
+       !layout_client::call(GA(GA_670AF1),reinterpret_cast<void *>(&portrait<1>),reinterpret_cast<void **>(&next_portrait[1])) ||
+       !layout_client::call(GA(GA_670B53),reinterpret_cast<void *>(&portrait<2>),reinterpret_cast<void **>(&next_portrait[2])) ||
+       !layout_client::call(GA(GA_670BA2),reinterpret_cast<void *>(&portrait<3>),reinterpret_cast<void **>(&next_portrait[3]))) {
+        log_event("face_keep_portrait_register_rejected");return false;
+    }
+    tx.done=true;log_event("face_keep_portrait_registered",4,0,0);return true;
+}
 static void __fastcall set_face(Obj node,Obj person) { COST_SCOPE("face_1B91E0_1B3523");
     Obj manager=pointer(image,kManager);
     const int id=face_id(manager,person);
@@ -174,14 +209,7 @@ static void __fastcall set_face(Obj node,Obj person) { COST_SCOPE("face_1B91E0_1
                   static_cast<unsigned>(GetTickCount64()));
     }
 #endif
-    if(!mod_features.face_keep || !valid)return;
-    const void *table=nullptr;const int *refs=count_of(manager,id,&table);
-    if(!prepare_pin(manager,table,id,refs?*refs:0,false))return;
-    fn<void(__fastcall *)(Obj,int)>(kAdd)(manager,id);   // count > 0: reference only, no load
-    face_keep_core::add_pin(pins,id);
-#ifndef NO_RUNTIME_LOG
-    if(pins.count%32==1)log_memory();
-#endif
+    retain_loaded(manager,id);
 }
 static CallLink link,pump_link;
 static bool installed;
@@ -197,11 +225,12 @@ static bool install() {
        !FlushInstructionCache(GetCurrentProcess(),relay,16)) {VirtualFree(relay,0,MEM_RELEASE);log_event("face_keep_prepare_rejected");return false;}
     if(!call_publish(link)) {log_event("face_keep_publish_rejected");return false;}
     installed=true;log_event("face_keep_installed");
+    install_portraits();   // refusal/yield leaves original portrait calls and the army-flag path intact
     if(mod_features.face_prefetch) {
         // 8AB11B: CALL 14D90; TEST AL,AL; JNE 8AB13D (skip the Sleep(0)/14D90 loop at 8AB124..8AB13B).
         static const unsigned char kWait[]={0x84,0xC0,0x75,0x19,0x33,0xC9,0xFF,0x15};
         if(image[kPumpSite]!=0xE8 || kPumpSite+5+*reinterpret_cast<int *>(image+kPumpSite+1)!=kPump ||
-           ga::mcmp_at(image,kPumpSite+5,kWait,sizeof(kWait)) || fingerprint(kLoad,GA(GA_8AB216)-GA(GA_8AAD70))!=kLoadHash) {
+           ga::mcmp_at(image,kPumpSite+5,kWait,sizeof(kWait)) || fingerprint(kLoad,GA(GA_8AD3C6)-GA(GA_8ACF20))!=kLoadHash) {
             log_event("face_prefetch_guard_rejected");return true;
         }
         Obj stub=allocate_near(image+kPumpSite);if(!stub)return true;

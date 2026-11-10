@@ -1,9 +1,9 @@
-// Trait / tactic / editor mouse-over tooltips (docs/TRAIT_HOVER_PLAN.md S4, 2026-11-06). Own source re-implementation of the
+// Trait / tactic / editor mouse-over tooltips (docs/HISTORY.md S4, 2026-11-06). Own source re-implementation of the
 // ModPack v1.6 TraitHover blob (research/ghidra_refs/SAN14_TraitHover_8cfad1a6ada78eca/c/0000.c); no blob machine code runs.
 // Hooks: owner "trait_hover" rows of layout_registry.h (152 vtable slots + 4 duel 930D20 call sites), registered through
 // layout_client::vt/call in one Transaction (all or nothing). All judgement / game calls happen inside those hooks, i.e. on the
 // game's own UI thread; activation only registers. Pure decisions come from trait_hover_profile.h (namespace thp, fixture-tested).
-// Included by native_modpack.inl (SPLIT_MODPACK), just before native_traits9.inl.
+// Included by native_split_install.inl (SPLIT_MODPACK), after native_battle_deaths.inl and before native_traits9.inl.
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -71,9 +71,9 @@ static bool hit(Obj w,int px,int py,bool xonly) {return thp::contains(w,px,py,xo
 static unsigned vt_rva(Obj o) {return o?static_cast<unsigned>(reinterpret_cast<uintptr_t>(pointer(o,0))-reinterpret_cast<uintptr_t>(image)):0;}
 static bool is_edit_vt(Obj row) {
     Obj vt=row?pointer(row,0):nullptr;
-    return vt && (vt==image+GA(GA_13A4298) || vt==image+GA(GA_13A42C8));
+    return vt && (vt==image+GA(GA_13A72D8) || vt==image+GA(GA_13A7308));
 }
-static bool valid(Obj o) {return o && fn<ValidFn>(GA(GA_32F500))(o)!=0;}
+static bool valid(Obj o) {return o && fn<ValidFn>(GA(GA_331780))(o)!=0;}
 static void *vfn(Obj o,unsigned off) {return pointer(pointer(o,0),off);}
 static Obj trait_object(Obj root,int id) {return root && thp::trait_id_ok(id)?pointer(root,0x7DD18+id*8):nullptr;}
 static Obj tactic_object(Obj root,int i) {return root && i>=0 && i<thp::kTacticCount?pointer(root,0x774D0+i*8):nullptr;}
@@ -103,7 +103,7 @@ static std::wstring tactic_text(Obj t,unsigned *empty_mask=nullptr) {
     const wchar_t *caption[thp::kTacticFields],*value[thp::kTacticFields];
     unsigned mask=0;
     for(unsigned k=0;k<thp::kTacticFields;++k) {
-        caption[k]=fn<const wchar_t *(__fastcall *)(unsigned)>(GA(GA_30CF80))(thp::tactic_caption_id(k));
+        caption[k]=fn<const wchar_t *(__fastcall *)(unsigned)>(GA(GA_30F010))(thp::tactic_caption_id(k));
         value[k]=fn<const wchar_t *(__fastcall *)(Obj)>(thp::tactic_func_rva(k))(t);
         if(!value[k] || !*value[k])mask|=1u<<k;
         if(!caption[k] || !*caption[k])mask|=1u<<(8+k);
@@ -139,7 +139,7 @@ static uint64_t name_key(Obj row,const wchar_t *name) {
 // column header handler -> trait id (1.5): decode the 44-byte "has trait ? circle : empty" function
 static uint64_t header_key(Obj handler) {
     text_range();
-    const thp::HeaderTargets targets={GA(GA_232D00),GA(GA_30CF80),GA(GA_1A47B98)};
+    const thp::HeaderTargets targets={GA(GA_2346A0),GA(GA_30F010),GA(GA_1A4AB88)};
     const uintptr_t base=reinterpret_cast<uintptr_t>(image),p=reinterpret_cast<uintptr_t>(handler);
     thp::HeaderReject why=thp::HR_RANGE;int id=0;unsigned rva=0;
     if(handler && p>base && p-base<0xFFFFFFFFull) {
@@ -165,7 +165,7 @@ static uint64_t table_key(Obj owner,Obj target,int px,int py,bool &header_mode) 
         if(!res)return 0;
         const int vis=*reinterpret_cast<int *>(target+0x80);
         if(!thp::visible_index_ok(vis,*reinterpret_cast<int *>(res+0x58)))return 0;
-        const int idx=fn<int(__fastcall *)(Obj,int)>(GA(GA_AE0370))(res,vis);
+        const int idx=fn<int(__fastcall *)(Obj,int)>(GA(GA_AE2ED0))(res,vis);
         Obj rows=pointer(body,0x198);
         if(!thp::row_index_ok(idx,*reinterpret_cast<int *>(body+0x1A0)) || !rows)return 0;
         row=pointer(rows,idx*8);
@@ -203,14 +203,14 @@ static uint64_t summary_key(Obj self,Obj target,int px,int py) {
     if(!hit(self,px,py,false))return 0;
     Obj army=pointer(self,0x178);
     if(!valid(army))return 0;
-    Obj person=fn<Obj(__fastcall *)(Obj)>(GA(GA_401C0))(army);
+    Obj person=fn<Obj(__fastcall *)(Obj)>(GA(GA_58D90))(army);
     if(!valid(person))return 0;
     for(unsigned i=0;i<9;++i) {
         Obj button=pointer(self,0x180+i*8);
         if(!thp::summary_button_hit(button!=nullptr,button && hit(button,px,py,false),button && thp::is_or_descends(target,button,parent_of)))continue;
         const unsigned slot=self[0x1C8+i];
         if(!thp::summary_slot_ok(slot))return 0;
-        return thp::summary_key(fn<int(__fastcall *)(Obj,unsigned)>(GA(GA_2305D0))(person,slot));
+        return thp::summary_key(fn<int(__fastcall *)(Obj,unsigned)>(GA(GA_232030))(person,slot));
     }
     return 0;
 }
@@ -239,10 +239,10 @@ static unsigned route_of(unsigned path,bool header_mode,uint64_t key) {
 }
 static void resolve_impl(unsigned path,Obj self,const thp::Record *rec,Resolve &r) {
     r.key=0;r.route=0;
-    Obj app=fn<Obj(__fastcall *)()>(GA(GA_10FC0))();
-    Obj input=fn<Obj(__fastcall *)()>(GA(GA_11290))();
+    Obj app=fn<Obj(__fastcall *)()>(GA(GA_10F20))();
+    Obj input=fn<Obj(__fastcall *)()>(GA(GA_111F0))();
     if(!app || !input)return;
-    Obj target=fn<Obj(__fastcall *)(Obj)>(GA(GA_86B3B0))(app);
+    Obj target=fn<Obj(__fastcall *)(Obj)>(GA(GA_86D760))(app);
     if(!target)return;
     const int px=*reinterpret_cast<int *>(input+0x34),py=*reinterpret_cast<int *>(input+0x38);
     bool header_mode=false;
@@ -271,19 +271,19 @@ static Obj make_tip(thp::Record &rec) {
     if(rec.failed)return nullptr;
     if(rec.tip)return reinterpret_cast<Obj>(rec.tip);
     unsigned result=2;
-    Obj tip=fn<Obj(__fastcall *)(size_t)>(GA(GA_3F6BC0))(0x180);
+    Obj tip=fn<Obj(__fastcall *)(size_t)>(GA(GA_3F90E0))(0x180);
     if(tip) {
-        fn<Obj(__fastcall *)(Obj)>(GA(GA_864C50))(tip);
-        fn<void(__fastcall *)(Obj)>(GA(GA_92AB70))(tip+0x130);
-        *reinterpret_cast<Obj *>(tip)=image+GA(GA_139C540);
+        fn<Obj(__fastcall *)(Obj)>(GA(GA_866FA0))(tip);
+        fn<void(__fastcall *)(Obj)>(GA(GA_92D020))(tip+0x130);
+        *reinterpret_cast<Obj *>(tip)=image+GA(GA_139F580);
         *reinterpret_cast<Obj *>(tip+0x178)=nullptr;
         rec.tip=reinterpret_cast<uintptr_t>(tip);
-        fn<void(__fastcall *)(Obj,int)>(GA(GA_89C320))(tip,0);
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_89E550))(tip,0);
         reinterpret_cast<void(__fastcall *)(Obj,int)>(vfn(tip,0xC8))(tip,0);
         result=0;
         if(pointer(tip,0x138)) {
             tip[0x40]|=8;
-            fn<void(__fastcall *)(Obj,int)>(GA(GA_8A18C0))(tip,0xFF);
+            fn<void(__fastcall *)(Obj,int)>(GA(GA_8A3AC0))(tip,0xFF);
             reinterpret_cast<void(__fastcall *)(Obj,int)>(vfn(tip,0x70))(tip,6);
             result=1;
         }
@@ -298,12 +298,12 @@ static void hide_tip(thp::Record &rec) {
     if(tip)reinterpret_cast<void(__fastcall *)(Obj,int)>(vfn(tip,0xC8))(tip,0);
     rec.last_key=0;
 }
-static void set_text(Obj tip,const wchar_t *text) {fn<void(__fastcall *)(Obj,const wchar_t *)>(GA(GA_8A2140))(tip,text);}
+static void set_text(Obj tip,const wchar_t *text) {fn<void(__fastcall *)(Obj,const wchar_t *)>(GA(GA_8A4380))(tip,text);}
 // edit rows (1.6): the seven "caption: value" lines of the selected personality row, rebuilt every frame like the blob
 static std::wstring edit_text(Obj row) {
     const wchar_t *caption[7],*value[7];
     for(unsigned i=0;i<7;++i) {
-        caption[i]=fn<const wchar_t *(__fastcall *)(unsigned)>(GA(GA_30CF80))(thp::edit_title_id(i));
+        caption[i]=fn<const wchar_t *(__fastcall *)(unsigned)>(GA(GA_30F010))(thp::edit_title_id(i));
         value[i]=fn<const wchar_t *(__fastcall *)(Obj)>(thp::edit_func_rva(i))(row);
     }
     return thp::compose_edit_text(caption,value,7);   // like the blob: every line kept, never empty
@@ -349,7 +349,7 @@ static void show_impl(Obj self,uint64_t key,unsigned path,unsigned route) {
         set_text(tip,text.c_str());
     } else if(changed) {
         if(kc==thp::KC_TRAIT) {
-            const wchar_t *text=fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_3594B0))(t);
+            const wchar_t *text=fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_35B940))(t);
             if(!text || !*text) {hide_tip(*rec);note_text_failed(2,key,path);return;}
             set_text(tip,text);
         } else set_text(tip,tactic.c_str());
@@ -360,7 +360,7 @@ static void show_impl(Obj self,uint64_t key,unsigned path,unsigned route) {
     alignas(16) unsigned char m[0x40]={};
     *reinterpret_cast<Obj *>(m+0x10)=tip;
     *reinterpret_cast<int *>(m+0x38)=20;*reinterpret_cast<int *>(m+0x3C)=20;
-    fn<void(__fastcall *)(void *)>(GA(GA_8A5D60))(m);
+    fn<void(__fastcall *)(void *)>(GA(GA_8A7F60))(m);
     reinterpret_cast<void(__fastcall *)(Obj,int)>(vfn(tip,0xC8))(tip,1);
 }
 static bool show_seh(Obj self,uint64_t key,unsigned path,unsigned route,unsigned &code) {
@@ -432,13 +432,13 @@ static void judge(unsigned path,Obj self) {
     if(!show_seh(self,r.key,path,r.route,code)) {runtime_off=true;note_fault(0x10|path,code);}
 }
 static uint64_t __fastcall th_tick(Obj self,uint64_t a,uint64_t b,uint64_t c) { COST_SCOPE("trait_hover_tick");
-    const uint64_t result=pick_next(self,thp::SK_TICK,GA(GA_92AD0))(self,a,b,c);
+    const uint64_t result=pick_next(self,thp::SK_TICK,GA(GA_8CA1C0))(self,a,b,c);
     first_tick();
     if(self)judge(thp::tick_path(path_vts,vt_rva(self)),self);
     return result;
 }
 static uint64_t __fastcall th_body_tick(Obj self,uint64_t a,uint64_t b,uint64_t c) { COST_SCOPE("trait_hover_body_tick");
-    const uint64_t result=pick_next(self,thp::SK_TICK,GA(GA_2DC340))(self,a,b,c);
+    const uint64_t result=pick_next(self,thp::SK_TICK,GA(GA_5112F0))(self,a,b,c);
     first_tick();
     if(self && !runtime_off) {
         Obj owner=pointer(self,8);
@@ -446,8 +446,8 @@ static uint64_t __fastcall th_body_tick(Obj self,uint64_t a,uint64_t b,uint64_t 
     }
     return result;
 }
-static unsigned hide_original(unsigned k) {return k==0?GA(GA_7C9080):k==1?GA(GA_9143C0):GA(GA_869820);}
-static unsigned close_original(unsigned k) {return k==0?GA(GA_8FBD40):k==1?GA(GA_924B20):GA(GA_8782E0);}
+static unsigned hide_original(unsigned k) {return k==0?GA(GA_5B6E10):k==1?GA(GA_916890):GA(GA_86BBD0);}
+static unsigned close_original(unsigned k) {return k==0?GA(GA_546A70):k==1?GA(GA_926FE0):GA(GA_87A690);}
 template<unsigned K> static uint64_t __fastcall th_hide(Obj self,uint64_t a,uint64_t b,uint64_t c) { COST_SCOPE("trait_hover_hide");
     ThSlot next=pick_next(self,thp::SK_HIDE,hide_original(K));
     release(self,false,0);
@@ -467,7 +467,7 @@ static void capture_impl(Obj root,unsigned id,const wchar_t *text,unsigned site)
     if(idx<0 || idx>=thp::kDuelLabels)return;
     thp::Record *rec=records.acquire(reinterpret_cast<uintptr_t>(owner));
     if(!rec) {if(records.take_full_log())log_event("trait_hover_records_full",thp::kRecordCap,0,0);return;}
-    rec->labels[idx]=reinterpret_cast<uintptr_t>(fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_92CEE0))(root,id));
+    rec->labels[idx]=reinterpret_cast<uintptr_t>(fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_92F390))(root,id));
     Obj world_root=world();
     int found=0;bool ok=false;
     if(world_root && text) {
@@ -486,7 +486,7 @@ static void capture(Obj root,unsigned id,const wchar_t *text,unsigned site) {
     __except(EXCEPTION_EXECUTE_HANDLER) {path_off[thp::PATH_DUEL]=true;note_fault(0x1A,GetExceptionCode());}
 }
 template<unsigned I> static uint64_t __fastcall th_duel_text(Obj root,unsigned id,const wchar_t *text,uint64_t flags) { COST_SCOPE("trait_hover_duel_text");
-    const uint64_t result=next_or<DuelFn>(next_duel[I],GA(GA_930D20))(root,id,text,flags);
+    const uint64_t result=next_or<DuelFn>(next_duel[I],GA(GA_9332B0))(root,id,text,flags);
     capture(root,id,text,I);
     return result;
 }
@@ -509,8 +509,8 @@ static bool guards_ok() {
     if(!thp::guards_table_ok(trait_hover_guards,count))return guard_fail(5,0,0);
     const unsigned ids[]={trait_hover_empty_tick_rva,trait_hover_slot_getter_rva,trait_hover_duel_call_rvas[0],trait_hover_duel_call_rvas[1],
         trait_hover_duel_call_rvas[2],trait_hover_duel_call_rvas[3],trait_hover_duel_target_rva,trait_hover_balloon_vtable_rva,
-        GA(GA_2DC340),GA(GA_7C9080),GA(GA_9143C0),GA(GA_869820),GA(GA_8FBD40),GA(GA_924B20),GA(GA_8782E0),GA(GA_13A4298),GA(GA_13A42C8),
-        GA(GA_277DF18),GA(GA_232D00),GA(GA_1A47B98),GA(GA_14B8CE8),GA(GA_145FFE0),GA(GA_14604C0),GA(GA_13EC0D8),GA(GA_139C540),
+        GA(GA_5112F0),GA(GA_5B6E10),GA(GA_916890),GA(GA_86BBD0),GA(GA_546A70),GA(GA_926FE0),GA(GA_87A690),GA(GA_13A72D8),GA(GA_13A7308),
+        GA(GA_2780F60),GA(GA_2346A0),GA(GA_1A4AB88),GA(GA_14BBD78),GA(GA_1463070),GA(GA_1463550),GA(GA_13EF168),GA(GA_139F580),
         trait_hover_tactic_columns_rva,thp::tactic_func_rva(0),thp::tactic_func_rva(1),thp::tactic_func_rva(2),thp::tactic_func_rva(3),thp::tactic_func_rva(4)};
     for(size_t i=0;i<sizeof(ids)/sizeof(ids[0]);++i)if(!ids[i])return guard_fail(5,static_cast<unsigned>(i)+1000,0);
     // registry rows: 152 vtable slots + 4 duel call sites, none unresolved
@@ -558,14 +558,14 @@ static bool guards_ok() {
 }
 // which replacement function serves a registry row
 static void *replacement_for(unsigned original) {
-    if(original==GA(GA_92AD0))return reinterpret_cast<void *>(&th_tick);
-    if(original==GA(GA_2DC340))return reinterpret_cast<void *>(&th_body_tick);
-    if(original==GA(GA_7C9080))return reinterpret_cast<void *>(&th_hide<0>);
-    if(original==GA(GA_9143C0))return reinterpret_cast<void *>(&th_hide<1>);
-    if(original==GA(GA_869820))return reinterpret_cast<void *>(&th_hide<2>);
-    if(original==GA(GA_8FBD40))return reinterpret_cast<void *>(&th_close<0>);
-    if(original==GA(GA_924B20))return reinterpret_cast<void *>(&th_close<1>);
-    if(original==GA(GA_8782E0))return reinterpret_cast<void *>(&th_close<2>);
+    if(original==GA(GA_8CA1C0))return reinterpret_cast<void *>(&th_tick);
+    if(original==GA(GA_5112F0))return reinterpret_cast<void *>(&th_body_tick);
+    if(original==GA(GA_5B6E10))return reinterpret_cast<void *>(&th_hide<0>);
+    if(original==GA(GA_916890))return reinterpret_cast<void *>(&th_hide<1>);
+    if(original==GA(GA_86BBD0))return reinterpret_cast<void *>(&th_hide<2>);
+    if(original==GA(GA_546A70))return reinterpret_cast<void *>(&th_close<0>);
+    if(original==GA(GA_926FE0))return reinterpret_cast<void *>(&th_close<1>);
+    if(original==GA(GA_87A690))return reinterpret_cast<void *>(&th_close<2>);
     return nullptr;
 }
 static void *duel_replacement(unsigned site) {
@@ -578,7 +578,7 @@ static void *duel_replacement(unsigned site) {
 // Registers every "trait_hover" row; Layout publishes them together and takes all back when one fails (ALL_OR_NONE).
 static bool install() {
     if(installed)return false;
-    const unsigned summary=GA(GA_14B8CE8)-8,info=GA(GA_145FFE0)-8,gauge=GA(GA_14604C0)-8,edit=GA(GA_13EC0D8)-8;
+    const unsigned summary=GA(GA_14BBD78)-8,info=GA(GA_1463070)-8,gauge=GA(GA_1463550)-8,edit=GA(GA_13EF168)-8;
     // tables first, so every hook that becomes reachable finds them ready
     table_count=body_count=0;
     unsigned k=0,vt=0,call=0;
@@ -589,11 +589,11 @@ static bool install() {
             if(vt>=kVtRows)return false;
             slots[vt]={r.rva,k};++vt;
             const unsigned vtbl=r.rva-0x08;
-            if(r.original==GA(GA_92AD0) && vtbl!=summary && vtbl!=info && vtbl!=gauge && vtbl!=edit) {
+            if(r.original==GA(GA_8CA1C0) && vtbl!=summary && vtbl!=info && vtbl!=gauge && vtbl!=edit) {
                 if(table_count>=kTableMax)return false;
                 table_vts[table_count++]=vtbl;
             }
-            if(r.original==GA(GA_2DC340)) {
+            if(r.original==GA(GA_5112F0)) {
                 if(body_count>=kTableMax)return false;
                 body_vts[body_count++]=r.rva-0x08;
             }

@@ -4,7 +4,7 @@
 #include "game_addresses.h"
 #include "native_ui_call_trace.inl"
 namespace ccz_title {
-const unsigned kVtable=GA(GA_13E4E08),kRoot=GA(GA_13E4C78),kPane=GA(GA_13E4E80),kButton=37,kCount=39;
+const unsigned kVtable=GA(GA_13E7E98),kRoot=GA(GA_13E7D08),kPane=GA(GA_13E7F10),kButton=37,kCount=39;
 static Obj current,pane,button,initializing;static bool requested,visibility_logged,initializing_button_added;
 static unsigned logged_phase=~0u;
 static constexpr int menu_ids[]={13,20,22,24,26,28,30,32,37};
@@ -17,12 +17,12 @@ using Attach=void(__fastcall *)(Obj,int,Obj,int);
 static Initialize next_initialize;static Leave next_leave;static Frame next_frame;static Attach next_attach;
 struct Guard {unsigned rva,size;unsigned long long hash;};
 const Guard guards[]={
-    {GA(GA_504670),0x4B,GH(0xD14020F32A1D70F5ull)},{GA(GA_50B800),0x8EC,GH(0x2D29DDA57852852Dull)},{GA(GA_4F9310),0x395,GH(0xB9D579E84D9C96EFull)},
-    {GA(GA_4E81D0),64,GH(0x2ACB5B58A3BD7567ull)},{GA(GA_92E0B0),64,GH(0x5D9B9D6E020D3755ull)},
-    {GA(GA_86E0C0),64,GH(0x6122B6C28963243Bull)},{GA(GA_92E430),64,GH(0x9E958B8BA0592979ull)},
-    {GA(GA_866230),64,GH(0xE8A893F44BDE81B3ull)},{GA(GA_1A3CB0),64,GH(0xE43B2ECC7CA86245ull)},
-    {GA(GA_873370),64,GH(0xA63224EC10C50391ull)},{GA(GA_AD1A10),64,GH(0xC00A304A0AB2CAD1ull)},
-    {GA(GA_873450),64,GH(0xCB505E563FFF6C99ull)}};
+    {GA(GA_506ED0),0x4B,GH(0x6D4E7756D1B610FDull)},{GA(GA_50DEC0),0x8EC,GH(0x42C5F566CA400955ull)},{GA(GA_4FBB70),0x395,GH(0x7564701720EF57D5ull)},
+    {GA(GA_4EAA10),64,GH(0x9A30B2A4A2B432BFull)},{GA(GA_930640),64,GH(0x52CE0FE803B4D1DEull)},
+    {GA(GA_870470),64,GH(0x6122B6C28963243Bull)},{GA(GA_9309C0),64,GH(0x9E958B8BA0592979ull)},
+    {GA(GA_8685C0),64,GH(0x252F19DCF7D4ED48ull)},{GA(GA_1A4FB0),64,GH(0xE43B2ECC7CA86245ull)},
+    {GA(GA_875720),64,GH(0x969C21695CF7490Aull)},{GA(GA_AD44E0),64,GH(0xC00A304A0AB2CAD1ull)},
+    {GA(GA_875800),64,GH(0xCB505E563FFF6C99ull)}};
 #ifndef NO_RUNTIME_LOG
 // Bounded construction/phase snapshots on the native caller thread. Raw float
 // fields are logged as their uint32 bits; no new recorder or live memory writer.
@@ -58,7 +58,7 @@ static void trace_binding(unsigned stage,Obj root,unsigned id,Obj object){
     Obj resource=root?pointer(root,0x98):nullptr;
     Obj model=resource?pointer(resource,0x10):nullptr;
     // Same read-only node lookup used inside 866230, on its original UI thread.
-    Obj node=model?fn<Obj(__fastcall *)(Obj,int)>(GA(GA_AD1A10))(model,id):nullptr;
+    Obj node=model?fn<Obj(__fastcall *)(Obj,int)>(GA(GA_AD44E0))(model,id):nullptr;
     unsigned key=(stage<<16)|id;
     log_event("ccz_title_binding",key,node?1:0,object?dword(object,0x80):0);
     if(node){
@@ -73,7 +73,7 @@ static void trace_phase(Obj root,unsigned phase,unsigned sample){
     unsigned stage=0x100+phase+(sample<<8);
     trace_object(stage,0xFFFF,root);
     constexpr int ids[]={3,5,8,9,10,11,12,13,20,22,24,26,28,30,32,34,35,36,37};
-    for(int id:ids)trace_binding(stage,root,id,fn<Obj(__fastcall *)(Obj,int)>(GA(GA_92CEE0))(root+0x130,id));
+    for(int id:ids)trace_binding(stage,root,id,fn<Obj(__fastcall *)(Obj,int)>(GA(GA_92F390))(root+0x130,id));
     if(button)trace_object(stage,0xFFFE,button);
 }
 #else
@@ -90,12 +90,12 @@ static bool guards_match(){
 static void start_click_trace(){ui_call_trace::start(reinterpret_cast<uintptr_t>(image),[](const char *kind,unsigned a,unsigned b,unsigned c){log_event(kind,a,b,c);});}
 #ifndef NO_RUNTIME_LOG
 // Forward all six callable operations unchanged; trace even before show() runs.
-static void *__fastcall callback_copy(void *self,void *where){ COST_SCOPE("callback_copy");return ui_call_trace::call(ui_call_trace::CallbackCopy,0,reinterpret_cast<void *(__fastcall *)(void *,void *)>(lord_change::callable_vtable[0]),self,where);}
-static void *__fastcall callback_move(void *self,void *where){ COST_SCOPE("callback_move");return ui_call_trace::call(ui_call_trace::CallbackMove,0,reinterpret_cast<void *(__fastcall *)(void *,void *)>(lord_change::callable_vtable[1]),self,where);}
-static void __fastcall callback_invoke(void *self,Obj *arg){ COST_SCOPE("callback_invoke");start_click_trace();ui_call_trace::memory(ui_call_trace::CallbackInvoke,self,16);ui_call_trace::call(ui_call_trace::CallbackInvoke,0,reinterpret_cast<void(__fastcall *)(void *,Obj *)>(lord_change::callable_vtable[2]),self,arg);}
-static void *__fastcall callback_type(void *self){ COST_SCOPE("callback_type");return ui_call_trace::call(ui_call_trace::CallbackType,0,reinterpret_cast<void *(__fastcall *)(void *)>(lord_change::callable_vtable[3]),self);}
-static void __fastcall callback_delete(void *self,bool heap){ COST_SCOPE("callback_delete");ui_call_trace::call(ui_call_trace::CallbackDelete,0,reinterpret_cast<void(__fastcall *)(void *,bool)>(lord_change::callable_vtable[4]),self,heap);}
-static void *__fastcall callback_get(void *self){ COST_SCOPE("callback_get");return ui_call_trace::call(ui_call_trace::CallbackGet,0,reinterpret_cast<void *(__fastcall *)(void *)>(lord_change::callable_vtable[5]),self);}
+static void *__fastcall callback_copy(void *self,void *where){ COST_SCOPE("callback_copy");return ui_call_trace::call(ui_call_trace::CallbackCopy,0,reinterpret_cast<void *(__fastcall *)(void *,void *)>(ui_callable::vtable[0]),self,where);}
+static void *__fastcall callback_move(void *self,void *where){ COST_SCOPE("callback_move");return ui_call_trace::call(ui_call_trace::CallbackMove,0,reinterpret_cast<void *(__fastcall *)(void *,void *)>(ui_callable::vtable[1]),self,where);}
+static void __fastcall callback_invoke(void *self,Obj *arg){ COST_SCOPE("callback_invoke");start_click_trace();ui_call_trace::memory(ui_call_trace::CallbackInvoke,self,16);ui_call_trace::call(ui_call_trace::CallbackInvoke,0,reinterpret_cast<void(__fastcall *)(void *,Obj *)>(ui_callable::vtable[2]),self,arg);}
+static void *__fastcall callback_type(void *self){ COST_SCOPE("callback_type");return ui_call_trace::call(ui_call_trace::CallbackType,0,reinterpret_cast<void *(__fastcall *)(void *)>(ui_callable::vtable[3]),self);}
+static void __fastcall callback_delete(void *self,bool heap){ COST_SCOPE("callback_delete");ui_call_trace::call(ui_call_trace::CallbackDelete,0,reinterpret_cast<void(__fastcall *)(void *,bool)>(ui_callable::vtable[4]),self,heap);}
+static void *__fastcall callback_get(void *self){ COST_SCOPE("callback_get");return ui_call_trace::call(ui_call_trace::CallbackGet,0,reinterpret_cast<void *(__fastcall *)(void *)>(ui_callable::vtable[5]),self);}
 static void *callback_vtable[]={reinterpret_cast<void *>(&callback_copy),reinterpret_cast<void *>(&callback_move),reinterpret_cast<void *>(&callback_invoke),reinterpret_cast<void *>(&callback_type),reinterpret_cast<void *>(&callback_delete),reinterpret_cast<void *>(&callback_get)};
 #endif
 static void clicked(Obj control){
@@ -108,30 +108,30 @@ static void clicked(Obj control){
 static void destroy_pane(Obj object){if(object)reinterpret_cast<void(__fastcall *)(Obj,int)>(pointer(pointer(object,0),0))(object,1);}
 static bool add_button(Obj state){
     Obj root=pointer(state,0x4B8);if(!root || pointer(root,0)!=image+kRoot || dword(root+0x130,0x10)!=kCount){log_event("ccz_title_layout_missing");return false;}
-    Obj object=fn<Obj(__fastcall *)(size_t)>(GA(GA_3F6BC0))(0x178);if(!object)return false;
-    memset(object,0,0x178);fn<void(__fastcall *)(Obj)>(GA(GA_864C50))(object);
-    *reinterpret_cast<Obj *>(object)=image+GA(GA_1342530);fn<void(__fastcall *)(Obj)>(GA(GA_92AB70))(object+0x130);*reinterpret_cast<Obj *>(object)=image+kPane;
-    {TraceCall trace(GA(GA_86E0C0),kButton);fn<unsigned long long(__fastcall *)(Obj,int,int,Obj,const char *,int,unsigned long long)>(GA(GA_86E0C0))(object,0,0,root,"02_01_menu_btn_offset_00_cn",0,0);}
+    Obj object=fn<Obj(__fastcall *)(size_t)>(GA(GA_3F90E0))(0x178);if(!object)return false;
+    memset(object,0,0x178);fn<void(__fastcall *)(Obj)>(GA(GA_866FA0))(object);
+    *reinterpret_cast<Obj *>(object)=image+GA(GA_1345530);fn<void(__fastcall *)(Obj)>(GA(GA_92D020))(object+0x130);*reinterpret_cast<Obj *>(object)=image+kPane;
+    {TraceCall trace(GA(GA_870470),kButton);fn<unsigned long long(__fastcall *)(Obj,int,int,Obj,const char *,int,unsigned long long)>(GA(GA_870470))(object,0,0,root,"02_01_menu_btn_offset_00_cn",0,0);}
     trace_binding(1,root,kButton,object);
     Obj control;
-    {TraceCall trace(GA(GA_92E430),kButton);control=fn<Obj(__fastcall *)(Obj,int,int,int,int,int)>(GA(GA_92E430))(object+0x130,2,0x1A,0,1,0);}
+    {TraceCall trace(GA(GA_9309C0),kButton);control=fn<Obj(__fastcall *)(Obj,int,int,int,int,int)>(GA(GA_9309C0))(object+0x130,2,0x1A,0,1,0);}
     if(!control){destroy_pane(object);return false;}
-    {TraceCall trace(GA(GA_92E0B0),kButton);fn<void(__fastcall *)(Obj,int,Obj,int,int,int)>(GA(GA_92E0B0))(root+0x130,kButton,object,8,1,0);}
+    {TraceCall trace(GA(GA_930640),kButton);fn<void(__fastcall *)(Obj,int,Obj,int,int,int)>(GA(GA_930640))(root+0x130,kButton,object,8,1,0);}
     trace_binding(2,root,kButton,object);
-    if(fn<Obj(__fastcall *)(Obj,int)>(GA(GA_92CEE0))(root+0x130,kButton)!=object){destroy_pane(object);return false;}
+    if(fn<Obj(__fastcall *)(Obj,int)>(GA(GA_92F390))(root+0x130,kButton)!=object){destroy_pane(object);return false;}
     *reinterpret_cast<unsigned *>(control+0x80)=kButton;*reinterpret_cast<unsigned *>(control+0x84)=1;
     reinterpret_cast<void(__fastcall *)(Obj,const wchar_t *)>(pointer(pointer(control,0),0x1D8))(control,L"조조전");
-    alignas(16) unsigned char local[64]={};*reinterpret_cast<void ***>(local)=lord_change::callable_vtable;
+    alignas(16) unsigned char local[64]={};*reinterpret_cast<void ***>(local)=ui_callable::vtable;
 #ifndef NO_RUNTIME_LOG
     *reinterpret_cast<void ***>(local)=callback_vtable;
 #endif
     *reinterpret_cast<void (**)(Obj)>(local+8)=&clicked;*reinterpret_cast<void **>(local+56)=local;
-    fn<void(__fastcall *)(Obj,int,void *)>(GA(GA_1A3CB0))(control,0x7FFFFFFE,local);
+    fn<void(__fastcall *)(Obj,int,void *)>(GA(GA_1A4FB0))(control,0x7FFFFFFE,local);
     reinterpret_cast<void(__fastcall *)(Obj,int)>(pointer(pointer(object,0),0xA0))(object,0);
     // Match native construction: input stays paused until the title menu resumes.
     *reinterpret_cast<unsigned *>(object+0x40)|=8;
     *reinterpret_cast<unsigned *>(control+0x40)|=8;
-    {TraceCall trace(GA(GA_866230),kButton);fn<void(__fastcall *)(Obj,int,Obj,int)>(GA(GA_866230))(root,kButton,object,-1);}
+    {TraceCall trace(GA(GA_8685C0),kButton);fn<void(__fastcall *)(Obj,int,Obj,int)>(GA(GA_8685C0))(root,kButton,object,-1);}
     trace_binding(3,root,kButton,object);
     current=state;pane=object;button=control;requested=false;
     log_event("ccz_title_button_added",kButton,kCount,0);return true;
@@ -139,7 +139,7 @@ static bool add_button(Obj state){
 // The ninth row must be attached while the native title constructor is still
 // building its output tree. The original 866230 call remains first.
 static void __fastcall attach_after_native(Obj root,int id,Obj object,int order){ COST_SCOPE("attach_after_native");
-    {TraceCall trace(GA(GA_866230),id);next_pick(next_attach,GA(GA_866230))(root,id,object,order);}
+    {TraceCall trace(GA(GA_8685C0),id);next_pick(next_attach,GA(GA_8685C0))(root,id,object,order);}
     if(initializing && root==pointer(initializing,0x4B8))trace_binding(4,root,id,object);
     if(id!=32 || !initializing || initializing_button_added)return;
     if(root!=pointer(initializing,0x4B8) || pointer(root,0)!=image+kRoot)return;
@@ -150,14 +150,14 @@ static unsigned long long __fastcall initialize(Obj state){ COST_SCOPE("initiali
     visibility_logged=false;logged_phase=~0u;phase_frames=0;initializing=state;initializing_button_added=false;
     memset(intro_rows,0,sizeof(intro_rows));
     unsigned long long result;
-    {TraceCall trace(GA(GA_504670),0);result=next_pick(next_initialize,GA(GA_504670))(state);}
+    {TraceCall trace(GA(GA_506ED0),0);result=next_pick(next_initialize,GA(GA_506ED0))(state);}
     if(current==state)trace_phase(pointer(state,0x4B8),dword(state,0x470),0);
     if(current==state)intro_visibility(state);
     initializing=nullptr;return result;
 }
 static void __fastcall leave(Obj state,Obj arg){ COST_SCOPE("leave");
     if(current==state){ccz_settings::abandon();current=pane=button=nullptr;requested=false;memset(intro_rows,0,sizeof(intro_rows));}
-    next_pick(next_leave,GA(GA_4F9310))(state,arg);   // native owns the extra pane through its layout manager
+    next_pick(next_leave,GA(GA_4FBB70))(state,arg);   // native owns the extra pane through its layout manager
 }
 // 86F250 requires both low visibility bits. The old 0xA mask copied the
 // enabled/focus bits but dropped bit 0, so the dynamically added pane/button
@@ -169,14 +169,14 @@ static void sync(Obj own,Obj source){
         *reinterpret_cast<unsigned *>(own+0x40)=after;
         // Native 86F250 caches inherited visibility at +10. Flag changes must
         // invalidate descendants as well (873370), just as native parent changes do.
-        fn<void(__fastcall *)(Obj,int)>(GA(GA_873370))(own,1);
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_875720))(own,1);
     }
     // 2026-11-03 live trace: native row32 alpha=255, added row37 alpha=0
     // despite flags=7 and valid render nodes. Both were initialized with A0(0),
     // but the ninth row has no native alpha animation. Use the original setter
     // so inherited alpha/render caches follow menu fades and modal transitions.
     if(dword(own,0x30)!=dword(source,0x30))
-        fn<void(__fastcall *)(Obj,int)>(GA(GA_873450))(own,static_cast<int>(dword(source,0x30)));
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_875800))(own,static_cast<int>(dword(source,0x30)));
 }
 // Native phase 12 starts title_out/menu_in (50B800); phases below it are
 // logos/loading. Suppress menu rows only, never the title root/logo layers.
@@ -185,28 +185,28 @@ static void intro_visibility(Obj state){
     Obj root=pointer(state,0x4B8);if(!root || pointer(root,0)!=image+kRoot)return;
     bool intro=dword(state,0x470)<12;
     for(unsigned i=0;i<9;++i){
-        Obj row=fn<Obj(__fastcall *)(Obj,int)>(GA(GA_92CEE0))(root+0x130,menu_ids[i]);
+        Obj row=fn<Obj(__fastcall *)(Obj,int)>(GA(GA_92F390))(root+0x130,menu_ids[i]);
         if(!row)continue;
         if(intro){
             if(!intro_rows[i]){intro_rows[i]=row;intro_visible[i]=dword(row,0x40)&1;}
             if(dword(row,0x40)&1){
                 *reinterpret_cast<unsigned *>(row+0x40)&=~1u;
-                fn<void(__fastcall *)(Obj,int)>(GA(GA_873370))(row,1);
+                fn<void(__fastcall *)(Obj,int)>(GA(GA_875720))(row,1);
             }
         }else if(intro_rows[i]==row){
             *reinterpret_cast<unsigned *>(row+0x40)=(dword(row,0x40)&~1u)|intro_visible[i];
-            fn<void(__fastcall *)(Obj,int)>(GA(GA_873370))(row,1);intro_rows[i]=nullptr;
+            fn<void(__fastcall *)(Obj,int)>(GA(GA_875720))(row,1);intro_rows[i]=nullptr;
         }
     }
 }
 static void __fastcall frame(Obj state,Obj a,Obj b){ COST_SCOPE("frame");
     if(current==state)intro_visibility(state);
-    if(ui_call_trace::sample(ui_call_trace::TitleFrame,4))ui_call_trace::call(ui_call_trace::TitleFrame,GA(GA_50B800),next_pick(next_frame,GA(GA_50B800)),state,a,b);
-    else next_pick(next_frame,GA(GA_50B800))(state,a,b);
+    if(ui_call_trace::sample(ui_call_trace::TitleFrame,4))ui_call_trace::call(ui_call_trace::TitleFrame,GA(GA_50DEC0),next_pick(next_frame,GA(GA_50DEC0)),state,a,b);
+    else next_pick(next_frame,GA(GA_50DEC0))(state,a,b);
     if(current!=state || !pane || !button)return;
     Obj root=pointer(state,0x4B8);if(!root)return;
-    Obj peer=fn<Obj(__fastcall *)(Obj,int)>(GA(GA_92CEE0))(root+0x130,32);
-    sync(pane,peer);if(peer)sync(button,fn<Obj(__fastcall *)(Obj,int)>(GA(GA_92CEE0))(peer+0x130,2));
+    Obj peer=fn<Obj(__fastcall *)(Obj,int)>(GA(GA_92F390))(root+0x130,32);
+    sync(pane,peer);if(peer)sync(button,fn<Obj(__fastcall *)(Obj,int)>(GA(GA_92F390))(peer+0x130,2));
     intro_visibility(state);
     if(!visibility_logged && peer){
         visibility_logged=true;log_event("ccz_title_visibility_flags",dword(peer,0x40),dword(pane,0x40),button?dword(button,0x40):0);
@@ -227,7 +227,7 @@ static void __fastcall frame(Obj state,Obj a,Obj b){ COST_SCOPE("frame");
 }
 static bool install(){
     if(!guards_match()){log_event("ccz_title_guard_rejected");return false;}
-    const unsigned kAttachSite=GA(GA_4E83F3);
+    const unsigned kAttachSite=GA(GA_4EAC33);
     layout_client::Transaction tx;
     // Lifetime handlers first; the initialize slot last, so native initialization only creates our objects once
     // everything else is in place (Layout installs in registration order). The CALL target is judged by Layout.

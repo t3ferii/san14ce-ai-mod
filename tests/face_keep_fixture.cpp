@@ -44,12 +44,39 @@ static void flag(Manager &m,Keep &k,int id,bool keep=true) {
 }
 static void fill(Manager &m,Keep &k) {for(int id=1;id<=static_cast<int>(kMax);++id)flag(m,k,id);}
 int main() {
+    {   // U35 user 2026-11-10: all portrait paths share the army pool; native setter is always first.
+        Manager m(1000);Keep k;unsigned sets=0,pin_calls=0;bool seen_after=false;
+        auto original=[&](int node,int who){ok(node==77 && who==42,"portrait arguments forwarded to next");++sets;m.add(who);};
+        auto retain=[&](int who){++pin_calls;seen_after=sets==pin_calls && m.counts[who]>0;
+            if(k.prepare(m,m.counts.data(),who,m.counts[who])){m.add(who);add_pin(k.pins,who);}};
+        for(unsigned n=0;n<3;++n){set_then_retain(original,retain,77,42);m.release(42);}
+        ok(seen_after && sets==3 && pin_calls==3,"native setter completes before every retention attempt");
+        ok(m.loads==1 && m.counts[42]==1,"selection portraits reload once, one owned reference");
+        flag(m,k,42);ok(m.loads==1 && m.counts[42]==1 && k.pins.count==1,"army and selection paths reuse one pin, never duplicate it");
+        bool off=true;
+        set_then_retain(original,[&](int who){if(!off)retain(who);},77,42);m.release(42);
+        ok(sets==4 && m.counts[42]==1,"OFF still forwards to next and adds no reference");
+        // A chained setter can choose to bind nothing: post-processing cannot force a load.
+        set_then_retain([&](int,int){++sets;},[&](int who){ok(!k.prepare(m,m.counts.data(),who,m.counts[who]),"unloaded next result is not pinned");},77,7);
+        ok(m.loads==1 && k.pins.count==1,"retention never initiates a missing portrait load");
+    }
     {   // same commander in three turns: one load, never unloaded
         Manager m(1000);Keep k;
         for(int turn=0;turn<3;++turn)flag(m,k,42);
         ok(m.loads==1 && m.unloads==0,"kept face: one load over three turns");
         ok(m.counts[42]==1,"exactly one extra reference");
         ok(k.pins.sequence==3,"every repeated set_face updates last-use sequence");
+    }
+    {   // U35: adding selection portraits cannot create a second 256-entry pool.
+        Manager m(2000);Keep k;fill(m,k);
+        set_then_retain([&](int,int who){m.add(who);},[&](int who){
+            if(k.prepare(m,m.counts.data(),who,m.counts[who])){m.add(who);add_pin(k.pins,who);}
+        },77,1077);
+        m.release(1077);
+        ok(k.pins.count==kMax && m.counts[1077]==1,"combined army/selection pool never exceeds 256");
+        ok(m.counts[1]==0 && k.releases.size()==1,"selection insertion evicts the army pool's oldest pin");
+        flag(m,k,1077);
+        ok(m.loads==kMax+1 && m.counts[1077]==1,"later army use reuses the portrait reference");
     }
     {   // original behaviour for comparison
         Manager m(1000);Keep k;

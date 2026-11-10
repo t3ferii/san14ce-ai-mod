@@ -15,13 +15,13 @@ static int __fastcall mock_read(Obj r,const char *name,void *data,int count) {
 static void __fastcall mock_save_host(Obj host) {
     if(dword(host,0x470)==1) {
         merit_file_write(remote,save_name,archive_data,sizeof(archive_data));put32(host,0x470,2);
-    } else if(dword(host,0x470)==2) {put32(host,0x470,3);put32(image,0x27D2A20,archive_success);}
+    } else if(dword(host,0x470)==2) {put32(host,0x470,3);put32(image,0x27D5A34,archive_success);}
 }
 static void __fastcall mock_load_host(Obj host) {
     if(dword(host,0x470)==1) {
         unsigned char buffer[sizeof(archive_data)];merit_file_read(remote,save_name,buffer,sizeof(buffer));
         put32(host,0x470,2);
-    } else if(dword(host,0x470)==2) {put32(host,0x470,3);put32(image,0x27D2A50,native_load_success?1:0);}
+    } else if(dword(host,0x470)==2) {put32(host,0x470,3);put32(image,0x27D5AA4,native_load_success?1:0);}
 }
 static void job_name(unsigned offset) {
     Obj at=image+offset;putptr(at,0,save_name);
@@ -32,9 +32,9 @@ static void test_persistence() {
     self_module=GetModuleHandleW(nullptr);
     Obj save=object(1),load=object(1);remote=object(1);
     void *vt[]={reinterpret_cast<void *>(&mock_write),reinterpret_cast<void *>(&mock_read)};
-    putptr(remote,0,vt);functions[0x50B670]=reinterpret_cast<void *>(&mock_save_host);
-    functions[0x509580]=reinterpret_cast<void *>(&mock_load_host);
-    job_name(0x27D2A98);job_name(0x27D2A68);
+    putptr(remote,0,vt);functions[0x50DD30]=reinterpret_cast<void *>(&mock_save_host);
+    functions[0x50BD20]=reinterpret_cast<void *>(&mock_load_host);
+    job_name(0x27D5AE8);job_name(0x27D5AB8);
     merit::Binding hash={};expect(merit_digest(archive_data,sizeof(archive_data),hash));
     merit::SaveCoordinator::Completed job;job.name=save_name;job.binding=hash;
     wchar_t path[MAX_PATH];expect(merit_sidecar_path(job,path,MAX_PATH,true));DeleteFileW(path);

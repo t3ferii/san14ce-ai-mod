@@ -1,7 +1,7 @@
 // [officer_ui] dispatch_days (2026-10-23, user request; behaviour of reference_mod SAN14_DispatchDays,
 // re-derived from the original). The right-side dispatch list shows "N일" after the destination:
 // days until the officer is back (remaining mission + return trip).
-// Original (REA, unpacked 1fbe6be7...):
+// Original (근거: 1a4a447d 이전 기록, docs/HISTORY.md):
 //   897FA0(row) person = row+178, unit = 22AA70(person); destination text CALL 930D20(row+130,3,text)
 //   at 898083; gauge = unit vtable+A8 (end-start days) - vtable+B0 (today-start), as the game draws it.
 //   Return trip (1F6720 builds it): days = 231510(vtable+118(unit) tile, 22D500(home base) tile, list, 0).
@@ -13,28 +13,28 @@
 // crashed the game in 32F500 right after a dispatch (user reports, WER offset 32F509).
 #include "game_addresses.h"
 namespace dispatch_days {
-static const unsigned kTextCall=GA(GA_898083),kText=GA(GA_930D20);
-static const unsigned kNoReturn[3]={GA(GA_13A28B8),GA(GA_13A1D30),GA(GA_13A1E78)};
+static const unsigned kTextCall=GA(GA_89A373),kText=GA(GA_9332B0);
+static const unsigned kNoReturn[3]={GA(GA_13A58F8),GA(GA_13A4D70),GA(GA_13A4EB8)};
 struct Cache {Obj unit;int day,days;};
 static Cache cache[16];
-static bool guards_match() {
+static bool guards_match() { COST_SCOPE("dispatch_days:guards_match");
     static const unsigned char before[]={0x41,0x8D,0x51,0x02};   // lea edx,[r9+2] (element 3)
     // The CALL target (930D20 or another mod's chain) is judged by the Layout hook manager.
     return image[kTextCall]==0xE8 && !ga::mcmp_at(image,kTextCall-4,before,4);
 }
 static int virtual_int(Obj o,unsigned slot) {return (*reinterpret_cast<int(__fastcall **)(Obj)>(pointer(o,0)+slot))(o);}
-[[maybe_unused]] static int return_days(Obj unit,Obj person) {
+[[maybe_unused]] static int return_days(Obj unit,Obj person) { COST_SCOPE("dispatch_days:return_days");
     for(unsigned vt:kNoReturn)if(pointer(unit,0)==image+vt)return 0;
     int today=game_day();
     for(auto &c:cache)if(c.unit==unit && c.day==today)return c.days;
     int days=0;
-    Obj home=word(person,0xE2)<0x3E?fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32C130))(world(),word(person,0xE2)):nullptr;
+    Obj home=word(person,0xE2)<0x3E?fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32E3B0))(world(),word(person,0xE2)):nullptr;
     if(valid(home)) {
         Obj from=(*reinterpret_cast<Obj(__fastcall **)(Obj)>(pointer(unit,0)+0x118))(unit);
-        Obj to=fn<Obj(__fastcall *)(Obj)>(GA(GA_22D500))(home);
+        Obj to=fn<Obj(__fastcall *)(Obj)>(GA(GA_22EF50))(home);
         if(from && to) {
             GameList list;list_init(list);
-            days=fn<int(__fastcall *)(Obj,Obj,GameList *,int)>(GA(GA_231510))(from,to,&list,0);
+            days=fn<int(__fastcall *)(Obj,Obj,GameList *,int)>(GA(GA_232F70))(from,to,&list,0);
             list_free(list);if(days<0)days=0;
         }
     }
@@ -47,7 +47,7 @@ static void __fastcall text(Obj set,int element,const wchar_t *value,int flag) {
     if(!mod_features.dispatch_days || !value)return original(set,element,value,flag);
     Obj person=pointer(set-0x130,0x178);
     if(!valid(person))return original(set,element,value,flag);
-    Obj unit=fn<Obj(__fastcall *)(Obj)>(GA(GA_22AA70))(person);
+    Obj unit=fn<Obj(__fastcall *)(Obj)>(GA(GA_22C4B0))(person);
     if(!unit)return original(set,element,value,flag);
     int left=virtual_int(unit,0xA8)-virtual_int(unit,0xB0);if(left<0)left=0;
     int days=left;   // remaining mission days only (2026-10-23: return estimate removed, see header)
@@ -55,7 +55,7 @@ static void __fastcall text(Obj set,int element,const wchar_t *value,int flag) {
     if(swprintf_s(buffer,L"%s %d일",value,days)<0)return original(set,element,value,flag);
     original(set,element,buffer,flag);
 }
-static bool install() {
+static bool install() { COST_SCOPE("dispatch_days:install");
     if(!guards_match()) {log_event("dispatch_days_guard_rejected");return false;}
     if(layout_client::call(kTextCall,reinterpret_cast<void *>(&text),reinterpret_cast<void **>(&next_text))<=0) {
         log_event("dispatch_days_register_rejected");return false;

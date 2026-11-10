@@ -77,30 +77,30 @@ static void __fastcall mock_phase(Obj s) {
 }
 static void *fixture_function(unsigned rva) {
     switch(rva) {
-    case 0x810CA0:return reinterpret_cast<void *>(&mock_enter);
-    case 0x810640:return reinterpret_cast<void *>(&mock_leave);
-    case 0x2337B0:return reinterpret_cast<void *>(&mock_player);
-    case 0x22FCE0:return reinterpret_cast<void *>(&mock_stat);
-    case 0x322B30:return reinterpret_cast<void *>(&mock_rate);
-    case 0x804770:return reinterpret_cast<void *>(&mock_ai);
-    case 0x3FB600:return reinterpret_cast<void *>(&mock_rng);
-    case 0x324E20:return reinterpret_cast<void *>(&mock_resolve);
-    case 0x815EA0:return reinterpret_cast<void *>(&mock_phase);
-    case 0x805010:return reinterpret_cast<void *>(&mock_event);
-    case 0x824880:case 0x841180:return reinterpret_cast<void *>(&mock_visibility);
+    case 0x8133D0:return reinterpret_cast<void *>(&mock_enter);
+    case 0x812D70:return reinterpret_cast<void *>(&mock_leave);
+    case 0x235150:return reinterpret_cast<void *>(&mock_player);
+    case 0x231770:return reinterpret_cast<void *>(&mock_stat);
+    case 0x324BC0:return reinterpret_cast<void *>(&mock_rate);
+    case 0x806DA0:return reinterpret_cast<void *>(&mock_ai);
+    case 0x3FDAF0:return reinterpret_cast<void *>(&mock_rng);
+    case 0x326ED0:return reinterpret_cast<void *>(&mock_resolve);
+    case 0x818600:return reinterpret_cast<void *>(&mock_phase);
+    case 0x807710:return reinterpret_cast<void *>(&mock_event);
+    case 0x826F70:case 0x843680:return reinterpret_cast<void *>(&mock_visibility);
     case 0x856500:return reinterpret_cast<void *>(&mock_generic_footer);
-    case 0x856620:return reinterpret_cast<void *>(&mock_resume_footer);
-    case 0x83BFD0:return reinterpret_cast<void *>(&mock_resume_portrait);
-    case 0x811210:return reinterpret_cast<void *>(&mock_native_frame);
-    case 0x806950:return reinterpret_cast<void *>(&mock_cleanup);
-    case 0x930D20:return reinterpret_cast<void *>(&mock_text);
-    case 0x92F7B0:case 0x92F810:return reinterpret_cast<void *>(&mock_control);
-    case 0x92CEE0:return reinterpret_cast<void *>(&mock_lookup);
-    case 0x85B160:return reinterpret_cast<void *>(&mock_max);
-    case 0x85B1A0:return reinterpret_cast<void *>(&mock_total);
-    case 0x85CF80:return reinterpret_cast<void *>(&mock_value);
-    case 0x82C960:case 0x82C510:case 0x82CD60:case 0x82D170:return reinterpret_cast<void *>(&mock_paint);
-    case 0x82D880:case 0x82DB90:case 0x82D570:return reinterpret_cast<void *>(&mock_window_rate);
+    case 0x858910:return reinterpret_cast<void *>(&mock_resume_footer);
+    case 0x83E4A0:return reinterpret_cast<void *>(&mock_resume_portrait);
+    case 0x813940:return reinterpret_cast<void *>(&mock_native_frame);
+    case 0x809060:return reinterpret_cast<void *>(&mock_cleanup);
+    case 0x9332B0:return reinterpret_cast<void *>(&mock_text);
+    case 0x931D40:case 0x931DA0:return reinterpret_cast<void *>(&mock_control);
+    case 0x92F390:return reinterpret_cast<void *>(&mock_lookup);
+    case 0x85D490:return reinterpret_cast<void *>(&mock_max);
+    case 0x85D4D0:return reinterpret_cast<void *>(&mock_total);
+    case 0x85F2B0:return reinterpret_cast<void *>(&mock_value);
+    case 0x82F030:case 0x82EB90:case 0x82F490:case 0x82F8F0:return reinterpret_cast<void *>(&mock_paint);
+    case 0x82FD50:case 0x8300B0:case 0x830410:return reinterpret_cast<void *>(&mock_window_rate);
     default:return nullptr;
     }
 }
@@ -118,16 +118,16 @@ static void setup() {
     window_vt[0x1D8/8]=reinterpret_cast<void *>(&mock_window_rate);
     point(view_mem,0x198,cursor_mem);point(window_mem,0x1F8,button_mem);point(button_mem,0x180,child_mem);
     number(state_mem,0x4D8)=8;number(window_mem,0x20C)=10000;
-    point(image,0x277DF18,image+0x2000);point(image+0x2000,0x158+8,person_mem);
+    point(image,0x2780F60,image+0x2000);point(image+0x2000,0x158+8,person_mem);
     *reinterpret_cast<unsigned short *>(target_mem+0x52)=1;
-    number(image,0x1A48844)=80;number(image,0x1A48850)=100;
-    for(unsigned a:{0x1A48548u,0x1A487ACu,0x1A485B0u,0x1A4870Cu}) {
+    number(image,0x1A4B830)=80;number(image,0x1A4B83C)=100;
+    for(unsigned a:{0x1A4B534u,0x1A4B79Cu,0x1A4B59Cu,0x1A4B700u}) {
         number(image,a)=100;number(image,a+12)=100;number(image,a+24)=1;number(image,a+44)=100;
     }
-    for(unsigned a:{0x27D2564u,0x27D257Cu,0x27D2568u,0x27D2574u})number(image,a)=0;
+    for(unsigned a:{0x27D55B8u,0x27D55D0u,0x27D55BCu,0x27D55C4u})number(image,a)=0;
 }
 int main(int argc,char **argv) {
-    image=static_cast<Obj>(VirtualAlloc(nullptr,0x29FF000,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));check(image!=nullptr,"synthetic image");
+    image=static_cast<Obj>(VirtualAlloc(nullptr,0x2A0B000,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));check(image!=nullptr,"synthetic image");
     Obj gate=static_cast<Obj>(VirtualAlloc(nullptr,4096,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));check(gate!=nullptr,"tail gate memory");
     // Save RSI, pass the native state in RSI, then jump into the real gate.
     gate[0]=0x56;gate[1]=0x48;gate[2]=0x89;gate[3]=0xCE;absolute_jump(gate+4,gate+64);
@@ -159,28 +159,26 @@ int main(int argc,char **argv) {
     }
     setup();check(enter(state_mem)==17 && pending.state==state_mem && !pending.round.extra,"fresh negotiation resets lifetime state");
     setup();number(state_mem,0x594)=-80;number(window_mem,0x214)=-80;number(window_mem,0x210)=INT32_MAX;
-    refresh<GA_82CD60>(window_mem,0);
+    refresh<GA_82F490>(window_mem,0);
     check(slider_max==10000 && slider_total==10000 && slider_value==10000 && last_lookup==0x8B,"prisoner slider uses correct IDs and available balance");
     check(labels[0x7A]==L"10000" && labels[0x80]==L"/10000","prisoner selected and remaining labels");
-    refresh<GA_82C960>(window_mem,0);check(last_lookup==0x4D,"goodwill slider IDs");
-    refresh<GA_82C510>(window_mem,0);check(last_lookup==0x5B,"alliance slider IDs");
-    refresh<GA_82D170>(window_mem,0);check(last_lookup==0x5B,"attack request slider IDs");
-    redraw<GA_82DB90>(window_mem,-1);check(labels[0x56]==L"180%","prisoner reserve is visible");
-    redraw<GA_82D880>(window_mem,-1);check(labels[0x75]==L"180%","goodwill reserve is visible");
-    redraw<GA_82D570>(window_mem,-1);check(labels[0x83]==L"180%","alliance/request reserve is visible");
+    refresh<GA_82F030>(window_mem,0);check(last_lookup==0x4D,"goodwill slider IDs");
+    refresh<GA_82EB90>(window_mem,0);check(last_lookup==0x5B,"alliance slider IDs");
+    refresh<GA_82F8F0>(window_mem,0);check(last_lookup==0x5B,"attack request slider IDs");
+    redraw<GA_8300B0>(window_mem,-1);check(labels[0x56]==L"180%","prisoner reserve is visible");
+    redraw<GA_82FD50>(window_mem,-1);check(labels[0x75]==L"180%","goodwill reserve is visible");
+    redraw<GA_830410>(window_mem,-1);check(labels[0x83]==L"180%","alliance/request reserve is visible");
     check(rate(force_mem,person_mem,target_mem,8,-50,100,1,0)==-150,"native rate wrapper preserves reserve");
-    {   // local10 G4: the 8-argument form (synthetic global holding 70); the 7-argument form (rate_reduce==0) never reads the 8th slot
-        check(rate_reduce==0,"7-argument form by default");number(image,0x3000)=70;rate_reduce=0x3000;rate_reduced_seen=-1;
+    {   // local10 G4: the 8-argument form (synthetic global holding 70)
+        number(image,0x3000)=70;rate_reduce=0x3000;rate_reduced_seen=-1;
         check(rate(force_mem,person_mem,target_mem,8,-50,100,1,1)==-120,"reduced investment term (70 percent) in the modified rate");
         check(rate(force_mem,person_mem,target_mem,8,-50,100,1,0)==-150,"unreduced call keeps the full term");
         mod_features.diplomacy_overinvest=false;rate_reduced_seen=-1;
         check(rate(force_mem,person_mem,target_mem,8,50,10,1,1)==40 && rate_reduced_seen==1,"unmodified rate forwards the 8th argument to the original");
         mod_features.diplomacy_overinvest=true;number(image,0x3000)=0;
         check(rate(force_mem,person_mem,target_mem,8,-50,100,1,1)==-150 && rate_reduced_seen==1,"non-positive reduction falls back to the native call");
-        rate_reduce=0;rate_reduced_seen=-1;mod_features.diplomacy_overinvest=false;
-        check(rate(force_mem,person_mem,target_mem,8,50,10,1,7)==40 && rate_reduced_seen==0,"without the 8-argument form the stray slot is forced to 0");
     }
-    const unsigned before_paint=paints;mod_features.diplomacy_overinvest=false;refresh<GA_82CD60>(window_mem,0);check(paints==before_paint+1,"disabled investment feature uses native painter");
+    const unsigned before_paint=paints;mod_features.diplomacy_overinvest=false;refresh<GA_82F490>(window_mem,0);check(paints==before_paint+1,"disabled investment feature uses native painter");
     check(rate(force_mem,person_mem,target_mem,8,50,10,1,0)==40,"disabled rate forwards to original");
     setup();last_player=false;check(!incoming(window_mem),"player-initiated negotiation excluded");
     setup();command_kind=7;check(!incoming(window_mem),"surrender excluded");
@@ -236,17 +234,14 @@ int main(int argc,char **argv) {
     setup();pending.round.extra=true;leave(state_mem,force_mem,target_mem);check(pending.state==nullptr && !pending.round.extra,"leave discards session state before original teardown");
     check(argc==2,"retained original text argument");
     std::ifstream input(argv[1],std::ios::binary|std::ios::ate);check(static_cast<bool>(input),"retained text opens");
-    auto size=input.tellg();check(size>0 && size<0x133F000,"retained text size");input.seekg(0);input.read(reinterpret_cast<char *>(image+0x1000),size);check(static_cast<bool>(input),"retained native text loaded");
+    auto size=input.tellg();check(size>0 && size<0x1342000,"retained text size");input.seekg(0);input.read(reinterpret_cast<char *>(image+0x1000),size);check(static_cast<bool>(input),"retained native text loaded");
     for(const auto &slot:slots)point(image,slot.rva,image+slot.original);
     check(guards_match(),"real native functions, callers, tail and slots match before installation");
-    check(rate_reduce_rva()==0,"1fbe6be7 322B30 is the 7-argument form");
-    {   // synthetic 8-argument form: cmp dword [rsp+0x68],0 at +0xA9, movd xmm0,[rip+disp] at +0xC0
-        const unsigned r=GA(GA_322B30);unsigned char saved[0x30];memcpy(saved,image+r+0xA0,sizeof(saved));
-        const unsigned char cmp8[]={0x83,0x7C,0x24,0x68,0x00},movd[]={0x66,0x0F,0x6E,0x05};
-        memcpy(image+r+0xA9,cmp8,5);memcpy(image+r+0xC0,movd,4);*reinterpret_cast<int *>(image+r+0xC4)=0x1A4B884-(static_cast<int>(r)+0xC8);
-        check(rate_reduce_rva()==0x1A4B884,"8-argument form decodes the percentage global");
+    {   // 324BC0 is the 8-argument form: cmp dword [rsp+0x68],0 at +0xA9, movd xmm0,[rip+disp] at +0xC0
+        const unsigned r=GA(GA_324BC0),g=rate_reduce_rva();
+        check(g==0x1A4B884,"8-argument form decodes the percentage global (its value 70 is read from the data section by tests/verify_diplomacy_intel.py; the fixture image holds .text only)");
         image[r+0xC1]^=1;check(rate_reduce_rva()==0,"changed movd opcode rejects the 8-argument form");image[r+0xC1]^=1;
-        memcpy(image+r+0xA0,saved,sizeof(saved));check(rate_reduce_rva()==0 && guards_match(),"synthetic form restored");
+        check(rate_reduce_rva()==g && guards_match(),"form restored");
     }
     image[final_tail]^=1;check(!diplomacy_intel::install() && !final_tail_link.published,"foreign tail prevents every hook publication");image[final_tail]^=1;
     check(diplomacy_intel::install() && final_tail_link.published && image[final_tail]==0xE9,"actual native tail gate and existing hooks publish together");

@@ -52,29 +52,29 @@ static bool gallery_footer(unified_dialogs::Dialog &r){
     // The native mode2 footer setup (2C09E0..2C0AAD), independent of list mode.
     // Keep the original footer/list/page objects alive. Only enable its native
     // round button slots; single-select must not inherit mode2's full-capacity lock.
-    auto add=fn<void(__fastcall *)(Obj,unsigned,int,int)>(GA(GA_85FF50));
-    auto bind=fn<void(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_85C780));
+    auto add=fn<void(__fastcall *)(Obj,unsigned,int,int)>(GA(GA_862280));
+    auto bind=fn<void(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_85EAB0));
     add(footer,5,0,-1);add(footer,4,1,-1);
     bind(footer,5,0x7FFFFFFD);bind(footer,4,0x7FFFFFFE);
     // Publish the new slots before the modal entrance/resume sees the footer.
     for(unsigned id:{5u,4u}){
-        Obj control=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_92CEE0))(footer+0x130,id);
+        Obj control=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_92F390))(footer+0x130,id);
         if(!control)return false;
         *reinterpret_cast<unsigned *>(control+0x40)=(dword(control,0x40)|1u)&~8u;
-        fn<void(__fastcall *)(Obj,int)>(GA(GA_873450))(control,255);
-        fn<void(__fastcall *)(Obj,int)>(GA(GA_873370))(control,1);
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_875800))(control,255);
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_875720))(control,1);
     }
-    if(Obj old=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_92CEE0))(footer+0x130,1)){
+    if(Obj old=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_92F390))(footer+0x130,1)){
         *reinterpret_cast<unsigned *>(old+0x40)|=8;
-        fn<void(__fastcall *)(Obj,int)>(GA(GA_873450))(old,0);
-        fn<void(__fastcall *)(Obj,int)>(GA(GA_873370))(old,1);
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_875800))(old,0);
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_875720))(old,1);
     }
     return true;
 }
 static void root_footer(unified_dialogs::Dialog &r){
     if(!gallery_footer(r))return;
     Obj footer=pointer(r.object,0x188);
-    Obj save=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_92CEE0))(footer+0x130,5);
+    Obj save=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_92F390))(footer+0x130,5);
     if(!save)return;
     // Reuse the shared command functor ABI, but bind it to the round button.
     // Root row clicks still navigate immediately; footer confirmation saves
@@ -82,8 +82,8 @@ static void root_footer(unified_dialogs::Dialog &r){
     alignas(8) unsigned char callback[64]={};
     *reinterpret_cast<unified_dialogs::Command *>(callback)={unified_dialogs::command_vtable,&r,0};
     *reinterpret_cast<Obj *>(callback+56)=callback;
-    fn<void(__fastcall *)(Obj,unsigned)>(GA(GA_869BE0))(save+0x70,0x7FFFFFFE);
-    fn<void(__fastcall *)(Obj,unsigned,Obj)>(GA(GA_1A3CB0))(save,0x7FFFFFFE,callback);
+    fn<void(__fastcall *)(Obj,unsigned)>(GA(GA_86BF90))(save+0x70,0x7FFFFFFE);
+    fn<void(__fastcall *)(Obj,unsigned,Obj)>(GA(GA_1A4FB0))(save,0x7FFFFFFE,callback);
 }
 static bool layout_existing_list(unified_dialogs::Dialog &r){
     // Keep native ownership and delegates. The frame queue can still refer to
@@ -91,14 +91,14 @@ static bool layout_existing_list(unified_dialogs::Dialog &r){
     Obj list=pointer(r.object,0x180),bar=pointer(r.object,0x198);if(!list)return false;
     ui_call_trace::memory(ui_call_trace::Attach,r.object+0x180,8);
     ui_call_trace::memory(ui_call_trace::Attach+1000,r.object+0x198,8);
-    ui_call_trace::call(ui_call_trace::Move,GA(GA_874650),fn<void(__fastcall *)(Obj,int,int)>(GA(GA_874650)),r.object,0,0);
-    ui_call_trace::call(ui_call_trace::Width,GA(GA_875F00),fn<void(__fastcall *)(Obj,int)>(GA(GA_875F00)),r.object,1920);
-    ui_call_trace::call(ui_call_trace::Height,GA(GA_8740F0),fn<void(__fastcall *)(Obj,int)>(GA(GA_8740F0)),r.object,1080);
-    ui_call_trace::call(ui_call_trace::Move,GA(GA_874650),fn<void(__fastcall *)(Obj,int,int)>(GA(GA_874650)),list,80,90);
+    ui_call_trace::call(ui_call_trace::Move,GA(GA_876AD0),fn<void(__fastcall *)(Obj,int,int)>(GA(GA_876AD0)),r.object,0,0);
+    ui_call_trace::call(ui_call_trace::Width,GA(GA_8782B0),fn<void(__fastcall *)(Obj,int)>(GA(GA_8782B0)),r.object,1920);
+    ui_call_trace::call(ui_call_trace::Height,GA(GA_8764A0),fn<void(__fastcall *)(Obj,int)>(GA(GA_8764A0)),r.object,1080);
+    ui_call_trace::call(ui_call_trace::Move,GA(GA_876AD0),fn<void(__fastcall *)(Obj,int,int)>(GA(GA_876AD0)),list,80,90);
     Obj config=pointer(r.object,0x1A8);if(!config)config=r.config;
     int viewport=1000+(((*reinterpret_cast<unsigned *>(config+0x18)>=2) && *reinterpret_cast<unsigned *>(config+0x100))?48:0);
-    ui_call_trace::call(ui_call_trace::Width,GA(GA_875F00),fn<void(__fastcall *)(Obj,int)>(GA(GA_875F00)),list,viewport);
-    ui_call_trace::call(ui_call_trace::Height,GA(GA_8740F0),fn<void(__fastcall *)(Obj,int)>(GA(GA_8740F0)),list,600);
+    ui_call_trace::call(ui_call_trace::Width,GA(GA_8782B0),fn<void(__fastcall *)(Obj,int)>(GA(GA_8782B0)),list,viewport);
+    ui_call_trace::call(ui_call_trace::Height,GA(GA_8764A0),fn<void(__fastcall *)(Obj,int)>(GA(GA_8764A0)),list,600);
     // Keep the existing page identity/delegates and constrain its actual hit/paint
     // viewport too; the original title frame ends at y720, above the footer.
     Obj pages=pointer(list,0x130);unsigned index=dword(list,0x208),count=dword(list,0x20C);
@@ -106,19 +106,19 @@ static bool layout_existing_list(unified_dialogs::Dialog &r){
         // 86C860 sets the actual clipping drawable (+A0)->size(+F0/F2).
         // The outer CUI height alone leaves that old clipping rectangle intact.
         if(Obj clip=pointer(body,0xA0))
-            ui_call_trace::call(ui_call_trace::Height,GA(GA_9303B0),fn<void(__fastcall *)(Obj,int,int)>(GA(GA_9303B0)),clip,viewport,552);
-        ui_call_trace::call(ui_call_trace::Width,GA(GA_875F00),fn<void(__fastcall *)(Obj,int)>(GA(GA_875F00)),body,viewport);
-        ui_call_trace::call(ui_call_trace::Height,GA(GA_8740F0),fn<void(__fastcall *)(Obj,int)>(GA(GA_8740F0)),body,552);
+            ui_call_trace::call(ui_call_trace::Height,GA(GA_932940),fn<void(__fastcall *)(Obj,int,int)>(GA(GA_932940)),clip,viewport,552);
+        ui_call_trace::call(ui_call_trace::Width,GA(GA_8782B0),fn<void(__fastcall *)(Obj,int)>(GA(GA_8782B0)),body,viewport);
+        ui_call_trace::call(ui_call_trace::Height,GA(GA_8764A0),fn<void(__fastcall *)(Obj,int)>(GA(GA_8764A0)),body,552);
     }}
     if(bar){
-        ui_call_trace::call(ui_call_trace::Move,GA(GA_874650),fn<void(__fastcall *)(Obj,int,int)>(GA(GA_874650)),bar,80+viewport+16,170);
-        ui_call_trace::call(ui_call_trace::Height,GA(GA_8740F0),fn<void(__fastcall *)(Obj,int)>(GA(GA_8740F0)),bar,520);
+        ui_call_trace::call(ui_call_trace::Move,GA(GA_876AD0),fn<void(__fastcall *)(Obj,int,int)>(GA(GA_876AD0)),bar,80+viewport+16,170);
+        ui_call_trace::call(ui_call_trace::Height,GA(GA_8764A0),fn<void(__fastcall *)(Obj,int)>(GA(GA_8764A0)),bar,520);
         // 851930 owns a second length at +1A4. 84CE60 lays out the track,
         // thumb and bottom arrow from that length and the updated outer bounds.
         *reinterpret_cast<unsigned *>(bar+0x1A4)=520;
-        ui_call_trace::call(ui_call_trace::Refresh,GA(GA_84CE60),fn<void(__fastcall *)(Obj)>(GA(GA_84CE60)),bar);
+        ui_call_trace::call(ui_call_trace::Refresh,GA(GA_84F230),fn<void(__fastcall *)(Obj)>(GA(GA_84F230)),bar);
     }
-    ui_call_trace::call(ui_call_trace::Refresh,GA(GA_2FC280),fn<void(__fastcall *)(Obj)>(GA(GA_2FC280)),r.object);return true;
+    ui_call_trace::call(ui_call_trace::Refresh,GA(GA_2FE670),fn<void(__fastcall *)(Obj)>(GA(GA_2FE670)),r.object);return true;
 }
 static void queue(unsigned step){if(session){session->dialog=nullptr;session->pending=step;session->preview_key=~0ull;}ccz_preview::hide();}
 static bool pick(const std::wstring &title,const std::vector<std::wstring> &names,const std::vector<unsigned> &ids,bool multiple,const std::set<unsigned> &initial,unified_dialogs::PickDone done){
@@ -219,7 +219,7 @@ static bool show(){
     ui_call_trace::run(ui_call_trace::Profile,[&]{next->before=ccz_appearance::read_profile(next->path);ccz_appearance::decode(next->before.c_str(),next->value);});session=std::move(next);return true;
 }
 static void tick(Obj state){
-    if(!session || unified_dialogs::active || !ui_call_trace::call(ui_call_trace::Ready,GA(GA_56FE10),fn<int(__fastcall *)(Obj)>(GA(GA_56FE10)),state))return;
+    if(!session || unified_dialogs::active || !ui_call_trace::call(ui_call_trace::Ready,GA(GA_572670),fn<int(__fastcall *)(Obj)>(GA(GA_572670)),state))return;
     ui_call_trace::run(ui_call_trace::Release,[]{unified_dialogs::release_closed();});unsigned step=session->pending;if(!step)return;
     if(step==Cancel || step==Save){finish(step==Save);return;}ui_call_trace::run(ui_call_trace::Step,[&]{open_step(step);});
 }

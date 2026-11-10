@@ -172,7 +172,7 @@ try {
             exit 0
         }
         Invoke-SplitPackage
-        Write-Host '원본 EXE·세이브·기존 안개 모드는 유지됩니다.'
+        Write-Host '원본 EXE와 세이브는 유지됩니다.'
         exit 0
     }
     Assert-GameClosed
@@ -262,7 +262,7 @@ try {
         }
         Write-Host 'AI 모드 적용 완료. 평소 Steam/런처로 실행해 주세요.'
     }
-    Write-Host '원본 EXE·세이브·기존 안개 모드는 유지됩니다.'
+    Write-Host '원본 EXE와 세이브는 유지됩니다.'
     exit 0
 } catch {
     Write-Host ('실패: ' + $_.Exception.Message) -ForegroundColor Red

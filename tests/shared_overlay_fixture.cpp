@@ -17,9 +17,13 @@ namespace terrain_render {static void on_device(ID3D11Device *){} static void on
 #include "../src/native_ccz_preview.inl"
 // User 2026-10-31: 조조전 병종 그림 draws from the same Present hook; no-op here.
 namespace ccz_sprites {static bool needs_present(){return false;} static void on_present(ID3D11Device *,ID3D11DeviceContext *,ID3D11Texture2D *,const D3D11_TEXTURE2D_DESC &){}}
+// W4-3: the draw loop is driven by the overlay service; the fixture joins the same rows production generates (module_overlay_subscriptions.inl).
+static struct {bool ccz_sprites=true,advisor_briefing=true;} mod_features;
+#include "../src/module_overlay_subscriptions.inl"
 static unsigned checks;
 static void check(bool ok,const char *label){++checks;if(!ok){fprintf(stderr,"%s\n",label);ExitProcess(1);}}
 int main() {
+    MODULE_SUBSCRIBE_OVERLAY();
     using namespace unified_overlay;
     Bounds full=bounds(1920,1080);check(full.x==218 && full.y==156 && full.width==164 && full.height==42,"native UI anchor at full HD");
     Bounds letter=bounds(1280,800);check(letter.x==145 && letter.y==144 && letter.width==109 && letter.height==28,"windowed letterboxing preserves native UI position");

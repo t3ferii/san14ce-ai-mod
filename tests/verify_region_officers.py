@@ -5,7 +5,9 @@ import argparse, ctypes as C, hashlib, json, re, struct, sys
 from ctypes import wintypes as W
 P=Path(__file__).resolve().parents[1]; GAME=P.parent
 sys.path.insert(0,str(P/'research/ui_atlas'))
-from build_catalog import PE, SOURCE, EXPECTED
+from build_catalog import PE
+SOURCE=P/'build/ui_native_analysis/editor83_b25953386/game.exe.unpacked.exe'   # decoded 1a4a447d image (build_catalog's own SOURCE is the former build)
+EXPECTED='1a4a447d14e68c40ad2a5107c29c7341c10eee8fc297a7b35032900c341dbcaa'
 
 def digest(data): return hashlib.sha256(data).hexdigest()
 
@@ -36,9 +38,9 @@ def verify_live(pid,pe,profile):
     try:
         for row in profile:
             assert read(base+row['rva'],row['size'])==pe.read(row['rva'],row['size']),hex(row['rva'])
-        for slot,expected in [(0x139A338,0x1A7F50),(0x139A350,0x1A74D0),(0x139A328,0x19B1D0),(0x13999C8,0x1A7EA0),(0x13999E0,0x1A75A0),(0x13999B8,0x19B350)]:
+        for slot,expected in [(0x139D378,0x1A9250),(0x139D390,0x1A87D0),(0x139D368,0x19C4A0),(0x139CA08,0x1A91A0),(0x139CA20,0x1A88A0),(0x139C9F8,0x19C620)]:
             assert struct.unpack('<Q',read(base+slot,8))[0]==base+expected,hex(slot)
-        mode=struct.unpack('<I',read(base+0x21431FC,4))[0]
+        mode=struct.unpack('<I',read(base+0x214624C,4))[0]
         return dict(pid=pid,function_ranges=len(profile),original_slots=6,map_mode=mode,
                     access='PROCESS_VM_READ|PROCESS_QUERY_INFORMATION',memory_written=False,game_functions_invoked=False)
     finally:k.CloseHandle(handle)
@@ -47,8 +49,11 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('--pid',type=int);args=parser.parse_args()
     pe=PE(SOURCE);assert digest(pe.data)==EXPECTED
     assert digest((GAME/'SAN14CE_KO.exe').read_bytes()) in ('87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a','782cf229a56cdde2b95399e0e7536740b3f5e96bea702679365e4dad061abdce') # Steam EXE: 87ed4e46 = before the 2026-11-05 update, 782cf229 = buildid 25953386 (build table, nothing weakened)
-    profile=json.loads((P/'research/area_officer_overlay/profile.json').read_text())['functions']
+    # 2026-11-07: the guarded function ranges come from the header itself (single source after the re-base); research/area_officer_overlay/profile.json
+    # is the former build's artifact and is not read any more. Each row is re-hashed from the decoded image below.
     header=(P/'src/region_officer_profile.h').read_text()
+    profile=[dict(rva=int(a,16),size=int(b,16),hash=int(c,16),sha256=digest(pe.read(int(a,16),int(b,16)))) for a,b,c in re.findall(r'\{0x([0-9A-F]+),0x([0-9A-F]+),0x([0-9A-F]+)ull\}',header)]
+    assert len(profile)==48,len(profile)
     for row in profile:
         raw=pe.read(row['rva'],row['size']);assert digest(raw)==row['sha256']
         h=0xCBF29CE484222325
@@ -56,30 +61,31 @@ def main():
         assert h==row['hash']
         assert f'{{0x{row["rva"]:X},0x{row["size"]:X},0x{h:016X}ull}}' in header
     # Native CCapitalInfo data getter and area ownership, separately from fixtures.
-    assert bytes.fromhex('488B89F0010000') in pe.read(0x19E140,32)
-    assert pe.read(0x22CC1C,5)==bytes.fromhex('0FB64114C3')
+    assert bytes.fromhex('488B89F0010000') in pe.read(0x19F440,32)
+    assert pe.read(0x22E66C,5)==bytes.fromhex('0FB64114C3')
     # City label (CFootholdInfoLayout): +1F0 object +4E base id -> building +10 centre (22D500), tile +12 area (22A7B0).
-    assert pe.read(0x22D506,4)==bytes.fromhex('0FB7414E') and bytes.fromhex('98DA0600') in pe.read(0x22D500,0x30)
-    assert pe.read(0x1A3507,7)==bytes.fromhex('488D1DE2FCF901')
-    assert 0x1A3507+7+struct.unpack('<i',pe.read(0x1A350A,4))[0]==0x21431F0
-    for slot,rva in [(0x139A338,0x1A7F50),(0x139A350,0x1A74D0),(0x139A328,0x19B1D0),(0x13999C8,0x1A7EA0),(0x13999E0,0x1A75A0),(0x13999B8,0x19B350)]:
+    assert pe.read(0x22EF56,4)==bytes.fromhex('0FB7414E') and bytes.fromhex('98DA0600') in pe.read(0x22EF50,0x30)
+    assert pe.read(0x1A4807,7)==bytes.fromhex('488D1D321AFA01')
+    assert 0x1A4807+7+struct.unpack('<i',pe.read(0x1A480A,4))[0]==0x2146240
+    for slot,rva in [(0x139D378,0x1A9250),(0x139D390,0x1A87D0),(0x139D368,0x19C4A0),(0x139CA08,0x1A91A0),(0x139CA20,0x1A88A0),(0x139C9F8,0x19C620)]:
         assert struct.unpack('<Q',pe.read(slot,8))[0]==pe.base+rva
     source='\n'.join((P/n).read_text(encoding='utf-8') for n in ['src/native_region_officers.inl','src/native_region_officer_traits.inl'])
     calls={int(x,16) for x in re.findall(r'\(0x([A-Fa-f0-9]+)\)\(',source)}
-    assert not calls & {0x29BF00,0x27A660,0x199950,0x198FA0,0x36320,0x7A110},'Domestic mutation/button route is forbidden'
+    assert not calls & {0x29DE10,0x27BF90,0x19AC20,0x19A270,0x36E80,0x7B0B0},'Domestic mutation/button route is forbidden'
     assert 'CDomesticAreaBtnBase' not in source.split('namespace region_officers',1)[1]
-    assert pe.read(0x34143D,7)==bytes.fromhex('0FB681BA000000')
-    assert pe.read(0x341445,7)==bytes.fromhex('0FB681B6000000')
-    assert struct.unpack('<4I',pe.read(0x13B3A40,16))==(33,34,36,37)
-    assert struct.unpack('<Q',pe.read(0x1A2B850+38*96+24,8))[0]==pe.base+0x361590
+    assert pe.read(0x34371D,7)==bytes.fromhex('0FB681BA000000')
+    assert pe.read(0x343725,7)==bytes.fromhex('0FB681B6000000')
+    assert struct.unpack('<4I',pe.read(0x13B6AB0,16))==(33,34,36,37)
+    assert struct.unpack('<Q',pe.read(0x1A2E830+38*96+24,8))[0]==pe.base+0x363AC0
     # v12.19: QPC only for the heavy-step cooldown (no timing output); still no writer.
     assert 'heavy_resume=end+2*(end-begin)' in source and 'if(heavy_clock()<heavy_resume)return false;' in source
     for removed in ('metrics::','observe_text','region_officers_once.json','region_officers_profile.ini','WriteFile','CreateFileW'):
         assert removed not in source,removed
     assert not (P/'src/native_region_officer_metrics.inl').exists()
-    adapter=(P/'src/native_adapter.cpp').read_text()
-    section=adapter.split('#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)',1)[1].split('#endif',1)[0]
-    assert '#include "native_region_officers.inl"' in section
+    import registry_text as R   # W5: includes come from the generated list of the convenience root
+    assert R.hosts('native_region_officers.inl')==['convenience']
+    guard=R.unity('convenience').split('#include "native_region_officers.inl"',1)[0].rsplit('#if ',1)[1].split('\n',1)[0]
+    assert guard=='defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)'
     report=dict(status='region_officer_current_exe_passed',function_ranges=len(profile),original_slots=6,
                 original_exe_unchanged=True,convenience_only=True,installed=False,gameplay_verified=False,fps_measured=False)
     if args.pid:report['live_byte_observation']=verify_live(args.pid,pe,profile)

@@ -5,7 +5,7 @@ import re, sys, json
 P=Path(__file__).resolve().parents[1]
 menu=(P/'distribution/FeatureSelect.ps1').read_text(encoding='utf-8-sig')
 src=P/'src'
-sources={q.name:q.read_text(encoding='utf-8',errors='replace') for q in src.iterdir() if q.is_file() and q.suffix.lower() in {'.cpp','.h','.inl'} and q.name!='native_target_retreat.inl'} # Fixture only: included by TARGET_RETREAT_FIXTURE and never installed.
+sources={q.name:q.read_text(encoding='utf-8',errors='replace') for q in src.iterdir() if q.is_file() and q.suffix.lower() in {'.cpp','.h','.inl'}}
 split=sources['native_split_install.inl']
 checks=0; failures=[]
 def ok(condition,message):
@@ -69,7 +69,8 @@ ok('const bool ccz = GetPrivateProfileIntW(L"groups", L"ccz", 1, config) != 0;' 
    'f.ccz_block = on && ccz && feature_key(config, L"ccz", L"ccz_block", false);' in adapter and
    'f.ccz_critical = on && ccz && feature_key(config, L"ccz", L"ccz_critical", false);' in adapter,
    'ccz_sprites enables hide/depth, far_keep stays OFF, and groups.ccz gates all three active features')
-ok('if(mod_features.distance)install_progress_native();' in adapter,
+ok('if(mod_features.distance)install_progress_native();' in adapter or
+   '{"progress_native",0,[]{return mod_features.distance;}' in sources.get('module_table_convenience.inl', ''),
    'distance=0 prevents progress_native installation')
 print(json.dumps({'status':'feature_switches_static_verified' if not failures else 'failed','checks':checks,'menu_items':len(menu_keys),'retired_items':len(retired),'native_keys':len(dll_keys),'failures':failures,'gameplay_verified':False},ensure_ascii=False))
 sys.exit(1 if failures else 0)

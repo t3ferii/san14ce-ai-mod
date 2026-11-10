@@ -16,9 +16,9 @@ PROJECT = Path(__file__).resolve().parents[1]
 DEST = Path(sys.argv[1]).resolve() / 'AI_TacticsMod' if len(sys.argv) > 1 else PROJECT / 'build/development/source_public_20261026_r3/AI_TacticsMod'
 LABEL = sys.argv[2] if len(sys.argv) > 2 else '2026-10-26 development source; not an exact v13.3 release reproduction'
 TEXT = {'.cpp', '.c', '.h', '.inl', '.asm', '.hlsl', '.py', '.ps1', '.psm1', '.manifest', '.ini', '.txt', '.wprp', '.cmd', '.cs'}
-EXTRA_TOOLS = '''check_feature.ps1 prepare_traits9.py traits9_layout.py
-install_local.py install_damage_preview.py package_mod.py package_input.py install_split.py
-generate_handoff.py audit_current_source.py prepare_modpack_tables.py
+EXTRA_TOOLS = '''check_feature.ps1
+install_local.py install_damage_preview.py package_mod.py package_input.py
+generate_handoff.py audit_current_source.py
 prepare_public_release.py export_source_snapshot.py release_features.py'''.split()
 DOCS = '''MODULES.md NATIVE_FUNCTIONS.md FEATURE_SWITCHES.md WORKFLOW.md SESSION_RULES.md
 DAMAGE_PREVIEW.md BUILDING_DESTRUCTION.md COMBAT_AI.md DOMESTIC.md EXPERT_SETTINGS.md
@@ -35,12 +35,14 @@ COMMENTS = {
   ('static DWORD WINAPI initialize_modules(', 'AI-CONTRACT [lifecycle]: This worker negotiates the split ABI and publishes validated hooks only. Do not add gameplay getters/orders here. Module handles stay resident because callbacks can remain in flight.')],
  'src/split_module_api.h': [
   ('struct SplitCombatApi {', 'AI-CONTRACT [ABI]: Field order, calling convention, sizeof checks and split_module_abi are a cross-DLL contract. Change both producer and consumer together; test bad-ABI and partial-publication rollback cases.')],
- 'src/native_split_install.inl': [
+ 'src/module_pointers.inl': [
   ('static const SplitPointer split_pointers[]={', 'AI-CONTRACT [ownership]: Each original slot/site has one DLL owner. Check this table and conditional CodeLink paths together before adding a hook; shared helper code does not authorize a second publisher.'),
+ ],
+ 'src/native_split_install.inl': [
   ('static void split_feature_guards() {', 'AI-CONTRACT [compatibility]: New hook sites need feature-specific original-byte guards and a unique split_disable diagnostic ID. A mismatch disables that feature; do not replace these checks with a whole-image CRC requirement.')],
  'src/native_path_fast.inl': [
   ('static path_fast_core::Storage *volatile slot_storage[3];', 'AI-CONTRACT [lifetime]: Storage ownership is per native buffer slot, not per thread. Native force-AI threads are short-lived; thread_local heap ownership caused the v13.1/v13.2 leak. Preserve slot critical-section evidence before changing reuse.'),
-  ('static const unsigned clear_site=GA(GA_184485);', 'AI-CONTRACT [hook boundary]: 183A30/184485 belong to convenience; 1843E0 entry belongs to combat. Preserve mutual exclusion with path_count and native-search reentrancy guards; delegation must restore native node state.')],
+  ('static const unsigned clear_site=GA(GA_1857B5);', 'AI-CONTRACT [hook boundary]: 183A30/184485 belong to convenience; 1843E0 entry belongs to combat. Preserve mutual exclusion with path_count and native-search reentrancy guards; delegation must restore native node state.')],
  'src/path_fast.h': [
   ('struct Node {', 'AI-CONTRACT [layout]: This is the x64 native node ABI, not a freely replaceable container. Keep offset/size assertions and signed-wrap semantics; validate clean waypoint segments, reopen behavior and bounded result assembly in path_fast_fixture.cpp.')],
  'src/native_campaign.inl': [
@@ -79,7 +81,7 @@ def main():
     selected.update(p for p in (PROJECT / 'tools').glob('*') if p.is_file() and (p.name.startswith(('build_', 'verify_'))) and p.suffix in TEXT)
     selected.update(PROJECT / 'tools' / name for name in EXTRA_TOOLS)
     selected.update(PROJECT / 'docs' / name for name in DOCS)
-    selected.update([PROJECT / 'development/features.json', PROJECT / 'README.md', PROJECT / 'legacy/FogMod_Source/tools/audit_native_game.py'])
+    selected.update([PROJECT / 'development/features.json', PROJECT / 'README.md'])
     # Resolve local Python helper imports without executing any module.
     while True:
         more = set()
@@ -107,6 +109,8 @@ def main():
         # Remaining author-machine analysis paths keep their shape, not the account name.
         text = re.sub(r'C:([\\/])Users\1[^\\/\'"\s]+', r'C:\1Users\1<user>', text)
         for anchor, contract in COMMENTS.get(rel, []):
+            if anchor not in text:
+                continue  # Retired annotation anchor; executable source stays unchanged.
             if text.count(anchor) != 1:
                 raise ValueError('Ambiguous annotation anchor: ' + rel + ' / ' + anchor)
             text = text.replace(anchor, '// ' + contract + '\n' + anchor, 1)
@@ -128,3 +132,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

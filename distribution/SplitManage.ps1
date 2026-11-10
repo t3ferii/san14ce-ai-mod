@@ -135,8 +135,8 @@ function Set-TraitLayout($Index,$Records,[long]$Bank) {
 function Get-LayoutBankPath([long]$Bank){if($Bank -eq 0){return Join-Path $taskGame '0002\ScreenLayout.rdb.bin'};return Join-Path $taskGame ('0002\ScreenLayout.rdb.bin'+$Bank)}
 # 2026-11-05 local3 (user: a feature that is off in this EXE build leaves no screen change behind, docs/UI_RESOURCE_LIFECYCLE.md
 # section 8). EXE TimeDateStamp -> features that own ScreenLayout records and that SAN14_Convenience.dll switches off in that build
-# (its guards decide at run time; research/rva_map/1fbe6be7_to_1a4a447d/expected_disabled.json lists them and
-# tools/check_addresses.py keeps that list in step). local10 (2026-11-06): the traits9 payloads are table ids now, so the nine-slot code
+# (its guards decide at run time; tools/check_addresses.py (c) fails when a feature other than the CCZ ones is off on the reference
+# build 1a4a447d). local10 (2026-11-06): the traits9 payloads are table ids now, so the nine-slot code
 # runs on 0x6AD06F53 (Steam build 25953386, 1a4a447d) too and its four ScreenLayout records are applied; no build withholds a feature
 # any more (the table stays for a future build, keyed by the EXE TimeDateStamp as 8 hex digits).
 $taskBuildLayoutOff=@{}
@@ -191,10 +191,15 @@ function Get-TraitLayoutPlan($State,$Patch,[bool]$Install,$FeatureValues=$null) 
     # user 2026-11-03: speed owns atlas/table/popup/HUD, not just native hooks.
     $taskSpeedKeys=@([uint32]0x301526D7,[uint32]0xFEA5F28CL,[uint32]0x40F993CE,[uint32]0x454A1BCC)
     $taskSpeedOn=$null -eq $FeatureValues -or ($FeatureValues['groups.convenience'] -ne 0 -and (-not $FeatureValues.Contains('game_flow.speed_buttons') -or $FeatureValues['game_flow.speed_buttons'] -ne 0))
+    # user 2026-11-09 (PW36b): the two auto-command toggles own the main-screen layout 00_02_00_mein_pk (both KTIDs).
+    # local17: the keys default off, so a missing key keeps the records out (rule: off = original screen). No feature values at all
+    # (fixtures, Restore) keeps the local16 meaning: every record of the bank.
+    $taskAutoKeys=@([uint32]0x24E16FBE,[uint32]0x036BB544)
+    $taskAutoOn=$null -eq $FeatureValues -or ($FeatureValues['groups.convenience'] -ne 0 -and (($FeatureValues.Contains('game_flow.auto_search') -and $FeatureValues['game_flow.auto_search'] -ne 0) -or ($FeatureValues.Contains('game_flow.auto_reward') -and $FeatureValues['game_flow.auto_reward'] -ne 0)))
     # user 2026-11-03: groups.ccz master also owns the CCZ layout records.
     $taskCczOn=$null -eq $FeatureValues -or ($FeatureValues['groups.convenience'] -ne 0 -and (-not $FeatureValues.Contains('groups.ccz') -or $FeatureValues['groups.ccz'] -ne 0) -and $FeatureValues['ccz.ccz_sprites'] -ne 0)
     # 2026-11-05 local3: the four nine-slot trait records follow the EXE build only (the ini / group switches keep their earlier
-    # behaviour for these records: they stay applied; a follow-up decision, see docs/INSTALL_LOCAL2_TRIAGE.md section 12).
+    # behaviour for these records: they stay applied; a follow-up decision, see docs/HISTORY.md section 12).
     $taskTraits9Keys=@([uint32]0x49F89AB3,[uint32]0x7C471B31,[uint32]0x9EA0EB77L,[uint32]0xF1D669AFL)
     $taskBuildOff=@(Get-GameBuildLayoutOff)
     $taskTraits9On=$taskBuildOff -notcontains 'traits9'
@@ -259,7 +264,7 @@ function Get-TraitLayoutPlan($State,$Patch,[bool]$Install,$FeatureValues=$null) 
         if($null -eq $taskBank) {
             $taskPlan.Messages+='비어 있는 ScreenLayout 번호(24~30)가 없어 개성 9칸 화면 확장을 건너뜁니다.'
         } else {
-            $taskSelected=@($taskRecords | Where-Object {($taskCczOn -or $taskCczKeys -notcontains [uint32]$_.ktid) -and ($taskSpeedOn -or $taskSpeedKeys -notcontains [uint32]$_.ktid) -and ($taskTraits9On -or $taskTraits9Keys -notcontains [uint32]$_.ktid)})
+            $taskSelected=@($taskRecords | Where-Object {($taskCczOn -or $taskCczKeys -notcontains [uint32]$_.ktid) -and ($taskSpeedOn -or $taskSpeedKeys -notcontains [uint32]$_.ktid) -and ($taskAutoOn -or $taskAutoKeys -notcontains [uint32]$_.ktid) -and ($taskTraits9On -or $taskTraits9Keys -notcontains [uint32]$_.ktid)})
             $taskResult=Set-TraitLayout $taskIndex $taskSelected $taskBank
             if($taskResult.Skipped.Count){$taskPlan.Messages+=('다른 모드가 바꾼 무장 화면 {0}개는 그대로 두었습니다. 해당 화면의 개성은 5칸으로 표시됩니다.' -f $taskResult.Skipped.Count)}
             if($taskResult.Applied.Count) {

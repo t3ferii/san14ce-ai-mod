@@ -2,7 +2,7 @@
 the sources spell every original address as an address table id: GA(GA_22C990) (id = reference-build RVA), guard hashes as
 GH(0x...ull) and literal-site memcmp guards as ga::mcmp(image,GA_X,off,...). Importing this module makes Path.read_text() and
 open() return the text with those forms expanded back to the reference-build literals, so the existing checks keep their meaning
-(they verify the reference build 1fbe6be7; the per-build resolution is verified by tools/check_addresses.py)."""
+(they verify current reference-build RVA ids; runtime resolution is verified by tools/check_addresses.py)."""
 import builtins, io, re
 from pathlib import Path
 

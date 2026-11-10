@@ -29,6 +29,8 @@ static NTSTATUS WINAPI test_hash(BCRYPT_ALG_HANDLE h,PUCHAR secret,ULONG sn,PUCH
 #define BCryptHash test_hash
 #endif
 #define WATER_DIAG_WANTED() true
+// instrumentation is supplied by the adapter in production
+#define COST_SCOPE(name) do {} while(0)
 #include "../src/native_water_diag.inl"
 #ifndef NO_RUNTIME_LOG
 #undef BCryptHash

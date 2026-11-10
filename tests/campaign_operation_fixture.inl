@@ -12,11 +12,11 @@ static void campaign_operation_tests() {
     auto saved_operations=std::vector<CampaignOperation>(campaign_operations,campaign_operations+501);
     auto saved_hits=std::vector<CampaignHit>(campaign_hits,campaign_hits+501);
     Obj ownforce=table(0xDF30,2,51),fort_definition=table(0x73958,4,30),band_definition=table(0x73958,7,30);
-    root=static_cast<Obj>(calloc(1,0x90000));putptr(image,0x277DF18,root);putptr(root,0x871E8,player);
+    root=static_cast<Obj>(calloc(1,0x90000));putptr(image,0x2780F60,root);putptr(root,0x871E8,player);
     slot(0xDF30,2,ownforce);slot(0x73958,4,fort_definition);slot(0x73958,7,band_definition);
     goal=object(9);put16(goal,0x4E,9);put16(goal,0x3A,22074);
-    BIND(0x2AA850,revision_distance);BIND(0x22D740,revision_city_hex);
-    BIND(0x22FB10,support_building);BIND(0x26C940,mock_finalize);
+    BIND(0x2ACB80,revision_distance);BIND(0x22F190,revision_city_hex);
+    BIND(0x2315A0,support_building);BIND(0x26E260,mock_finalize);
     area=object(1);put16(area,0x3A,22060);put16(area,0x56,2);area[0x66]=1;slot(0x6CAF0,1,area);
     Obj cityarea=object(2);put16(cityarea,0x3A,22074);put16(cityarea,0x56,1);cityarea[0x66]=1;cityarea[0x34]=1;slot(0x6CAF0,2,cityarea);
     for(unsigned y=93;y<=108;++y)for(unsigned x=45;x<=85;++x) {
@@ -50,10 +50,10 @@ static void campaign_operation_tests() {
     check(campaign::reserve(15000,0)==4000 && campaign::reserve(46000,0)==4000 && campaign::reserve(15000,4000)==4000,
         "fixed garrison does not scale with enemy threat");
     operation_other_city=object(8);put16(operation_other_city,0x4E,8);put16(operation_other_city,0x3A,22080);
-    *reinterpret_cast<unsigned *>(operation_other_city+0x3C)=50000;BIND(0x32C130,operation_city);
+    *reinterpret_cast<unsigned *>(operation_other_city+0x3C)=50000;BIND(0x32E3B0,operation_city);
     check(campaign_operation_defenders(units[1],9,22074)==2979,
         "a nearby hostile city's fifty thousand stored troops do not inflate the current target's immediate defenders");
-    BIND(0x32C130,mock_goal);
+    BIND(0x32E3B0,mock_goal);
     check(campaign_siege_priority(units[3],progress[3]),"completed regional support can initiate a plan across independent native groups");
     check(campaign_operations[1].count==3 && campaign_operations[1].phase==campaign::assault && units[1][0x37]==4 && word(units[1],0x3A)==9,
         "Yuan Shao 12000 attacks a 2979 city without a forty thousand requirement");
@@ -104,7 +104,7 @@ static void campaign_operation_tests() {
     fixture_day=110;
     check(campaign_siege_priority(units[1],progress[1]) && units[1][0x37]==4,"one native turn of fort exposure releases the assault");
     reset();*reinterpret_cast<unsigned *>(goal+0x3C)=6000;
-    BIND(0xB9070,operation_candidates);BIND(0x22DDA0,support_hex);
+    BIND(0xBA100,operation_candidates);BIND(0x22F830,support_hex);
     check(campaign_siege_priority(units[1],progress[1]) && campaign_operations[1].builder==1 && progress[2].facility==4 && units[2][0x37]==8,
         "a stronger city prepares one legal fortress through the original native construction command");
     check(campaign_siege_priority(units[2],progress[2]) && units[2][0x37]==8,"builder callback preserves the shared construction order");
@@ -116,7 +116,7 @@ static void campaign_operation_tests() {
     fixture_day=120;
     check(campaign_siege_priority(units[1],progress[1]) && campaign_operations[1].active && progress[2].facility==4 && units[2][0x37]==8,
         "twenty-day construction no longer dissolves a cohort before its thirty-day stationary advance");
-    BIND(0xB9070,mock_candidates);BIND(0x22DDA0,mock_id);
+    BIND(0xBA100,mock_candidates);BIND(0x22F830,mock_id);
     reset();slot(0x7E838,4,units[4]);units[4][0x150]=1;put16(units[4],0x2A,22066);put16(units[4],0x16,1000);
     check(campaign_siege_priority(units[1],progress[1]) && units[1][0x37]!=7 && !campaign_operations[1].enemy,
         "field enemy at four hexes does not create a custom interception or replace the city operation");
@@ -166,7 +166,7 @@ static void campaign_operation_tests() {
         check(!continue_build(units[2],worker) && !campaign_forced_siege_priority(units[2],worker) && !campaign_castle_locked(units[2]),
             "third and later completed builds do not commit, lock or cancel the siege construction plan");}
     put16(table(0xE270,22071,48399),0x1A,0);
-    root=saved_root;goal=saved_goal;area=saved_area;fixture_day=saved_day;functions=saved_functions;putptr(image,0x277DF18,root);
+    root=saved_root;goal=saved_goal;area=saved_area;fixture_day=saved_day;functions=saved_functions;putptr(image,0x2780F60,root);
     std::copy(saved_progress.begin(),saved_progress.end(),progress);std::copy(saved_operations.begin(),saved_operations.end(),campaign_operations);
     std::copy(saved_hits.begin(),saved_hits.end(),campaign_hits);
 }

@@ -19,37 +19,37 @@ static void reset() {
     *reinterpret_cast<Obj *>(image+0x143C4A0)=image+0x1111;
     *reinterpret_cast<Obj *>(image+0x14508B0)=image+0x2222;
     memset(image+0x7A86C0,0xA6,26);memset(image+0x730B93,0xA6,13);
-    memset(image+0x457500,0xA7,17); // Unrelated map entry must never be checked or patched.
-    memcpy(image+0x73C3C4,terrain_edit::highlight_select_bytes,sizeof(terrain_edit::highlight_select_bytes));
-    memcpy(image+0x486359,terrain_edit::highlight_lock_bytes,sizeof(terrain_edit::highlight_lock_bytes));
-    memcpy(image+0x486558,terrain_edit::highlight_unlock_bytes,sizeof(terrain_edit::highlight_unlock_bytes));
-    memcpy(image+0x71E180,terrain_edit::hex_exit_bytes,sizeof(terrain_edit::hex_exit_bytes));
-    memcpy(image+0x924FE0,terrain_edit::highlight_update_bytes,sizeof(terrain_edit::highlight_update_bytes));
-    memcpy(image+0x73C385,terrain_edit::domestic_input_bytes,sizeof(terrain_edit::domestic_input_bytes));
-    memcpy(image+0x7321CB,terrain_edit::hex_close_bytes,sizeof(terrain_edit::hex_close_bytes));
-    memcpy(image+0x732241,terrain_edit::hex_update_bytes,sizeof(terrain_edit::hex_update_bytes));
-    memcpy(image+0x7A92C0,terrain_edit::hex_hint_bytes,sizeof(terrain_edit::hex_hint_bytes));
-    memcpy(image+0x6B8A8E,terrain_edit::hex_hint_call_bytes,sizeof(terrain_edit::hex_hint_call_bytes));
-    memcpy(image+0x857320,terrain_edit::hex_hint_set_bytes,sizeof(terrain_edit::hex_hint_set_bytes));
-    memcpy(image+0x7A7DB0,terrain_edit::domestic_click_bytes,sizeof(terrain_edit::domestic_click_bytes));
-    memcpy(image+0x73C350,terrain_edit::domestic_state_bytes,sizeof(terrain_edit::domestic_state_bytes));
-    memcpy(image+0x70E940,terrain_edit::domestic_area_bytes,sizeof(terrain_edit::domestic_area_bytes));
-    memcpy(image+0x456FE0,terrain_edit::hex_complete_bytes,sizeof(terrain_edit::hex_complete_bytes));
-    memcpy(image+0x7A8060,terrain_edit::hex_click_bytes,sizeof(terrain_edit::hex_click_bytes));
-    memcpy(image+0x7248D6,terrain_edit::menu_call_bytes,sizeof(terrain_edit::menu_call_bytes));
-    memcpy(image+0x7248DC,terrain_edit::hex_return_bytes,sizeof(terrain_edit::hex_return_bytes));
-    memcpy(image+0x45767B,terrain_edit::hex_open_bytes,sizeof(terrain_edit::hex_open_bytes));
-    memcpy(image+0x433159,terrain_edit::hex_destroy_bytes,sizeof(terrain_edit::hex_destroy_bytes));
-    *reinterpret_cast<Obj *>(image+0x13D89C8)=image+0x456C30;
-    *reinterpret_cast<Obj *>(image+0x13D89D0)=image+0x456C30;
-    *reinterpret_cast<Obj *>(image+0x13D89D8)=image+0x456FE0;
-    *reinterpret_cast<Obj *>(image+0x13D89E8)=image+0x65DFE0;
-    *reinterpret_cast<Obj *>(image+0x14410B8)=image+0x724660;
-    *reinterpret_cast<Obj *>(image+0x144DD28)=image+0x7A8060;
+    memset(image+0x459730,0xA7,17); // Unrelated map entry must never be checked or patched.
+    memcpy(image+0x73E654,terrain_edit::highlight_select_bytes,sizeof(terrain_edit::highlight_select_bytes));
+    memcpy(image+0x488959,terrain_edit::highlight_lock_bytes,sizeof(terrain_edit::highlight_lock_bytes));
+    memcpy(image+0x488B58,terrain_edit::highlight_unlock_bytes,sizeof(terrain_edit::highlight_unlock_bytes));
+    memcpy(image+0x720530,terrain_edit::hex_exit_bytes,sizeof(terrain_edit::hex_exit_bytes));
+    memcpy(image+0x927490,terrain_edit::highlight_update_bytes,sizeof(terrain_edit::highlight_update_bytes));
+    memcpy(image+0x73E615,terrain_edit::domestic_input_bytes,sizeof(terrain_edit::domestic_input_bytes));
+    memcpy(image+0x73455B,terrain_edit::hex_close_bytes,sizeof(terrain_edit::hex_close_bytes));
+    memcpy(image+0x7345D1,terrain_edit::hex_update_bytes,sizeof(terrain_edit::hex_update_bytes));
+    memcpy(image+0x7AB260,terrain_edit::hex_hint_bytes,sizeof(terrain_edit::hex_hint_bytes));
+    memcpy(image+0x6BB1EE,terrain_edit::hex_hint_call_bytes,sizeof(terrain_edit::hex_hint_call_bytes));
+    memcpy(image+0x859610,terrain_edit::hex_hint_set_bytes,sizeof(terrain_edit::hex_hint_set_bytes));
+    memcpy(image+0x7A9D40,terrain_edit::domestic_click_bytes,sizeof(terrain_edit::domestic_click_bytes));
+    memcpy(image+0x73E5E0,terrain_edit::domestic_state_bytes,sizeof(terrain_edit::domestic_state_bytes));
+    memcpy(image+0x710C50,terrain_edit::domestic_area_bytes,sizeof(terrain_edit::domestic_area_bytes));
+    memcpy(image+0x4590A0,terrain_edit::hex_complete_bytes,sizeof(terrain_edit::hex_complete_bytes));
+    memcpy(image+0x7A9F40,terrain_edit::hex_click_bytes,sizeof(terrain_edit::hex_click_bytes));
+    memcpy(image+0x726D56,terrain_edit::menu_call_bytes,sizeof(terrain_edit::menu_call_bytes));
+    memcpy(image+0x726D5C,terrain_edit::hex_return_bytes,sizeof(terrain_edit::hex_return_bytes));
+    memcpy(image+0x4598AB,terrain_edit::hex_open_bytes,sizeof(terrain_edit::hex_open_bytes));
+    memcpy(image+0x4354C9,terrain_edit::hex_destroy_bytes,sizeof(terrain_edit::hex_destroy_bytes));
+    *reinterpret_cast<Obj *>(image+0x13DBA58)=image+0x458DC0;
+    *reinterpret_cast<Obj *>(image+0x13DBA60)=image+0x458DC0;
+    *reinterpret_cast<Obj *>(image+0x13DBA68)=image+0x4590A0;
+    *reinterpret_cast<Obj *>(image+0x13DBA78)=image+0x90DE00;
+    *reinterpret_cast<Obj *>(image+0x1444140)=image+0x726AE0;
+    *reinterpret_cast<Obj *>(image+0x1450DB0)=image+0x7A9F40;
 }
 static void prepared() {split_install.prepared=true;}
 static bool unowned_untouched() {
-    for(unsigned i=0;i<17;++i)if(image[0x457500+i]!=0xA7)return false;
+    for(unsigned i=0;i<17;++i)if(image[0x459730+i]!=0xA7)return false;
     return pointer(image,0x143C4A0)==image+0x1111 && pointer(image,0x14508B0)==image+0x2222;
 }
 int main() {
@@ -83,8 +83,8 @@ int main() {
             require(unowned_untouched(),"tree rejection preserves map/city slots");
         }
     }
-    const unsigned starts[]={0x7A8060,0x7248D6,0x7248DC,0x45767B,
-        0x13D89C8,0x13D89D0,0x13D89D8,0x13D89E8,0x433159,0x7A7DB0,0x73C350,0x456FE0,0x70E940,0x73C385,0x7321CB,0x732241,0x7A92C0,0x6B8A8E,0x857320,0x73C3C4,0x486359,0x486558,0x71E180,0x924FE0,0x14410C0};
+    const unsigned starts[]={0x7A9F40,0x726D56,0x726D5C,0x4598AB,
+        0x13DBA58,0x13DBA60,0x13DBA68,0x13DBA78,0x4354C9,0x7A9D40,0x73E5E0,0x4590A0,0x710C50,0x73E615,0x73455B,0x7345D1,0x7AB260,0x6BB1EE,0x859610,0x73E654,0x488959,0x488B58,0x720530,0x927490,0x1444148};
     const unsigned sizes[]={12,6,7,140,8,8,8,8,25,12,50,15,87,43,10,43,12,15,33,102,49,44,16,32,8};
     for(unsigned i=0;i<sizeof(starts)/sizeof(*starts);++i)for(unsigned b=0;b<sizes[i];++b) {
         reset();image[starts[i]+b]^=0x80;split_feature_guards();
@@ -97,9 +97,9 @@ int main() {
     split_rollback();
     for(const auto &p:split_pointers)if(p.owner==kPointerTerrain)require(pointer(image,p.slot)==image+p.original,"actual rollback restores slot");
     require(unowned_untouched(),"rollback preserves map and city slots");
-    require(pointer(image,0x144D350)==image+0x7A7DB0,"regional slot restored on rollback");
+    require(pointer(image,0x14503D8)==image+0x7A9D40,"regional slot restored on rollback");
     // All newly checked sites must also be isolated by the real publication recheck.
-    for(unsigned site:{0x144D350u,0x7A7DB0u,0x73C350u,0x456FE0u,0x70E940u,0x144DD60u,0x73C385u,0x7321CBu,0x732241u,0x7A92C0u,0x6B8A8Eu,0x857320u,0x14410C0u,0x73C3C4u,0x486359u,0x486558u,0x71E180u,0x924FE0u}) {
+    for(unsigned site:{0x14503D8u,0x7A9D40u,0x73E5E0u,0x4590A0u,0x710C50u,0x1450DE8u,0x73E615u,0x73455Bu,0x7345D1u,0x7AB260u,0x6BB1EEu,0x859610u,0x1444148u,0x73E654u,0x488959u,0x488B58u,0x720530u,0x927490u}) {
         reset();prepared();image[site]^=1;
         require(split_publish() && !mod_features.terrain_edit && mod_features.damage_preview,"publication recheck isolates mismatch");
         for(const auto &p:split_pointers)if(p.owner==kPointerTerrain)

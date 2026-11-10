@@ -268,7 +268,7 @@ static void restore_mouse_filter() {
 }
 struct MouseFilterLifetime {~MouseFilterLifetime(){restore_mouse_filter();}};
 static MouseFilterLifetime mouse_filter_lifetime;
-struct Model {std::wstring adviser=L"군사",title=L"열흘 보고",body;unsigned unread=0,page=0,pages=0,generation=0;bool collecting=false,open=false,detail=false;std::vector<std::wstring> names;};
+struct Model {std::wstring adviser=L"군사",title=L"열흘 보고",body;unsigned unread=0,page=0,pages=0,generation=0;bool collecting=false,open=false,city_list=false;std::vector<std::wstring> names,cities;};
 static SRWLOCK lock=SRWLOCK_INIT;
 static void enter_model_lock(bool shared) {
     if(shared)AcquireSRWLockShared(&lock);else AcquireSRWLockExclusive(&lock);
@@ -287,6 +287,10 @@ static void leave_model_lock(bool shared) {
 static Model model;
 static Model draw_model;
 static unsigned model_revision=0,draw_revision=~0u;
+// 2026-11-08 user: a compact phone-message-style toast next to the advisor head, 5 s.
+static std::wstring toast_text;
+static ULONGLONG toast_at=0;
+static volatile LONG toast_only=0;
 static volatile LONG visible,ready,pending,pending_generation,portrait_requested,portrait_revision,portrait_captured;
 static Rect source;
 static int source_revision,armed=0,max_scroll=0;
@@ -307,8 +311,10 @@ static ULONGLONG candidate_at;
 static PortraitConfirmation portrait_confirmation; // protected by model lock
 static ID3D11Texture2D *body_texture;
 static ID3D11ShaderResourceView *body_view;
+static ID3D11Texture2D *toast_texture;
+static ID3D11ShaderResourceView *toast_view;
 struct Highlight {ID3D11Texture2D *texture=nullptr;ID3D11ShaderResourceView *view=nullptr;};
-static Highlight highlights[8][2][2];
+static Highlight highlights[8][2];
 static int body_height=1,body_extent=0;
 static int hover=0;
 static bool srgb_target=false;
@@ -324,6 +330,12 @@ static ID3D11DepthStencilState *depth;
 static ID3D11Buffer *constants;
 static ID3D11Texture2D *portrait_texture;
 static ID3D11ShaderResourceView *portrait_view;
+static volatile LONG extended_toast;   // local17 briefing16 (set by advisor_briefing::hud): 15 s wrapped toast; off = v15.7.1 5 s line
+static void set_extended(bool on){InterlockedExchange(&extended_toast,on?1:0);}
+static ULONGLONG toast_ms(){return InterlockedCompareExchange(&extended_toast,0,0)?15000:5000;}
+static SRWLOCK face_offer_lock=SRWLOCK_INIT;   // local17 briefing16 U6 direct face hand-off (offer_face / take_face_offer)
+static ID3D11Texture2D *face_offer;
+static int face_offer_revision;
 static ID3D11Texture2D *panel_texture,*badge_texture;
 static ID3D11ShaderResourceView *panel_view,*badge_view;
 static ID3D11Texture2D *avatar_texture;
@@ -350,11 +362,13 @@ static void release_device() {
     InterlockedExchange(&ready,0);InterlockedExchange(&portrait_captured,0);
     enter_model_lock(false);portrait_confirmation.reset();leave_model_lock(false);
     drop(portrait_staging);drop(portrait_candidate_view);drop(portrait_candidate);
-    drop(body_view);drop(body_texture);for(auto &by_id:highlights)for(auto &by_state:by_id)for(auto &item:by_state){drop(item.view);drop(item.texture);}
+    drop(body_view);drop(body_texture);for(auto &by_id:highlights)for(auto &item:by_id){drop(item.view);drop(item.texture);}
+    drop(toast_view);drop(toast_texture);
     drop(portrait_view);drop(portrait_texture);drop(panel_view);drop(panel_texture);drop(badge_view);drop(badge_texture);
     drop(avatar_view);drop(avatar_texture);
     drop(shadow_view);drop(shadow_texture);drop(ring_view);drop(ring_texture);
     drop(stable_scene);InterlockedExchange(&report_tail,0);
+    {AcquireSRWLockExclusive(&face_offer_lock);ID3D11Texture2D *offered=face_offer;face_offer=nullptr;ReleaseSRWLockExclusive(&face_offer_lock);if(offered)offered->Release();}
     drop(vs);drop(ps);drop(sampler);drop(blend);drop(raster_state);drop(scissor_state);drop(depth);drop(constants);drop(owner);
     for(auto &font:fonts)if(font){DeleteObject(font);font=nullptr;}
     painted_generation=~0u;painted_unread=~0u;painted_content=~0u;portrait_attempt_at=0;
@@ -387,7 +401,7 @@ static bool available(){return flag(&ready)!=0;}
 static void publish(const Model &next,bool show,bool accepted_input=false) {
     enter_model_lock(false);
     ULONGLONG now=GetTickCount64();
-    if(next.generation!=model.generation || next.page!=model.page || next.detail!=model.detail)scrolling.reset();
+    if(next.generation!=model.generation || next.page!=model.page || next.city_list!=model.city_list)scrolling.reset();
     if(next.collecting)was_collecting=true;
     else if(was_collecting){collecting_ended_at=now;was_collecting=false;}
     if(next.collecting || (collecting_ended_at && now-collecting_ended_at<=8000))InterlockedExchange64(&report_window_until,next.collecting?now+8000:collecting_ended_at+8000);
@@ -397,17 +411,23 @@ static void publish(const Model &next,bool show,bool accepted_input=false) {
         double t=(now-opened_at)/220.0;close_zoom=static_cast<float>(.92+.08*ease_back(t));close_alpha=static_cast<float>((std::min)(1.0,t));closed_at=now;closing=true;
     }
     if(next.unread>model.unread)badge_at=now;
-    if(next.generation!=model.generation || next.page!=model.page || next.detail!=model.detail || next.pages!=model.pages || next.adviser!=model.adviser || next.title!=model.title || next.body!=model.body || next.names!=model.names || next.collecting!=model.collecting)++content_revision;
-    if(next.generation!=model.generation || next.page!=model.page || next.detail!=model.detail || next.pages!=model.pages || next.adviser!=model.adviser || next.title!=model.title || next.body!=model.body || next.names!=model.names || next.collecting!=model.collecting || next.open!=model.open || next.unread!=model.unread){model=next;++model_revision;}
+    if(next.generation!=model.generation || next.page!=model.page || next.city_list!=model.city_list || next.pages!=model.pages || next.adviser!=model.adviser || next.title!=model.title || next.body!=model.body || next.names!=model.names || next.cities!=model.cities || next.collecting!=model.collecting)++content_revision;
+    if(next.generation!=model.generation || next.page!=model.page || next.city_list!=model.city_list || next.pages!=model.pages || next.adviser!=model.adviser || next.title!=model.title || next.body!=model.body || next.names!=model.names || next.cities!=model.cities || next.collecting!=model.collecting || next.open!=model.open || next.unread!=model.unread){model=next;++model_revision;}
 #ifndef NO_RUNTIME_LOG
     if(accepted_input){render_input_started=static_cast<ULONGLONG>(dispatched_input_started);render_input_revision=model_revision;InterlockedIncrement64(&input_accepted);}
 #else
     (void)accepted_input;
 #endif
     if(!show){outside_click=false;armed=hover=0;head.cancel();scrolling.release();closing=false;InterlockedExchange(&wheel_block,0);InterlockedExchange(&block_buttons,0);}
+    const bool tip=!toast_text.empty() && toast_at && GetTickCount64()<toast_at+toast_ms();
     leave_model_lock(false);
-    InterlockedExchange(&visible,show?1:0);
+    InterlockedExchange(&toast_only,(!show && tip)?1:0);
+    InterlockedExchange(&visible,(show || tip)?1:0);
     if(!show){InterlockedExchange(&pending,0);if(capture_window){HWND window=capture_window;capture_window=nullptr;if(GetCapture()==window)ReleaseCapture();}}
+}
+static void toast(const std::wstring &text) {
+    enter_model_lock(false);toast_text=text;toast_at=GetTickCount64();leave_model_lock(false);
+    InterlockedExchange(&toast_only,1);InterlockedExchange(&visible,1);
 }
 static void request_portrait(Rect r,int revision) {
     enter_model_lock(false);
@@ -415,11 +435,52 @@ static void request_portrait(Rect r,int revision) {
     source=r;source_revision=revision;InterlockedExchange(&portrait_requested,1);leave_model_lock(false);
 }
 static bool captured(int revision){return flag(&portrait_captured) && flag(&portrait_revision)==revision;}
+// user 2026-11-09 (U6): the advisor portrait comes straight from the original face texture (512x512 BC3 of the face
+// manager entry, advisor_briefing::face_texture_for) instead of a back-buffer capture that picked up other screens on
+// load. The UI thread hands over one AddRef'd texture (face_offer, declared with portrait_texture); draw() copies the
+// head area into its own texture.
+static void offer_face(ID3D11Texture2D *texture,int revision) {
+    AcquireSRWLockExclusive(&face_offer_lock);
+    ID3D11Texture2D *old=face_offer;face_offer=texture;face_offer_revision=revision;
+    ReleaseSRWLockExclusive(&face_offer_lock);
+    if(old)old->Release();
+}
+static void take_face_offer(ID3D11Device *d,ID3D11DeviceContext *c) {
+    AcquireSRWLockExclusive(&face_offer_lock);
+    ID3D11Texture2D *offered=face_offer;const int revision=face_offer_revision;face_offer=nullptr;
+    ReleaseSRWLockExclusive(&face_offer_lock);
+    if(!offered)return;
+    bool ok=false;
+    ID3D11Device *owner_device=nullptr;offered->GetDevice(&owner_device);
+    D3D11_TEXTURE2D_DESC sd{};offered->GetDesc(&sd);
+    if(owner_device==d && sd.Width==512 && sd.Height==512 && sd.Format>=DXGI_FORMAT_BC3_TYPELESS && sd.Format<=DXGI_FORMAT_BC3_UNORM_SRGB) {
+        D3D11_TEXTURE2D_DESC td{};td.Width=td.Height=384;td.MipLevels=td.ArraySize=1;td.Format=DXGI_FORMAT_BC3_TYPELESS;
+        td.SampleDesc.Count=1;td.Usage=D3D11_USAGE_DEFAULT;td.BindFlags=D3D11_BIND_SHADER_RESOURCE;
+        ID3D11Texture2D *texture=nullptr;ID3D11ShaderResourceView *view=nullptr;
+        if(SUCCEEDED(d->CreateTexture2D(&td,nullptr,&texture)) && texture) {
+            const D3D11_BOX head_box{64,0,0,448,384,1};   // block-aligned head-and-shoulders square of the 512x512 face
+            c->CopySubresourceRegion(texture,0,0,0,0,offered,0,&head_box);
+            D3D11_SHADER_RESOURCE_VIEW_DESC vd{};vd.Format=srgb_target?DXGI_FORMAT_BC3_UNORM_SRGB:DXGI_FORMAT_BC3_UNORM;
+            vd.ViewDimension=D3D11_SRV_DIMENSION_TEXTURE2D;vd.Texture2D.MipLevels=1;
+            if(SUCCEEDED(d->CreateShaderResourceView(texture,&vd,&view)) && view) {
+                drop(portrait_view);drop(portrait_texture);portrait_texture=texture;portrait_view=view;texture=nullptr;
+                InterlockedExchange(&portrait_revision,revision);InterlockedExchange(&portrait_captured,1);InterlockedExchange(&portrait_requested,0);
+                ok=true;
+            }
+            drop(texture);
+        }
+    }
+    if(owner_device)owner_device->Release();
+    offered->Release();
+#ifndef NO_RUNTIME_LOG
+    log_event("advisor_face_direct",static_cast<unsigned>(revision),ok?1u:0u,static_cast<unsigned>(sd.Format));
+#endif
+}
 static void forget() {
     InterlockedExchange(&ready,0);
     InterlockedExchange(&portrait_captured,0);InterlockedExchange(&portrait_requested,0);InterlockedExchange(&pending,0);
     InterlockedExchange(&visible,0);armed=0;
-    enter_model_lock(false);portrait_confirmation.reset();head.cancel();scrolling.reset();closing=false;outside_click=false;leave_model_lock(false);
+    enter_model_lock(false);portrait_confirmation.reset();head.cancel();scrolling.reset();closing=false;outside_click=false;toast_text.clear();toast_at=0;leave_model_lock(false);InterlockedExchange(&toast_only,0);
     if(capture_window){HWND window=capture_window;capture_window=nullptr;if(GetCapture()==window)ReleaseCapture();}
     InterlockedExchange(&report_masked,0);InterlockedExchange(&report_tail,0);
     InterlockedExchange(&scene_clean,0);InterlockedExchange64(&report_window_until,0);InterlockedExchange(&wheel_block,0);InterlockedExchange(&block_buttons,0);
@@ -448,7 +509,13 @@ static int widget(float x,float y,bool open) {
     float dx=x-head.x,dy=y-head.y;if(dx*dx+dy*dy<=44*44)return 1;
     Rect panel=panel_rect(head.x);double zoom=model.open?.92+.08*ease_back((GetTickCount64()-opened_at)/220.0):1;
     if(!open || !panel_transform(panel,head.x,head.y,zoom).contains(x,y))return 0;
-    for(unsigned id=2;id<=7;++id)if(panel_transform(control(id,panel),head.x,head.y,zoom).contains(x,y))return static_cast<int>(id);
+    for(unsigned id=2;id<=7;++id) {
+        if(model.city_list && id!=2 && id!=7)continue;
+        if(panel_transform(control(id,panel),head.x,head.y,zoom).contains(x,y))return static_cast<int>(id);
+    }
+    if(model.city_list && !model.cities.empty())
+        for(unsigned i=0;i<model.cities.size();++i)
+            if(panel_transform(city_cell(panel,i,static_cast<unsigned>(model.cities.size())),head.x,head.y,zoom).contains(x,y))return 100+static_cast<int>(i);
     return 9;
 }
 static bool input(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
@@ -565,14 +632,130 @@ static HFONT cached_font(HDC dc,unsigned kind) {
     if(!fonts[kind])fonts[kind]=serif_font(dc,heights[kind],weights[kind]);
     return fonts[kind];
 }
+// Compact advisor message (2026-11-08 user: phone-message style, 5 s).
+static std::vector<std::wstring> wrap_text(HDC dc,const std::wstring &text,int room);   // defined below (body layout)
+// Compact advisor message (2026-11-08 user: phone-message style, 5 s).
+// PW33 (user 2026-11-09): the text wraps downward (left-aligned, at most four lines) instead of being cut into one
+// ellipsised line, and the same text is rasterised only once; the height the draw site needs is kept in toast_drawn_h.
+static const int kToastWidth=560,kToastMaxLines=4;
+static int toast_drawn_h=72;
+static std::wstring toast_raster_text;
+static bool raster_toast_wrapped(ID3D11DeviceContext *c,const std::wstring &text) {
+    if(toast_texture && toast_view && text==toast_raster_text)return true;
+    HDC dc=CreateCompatibleDC(nullptr);if(!dc)return false;
+    auto oldfont=SelectObject(dc,cached_font(dc,0));
+    TEXTMETRICW tm{};GetTextMetricsW(dc,&tm);
+    const int pitch=(std::max)(20,static_cast<int>(tm.tmHeight)+6);
+    std::vector<std::wstring> lines=wrap_text(dc,text,kToastWidth-44);
+    if(lines.size()>static_cast<size_t>(kToastMaxLines)) {lines.resize(kToastMaxLines);lines.back()+=L"…";}
+    const int w=kToastWidth,h=(std::max)(72,static_cast<int>(lines.size())*pitch+28);
+    BITMAPINFO bi{};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=w;bi.bmiHeader.biHeight=-h;
+    bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;bi.bmiHeader.biCompression=BI_RGB;
+    void *bits=nullptr;HBITMAP bm=CreateDIBSection(dc,&bi,DIB_RGB_COLORS,&bits,nullptr,0);
+    if(!bm){SelectObject(dc,oldfont);DeleteDC(dc);return false;}auto old=SelectObject(dc,bm);
+    auto rgb=[](unsigned v){return RGB((v>>16)&255,(v>>8)&255,v&255);};
+    RECT full{0,0,w,h};HBRUSH fill=CreateSolidBrush(rgb(look::kNavyBottom));FillRect(dc,&full,fill);DeleteObject(fill);
+    HPEN pen=CreatePen(PS_SOLID,1,rgb(look::kGoldBorder));auto op=SelectObject(dc,pen);auto ob=SelectObject(dc,GetStockObject(NULL_BRUSH));
+    RoundRect(dc,1,1,w-1,h-1,14,14);SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
+    SetBkMode(dc,TRANSPARENT);
+    SetTextColor(dc,rgb(look::kText));
+    const int top=(h-static_cast<int>(lines.size())*pitch)/2;
+    for(size_t i=0;i<lines.size();++i) {
+        RECT r{22,top+static_cast<int>(i)*pitch,w-22,top+static_cast<int>(i+1)*pitch};
+        DrawTextW(dc,lines[i].c_str(),static_cast<int>(lines[i].size()),&r,DT_LEFT|DT_SINGLELINE|DT_NOPREFIX);
+    }
+    bool ok=upload(c,toast_texture,toast_view,w,h,static_cast<const unsigned *>(bits));
+    SelectObject(dc,oldfont);SelectObject(dc,old);DeleteObject(bm);DeleteDC(dc);
+    if(ok) {toast_raster_text=text;toast_drawn_h=h;}
+    return ok;
+}
+static bool raster_toast_line(ID3D11DeviceContext *c,const std::wstring &text) {
+    const int w=560,h=72;
+    HDC dc=CreateCompatibleDC(nullptr);if(!dc)return false;
+    BITMAPINFO bi{};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=w;bi.bmiHeader.biHeight=-h;
+    bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;bi.bmiHeader.biCompression=BI_RGB;
+    void *bits=nullptr;HBITMAP bm=CreateDIBSection(dc,&bi,DIB_RGB_COLORS,&bits,nullptr,0);
+    if(!bm){DeleteDC(dc);return false;}auto old=SelectObject(dc,bm);
+    auto rgb=[](unsigned v){return RGB((v>>16)&255,(v>>8)&255,v&255);};
+    RECT full{0,0,w,h};HBRUSH fill=CreateSolidBrush(rgb(look::kNavyBottom));FillRect(dc,&full,fill);DeleteObject(fill);
+    HPEN pen=CreatePen(PS_SOLID,1,rgb(look::kGoldBorder));auto op=SelectObject(dc,pen);auto ob=SelectObject(dc,GetStockObject(NULL_BRUSH));
+    RoundRect(dc,1,1,w-1,h-1,14,14);SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
+    SetBkMode(dc,TRANSPARENT);auto font=cached_font(dc,0);auto oldfont=SelectObject(dc,font);
+    SetTextColor(dc,rgb(look::kText));RECT text_rect{22,0,w-22,h};
+    DrawTextW(dc,text.c_str(),static_cast<int>(text.size()),&text_rect,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS|DT_NOPREFIX);
+    bool ok=upload(c,toast_texture,toast_view,w,h,static_cast<const unsigned *>(bits));
+    SelectObject(dc,oldfont);SelectObject(dc,old);DeleteObject(bm);DeleteDC(dc);
+    return ok;
+}
+// local17 briefing16: 15 s wrapped toast; off = the v15.7.1 5 s single-line toast.
+static bool raster_toast(ID3D11DeviceContext *c,const std::wstring &text) {
+    if(InterlockedCompareExchange(&extended_toast,0,0))return raster_toast_wrapped(c,text);
+    toast_raster_text.clear();toast_drawn_h=72;return raster_toast_line(c,text);
+}
 struct TextLine {std::wstring text;int x,y;bool bullet;int right=0;bool table=false,header=false;};
-static std::vector<TextLine> body_lines(HDC dc,const std::wstring &body,int width,int &height) {
+// One table row's background: rows are laid out by body_lines, painted by raster (header fill, alternate tint, separator). index 0 is the header.
+struct TableBand {int y,h,x0,x1,index;bool header;};
+// Greedy wrap of one paragraph or table cell to `room` pixels (GDI extents): break at a space past the middle of the line, else mid-word; a surrogate pair is never split.
+static std::vector<std::wstring> wrap_text(HDC dc,const std::wstring &text,int room) {
+    std::vector<std::wstring> out;
+    for(size_t at=0;at<text.size();) {
+        int fit=0;SIZE extent{};
+        GetTextExtentExPointW(dc,text.c_str()+at,static_cast<int>(text.size()-at),room,&fit,nullptr,&extent);
+        size_t count=(std::max)(size_t(1),static_cast<size_t>((std::max)(0,fit)));
+        count=(std::min)(count,text.size()-at);
+        if(at+count<text.size()) {
+            size_t space=text.rfind(L' ',at+count-1);
+            if(space!=std::wstring::npos && space>at+count/2)count=space-at;
+            if(count && text[at+count-1]>=0xD800 && text[at+count-1]<=0xDBFF)--count;
+            if(!count)count=(std::min)(size_t(2),text.size()-at);
+        }
+        std::wstring line=text.substr(at,count);while(!line.empty() && line.back()==L' ')line.pop_back();
+        out.push_back(std::move(line));
+        at+=count;while(at<text.size() && text[at]==L' ')++at;
+    }
+    return out;
+}
+// Tab-separated rows (rows[0] = header) as an aligned table: column widths from the measured content (look::kCellGap apart, water-filled when the
+// table is wider than the window, long cells then wrap), numeric columns right-aligned, one band per row. `width` is the text width (text starts at x=56).
+static void table_layout(HDC dc,std::vector<std::vector<std::wstring>> rows,int width,int &height,std::vector<TextLine> &lines,std::vector<TableBand> *bands) {
+    size_t columns=0;for(const auto &r:rows)columns=(std::max)(columns,r.size());
+    if(!columns)return;
+    for(auto &r:rows)r.resize(columns);
+    std::vector<int> natural(columns,0);
+    for(const auto &r:rows)for(size_t c=0;c<columns;++c){SIZE e{};GetTextExtentPoint32W(dc,r[c].c_str(),static_cast<int>(r[c].size()),&e);natural[c]=(std::max)(natural[c],static_cast<int>(e.cx));}
+    const std::vector<int> widths=table_column_widths(natural,width-2*look::kTablePad,look::kCellGap,look::kMinColumn,look::kMaxExtra);
+    std::vector<int> left(columns,56+look::kTablePad);std::vector<bool> numeric(columns,false);
+    for(size_t c=0;c<columns;++c){if(c)left[c]=left[c-1]+widths[c-1]+look::kCellGap;numeric[c]=column_numeric(rows,c);}
+    for(size_t r=0;r<rows.size();++r) {
+        std::vector<std::vector<std::wstring>> cells(columns);size_t most=1;
+        for(size_t c=0;c<columns;++c){cells[c]=wrap_text(dc,rows[r][c],widths[c]);most=(std::max)(most,cells[c].size());}
+        const int row_height=static_cast<int>(most)*look::kLinePitch+look::kRowPad;
+        if(bands)bands->push_back({height,row_height,56,56+width,static_cast<int>(r),r==0});
+        for(size_t c=0;c<columns;++c)for(size_t k=0;k<cells[c].size();++k)
+            lines.push_back({cells[c][k],left[c],height+look::kRowPad/2+static_cast<int>(k)*look::kLinePitch,false,numeric[c]?left[c]+widths[c]:0,true,r==0});
+        height+=row_height;
+    }
+    height+=look::kTableGap;
+}
+static std::vector<TextLine> body_lines(HDC dc,const std::wstring &body,int width,int &height,std::vector<TableBand> *bands=nullptr) {
     // User 2026-10-27: one reading edge, generous leading, and hanging bullets.
     // Use GDI's measured glyph widths; never split a UTF-16 surrogate pair.
+    // User 2026-11-07: consecutive tab-separated lines are one table (first line = header), see table_layout.
     std::vector<TextLine> lines;height=0;
+    std::vector<std::wstring> paragraphs;
     for(size_t start=0;start<body.size();) {
         size_t end=body.find(L'\n',start);if(end==std::wstring::npos)end=body.size();
         std::wstring paragraph=body.substr(start,end-start);if(!paragraph.empty() && paragraph.back()==L'\r')paragraph.pop_back();
+        paragraphs.push_back(std::move(paragraph));start=end<body.size()?end+1:end;
+    }
+    for(size_t index=0;index<paragraphs.size();) {
+        std::wstring paragraph=paragraphs[index];
+        if(paragraph.find(L'\t')!=std::wstring::npos) {
+            std::vector<std::vector<std::wstring>> rows;
+            for(;index<paragraphs.size() && paragraphs[index].find(L'\t')!=std::wstring::npos;++index)rows.push_back(split_cells(paragraphs[index]));
+            table_layout(dc,std::move(rows),width,height,lines,bands);continue;
+        }
+        ++index;
         bool bullet=paragraph.size()>=2 && paragraph[0]==L'•' && paragraph[1]==L' ';
         if(bullet)paragraph.erase(0,2);
         size_t split=paragraph.rfind(L"  ·  ");bool amount=false;
@@ -581,40 +764,29 @@ static std::vector<TextLine> body_lines(HDC dc,const std::wstring &body,int widt
             SIZE name{};GetTextExtentPoint32W(dc,paragraph.c_str(),static_cast<int>(split),&name);
             amount=amount && name.cx<240 && width>=600;
         }
-        if(paragraph.find(L'\t')!=std::wstring::npos) {
-            std::vector<std::wstring> cells;size_t from=0;
-            for(;;){size_t stop=paragraph.find(L'\t',from);cells.push_back(paragraph.substr(from,stop==std::wstring::npos?stop:stop-from));if(stop==std::wstring::npos)break;from=stop+1;}
-            if(cells.size()==5) {
-                int span=width-24;bool header=cells[0]==L"항목";
-                for(unsigned i=0;i<5;++i) {
-                    int left=80+static_cast<int>(span*i/5),right=80+static_cast<int>(span*(i+1)/5)-20;
-                    lines.push_back({cells[i],left,height,false,i?right:0,true,header});
-                }
-                height+=42;start=end<body.size()?end+1:end;continue;
-            }
-        }
         if(paragraph.empty())height+=18;
         else if(amount) {
             lines.push_back({paragraph.substr(0,split),80,height,true});
             lines.push_back({paragraph.substr(split+5),328,height,false,440});height+=36;
         }
-        else for(size_t at=0;at<paragraph.size();) {
-            int fit=0;SIZE extent{};int room=width-(bullet?24:0);
-            GetTextExtentExPointW(dc,paragraph.c_str()+at,static_cast<int>(paragraph.size()-at),room,&fit,nullptr,&extent);
-            size_t count=(std::max)(size_t(1),static_cast<size_t>((std::max)(0,fit)));
-            count=(std::min)(count,paragraph.size()-at);
-            if(at+count<paragraph.size()) {
-                size_t space=paragraph.rfind(L' ',at+count-1);
-                if(space!=std::wstring::npos && space>at+count/2)count=space-at;
-                if(count && paragraph[at+count-1]>=0xD800 && paragraph[at+count-1]<=0xDBFF)--count;
-                if(!count)count=(std::min)(size_t(2),paragraph.size()-at);
-            }
-            std::wstring line=paragraph.substr(at,count);while(!line.empty() && line.back()==L' ')line.pop_back();
-            lines.push_back({std::move(line),56+(bullet?24:0),height,bullet && at==0});height+=36;
-            at+=count;while(at<paragraph.size() && paragraph[at]==L' ')++at;
+        else {
+            const auto parts=wrap_text(dc,paragraph,width-(bullet?24:0));
+            for(size_t k=0;k<parts.size();++k){lines.push_back({parts[k],56+(bullet?24:0),height,bullet && k==0});height+=36;}
         }
-        start=end<body.size()?end+1:end;
     }
+    return lines;
+}
+// Owned-castle list (2026-11-08 user): row-major three-column grid, no wrapping; a long name is ellipsized by the text draw.
+static std::vector<TextLine> city_lines(const std::vector<std::wstring> &cities,int width,int &height) {
+    std::vector<TextLine> lines;height=0;
+    if(cities.empty())return lines;
+    const int cell=width/advisor_briefing_core::kCityColumns;
+    for(size_t i=0;i<cities.size();++i) {
+        const int col=static_cast<int>(i%advisor_briefing_core::kCityColumns);
+        const int row=static_cast<int>(i/advisor_briefing_core::kCityColumns);
+        lines.push_back({cities[i],56+col*cell,row*advisor_briefing_core::kCityPitch,false});
+    }
+    height=static_cast<int>((cities.size()+advisor_briefing_core::kCityColumns-1)/advisor_briefing_core::kCityColumns)*advisor_briefing_core::kCityPitch;
     return lines;
 }
 enum class Layer {Chrome,Body,Badge,Avatar,Highlight};
@@ -623,8 +795,8 @@ static bool raster(ID3D11DeviceContext *c,const Model &m,Layer layer,unsigned bu
     bool badge=layer==Layer::Badge,avatar=layer==Layer::Avatar,body=layer==Layer::Body,highlight=layer==Layer::Highlight;
     int w=avatar?88:badge?38:static_cast<int>(bubble.w),h=avatar?88:badge?38:static_cast<int>(bubble.h);
     int height=body_extent,room=static_cast<int>(bubble.h)-382;
-    std::vector<TextLine> lines;
-    if(body){HDC measure=CreateCompatibleDC(nullptr);if(!measure)return false;auto prior=SelectObject(measure,cached_font(measure,0));lines=body_lines(measure,m.body,w-112,height);SelectObject(measure,prior);DeleteDC(measure);body_extent=height;body_height=(std::max)(1,(std::min)(8192,height));enter_model_lock(false);max_scroll=(std::max)(0,body_height-room);leave_model_lock(false);}
+    std::vector<TextLine> lines;std::vector<TableBand> bands;
+    if(body){HDC measure=CreateCompatibleDC(nullptr);if(!measure)return false;auto prior=SelectObject(measure,cached_font(measure,0));if(m.city_list)lines=city_lines(m.cities,w-112,height);else lines=body_lines(measure,m.body,w-112,height,&bands);SelectObject(measure,prior);DeleteDC(measure);body_extent=height;body_height=(std::max)(1,(std::min)(8192,(std::max)(height,room)));enter_model_lock(false);max_scroll=(std::max)(0,body_height-room);leave_model_lock(false);}
     Rect button_rect=control(button);int bx=static_cast<int>(button_rect.x-bubble.x),by=static_cast<int>(button_rect.y-bubble.y);
     int rw=body?w-112:highlight?static_cast<int>(button_rect.w):w,rh=body?body_height:highlight?static_cast<int>(button_rect.h):h;
     int hot=highlight && state==0?static_cast<int>(button):0,pressed=highlight && state==1?static_cast<int>(button):0;
@@ -636,68 +808,87 @@ static bool raster(ID3D11DeviceContext *c,const Model &m,Layer layer,unsigned bu
     HDC dc=CreateCompatibleDC(nullptr);if(!dc)return false;void *bits=nullptr;HBITMAP bm=CreateDIBSection(dc,&bi,DIB_RGB_COLORS,&bits,nullptr,0);
     if(!bm || !bits){if(bm)DeleteObject(bm);DeleteDC(dc);return false;}
     auto old=SelectObject(dc,bm);auto data=static_cast<unsigned *>(bits);
-    for(int y=0;y<rh;++y)for(int x=0;x<rw;++x) {
-        int gy=highlight?y+by:y;
-        unsigned r=static_cast<unsigned>(31-12*gy/(std::max)(1,h-1)),g=static_cast<unsigned>(36-12*gy/(std::max)(1,h-1)),b=static_cast<unsigned>(30-8*gy/(std::max)(1,h-1));
-        data[y*rw+x]=body || (highlight && button==7)?0xffece5d3u:badge?0xffa3392cu:0xff000000u|(r<<16)|(g<<8)|b;
+    auto cr=[](unsigned c){return RGB((c>>16)&255,(c>>8)&255,c&255);};
+    auto mix=[](unsigned a,unsigned b,int at,int span){   // 0xRRGGBB, a at 0 .. b at span
+        const int t=(std::max)(0,(std::min)(at,span)),d=(std::max)(1,span);unsigned out=0;
+        for(int shift=16;shift>=0;shift-=8){int ca=(a>>shift)&255,cb=(b>>shift)&255;out|=static_cast<unsigned>(ca+(cb-ca)*t/d)<<shift;}
+        return out;
+    };
+    const unsigned flat=body?look::kInset:badge?look::rgb(163,57,44):highlight?(state==1?look::kButtonDown:look::kButtonHover):0;
+    for(int y=0;y<rh;++y) {
+        const unsigned row=(body || badge || highlight)?flat:mix(look::kNavyTop,look::kNavyBottom,y,h-1);
+        for(int x=0;x<rw;++x)data[y*rw+x]=0xff000000u|row;
     }
     if(body)SetViewportOrgEx(dc,-56,0,nullptr);else if(highlight)SetViewportOrgEx(dc,-bx,-by,nullptr);
     SetBkMode(dc,TRANSPARENT);HFONT font=cached_font(dc,avatar?3:badge?4:0);auto oldfont=SelectObject(dc,font);
     HFONT heading=nullptr,caption_font=nullptr;
     auto text=[&](const std::wstring &s,RECT r,COLORREF color,UINT format){SetTextColor(dc,color);DrawTextW(dc,s.c_str(),static_cast<int>(s.size()),&r,format|DT_NOPREFIX);};
     auto outline=[&](RECT r,COLORREF color,COLORREF fill,int radius,bool filled){HPEN pen=CreatePen(PS_SOLID,1,color);HBRUSH brush=filled?CreateSolidBrush(fill):nullptr;auto op=SelectObject(dc,pen),ob=SelectObject(dc,filled?brush:GetStockObject(NULL_BRUSH));RoundRect(dc,r.left,r.top,r.right,r.bottom,radius,radius);SelectObject(dc,ob);SelectObject(dc,op);if(brush)DeleteObject(brush);DeleteObject(pen);};
-    if(avatar)text(L"軍",{0,0,w,h},RGB(216,190,132),DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    auto fill_rect=[&](RECT r,unsigned color){HBRUSH brush=CreateSolidBrush(cr(color));FillRect(dc,&r,brush);DeleteObject(brush);};
+    if(avatar)text(L"軍",{0,0,w,h},cr(look::kTitle),DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     else if(badge){outline({1,1,w-1,h-1},RGB(211,157,97),0,38,false);text(m.unread>99?L"99+":std::to_wstring(m.unread),{0,0,w,h},RGB(255,242,212),DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
     else {
         heading=cached_font(dc,1);caption_font=cached_font(dc,2);
-        if(!body && !highlight){
-        outline({1,1,w-1,h-1},RGB(142,124,85),0,24,false);
-        outline({16,132,w-16,h-96},RGB(192,176,141),RGB(236,229,211),16,true);
-        HPEN rule=CreatePen(PS_SOLID,1,RGB(197,183,153));auto op=SelectObject(dc,rule);
-        MoveToEx(dc,56,222,nullptr);LineTo(dc,w-56,222);SelectObject(dc,op);DeleteObject(rule);
-        HBRUSH accent=CreateSolidBrush(RGB(192,164,107));RECT bar{44,34,47,86};FillRect(dc,&bar,accent);DeleteObject(accent);
-        SelectObject(dc,heading);text(m.adviser+L"의 열흘 보고",{64,30,w-354,68},RGB(235,218,180),DT_SINGLELINE|DT_VCENTER);
-        SelectObject(dc,caption_font);text(m.collecting?L"진행 중  /  소식을 모으고 있습니다":L"지난 순의 전갈  /  다음 진행 전까지 보관",{65,76,w-80,105},RGB(162,166,144),DT_SINGLELINE);
-        SelectObject(dc,font);text(m.title,{56,158,w-174,194},RGB(54,59,48),DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
-        }
-        if(body){
-        for(const auto &line:lines) {
-            int y=line.y;if(y>=rh)continue;
-            if(line.table && line.x==80) {
-                if(line.header){RECT band{72,y-3,w-48,y+36};HBRUSH fill=CreateSolidBrush(RGB(219,209,185));FillRect(dc,&band,fill);DeleteObject(fill);}
-                else {HPEN row_rule=CreatePen(PS_SOLID,1,RGB(214,204,182));auto prior=SelectObject(dc,row_rule);MoveToEx(dc,80,y+36,nullptr);LineTo(dc,w-56,y+36);SelectObject(dc,prior);DeleteObject(row_rule);}
-            }
-            if(line.bullet)text(L"·",{56,y,74,y+32},RGB(145,111,57),DT_SINGLELINE);
-            COLORREF ink=RGB(30,35,29);
-            if(line.table && !line.header && line.text.find(L'+')!=std::wstring::npos)ink=RGB(39,95,56);
-            else if(line.table && !line.header && line.text.find(L'-')!=std::wstring::npos)ink=RGB(139,48,43);
-            text(line.text,{line.x,y,line.right?line.right:w-56,y+32},ink,DT_SINGLELINE|(line.right?DT_RIGHT:0));
-            SIZE full{};GetTextExtentPoint32W(dc,line.text.c_str(),static_cast<int>(line.text.size()),&full);int origin=line.right?line.right-full.cx:line.x;
-            const COLORREF palette[]={RGB(16,84,103),RGB(135,44,48),RGB(37,70,133),RGB(44,100,55),RGB(104,57,132),RGB(133,80,20)};
-            for(const auto &name:m.names)for(size_t at=0;(at=line.text.find(name,at))!=std::wstring::npos;at+=name.size()) {
-                SIZE prefix{};GetTextExtentPoint32W(dc,line.text.c_str(),static_cast<int>(at),&prefix);
-                SetTextColor(dc,palette[name_color_index(name)]);TextOutW(dc,origin+prefix.cx,y,name.c_str(),static_cast<int>(name.size()));
-            }
-        }
-        }
-        if(!body){
-        for(unsigned id=2;id<=7;++id) {
-            if(highlight && id!=button)continue;
+        // Dialog button: dark fill, gold outline; hover brightens the fill and the outline, pressed darkens the fill.
+        auto button_box=[&](unsigned id,bool over,bool down){
             Rect r=control(id);RECT box{static_cast<LONG>(r.x-bubble.x),static_cast<LONG>(r.y-bubble.y),static_cast<LONG>(r.x-bubble.x+r.w),static_cast<LONG>(r.y-bubble.y+r.h)};
-            bool over=hot==static_cast<int>(id),down=pressed==static_cast<int>(id);
-            if(id==7)outline(box,over?RGB(154,127,78):RGB(199,184,154),down?RGB(208,193,161):over?RGB(224,212,187):RGB(236,229,211),8,true);
-            else if(id==3 || id==4 || over)outline(box,over?RGB(169,146,98):RGB(77,85,65),down?RGB(72,65,44):RGB(39,47,36),8,true);
+            outline(box,cr(over?look::kTitle:look::kGoldBorder),cr(down?look::kButtonDown:over?look::kButtonHover:look::kButtonFill),8,true);
             SelectObject(dc,id==2 || id==3 || id==4?heading:caption_font);
-            const wchar_t *label=id==2?L"×":id==3?L"‹":id==4?L"›":id==5?L"지우기":id==6?L"모두 지우기":m.detail?L"요약 보기":L"원문 보기";
-            text(label,box,id==7?RGB(103,84,51):over?RGB(248,222,170):RGB(187,186,156),DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            const wchar_t *label=id==2?L"×":id==3?L"‹":id==4?L"›":id==5?L"지우기":id==6?L"모두 지우기":m.city_list?L"보고로":L"부동산 개발";
+            text(label,box,cr(over?look::kButtonHoverText:look::kTitle),DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        };
+        if(!body && !highlight){
+            // Frame: 2px gold outer line, thin dim inner line (the original dialog's double frame), title band, inset body area.
+            outline({1,1,w-1,h-1},cr(look::kGoldBorder),0,36,false);
+            outline({2,2,w-2,h-2},cr(look::kGoldBorder),0,34,false);
+            outline({8,8,w-8,h-8},cr(look::kGoldDim),0,28,false);
+            for(int yy=16;yy<112;++yy)fill_rect({16,yy,w-16,yy+1},mix(look::kBandTop,look::kBandBottom,yy-16,95));
+            fill_rect({16,112,w-16,113},look::kGoldBorder);
+            fill_rect({44,34,47,86},look::kGold);
+            outline({16,132,w-16,h-96},cr(look::kGoldDim),cr(look::kInset),16,true);
+            fill_rect({56,222,w-56,223},look::kGoldDim);
+            SelectObject(dc,heading);text(m.city_list?L"부동산 개발":m.adviser+L"의 열흘 보고",{64,30,w-354,68},cr(look::kTitle),DT_SINGLELINE|DT_VCENTER);
+            SelectObject(dc,caption_font);text(m.city_list?L"성을 고르면 그 성의 지역내정으로 이동합니다":m.collecting?L"진행 중  /  소식을 모으고 있습니다":L"지난 순의 전갈  /  다음 진행 전까지 보관",{65,76,w-80,105},cr(look::kDim),DT_SINGLELINE);
+            SelectObject(dc,font);text(m.title,{56,158,w-174,194},cr(look::kText),DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
+            for(unsigned id=2;id<=7;++id)if(!m.city_list || id==2 || id==7)button_box(id,false,false);
+            SelectObject(dc,caption_font);text(m.city_list?(m.cities.empty()?std::wstring(L"성 없음"):std::to_wstring(m.cities.size())+L"곳"):m.pages?std::to_wstring(m.page+1)+L" / "+std::to_wstring(m.pages):L"소식 없음",{w-272,30,w-164,68},cr(look::kDim),DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            text(L"Esc로 닫기",{44,h-64,250,h-26},cr(look::kDim),DT_VCENTER|DT_SINGLELINE);
+            if(height>room)text(L"마우스 휠로 이어 읽기",{300,h-64,w-300,h-26},cr(look::kDimmer),DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
-        if(!highlight){
-        SelectObject(dc,caption_font);text(m.pages?std::to_wstring(m.page+1)+L" / "+std::to_wstring(m.pages):L"소식 없음",{w-272,30,w-164,68},RGB(199,199,170),DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        text(L"Esc로 닫기",{44,h-64,250,h-26},RGB(161,167,143),DT_VCENTER|DT_SINGLELINE);
-        if(height>room)text(L"마우스 휠로 이어 읽기",{300,h-64,w-300,h-26},RGB(141,150,128),DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        if(body && m.city_list && hot>=100) {
+            const unsigned index=static_cast<unsigned>(hot-100);
+            if(index<m.cities.size()) {
+                const int width=(w-112)/kCityColumns;
+                const int x=56+static_cast<int>(index%kCityColumns)*width,y=static_cast<int>(index/kCityColumns)*kCityPitch;
+                fill_rect({x,y,x+width,y+kCityPitch},pressed>=100?look::kButtonDown:look::kButtonHover);
+            }
+        }
+        if(highlight)button_box(button,hot==static_cast<int>(button),pressed==static_cast<int>(button));
+        if(body){
+            for(const auto &band:bands) {
+                if(band.header){fill_rect({band.x0,band.y,band.x1,band.y+band.h},look::kHeaderFill);fill_rect({band.x0,band.y+band.h-1,band.x1,band.y+band.h},look::kGoldBorder);}
+                else {
+                    if(band.index%2==0)fill_rect({band.x0,band.y,band.x1,band.y+band.h},look::kRowTint);
+                    fill_rect({band.x0+8,band.y+band.h-1,band.x1-8,band.y+band.h},look::kGoldDim);
+                }
+            }
+            for(const auto &line:lines) {
+                int y=line.y;if(y>=rh)continue;
+                if(line.bullet)text(L"·",{56,y,74,y+32},cr(look::kGold),DT_SINGLELINE);
+                COLORREF ink=cr(look::kText);
+                if(line.table) {
+                    const int tone=line.header?0:cell_tone(line.text);
+                    ink=cr(line.header?look::kGold:tone==1?look::kPositive:tone==2?look::kNegative:look::kText);
+                }
+                text(line.text,{line.x,y,line.right?line.right:w-56,y+32},ink,DT_SINGLELINE|(line.right?DT_RIGHT:0));
+                SIZE full{};GetTextExtentPoint32W(dc,line.text.c_str(),static_cast<int>(line.text.size()),&full);int origin=line.right?line.right-full.cx:line.x;
+                for(const auto &name:m.names)for(size_t at=0;(at=line.text.find(name,at))!=std::wstring::npos;at+=name.size()) {
+                    SIZE prefix{};GetTextExtentPoint32W(dc,line.text.c_str(),static_cast<int>(at),&prefix);
+                    SetTextColor(dc,cr(look::kNames[name_color_index(name)]));TextOutW(dc,origin+prefix.cx,y,name.c_str(),static_cast<int>(name.size()));
+                }
+            }
+        }
     }
-        }
-        }
     // GDI clears alpha for glyph pixels; restore opaque alpha before the shader's
     // geometric mask. There are no black rectangles around the circular portrait.
     for(int i=0;i<rw*rh;++i)data[i]|=0xff000000u;
@@ -705,7 +896,7 @@ static bool raster(ID3D11DeviceContext *c,const Model &m,Layer layer,unsigned bu
     if(avatar)ok=upload(c,avatar_texture,avatar_view,rw,rh,data);
     else if(badge)ok=upload(c,badge_texture,badge_view,rw,rh,data);
     else if(body){ok=upload(c,body_texture,body_view,rw,rh,data);if(ok)++panel_uploads;}
-    else if(highlight){auto &item=highlights[button][state][m.detail?1:0];ok=upload(c,item.texture,item.view,rw,rh,data);}
+    else if(highlight){auto &item=highlights[button][state];ok=upload(c,item.texture,item.view,rw,rh,data);}
     else {ok=upload(c,panel_texture,panel_view,rw,rh,data);if(ok)++panel_uploads;}
     SelectObject(dc,oldfont);SelectObject(dc,old);DeleteObject(bm);DeleteDC(dc);
 #ifndef NO_RUNTIME_LOG
@@ -825,16 +1016,21 @@ static void draw(ID3D11Device *d,ID3D11DeviceContext *c,ID3D11Texture2D *back,co
         if(stable_scene){c->CopyResource(stable_scene,back);++scene_copies;}
     }
     if(!is_visible())return;
+    if(flag(&toast_only)) {
+        bool live=false;enter_model_lock(true);live=!toast_text.empty() && toast_at && now<toast_at+toast_ms();leave_model_lock(true);
+        if(!live){InterlockedExchange(&visible,0);InterlockedExchange(&toast_only,0);return;}
+    }
     bool next_srgb=desc.Format==DXGI_FORMAT_B8G8R8A8_UNORM_SRGB || desc.Format==DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     if(srgb_target!=next_srgb) {
         enter_model_lock(false);portrait_confirmation.reset();leave_model_lock(false);
         srgb_target=next_srgb;drop(body_view);drop(body_texture);
-        for(auto &by_id:highlights)for(auto &by_state:by_id)for(auto &item:by_state){drop(item.view);drop(item.texture);}
+        for(auto &by_id:highlights)for(auto &item:by_id){drop(item.view);drop(item.texture);}
         drop(portrait_staging);drop(portrait_candidate_view);drop(portrait_candidate);drop(panel_view);drop(panel_texture);drop(badge_view);drop(badge_texture);drop(avatar_view);drop(avatar_texture);
         drop(shadow_view);drop(shadow_texture);drop(ring_view);drop(ring_texture);drop(portrait_view);drop(portrait_texture);InterlockedExchange(&portrait_captured,0);
         painted_generation=painted_unread=~0u;painted_content=~0u;
     }
     double scale=(std::min)(desc.Width/1920.0,desc.Height/1080.0),ox=(desc.Width-1920*scale)/2,oy=(desc.Height-1080*scale)/2;
+    take_face_offer(d,c);   // briefing16 U6: original face texture first; the capture below stays as the fallback
     poll_portrait(c);
     enter_model_lock(true);bool sample_due=!portrait_confirmation.present || (now>=portrait_confirmation.at && now-portrait_confirmation.at>=500);leave_model_lock(true);
     if(flag(&portrait_requested) && sample_due && !portrait_staging && (!portrait_attempt_at || now-portrait_attempt_at>=120)){
@@ -845,7 +1041,7 @@ static void draw(ID3D11Device *d,ID3D11DeviceContext *c,ID3D11Texture2D *back,co
     if((!flag(&portrait_captured) || !portrait_view) && !avatar_view && !raster(c,m,Layer::Avatar))return;
     if(m.open && (painted_content!=content || !panel_view || !body_view)){
         if(!raster(c,m,Layer::Body) || !raster(c,m,Layer::Chrome))return;
-        for(unsigned id=2;id<=7;++id)for(int state=0;state<2;++state)if(!highlights[id][state][m.detail?1:0].view && !raster(c,m,Layer::Highlight,id,state))return;
+        for(unsigned id=2;id<=7;++id)for(int state=0;state<2;++state)if(!highlights[id][state].view && !raster(c,m,Layer::Highlight,id,state))return;
         painted_content=content;painted_generation=m.generation;
     }
     if(painted_unread!=m.unread){if(m.unread && !raster(c,m,Layer::Badge))return;painted_unread=m.unread;}
@@ -870,22 +1066,37 @@ static void draw(ID3D11Device *d,ID3D11DeviceContext *c,ID3D11Texture2D *back,co
     quad(face,scale,ox,oy,44*head_zoom,1,flag(&portrait_captured) && portrait_view?portrait_view:avatar_view);
     if(m.unread){double t=pop_at?(now-pop_at)/250.0:1;float pop=t<1?static_cast<float>(1+.25*std::exp(-5*t)*std::cos(9*t)):1;
         quad({position.x+18+19*(1-pop),position.y-52+19*(1-pop),38*pop,38*pop},scale,ox,oy,19*pop,1,badge_view);}
+    {   // 2026-11-08 user: phone-message style military message next to the advisor head, 5 s.
+        std::wstring tip;ULONGLONG tip_at=0;enter_model_lock(true);if(!toast_text.empty()){tip=toast_text;tip_at=toast_at;}leave_model_lock(true);
+        const ULONGLONG span=toast_ms();
+        if(!tip.empty() && tip_at && now>=tip_at && now<tip_at+span && raster_toast(c,tip)) {
+            const ULONGLONG age=now-tip_at;float alpha=age>span-500?static_cast<float>((span-age)/500.0):1.0f;
+            const float toast_h=static_cast<float>(toast_drawn_h);
+            Rect box{bounded(face.x-236.0f,16.0f,1904.0f-560.0f),face.y+face.h+10.0f,560.0f,toast_h};
+            if(box.y+box.h>1064)box.y=face.y-toast_h-10.0f;
+            quad(box,scale,ox,oy,12,alpha,toast_view);
+        }
+    }
     if(panel_alpha>0 && panel_view){
         Rect base=panel_rect(position.x);auto transform=[&](Rect r){return panel_transform(r,position.x,position.y,zoom);};
         Rect panel=transform(base);float alpha=static_cast<float>(panel_alpha);
+        const float opaque=alpha*look::kPanelOpacity;   // semi-transparent navy: chrome and body never overlap (chrome is drawn in four strips around the body window)
         quad({panel.x-10,panel.y-4,panel.w+20,panel.h+20},scale,ox,oy,-2,alpha*.36f,shadow_view);
         bool right=position.x>=960;float ty=bounded(position.y-14,base.y+24,base.y+base.h-52);
-        quad(transform({right?base.x+base.w-4:base.x-18,ty,22,28}),scale,ox,oy,right?-1.25f:-1,alpha,panel_view);
-        quad(panel,scale,ox,oy,18,alpha,panel_view);
+        quad(transform({right?base.x+base.w-4:base.x-18,ty,22,28}),scale,ox,oy,right?-1.25f:-1,opaque,panel_view);
         Rect clip=transform(body_rect(base));D3D11_RECT scissor{static_cast<LONG>(std::ceil(ox+clip.x*scale)),static_cast<LONG>(std::ceil(oy+clip.y*scale)),static_cast<LONG>(std::floor(ox+(clip.x+clip.w)*scale)),static_cast<LONG>(std::floor(oy+(clip.y+clip.h)*scale))};
-        c->RSSetState(scissor_state);c->RSSetScissorRects(1,&scissor);
-        quad(transform({base.x+56,base.y+250-static_cast<float>(sy),base.w-112,static_cast<float>(body_height)}),scale,ox,oy,0,alpha,body_view);c->RSSetState(raster_state);
+        const LONG left=static_cast<LONG>(std::floor(ox+panel.x*scale)),top=static_cast<LONG>(std::floor(oy+panel.y*scale)),right_edge=static_cast<LONG>(std::ceil(ox+(panel.x+panel.w)*scale)),bottom=static_cast<LONG>(std::ceil(oy+(panel.y+panel.h)*scale));
+        const D3D11_RECT strips[4]{{left,top,right_edge,scissor.top},{left,scissor.bottom,right_edge,bottom},{left,scissor.top,scissor.left,scissor.bottom},{scissor.right,scissor.top,right_edge,scissor.bottom}};
+        c->RSSetState(scissor_state);
+        for(const auto &strip:strips){c->RSSetScissorRects(1,&strip);quad(panel,scale,ox,oy,18,opaque,panel_view);}
+        c->RSSetScissorRects(1,&scissor);
+        quad(transform({base.x+56,base.y+250-static_cast<float>(sy),base.w-112,static_cast<float>(body_height)}),scale,ox,oy,0,opaque,body_view);c->RSSetState(raster_state);
         if(body_height>body_rect(base).h){Rect area=body_rect(base);float thumb=(std::max)(32.0f,area.h*area.h/body_height),offset=bounded(static_cast<float>(sy),0,static_cast<float>(max_scroll))*(area.h-thumb)/max_scroll;
             quad(transform({base.x+base.w-37,area.y,3,area.h}),scale,ox,oy,1,alpha*.16f,ring_view);
             quad(transform({base.x+base.w-37,area.y+offset,3,thumb}),scale,ox,oy,1,alpha*.65f,ring_view);}
         for(unsigned id=2;id<=7;++id)if(hot==static_cast<int>(id) || pressed==static_cast<int>(id)){
-            auto &item=highlights[id][pressed==static_cast<int>(id)?1:0][m.detail?1:0];
-            if(item.view)quad(transform(control(id,base)),scale,ox,oy,4,alpha,item.view);
+            auto &item=highlights[id][pressed==static_cast<int>(id)?1:0];
+            if(item.view)quad(transform(control(id,base)),scale,ox,oy,4,opaque,item.view);
         }
     }
     InterlockedExchange(&ready,1);

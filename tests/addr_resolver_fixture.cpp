@@ -1,6 +1,6 @@
 // Address resolver fixture (user 2026-11-05 patch resilience): maps an unpacked game EXE from disk, runs the real runtime
 // resolver of src/game_addresses.h and compares it with the per-build table. Reads files only, never the live game.
-//   addr_resolver_fixture <unpacked game exe> <build index: 0 = 1fbe6be7, 1 = 1a4a447d>
+//   addr_resolver_fixture <unpacked game exe>            (single build column: the reference build 1a4a447d)
 // Fails (exit 1) when an id with a table value resolves to a different RVA, when an id resolved by the scan has no table
 // value and is not an explicit denial, or when the unique-signature scan is not unique for a table-valued id.
 #define WIN32_LEAN_AND_MEAN
@@ -35,14 +35,15 @@ int main(int argc,char **argv) {
         unsigned n=ga::resolve_image(image,ga::kPreferredBase,out.data());
         FILE *f=nullptr;
         if(fopen_s(&f,argv[3],"w")||!f)return 2;
-        for(unsigned i=0;i<GA_COUNT;++i)fprintf(f,"%X\t%X\t%u\n",ga_entries[i].old_rva,out[i],ga_entries[i].method);
+        for(unsigned i=0;i<GA_COUNT;++i)fprintf(f,"%X\t%X\t%u\n",ga_entries[i].rva,out[i],ga_entries[i].method);
         fclose(f);
         printf("{\"status\":\"address_scan_done\",\"ids\":%u,\"resolved\":%u}\n",GA_COUNT,n);
         return 0;
     }
-    if(argc!=3) {fprintf(stderr,"usage: addr_resolver_fixture <exe> <build index> | <exe> scan <out.tsv>\n");return 2;}
-    int b=atoi(argv[2]);
-    if(b<0||b>1) {fprintf(stderr,"bad build index\n");return 2;}
+    if(argc!=2) {fprintf(stderr,"usage: addr_resolver_fixture <exe> | <exe> scan <out.tsv>\n");return 2;}
+    // GA_FIXTURE_BUILD = column of a candidate table (tools/patch_next.py: [reference, target]); the committed table has one column (0)
+    char gb[16]={};
+    const int b=GetEnvironmentVariableA("GA_FIXTURE_BUILD",gb,sizeof(gb))?atoi(gb):0;
     unsigned char *image=map_exe(argv[1]);
     if(!image) {fprintf(stderr,"cannot map %s\n",argv[1]);return 2;}
     auto nt=reinterpret_cast<IMAGE_NT_HEADERS64 *>(image+reinterpret_cast<IMAGE_DOS_HEADER *>(image)->e_lfanew);
@@ -59,7 +60,7 @@ int main(int argc,char **argv) {
         if(e.method==0) {if(table[i])++table_only_valued;else ++unresolved_table;++table_only;continue;}
         if(table[i]) {
             if(out[i]==table[i]) {++matched;++method_ok[e.method];}
-            else {++mismatch;fprintf(stderr,"MISMATCH GA_%X (%s): scan %X, table %X\n",e.old_rva,e.method==1?"sig":e.method==2?"mid":e.method==3?"rtti":e.method==4?"slotfn":"dataref",out[i],table[i]);}
+            else {++mismatch;fprintf(stderr,"MISMATCH GA_%X (%s): scan %X, table %X\n",e.rva,e.method==1?"sig":e.method==2?"mid":e.method==3?"rtti":e.method==4?"slotfn":"dataref",out[i],table[i]);}
         } else if(out[i]) ++denied;       // resolvable but the table deliberately keeps 0 (changed function: feature stays off)
         else ++unresolved_table;
     }

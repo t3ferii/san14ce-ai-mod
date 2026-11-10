@@ -19,7 +19,7 @@ static HMODULE self_module;
 static unsigned checks;
 static void check(bool v,const char *label){++checks;if(!v){fprintf(stderr,"%s\n",label);exit(1);}}
 static Obj pointer(Obj p,unsigned o){return *reinterpret_cast<Obj *>(p+o);}
-static Obj world(){return pointer(image,0x277DF18);}
+static Obj world(){return pointer(image,0x2780F60);}
 static Obj table(unsigned offset,unsigned id,unsigned maximum){Obj r=world();return r && id<=maximum?pointer(r,offset+id*8):nullptr;}
 static int fixture_day;
 static unsigned char fixture_city[0x80];
@@ -27,9 +27,9 @@ static Obj __fastcall city_lookup(Obj,unsigned id){return id==12?fixture_city:nu
 static int __fastcall day_getter(Obj){return fixture_day;}
 static unsigned __fastcall force_getter(Obj army){return army[0x08];}
 static void *function(unsigned r){
-    if(r==0x32BA50)return reinterpret_cast<void *>(&day_getter);
-    if(r==0x22CC40)return reinterpret_cast<void *>(&force_getter);
-    if(r==0x32C130)return reinterpret_cast<void *>(&city_lookup);
+    if(r==0x32DD00)return reinterpret_cast<void *>(&day_getter);
+    if(r==0x22E690)return reinterpret_cast<void *>(&force_getter);
+    if(r==0x32E3B0)return reinterpret_cast<void *>(&city_lookup);
     check(false,"unexpected native call");return nullptr;
 }
 template<class T>static T fn(unsigned r){return reinterpret_cast<T>(function(r));}
@@ -67,7 +67,7 @@ static std::string read_all(const char *path){std::ifstream f(path,std::ios::bin
 int main(int argc,char **argv){
     check(argc==2,"output path argument");
     std::vector<unsigned char> bytes(0x2800000);image=bytes.data();
-    *reinterpret_cast<Obj *>(image+0x277DF18)=world_bytes.data();
+    *reinterpret_cast<Obj *>(image+0x2780F60)=world_bytes.data();
     for(unsigned id=1;id<=500;++id)*reinterpret_cast<Obj *>(world_bytes.data()+0x7F8D8+id*8)=group(id);
     static unsigned char game_context[0x80]{};*reinterpret_cast<Obj *>(world_bytes.data()+0x871E8)=game_context;
     for(const auto &n:trace_nodes)*reinterpret_cast<Obj *>(image+n.slot)=image+n.execute;
@@ -75,7 +75,7 @@ int main(int argc,char **argv){
     *reinterpret_cast<Obj *>(image+trace_nodes[5].slot)=image+1;check(!ai_trace::guards_match(),"changed slot rejects install");
     *reinterpret_cast<Obj *>(image+trace_nodes[5].slot)=image+trace_nodes[5].execute;
     MultiByteToWideChar(CP_UTF8,0,argv[1],-1,ai_trace::output_path,MAX_PATH);
-    unsigned target_army=index_of(0x611C0);
+    unsigned target_army=index_of(0x61D30);
     ai_trace::accept_hook=[](const void *p){return p==reinterpret_cast<const void *>(&mod_hook);};
     *reinterpret_cast<void **>(image+trace_nodes[target_army].slot)=reinterpret_cast<void *>(&foreign_hook);
     check(!ai_trace::guards_match(),"another program's hook rejects the trace");
@@ -91,7 +91,7 @@ int main(int argc,char **argv){
         check(pointer(image,trace_nodes[i].slot)==reinterpret_cast<Obj>(ai_trace::replacement[i]),"slot owns its wrapper");
         if(i!=target_army)ai_trace::originals[i]=&mock_exec; // fixture only: the fake image has no code
     }
-    unsigned departure=index_of(0x2F2B0),relay=index_of(0x6DFF0),list=index_of(0x1FE20),purpose=index_of(0x6EF20),unwatched=index_of(0x83C20);
+    unsigned departure=index_of(0x2FE10),relay=index_of(0x6EE30),list=index_of(0x1FE00),purpose=index_of(0x6FE00),unwatched=index_of(0x84BC0);
     unsigned char target_city[0x60]{};put16(target_city,0x4E,12);unsigned char node[0x80]{};*reinterpret_cast<Obj *>(node+0x60)=target_city;
     unsigned char context[8]{},subject[8]{};
     // Game-term tables: person 321 장비(자 익덕), force 9 ruled by 유비, hex 0 in 태산, city 12 = 복양.

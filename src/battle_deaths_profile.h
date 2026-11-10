@@ -1,6 +1,6 @@
 #pragma once
-// Battle deaths (docs/BATTLE_DEATHS_PLAN.md 3.5, 2026-11-06): address-table ids, function-hash guards, span bytes and hook sites.
-// Hashes are the original-build (1fbe6be7) FNV-1a values; GH() maps them to the current build via the generated pair table.
+// Battle deaths (docs/HISTORY.md 3.5, 2026-11-06): address-table ids, function-hash guards, span bytes and hook sites.
+// Hashes are the FNV-1a values of the reference build 1a4a447d (src/game_addresses.h GH()).
 // bdp::build_branch_relay (plan 3.3, step S2) builds the pure-byte relay that the 295C5F span jumps to.
 #include "game_addresses.h"
 #include <stddef.h>
@@ -9,12 +9,12 @@
 
 struct BattleDeathsGuard {unsigned rva,size;unsigned long long hash;};
 static const BattleDeathsGuard battle_deaths_guards[]={
-    {GA(GA_258EE0),0x870,GH(0x653B3284CA02C85Full)},   // 0 entry .. call at 25974B
-    {GA(GA_27D4B0),0x55E,GH(0x661CC422880CE7ACull)},   // 1 entry .. call at 27DA09
-    {GA(GA_295AA0),0x1C7,GH(0xD2B7AF14F94EA20Eull)},   // 2 prologue .. 295C67
-    {GA(GA_368360),0x10E,GH(0x047913DBCD7D9B49ull)},   // 3 whole function (cut-in visibility)
-    {GA(GA_14CB00),0x8,GH(0xD249FFA0B273C4B5ull)},     // 4 whole function
-    {GA(GA_14C9F0),0x22,GH(0x272A6BD679DA0875ull)},    // 5 whole function
+    {GA(GA_25A880),0x870,GH(0xFD9E9B85A74972A6ull)},   // 0 entry .. call at 25974B
+    {GA(GA_27F250),0x55E,GH(0xF60E887BFD21C705ull)},   // 1 entry .. call at 27DA09
+    {GA(GA_2979B0),0x1C7,GH(0x835F477A1B42648Cull)},   // 2 prologue .. 295C67
+    {GA(GA_36A850),0x10E,GH(0x92A4E03C15B5DBB9ull)},   // 3 whole function (cut-in visibility)
+    {GA(GA_14DAE0),0x8,GH(0x8A81202331C2D685ull)},     // 4 whole function
+    {GA(GA_14D9D0),0x22,GH(0x0E33A03C060DC2C5ull)},    // 5 whole function
 };
 
 // 295C5F: test ebx,ebx ; je +0x8CE (identical in both builds)
@@ -24,20 +24,20 @@ static const unsigned battle_deaths_span_len=8;
 // Hook sites: 4 CALL sites (E8 rel32) and the original callee each one must still target.
 struct BattleDeathsSite {unsigned site_rva,original_rva;};
 static const BattleDeathsSite battle_deaths_sites[]={
-    {GA(GA_259682),GA(GA_368360)},   // 258EE0 battle death, cut-in visibility
-    {GA(GA_27D976),GA(GA_368360)},   // 27D4B0 death, cut-in visibility
-    {GA(GA_25974B),GA(GA_295AA0)},   // 258EE0 death record call (scope)
-    {GA(GA_27DA09),GA(GA_295AA0)},   // 27D4B0 death record call (scope)
+    {GA(GA_25B022),GA(GA_36A850)},   // 258EE0 battle death, cut-in visibility
+    {GA(GA_27F716),GA(GA_36A850)},   // 27D4B0 death, cut-in visibility
+    {GA(GA_25B0EB),GA(GA_2979B0)},   // 258EE0 death record call (scope)
+    {GA(GA_27F7A9),GA(GA_2979B0)},   // 27D4B0 death record call (scope)
 };
-static const unsigned battle_deaths_span_rva=GA(GA_295C5F);        // span start (E9 + NOP)
-static const unsigned battle_deaths_reject_rva=GA(GA_296535);      // je target = skip the record block
-static const unsigned battle_deaths_app_rva=GA(GA_14CB00);         // app getter used by the cut-in visibility fix
-static const unsigned battle_deaths_camera_rva=GA(GA_14C9F0);      // camera getter
+static const unsigned battle_deaths_span_rva=GA(GA_297B6F);        // span start (E9 + NOP)
+static const unsigned battle_deaths_reject_rva=GA(GA_298445);      // je target = skip the record block
+static const unsigned battle_deaths_app_rva=GA(GA_14DAE0);         // app getter used by the cut-in visibility fix
+static const unsigned battle_deaths_camera_rva=GA(GA_14D9D0);      // camera getter
 
 static const unsigned kBattleDeathsCutinMaxQueued=4;   // request object +0x1E0 must be < 4
 static const unsigned kBattleDeathsRequestQueuedOff=0x1E0;
 
-// ---- relay (docs/BATTLE_DEATHS_PLAN.md 3.3) ----
+// ---- relay (docs/HISTORY.md 3.3) ----
 // Entered by the E9 at 295C5F (original: test ebx,ebx ; je skip). Entry rsp is 16-aligned (295AA0 pushes 7 registers, then sub rsp,0x200).
 // ebx!=0 -> pass untouched. ebx==0 -> save flags/volatile regs/xmm0-5, call predicate(rcx=r13), restore everything, then pass (predicate
 // non-zero) or reject with the original ZF=1. Both exits are `jmp [rip+cell]`: no register is needed and no flag is changed.

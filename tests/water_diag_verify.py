@@ -19,7 +19,8 @@ terrain = read('src/native_terrain_render.inl')
 adapter = read('src/native_adapter.cpp')
 split = read('src/native_split_install.inl')
 ok(water.split('#pragma once\n', 1)[1].startswith('#ifndef NO_RUNTIME_LOG\n') and water.endswith('#endif\n'), 'entire diagnostic including headers and globals excluded from release')
-ok('#if !defined(SPLIT_COMBAT)\n#include "native_terrain_trees.inl"\n#include "native_water_diag.inl"\n#endif' in adapter and adapter.count('#include "native_water_diag.inl"') == 1, 'sole include in convenience only')
+import registry_text as R   # W5: includes come from the generated per-DLL lists
+ok(R.hosts('native_terrain_trees.inl') == ['convenience'] and R.hosts('native_water_diag.inl') == ['convenience'] and R.unity().count('#include "native_water_diag.inl"') == 1, 'sole include in convenience only')
 # User/Claude 2026-10-29 local54: optional identity callback precedes the original guarded call.
 for method in ('install_early', 'on_device', 'restore'):
     ok(re.search(r'#ifdef SAN14_WATER_DIAG_INCLUDED\n(?:    water_diag::mask_sample=&confirm_mask;\n)?    water_diag::' + method + r'\([^\n]*\);\n#endif', terrain), method + ' guarded integration')

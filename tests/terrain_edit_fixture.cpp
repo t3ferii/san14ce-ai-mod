@@ -11,7 +11,9 @@ static unsigned checks=0;
 static void require(bool ok,const char *name) {++checks;if(!ok) {fprintf(stderr,"FAIL %s (%u)\n",name,checks);ExitProcess(1);}}
 static bool enabled=true;
 static struct {bool convenience=true,terrain_edit=false;} mod_features;
-static unsigned world_reads=0,native_reads=0,io_paths=0;
+#define SAVE_HOST_FIXTURE   // save_host counts path() calls: the same path-IO counter the former merit_sidecar_path stub kept
+static unsigned world_reads=0,native_reads=0;
+#define io_paths save_host::path_calls
 static unsigned char root[2],tile_data[8][32],unit_data[64],building_data[64];
 static Obj current_world=root;
 static std::array<Obj,48400> tiles={};
@@ -58,13 +60,9 @@ static unsigned cost_cache_clears=0;
 static void terrain_edit_fixture_cost_cache_clear() {++cost_cache_clears;}
 #define TERRAIN_EDIT_FIXTURE_COST_CACHE 1
 #include "../src/native_terrain_edit.inl"
+// W4-5: the sidecar path is the save host's (<exe folder>\AI_TacticsMod\data\merit\<name>.<sha256>.terrain); the fixture runs from its build folder.
+static HMODULE self_module=GetModuleHandleW(nullptr);
 #include "../src/native_terrain_edit_save.inl"
-static bool merit_sidecar_path(const merit::SaveCoordinator::Completed &job,wchar_t *out,size_t capacity,bool) {
-    ++io_paths;wchar_t cwd[MAX_PATH],hash[65];
-    if(!GetCurrentDirectoryW(MAX_PATH,cwd))return false;
-    for(unsigned i=0;i<32;++i)swprintf_s(hash+i*2,3,L"%02x",job.binding[i]);
-    return swprintf_s(out,capacity,L"%s\\terrain_fixture.%s.meritbond",cwd,hash)>=0;
-}
 static void write_bytes(const wchar_t *path,const std::vector<uint8_t> &bytes) {
     HANDLE f=CreateFileW(path,GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
     require(f!=INVALID_HANDLE_VALUE,"fixture file open");DWORD wrote=0;
@@ -116,7 +114,7 @@ int main() {
     Changes empty;auto zero=empty.encode(binding);require(decoded.decode(zero.data(),zero.size(),binding) && !decoded.size(),"empty roundtrip");
     for(unsigned h=0;h<8;++h) {tiles[h]=tile_data[h];tiles[h][0x10]=1;}
     // Default OFF: no world/table/native getter or sidecar path access.
-    merit::SaveCoordinator::Completed job;job.name="save001.s14";job.binding=binding;
+    save_host::Job job;job.name="save001.s14";job.binding=binding;
     require(apply(0,2)==Result::Disabled,"native default off");snapshot();write_sidecar(job);restore_sidecar(&job);begin_load();
     require(!world_reads && !native_reads && !io_paths,"off zero reads/io");
     mod_features.terrain_edit=true;

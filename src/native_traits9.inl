@@ -1,20 +1,21 @@
 // Current-build reference manifests; native save record layout is unchanged.
 struct Trait9Site {unsigned rva,size,stub;unsigned char before[32];};
+// One byte patch of the frozen payload (src/traits9_payloads.h traits9_core); the units no longer share a row type with stats200.
+struct Trait9Bytes {unsigned rva,size;unsigned char before[16],after[16];};
 struct Trait9Reloc {unsigned data,offset,absolute,target,addend;};
 struct Trait9Manifest {
     const unsigned char *code;size_t code_length;const unsigned char *data;size_t data_length;
     unsigned code_size,data_size;const Trait9Site *sites;size_t site_count;const Trait9Reloc *relocs;size_t reloc_count;
 };
 #include "traits9_payloads.h"
-struct Trait9Patch {unsigned rva,size;unsigned char before[32],after[32];bool published;};
+struct Trait9Patch {unsigned rva,size;unsigned char before[32],after[32];};
 struct Trait9State {Obj allocation;Trait9Patch patches[5];};
 static Trait9State traits9_states[3];
-static unsigned traits9_core_published;
-// local10 (2026-11-06, docs/LOCAL10_PORT_PLAN.md 4.1): the manifests carry the reference build's bytes. Three sites hold a RIP displacement
-// that differs per build, and the Layout manager / modpack_write compare `before` literally, so after the guards have passed (ga::mcmp_at
+// local10 (2026-11-06, docs/HISTORY.md 4.1): the manifests carry the reference build's bytes. Three sites hold a RIP displacement
+// that differs per build, and the Layout manager compares `before` literally, so after the guards have passed (ga::mcmp_at
 // judges the pristine bytes of the running build) the `before` of every site and core row is copied from the image. The core rows are
-// the writable copy `traits9_core_rt` (rva, size and `after` unchanged); a revert is a plain memcmp against `after` (modpack_revert).
-static ModpackBytes traits9_core_rt[sizeof(traits9_core)/sizeof(traits9_core[0])];
+// the writable copy `traits9_core_rt` (rva, size and `after` unchanged); the manager's unhook puts bytes back only while they are still ours.
+static Trait9Bytes traits9_core_rt[sizeof(traits9_core)/sizeof(traits9_core[0])];
 static bool traits9_before_copied;
 // The captive_dialog feature (either-force capture scene, former gate 72 / key extensions.captive_dialog) was removed on 2026-11-06 by the
 // user (the 1a4a447d original already shows the scene for either force): an old ini key is simply never read.
@@ -111,34 +112,7 @@ static unsigned publish_traits9(bool slots) {
     if(!ok) {layout_client::rollback_to(mark);return 1;}
     return 0;
 }
-static void restore_traits9() {}   // routed: split_rollback cancels the manager registrations
 #else
-static void restore_traits9_slots() {
-    // our own writes: plain memcmp against `after` (modpack_revert); ga::mcmp_at would judge them against the pristine bytes
-    for(size_t n=0;n<3;++n)for(size_t i=0;i<trait9_manifests[n].site_count;++i) {
-        auto &p=traits9_states[n].patches[i];if(p.published)modpack_revert(p.rva,p.after,p.before,p.size);
-        p.published=false;
-    }
-    for(unsigned i=0;i<traits9_core_published;++i) {
-        const auto &p=traits9_core_rt[i];modpack_revert(p.rva,p.after,p.before,p.size);
-    }
-    traits9_core_published=0;
-    // Retain gates that a native UI callback could already have entered.
-}
-static unsigned publish_traits9(bool slots) {
-    if(!slots)return 0;
-    bool ok=traits9_before_copied;
-    for(const auto &p:traits9_core_rt) {
-        if(!ok)break;
-        ++traits9_core_published;
-        if(!modpack_write(p.rva,p.before,p.after,p.size))ok=false;
-    }
-    for(size_t n=0;n<3 && ok;++n)for(size_t i=0;i<trait9_manifests[n].site_count && ok;++i) {
-        auto &p=traits9_states[n].patches[i];p.published=true;
-        if(!modpack_write(p.rva,p.before,p.after,p.size))ok=false;
-    }
-    if(!ok) {restore_traits9_slots();return 1;}
-    return 0;
-}
-static void restore_traits9() {restore_traits9_slots();}
+// No Layout manager (only the address guard fixture builds this unit unrouted, and it never publishes): the nine slots are not applied.
+static unsigned publish_traits9(bool slots) {return slots?1u:0u;}
 #endif

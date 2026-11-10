@@ -4,6 +4,7 @@
 // and every decision is logged once as installed / chained / yielded / refused / bypassed.
 // Nothing here calls a game function; all writes run on the thread that calls the API.
 #include "game_addresses.h"
+#include "compat_report.h"   // user 2026-11-09: refusals/yields also go to ai행동교정모드호환성.log
 namespace layout {
 using Bytes=unsigned char;
 static Bytes *image;
@@ -155,6 +156,10 @@ static const PeerRule peer_rules[]={
         {Cond::Ini,L"SAN14Mods\\modules\\ExtBridge.ini",L"Ext",L"FastMenu",0}}},
     {"layout_keep",3,{{Cond::Ini,L"SAN14Mods\\Ext\\SAN14_FastMenu.ini",L"FastMenu",L"PinSlowLayouts",0},R1_MOD(L"ExtBridge.ini"),
         {Cond::Ini,L"SAN14Mods\\modules\\ExtBridge.ini",L"Ext",L"FastMenu",0}}},
+    // U35 (2026-11-10): R1 IC memcmp's the 870470 wrapper body (design C7), so the wrapper E8 yields to any R1 install.
+    {"layout_keep_wrap",1,{{Cond::File,L"SAN14Mods",nullptr,nullptr,0}}},
+    // U35 local29: preserve prior R1 portrait ownership/fingerprints conservatively.
+    {"face_keep_portrait",1,{{Cond::File,L"SAN14Mods",nullptr,nullptr,0}}},
     // mediation_plus needs no rule: its 70E9C1 block hook refuses when the bytes are not original (8.4, 8.7).
     // 8.2 file-existence form for the Batteki / Yuga mediation rule (xinput1_3 load order makes GetModuleHandle unreliable).
     // No registry row uses it: with 6D7D90 handed over only the 70E9C1 byte check remains; kept for a fallback that yields 6D7D90.
@@ -179,6 +184,18 @@ static bool owner_has_peer(const char *owner) {
         if(all)return true;
     }
     return false;
+}
+// The other mod behind a yield: its module DLL or its R1 ini (for the compat log only).
+static const wchar_t *peer_source(const char *owner) {
+    for(const auto &r:peer_rules) {
+        if(strcmp(owner,r.owner))continue;
+        bool all=true;
+        for(unsigned i=0;i<r.count && all;++i)all=cond_holds(r.conds[i]);
+        if(!all)continue;
+        for(unsigned i=0;i<r.count;++i)if(r.conds[i].kind==Cond::Module)return r.conds[i].path;
+        return r.conds[0].path;
+    }
+    return nullptr;
 }
 // ---- code / pointer writes ----
 static bool protect_write(void *at,size_t size,bool (*op)(void *,const void *,const void *),const void *expected,const void *desired) {
@@ -212,7 +229,13 @@ static bool cas_block16(Bytes *block,const Bytes *expected,const Bytes *desired)
 // Multi-block range write (hook_span / hook_bytes): every covering 16-byte block is one CMPXCHG16B; when a later
 // block fails the earlier ones are put back. Patches longer than one block are not atomic as a whole (the
 // callers register them before the patched path runs; same as the former modpack_write).
-static bool range_write(Bytes *at,const Bytes *expected,const Bytes *put,unsigned len) {
+#ifdef LAYOUT_FIXTURE
+static void (*range_write_probe)(unsigned block);   // fixture seam: runs after each block CAS (inject a foreign write)
+#endif
+// stuck (optional): set when a later block failed AND restoring an earlier block also failed (review F-02): the bytes are then neither
+// ours nor the original, and the caller must not treat the failure as a clean refusal.
+static bool range_write(Bytes *at,const Bytes *expected,const Bytes *put,unsigned len,bool *stuck=nullptr) {
+    if(stuck)*stuck=false;
     Bytes *first=reinterpret_cast<Bytes *>(reinterpret_cast<uintptr_t>(at)&~uintptr_t(15));
     Bytes *last=reinterpret_cast<Bytes *>(reinterpret_cast<uintptr_t>(at+len-1)&~uintptr_t(15));
     unsigned blocks=static_cast<unsigned>((last-first)/16)+1,done=0;
@@ -229,9 +252,18 @@ static bool range_write(Bytes *at,const Bytes *expected,const Bytes *put,unsigne
             }
         }
     }
-    for(;done<blocks;++done)if(!cas_block16(first+done*16,before[done],after[done]))break;
+    for(;done<blocks;++done) {
+        if(!cas_block16(first+done*16,before[done],after[done]))break;
+#ifdef LAYOUT_FIXTURE
+        if(range_write_probe)range_write_probe(done);
+#endif
+    }
     if(done==blocks)return true;
-    while(done>0) {--done;cas_block16(first+done*16,after[done],before[done]);}
+    while(done>0) {
+        --done;
+        // Never overwrite foreign bytes: the CAS puts the original back only while the block still holds our patch.
+        if(!cas_block16(first+done*16,after[done],before[done]) && stuck)*stuck=true;
+    }
     return false;
 }
 // ---- relay pool near the image (E8 sites reach +-2 GB) ----
@@ -282,7 +314,7 @@ struct Hook {
     bool raw;                     // hook_bytes: patch is applied as given (no E9 relay)
     const wchar_t *original_module;
 };
-static const unsigned kMaxHooks=384;   // 253 registry rows (97 + 156 trait_hover) + 13 traits9 patches + 70E9C1 + Present, with room for peers
+static const unsigned kMaxHooks=384;   // 261 registry rows (105 + 156 trait_hover) + 13 traits9 patches + 15 stats200 registrations + 70E9C1 + Present, with room for peers
 static Hook hooks[kMaxHooks];
 static unsigned hook_total;
 static const char *state_event(LONG state) {
@@ -300,9 +332,34 @@ static const char *state_event(LONG state) {
 static unsigned hook_address(const Hook &h) {
     return h.kind==kAbsSlot?static_cast<unsigned>(reinterpret_cast<uintptr_t>(h.slot)):h.rva;
 }
+// Slot value / call target a hook contended with, for naming the other module in the compat log.
+static const void *hooked_value(const Hook &h) {
+    if(h.kind==kVtable || h.kind==kAbsSlot)return h.slot?*h.slot:nullptr;
+    if(h.kind==kCall && image && h.rva+5<=image_size && (image[h.rva]==0xE8 || image[h.rva]==0xE9))
+        return image+h.rva+5+*reinterpret_cast<int *>(image+h.rva+1);
+    return nullptr;
+}
+static void report_decision(const Hook &h,LONG state,uint32_t why) {
+    wchar_t owner[32],other[64];
+    unsigned length=0;
+    for(;length<31 && h.owner[length];++length)owner[length]=static_cast<wchar_t>(static_cast<unsigned char>(h.owner[length]));
+    owner[length]=0;
+    const wchar_t *other_name=nullptr;
+    if(state==LAYOUT_STATE_YIELDED)other_name=peer_source(h.owner);
+    else {
+        Where w=module_of(hooked_value(h));
+        if(w.kind==Kind::Foreign || w.kind==Kind::Ours) {
+            wcsncpy_s(other,w.name,_TRUNCATE);
+            other_name=other;
+        }
+    }
+    compat_report::add(owner,hook_address(h),why,other_name);
+}
 static void set_state(Hook &h,LONG state,uint32_t why) {
     h.reason=why;InterlockedExchange(&h.state,state);
     emit(state_event(state),hook_address(h),why,hash32(h.owner));
+    // Refusals and yields caused by another mod / a changed original go to the one compat log.
+    if(state==LAYOUT_STATE_REFUSED || state==LAYOUT_STATE_YIELDED)report_decision(h,state,why);
 }
 static void write_next(Hook &h,void *next) {
     h.next=next;if(h.next_out)*h.next_out=next;
@@ -392,7 +449,13 @@ static void install_block(Hook &h) {
     h.patch[0]=0xE9;int rel=static_cast<int>(delta);memcpy(h.patch+1,&rel,4);
     for(unsigned i=5;i<h.len;++i)h.patch[i]=0x90;
     h.site=at;h.relay=target;
-    if(!range_write(at,h.expect,h.patch,h.len)) {set_state(h,LAYOUT_STATE_REFUSED,LAYOUT_WHY_CAS);return;}
+    bool stuck=false;
+    if(!range_write(at,h.expect,h.patch,h.len,&stuck)) {
+        if(stuck) {   // F-02: a rollback CAS failed; keep the hook out of PENDING (never reinstalled) and say so
+            set_state(h,LAYOUT_STATE_STUCK,LAYOUT_WHY_CAS);emit("layout_range_rollback_failed",h.rva,h.len,hash32(h.owner));
+        } else set_state(h,LAYOUT_STATE_REFUSED,LAYOUT_WHY_CAS);
+        return;
+    }
     set_state(h,LAYOUT_STATE_INSTALLED,LAYOUT_WHY_NONE);
 }
 // hook_bytes: a plain byte patch (value constants, short compare immediates). Same classification as a block hook.
@@ -401,7 +464,13 @@ static void install_bytes(Hook &h) {
     if((h.flags&LAYOUT_YIELD_IF_PEER) && owner_has_peer(h.owner)) {set_state(h,LAYOUT_STATE_YIELDED,LAYOUT_WHY_PEER);return;}
     if(memcmp(at,h.expect,h.len)) {set_state(h,LAYOUT_STATE_REFUSED,LAYOUT_WHY_BYTES);return;}
     h.site=at;
-    if(!range_write(at,h.expect,h.patch,h.len)) {set_state(h,LAYOUT_STATE_REFUSED,LAYOUT_WHY_CAS);return;}
+    bool stuck=false;
+    if(!range_write(at,h.expect,h.patch,h.len,&stuck)) {
+        if(stuck) {   // F-02: a rollback CAS failed; keep the hook out of PENDING (never reinstalled) and say so
+            set_state(h,LAYOUT_STATE_STUCK,LAYOUT_WHY_CAS);emit("layout_range_rollback_failed",h.rva,h.len,hash32(h.owner));
+        } else set_state(h,LAYOUT_STATE_REFUSED,LAYOUT_WHY_CAS);
+        return;
+    }
     set_state(h,LAYOUT_STATE_INSTALLED,LAYOUT_WHY_NONE);
 }
 // 0: no sibling failed, 1: a sibling was refused, 2: siblings only yielded (the whole owner yields).
@@ -411,7 +480,7 @@ static int owner_failed(const Hook &self) {
     for(unsigned i=0;i<hook_total;++i) {
         const Hook &o=hooks[i];
         if(&o==&self || strcmp(o.owner,self.owner) || !(o.flags&LAYOUT_ALL_OR_NONE))continue;
-        if(o.state==LAYOUT_STATE_REFUSED)return 1;
+        if(o.state==LAYOUT_STATE_REFUSED || o.state==LAYOUT_STATE_STUCK)return 1;
         if(o.state==LAYOUT_STATE_YIELDED)result=2;
     }
     return result;
@@ -442,14 +511,23 @@ static void install_hook(Hook &h) {
     if(h.kind==kCall)install_call(h);
     else if(h.kind==kBlock)h.raw?install_bytes(h):install_block(h);
     else install_slot(h);
-    if(h.state==LAYOUT_STATE_REFUSED || h.state==LAYOUT_STATE_YIELDED)rollback_group(h);
+    if(h.state==LAYOUT_STATE_REFUSED || h.state==LAYOUT_STATE_YIELDED || h.state==LAYOUT_STATE_STUCK)rollback_group(h);
 }
 // Entry JMP blocklist (design 4.3 C-4 / 1.5): other mods hold fingerprints of these original entries.
-static const uint32_t blocked_entries[]={GA(GA_930D20),GA(GA_841660),GA(GA_6566E0),GA(GA_86E0C0),GA(GA_86C570),GA(GA_86E140),GA(GA_7FA230),GA(GA_302980),
-    GA(GA_304640),GA(GA_1F09E0),GA(GA_1F0AD0),GA(GA_1F0DD0),GA(GA_6C43B0),GA(GA_6C4670)};
+static const uint32_t blocked_entries[]={GA(GA_9332B0),GA(GA_843B60),GA(GA_658DF0),GA(GA_870470),GA(GA_86E920),GA(GA_8704F0),GA(GA_7FC700),GA(GA_304D70),
+    GA(GA_306A30),GA(GA_1F1DA0),GA(GA_1F1E90),GA(GA_1F2190),GA(GA_6C6B10),GA(GA_6C6DD0)};
+// Review F-07: the protected window is the first kEntryWindow bytes of the entry (the other mods' fingerprints start there and their
+// lengths differ per function, so the common first 16-byte line is the floor), tested as a half-open interval overlap in 64 bits.
+static const uint64_t kEntryWindow=16;
 static bool blocked_range(uint32_t rva,uint32_t len) {
-    for(uint32_t entry:blocked_entries)if(entry>=rva && entry<rva+len)return true;
+    const uint64_t begin=rva,end=begin+len;
+    for(uint32_t entry:blocked_entries)if(entry && begin<uint64_t(entry)+kEntryWindow && uint64_t(entry)<end)return true;
     return false;
+}
+// Review F-01: an unresolved table id reads 0 and a static GA() constant frozen before ga::adopt/resolve_image stays 0. RVA 0 is the PE header.
+static bool unresolved_rva(const char *owner,uint32_t rva) {
+    if(rva)return false;
+    emit("layout_refused",0,LAYOUT_WHY_BAD_SITE,hash32(owner?owner:""));return true;
 }
 static int add_hook(const char *owner,HookKind kind,uint32_t rva,uint32_t original_rva,void *replacement,void **next_out,
     uint32_t flags,uint32_t len,const Bytes *expect,void **slot,const wchar_t *original_module,Bytes opcode=0xE8,bool raw=false) {
@@ -480,12 +558,12 @@ static void publish_hooks() {
     ReleaseSRWLockExclusive(&table_lock);
 }
 static int api_hook_vtable(const char *owner,uint32_t slot_rva,uint32_t original_rva,void *replacement,void **next_out,uint32_t flags) {
-    if(!image || slot_rva+8>image_size || original_rva>=image_size)return -1;
+    if(!image || slot_rva+8>image_size || original_rva>=image_size || unresolved_rva(owner,slot_rva) || unresolved_rva(owner,original_rva))return -1;
     return add_hook(owner,kVtable,slot_rva,original_rva,replacement,next_out,flags,0,nullptr,
         reinterpret_cast<void **>(image+slot_rva),nullptr);
 }
 static int api_hook_call(const char *owner,uint32_t site_rva,uint32_t original_target_rva,void *replacement,void **next_out,uint32_t flags) {
-    if(!image || site_rva+5>image_size || original_target_rva>=image_size)return -1;
+    if(!image || site_rva+5>image_size || original_target_rva>=image_size || unresolved_rva(owner,site_rva) || unresolved_rva(owner,original_target_rva))return -1;
     return add_hook(owner,kCall,site_rva,original_target_rva,replacement,next_out,flags,0,nullptr,nullptr,nullptr);
 }
 static int api_hook_block(const char *owner,uint32_t rva,const uint8_t *expect,uint32_t len,void *relay,uint32_t flags) {
@@ -493,20 +571,20 @@ static int api_hook_block(const char *owner,uint32_t rva,const uint8_t *expect,u
     if(blocked_range(rva,len)) {                       // C-4: refuse before any registration
         emit("layout_refused",rva,LAYOUT_WHY_BLOCKED_ENTRY,hash32(owner));return -2;
     }
-    if(!image || rva+len>image_size || (rva&15u)+len>16)return -1;
+    if(!image || rva+len>image_size || (rva&15u)+len>16 || unresolved_rva(owner,rva))return -1;
     return add_hook(owner,kBlock,rva,0,relay,nullptr,flags,len,expect,nullptr,nullptr);
 }
 // P3: spans longer than 16 bytes or crossing blocks (E9 + NOP fill, up to 32 bytes), and raw byte patches.
 static int api_hook_span(const char *owner,uint32_t rva,const uint8_t *expect,uint32_t len,void *relay,uint32_t flags) {
     if(!owner || !*owner || !expect || !relay || len<5 || len>32)return -1;
     if(blocked_range(rva,len)) {emit("layout_refused",rva,LAYOUT_WHY_BLOCKED_ENTRY,hash32(owner));return -2;}
-    if(!image || rva+len>image_size)return -1;
+    if(!image || rva+len>image_size || unresolved_rva(owner,rva))return -1;
     return add_hook(owner,kBlock,rva,0,relay,nullptr,flags,len,expect,nullptr,nullptr);
 }
 static int api_hook_bytes(const char *owner,uint32_t rva,const uint8_t *expect,const uint8_t *patch,uint32_t len,uint32_t flags) {
     if(!owner || !*owner || !expect || !patch || len<1 || len>32)return -1;
     if(blocked_range(rva,len)) {emit("layout_refused",rva,LAYOUT_WHY_BLOCKED_ENTRY,hash32(owner));return -2;}
-    if(!image || rva+len>image_size)return -1;
+    if(!image || rva+len>image_size || unresolved_rva(owner,rva))return -1;
     return add_hook(owner,kBlock,rva,0,const_cast<uint8_t *>(patch),nullptr,flags,len,expect,nullptr,nullptr,0xE8,true);
 }
 // An absolute COM slot (swap-chain Present): installed at once, chained after anything already there.
@@ -553,7 +631,7 @@ static int api_unhook(int handle) {
 }
 // E9 tail-jump site (898957): same classification and chain logic as an E8 call site, opcode 0xE9.
 static int api_hook_jump(const char *owner,uint32_t site_rva,uint32_t original_target_rva,void *replacement,void **next_out,uint32_t flags) {
-    if(!image || site_rva+5>image_size || original_target_rva>=image_size)return -1;
+    if(!image || site_rva+5>image_size || original_target_rva>=image_size || unresolved_rva(owner,site_rva) || unresolved_rva(owner,original_target_rva))return -1;
     return add_hook(owner,kCall,site_rva,original_target_rva,replacement,next_out,flags,0,nullptr,nullptr,nullptr,0xE9);
 }
 static int api_peer_for_owner(const char *owner) {return owner && *owner && owner_has_peer(owner)?1:0;}

@@ -32,7 +32,7 @@ static const San14LayoutApiV1 *get() {InitOnceExecuteOnce(&once,find_api,nullptr
 #ifndef NO_RUNTIME_LOG
 // Layout decisions (installed/chained/yielded/refused/bypassed) go to this module's common log_event writer.
 static void __cdecl sink(const char *kind,unsigned a,unsigned b,unsigned c) {log_event(kind,a,b,c);}
-static void connect_log() {if(const San14LayoutApiV1 *api=get())api->set_log_sink(&sink);}
+inline void connect_log() {if(const San14LayoutApiV1 *api=get())api->set_log_sink(&sink);}
 #endif
 static const LayoutRow *row_for(unsigned rva) {
     for(unsigned i=0;i<layout_row_count;++i)if(layout_rows[i].rva==rva)return &layout_rows[i];
@@ -63,24 +63,24 @@ static int add(unsigned rva,unsigned char kind,void *replacement,void **next,uin
     return remember(handle);
 }
 static int vt(unsigned slot,void *replacement,void **next,uint32_t drop=0) {return add(slot,LR_VT,replacement,next,drop);}
-static int call(unsigned site,void *replacement,void **next,uint32_t drop=0) {return add(site,LR_CALL,replacement,next,drop);}
-static int jump(unsigned site,void *replacement,void **next,uint32_t drop=0) {return add(site,LR_JUMP,replacement,next,drop);}
+inline int call(unsigned site,void *replacement,void **next,uint32_t drop=0) {return add(site,LR_CALL,replacement,next,drop);}
+inline int jump(unsigned site,void *replacement,void **next,uint32_t drop=0) {return add(site,LR_JUMP,replacement,next,drop);}
 // Block, span and raw-byte registrations (owner and flags given by the caller; the blocklist applies).
-static int block(const char *owner,unsigned rva,const unsigned char *expect,unsigned len,void *relay,uint32_t flags) {
+inline int block(const char *owner,unsigned rva,const unsigned char *expect,unsigned len,void *relay,uint32_t flags) {
     const San14LayoutApiV1 *api=get();
     return api?remember(api->hook_block(owner,rva,expect,len,relay,flags)):0;
 }
-static int span(const char *owner,unsigned rva,const unsigned char *expect,unsigned len,void *relay,uint32_t flags) {
+inline int span(const char *owner,unsigned rva,const unsigned char *expect,unsigned len,void *relay,uint32_t flags) {
     const San14LayoutApiV1 *api=get();
     return api?remember(api->hook_span(owner,rva,expect,len,relay,flags)):0;
 }
-static int bytes(const char *owner,unsigned rva,const unsigned char *expect,const unsigned char *patch,unsigned len,uint32_t flags) {
+inline int bytes(const char *owner,unsigned rva,const unsigned char *expect,const unsigned char *patch,unsigned len,uint32_t flags) {
     const San14LayoutApiV1 *api=get();
     return api?remember(api->hook_bytes(owner,rva,expect,patch,len,flags)):0;
 }
 // Same-function peer decision for owners that apply their patches themselves (imported code): true = yield.
 // The decision is logged like a manager yield so every owner shows up as installed/yielded in the common log.
-static bool yield_to_peer(const char *owner,unsigned rva) {
+inline bool yield_to_peer(const char *owner,unsigned rva) {
     const San14LayoutApiV1 *api=get();
     if(!api || !api->peer_for_owner(owner))return false;
     api->log(owner,"layout_yielded",rva,LAYOUT_WHY_PEER);
@@ -88,11 +88,11 @@ static bool yield_to_peer(const char *owner,unsigned rva) {
 }
 // P4: the owner of the 86C570 call sites reports (layout, name) BEFORE each original load so Layout can name the next built
 // event. Layout needs the names in diagnostic builds (KTID offset probe) and whenever a module subscribed to layout events.
-static void note_load(void *layout,const char *name,int async) {
+inline void note_load(void *layout,const char *name,int async) {
     const San14LayoutApiV1 *api=get();
     if(api && api->note_layout_load)api->note_layout_load(layout,name,async);
 }
-static bool names_wanted() {
+inline bool names_wanted() {
 #ifndef NO_RUNTIME_LOG
     return get()!=nullptr;
 #else
@@ -103,7 +103,7 @@ static bool names_wanted() {
 // publish a partial owner that never learned its missing hooks (design G4). `done=true` keeps the registrations.
 // 2026-11-05 local3 (user: a failed optional feature switches only itself off): `current_mark()` before a feature's registrations,
 // `rollback_to(mark)` takes exactly that feature's still unpublished registrations back; every other owner stays registered.
-static unsigned current_mark() {return handle_count;}
+inline unsigned current_mark() {return handle_count;}
 static void rollback_to(unsigned mark) {
     const San14LayoutApiV1 *api=get();
     if(api)for(unsigned i=handle_count;i>mark;--i)api->unhook(handles[i-1]);
@@ -120,6 +120,28 @@ static void cancel_all() {
     if(api)for(unsigned i=handle_count;i>0;--i)api->unhook(handles[i-1]);
     handle_count=0;
 }
+// UI ownership (layout_api.h, docs/UI_RESOURCE_LIFECYCLE.md 10): the feature module never creates or destroys game UI itself.
+// A scope opens only while the owner's registry hooks are published; every call below is null/-1 outside one.
+struct UiScope {
+    const San14LayoutApiV1 *api;bool ok;
+    explicit UiScope(const char *owner):api(get()),ok(false) {if(api && api->ui_begin && api->ui_release)ok=api->ui_begin(owner)!=0;}
+    ~UiScope() {if(ok)api->ui_end();}
+    UiScope(const UiScope &)=delete;UiScope &operator=(const UiScope &)=delete;
+};
+inline void *ui_window(void *parent,int x,int y,int w,int h,const void *desc,int count) {const San14LayoutApiV1 *a=get();return a&&a->ui_create_window?a->ui_create_window(parent,x,y,w,h,desc,count):nullptr;}
+inline int ui_activate(void *pane) {const San14LayoutApiV1 *a=get();return a&&a->ui_activate?a->ui_activate(pane):-1;}
+inline void *ui_node(void *layout,int node) {const San14LayoutApiV1 *a=get();return a&&a->ui_node?a->ui_node(layout,node):nullptr;}
+inline int ui_node_text(void *layout,int node,const wchar_t *text) {const San14LayoutApiV1 *a=get();return a&&a->ui_set_node_text?a->ui_set_node_text(layout,node,text):-1;}
+inline int ui_node_visible(void *layout,int node,int on) {const San14LayoutApiV1 *a=get();return a&&a->ui_set_node_visible?a->ui_set_node_visible(layout,node,on):-1;}
+inline int ui_select(void *radio,int on) {const San14LayoutApiV1 *a=get();return a&&a->ui_select?a->ui_select(radio,on):-1;}
+inline int ui_follow(void *own,void *source) {const San14LayoutApiV1 *a=get();return a&&a->ui_sync_visibility?a->ui_sync_visibility(own,source):-1;}
+inline int ui_release(const char *owner,void *next) {const San14LayoutApiV1 *a=get();return a&&a->ui_release?a->ui_release(owner,next):-1;}
+inline int ui_enable(void *control,int on) {const San14LayoutApiV1 *a=get();return a&&a->size>=offsetof(San14LayoutApiV1,ui_enable)+sizeof(void *)&&a->ui_enable?a->ui_enable(control,on):-1;}
+inline int ui_tooltip(const wchar_t *text) {const San14LayoutApiV1 *a=get();return a&&a->size>=offsetof(San14LayoutApiV1,ui_tooltip)+sizeof(void *)&&a->ui_tooltip?a->ui_tooltip(text):-1;}
+inline void *ui_button(void *layout,int node,int style,int kind) {const San14LayoutApiV1 *a=get();return a&&a->clone_control?a->clone_control(layout,node,style,kind):nullptr;}
+inline int ui_text(void *control,const wchar_t *text) {const San14LayoutApiV1 *a=get();return a&&a->set_text?a->set_text(control,text):-1;}
+inline int ui_show(void *object,int on) {const San14LayoutApiV1 *a=get();return a&&a->set_visible?a->set_visible(object,on):-1;}
+inline int ui_click(void *control,void (*cb)(void *,void *),void *ctx) {const San14LayoutApiV1 *a=get();return a&&a->bind_click?a->bind_click(control,cb,ctx):-1;}
 }
 // Routing helpers for modules that also compile into split fixtures (synthetic images, no Layout DLL).
 #ifdef LAYOUT_ROUTED

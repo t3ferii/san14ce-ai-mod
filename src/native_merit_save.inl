@@ -3,10 +3,9 @@
  * only hashing native archive bytes runs on the native save/load worker.
  * No worker calls a gameplay getter, enumerates Person, or modifies relations. */
 #include "merit_bond.h"
-#include <bcrypt.h>
-#include "sidecar_cache.h"
+#include "save_host.h"   // sidecar writer, paths, plugin list and manifest (docs/MODULARIZATION_PLAN.md F-09)
 static SidecarCache merit_sidecar_cache;
-#pragma comment(lib,"bcrypt.lib")
+static save_host::Plugins<8> merit_sidecars;   // joined through the generated registry (terrain, tactic memory, merit, warehouse)
 using SaveHost=void(__fastcall *)(Obj);
 using RemoteWrite=unsigned char(__fastcall *)(Obj,const char *,const void *,int);
 using RemoteRead=int(__fastcall *)(Obj,const char *,void *,int);
@@ -17,23 +16,7 @@ static Obj merit_save_host_object,merit_load_host_object;
 static uint64_t merit_save_epoch,merit_load_epoch;
 static bool merit_digest(const void *bytes,int count,merit::Binding &out) {
     if(!bytes || count<=0 || count>64*1024*1024)return false;
-    struct Algorithm {
-        BCRYPT_ALG_HANDLE handle=nullptr;
-        Algorithm() {BCryptOpenAlgorithmProvider(&handle,BCRYPT_SHA256_ALGORITHM,nullptr,0);}
-        ~Algorithm() {if(handle)BCryptCloseAlgorithmProvider(handle,0);}
-    };
-    static Algorithm provider;
-    BCRYPT_ALG_HANDLE alg=provider.handle;BCRYPT_HASH_HANDLE hash=nullptr;
-    bool result=false;
-    if(alg) {
-        if(BCryptCreateHash(alg,&hash,nullptr,0,nullptr,0,0)>=0) {
-            result=BCryptHashData(hash,reinterpret_cast<PUCHAR>(const_cast<void *>(bytes)),
-                                 static_cast<ULONG>(count),0)>=0 &&
-                   BCryptFinishHash(hash,out.data(),static_cast<ULONG>(out.size()),0)>=0;
-            BCryptDestroyHash(hash);
-        }
-    }
-    return result;
+    return save_host::sha256(bytes,static_cast<size_t>(count),out);
 }
 static std::string merit_archive_name(const char *name) {
     if(!name)return {};
@@ -88,42 +71,16 @@ static std::string merit_job_name(unsigned offset) {
     }
     return result;
 }
+// <name>.<sha256>.meritbond next to the other sidecars (save_host::path); merit's own file only.
 static bool merit_sidecar_path(const merit::SaveCoordinator::Completed &job,
                                     wchar_t *out,size_t capacity,bool make_directory) {
-    if(!merit::SaveCoordinator::valid_name(job.name))return false;
-    wchar_t folder[MAX_PATH];
-    DWORD n=GetModuleFileNameW(self_module,folder,MAX_PATH);
-    if(!n || n>=MAX_PATH)return false;
-    wchar_t *slash=wcsrchr(folder,L'\\');if(!slash)return false;*slash=0;
-    wchar_t directory[MAX_PATH];
-    if(swprintf_s(directory,L"%s\\AI_TacticsMod",folder)<0)return false;
-    if(make_directory && !CreateDirectoryW(directory,nullptr) && GetLastError()!=ERROR_ALREADY_EXISTS)return false;
-    if(swprintf_s(directory,L"%s\\AI_TacticsMod\\data",folder)<0)return false;
-    if(make_directory && !CreateDirectoryW(directory,nullptr) && GetLastError()!=ERROR_ALREADY_EXISTS)return false;
-    if(swprintf_s(directory,L"%s\\AI_TacticsMod\\data\\merit",folder)<0)return false;
-    if(make_directory && !CreateDirectoryW(directory,nullptr) && GetLastError()!=ERROR_ALREADY_EXISTS)return false;
-    wchar_t digest[65];
-    for(unsigned i=0;i<32;++i)swprintf_s(digest+i*2,3,L"%02x",job.binding[i]);
-    std::wstring filename(job.name.begin(),job.name.end());
-    return swprintf_s(out,capacity,L"%s\\%s.%s.meritbond",directory,filename.c_str(),digest)>=0;
+    return save_host::path(self_module,save_host::Job{job.name,job.binding},L"meritbond",out,capacity,make_directory);
 }
-static bool merit_write_sidecar(const merit::SaveCoordinator::Completed &job) {
+static bool merit_write_sidecar(const merit::SaveCoordinator::Completed &job,save_host::Written *report=nullptr) {
     COST_SCOPE("merit_write_sidecar");
-    wchar_t path[MAX_PATH],temporary[MAX_PATH];
-    if(!merit_sidecar_path(job,path,MAX_PATH,true) ||
-       swprintf_s(temporary,L"%s.tmp",path)<0)return false;
-    auto bytes=job.store.encode(job.binding);
-    if(merit_sidecar_cache.matches(path,bytes) && GetFileAttributesW(path)!=INVALID_FILE_ATTRIBUTES)return true;
-    HANDLE file=CreateFileW(temporary,GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
-    if(file==INVALID_HANDLE_VALUE)return false;
-    DWORD written=0;
-    bool result=WriteFile(file,bytes.data(),static_cast<DWORD>(bytes.size()),&written,nullptr)!=0 &&
-                written==bytes.size() && FlushFileBuffers(file)!=0;
-    CloseHandle(file);
-    if(result)result=MoveFileExW(temporary,path,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)!=0;
-    if(!result)DeleteFileW(temporary);
-    else merit_sidecar_cache.remember(path,bytes);
-    return result;
+    save_host::Written local;
+    return save_host::store(self_module,save_host::Job{job.name,job.binding},L"meritbond",job.store.encode(job.binding),
+        merit_sidecar_cache,report?*report:local);
 }
 static bool merit_read_sidecar(const merit::SaveCoordinator::Completed &job,
                                    merit::Store &out) {
@@ -144,19 +101,17 @@ static bool merit_read_sidecar(const merit::SaveCoordinator::Completed &job,
     } catch(...) {CloseHandle(file);throw;}
     CloseHandle(file);return result;
 }
+static void merit_host_log(const char *kind,unsigned a,unsigned b,unsigned c) {log_event(kind,a,b,c);}
+static merit::Store merit_load_replacement;   // merit plugin result of the load in progress (host moves it into merit_bonds)
+static bool merit_load_restored;
 [[maybe_unused]] static void __fastcall merit_save_host(Obj host) {
     COST_SCOPE("merit_save_host");
     unsigned phase=dword(host,0x470);
     if(enabled && phase==1) {
-#ifndef SPLIT_COMBAT
-        terrain_edit::snapshot();
-#endif
-#ifdef AWARD_WAREHOUSE
-        award_snapshot();
-#endif
+        save_host::snapshot_all(merit_sidecars);   // terrain, tactic memory, warehouse: registered plugins in position order
         merit::Store snapshot;std::string name;
         try {
-            name=merit_job_name(GA(GA_27D2A98));
+            name=merit_job_name(GA(GA_27D5AE8));
             AcquireSRWLockExclusive(&merit_lock);
             try {merit_check_world();merit_bonds.prune(merit_context,nullptr,merit_remove_native_slot);snapshot=merit_bonds;}
             catch(...) {ReleaseSRWLockExclusive(&merit_lock);throw;}
@@ -167,29 +122,16 @@ static bool merit_read_sidecar(const merit::SaveCoordinator::Completed &job,
             ReleaseSRWLockExclusive(&merit_job_lock);
         } catch(...) {merit_save_epoch=0;log_event("merit_save_begin_failed");}
     }
-    {COST_SCOPE("native_save_host");next_or<SaveHost>(next_merit_save_host,GA(GA_50B670))(host);}
+    {COST_SCOPE("native_save_host");next_or<SaveHost>(next_merit_save_host,GA(GA_50DD30))(host);}
     if(enabled && host==merit_save_host_object && phase==2 && dword(host,0x470)==3) {
         try {
             merit::SaveCoordinator::Completed job;bool ready;
             AcquireSRWLockExclusive(&merit_job_lock);
-            try {ready=merit_jobs.finish_save(merit_save_epoch,dword(image,GA(GA_27D2A20))==1,job);}
+            try {ready=merit_jobs.finish_save(merit_save_epoch,dword(image,GA(GA_27D5A34))==1,job);}
             catch(...) {ReleaseSRWLockExclusive(&merit_job_lock);throw;}
             ReleaseSRWLockExclusive(&merit_job_lock);merit_save_epoch=0;
-#ifndef SPLIT_COMBAT
-            try {if(ready && !terrain_edit::write_sidecar(job)) {
-#ifndef NO_RUNTIME_LOG
-                log_event("terrain_edit_save_failed");
-#endif
-            }} catch(...) {
-#ifndef NO_RUNTIME_LOG
-                log_event("terrain_edit_save_failed");
-#endif
-            }
-#endif
-            if(ready) {bool saved=merit_write_sidecar(job);log_event(saved?"merit_save_written":"merit_save_write_failed");}
-#ifdef AWARD_WAREHOUSE
-            if(ready) {bool saved=award_write_sidecar(job);log_event(saved?"warehouse_save_written":"warehouse_save_write_failed");}
-#endif
+            // every sidecar in plugin order, then the manifest last (save_host.h)
+            if(ready)save_host::save_all(merit_sidecars,self_module,save_host::Job{job.name,job.binding,&job},&merit_host_log);
         } catch(...) {log_event("merit_save_write_failed");}
     }
 }
@@ -199,22 +141,16 @@ static bool merit_read_sidecar(const merit::SaveCoordinator::Completed &job,
     if(enabled && phase==1)try {
         // Loading is an explicit boundary: respect missing/replaced sidecars
         // and never resurrect a relation from a previous save's RAM cache.
-#ifndef SPLIT_COMBAT
-        terrain_edit::begin_load();
-#endif
-        merit_sidecar_cache.clear();
-#ifdef AWARD_WAREHOUSE
-        award_sidecar_cache.clear();
-#endif
-        std::string name=merit_job_name(GA(GA_27D2A68));
+        save_host::begin_load_all(merit_sidecars);   // terrain, tactic memory, merit, warehouse: caches and per-world state
+        std::string name=merit_job_name(GA(GA_27D5AB8));
         AcquireSRWLockExclusive(&merit_job_lock);
         try {merit_load_epoch=merit_jobs.begin_load(name);merit_load_host_object=host;}
         catch(...) {ReleaseSRWLockExclusive(&merit_job_lock);throw;}
         ReleaseSRWLockExclusive(&merit_job_lock);
     } catch(...) {merit_load_epoch=0;merit_load_host_object=host;log_event("merit_load_begin_failed");}
-    {COST_SCOPE("native_load_host");next_or<SaveHost>(next_merit_load_host,GA(GA_509580))(host);}
+    {COST_SCOPE("native_load_host");next_or<SaveHost>(next_merit_load_host,GA(GA_50BD20))(host);}
     if(enabled && host==merit_load_host_object && phase==2 && dword(host,0x470)==3 &&
-       dword(image,GA(GA_27D2A50))!=0) {
+       dword(image,GA(GA_27D5AA4))!=0) {
         // Successful native load always replaces the extras, even if the
         // sidecar is absent/corrupt or the world uses the same address.
         merit::Store replacement;bool restored=false;
@@ -224,17 +160,12 @@ static bool merit_read_sidecar(const merit::SaveCoordinator::Completed &job,
             try {ready=merit_jobs.finish_load(merit_load_epoch,true,job);}
             catch(...) {ReleaseSRWLockExclusive(&merit_job_lock);throw;}
             ReleaseSRWLockExclusive(&merit_job_lock);
-#ifndef SPLIT_COMBAT
-            terrain_edit::restore_sidecar(ready?&job:nullptr);
-#endif
-            if(ready)restored=merit_read_sidecar(job,replacement);
-#ifdef AWARD_WAREHOUSE
-            award_restore_sidecar(ready?&job:nullptr);
-#endif
+            merit_load_replacement.clear();merit_load_restored=false;
+            save_host::Job host_job{job.name,job.binding,&job};
+            save_host::restore_all(merit_sidecars,self_module,ready?&host_job:nullptr,&merit_host_log);   // terrain, tactic memory, merit read, warehouse
+            replacement=std::move(merit_load_replacement);restored=merit_load_restored;
         } catch(...) {replacement.clear();
-#ifdef AWARD_WAREHOUSE
-            award_restore_sidecar(nullptr);
-#endif
+            save_host::restore_all(merit_sidecars,self_module,nullptr,&merit_host_log);
         }
         merit_load_epoch=0;
         AcquireSRWLockExclusive(&merit_lock);
@@ -245,3 +176,13 @@ static bool merit_read_sidecar(const merit::SaveCoordinator::Completed &job,
         log_event(restored?"merit_load_restored":"merit_load_no_matching_sidecar");
     }
 }
+// Sidecar plugin of the merit bond store itself (the host owner; its snapshot is taken inline under merit_lock in merit_save_host).
+static const merit::SaveCoordinator::Completed &merit_completed(const save_host::Job &job) {return *static_cast<const merit::SaveCoordinator::Completed *>(job.source);}
+static const save_host::SidecarPlugin merit_sidecar_plugin={"merit",L"meritbond",1,"merit_save_written","merit_save_write_failed",nullptr,nullptr,
+    [](const save_host::Job &job,save_host::Written &out) {return merit_write_sidecar(merit_completed(job),&out);},
+    []() {merit_sidecar_cache.clear();},
+    [](const save_host::Job *job) {
+        merit_load_replacement.clear();merit_load_restored=false;
+        if(!job)return false;
+        merit_load_restored=merit_read_sidecar(merit_completed(*job),merit_load_replacement);return merit_load_restored;
+    }};

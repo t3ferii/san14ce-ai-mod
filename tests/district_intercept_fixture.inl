@@ -18,7 +18,7 @@ static void district_intercept_tests() {
     Obj old_actor=table(0x158,5999,6000);
     actor[0xE0]=50;corps[0x17]=5;
     slot(0xE0D0,50,corps);slot(0x158,5999,actor);putptr(root,0x871E8,options);
-    BIND(0x233750,district_fixture_member);BIND(0x32E8D0,district_fixture_controlled);
+    BIND(0x2350F0,district_fixture_member);BIND(0x330B50,district_fixture_controlled);
     enabled=1;mod_features.district_intercept_block=true;district_fixture_direct=direct;
     unsigned cmd[30]={};cmd[0]=5999;cmd[2]=12000;cmd[13]=7;cmd[14]=27;cmd[15]=77;
     using district_intercept::blocked;
@@ -50,7 +50,7 @@ static void district_intercept_tests() {
     slot(0xE0D0,50,nullptr);check(!blocked(cmd),"invalid actor corps fails open");slot(0xE0D0,50,corps);
     check(!blocked(nullptr),"null command fails open");
     // Transport sources: condition 84 (5 city, 15 hexes) is true for restricted player corps only.
-    BIND(0xB60E0,district_fixture_corps);BIND(0xAEE60,district_fixture_enemy_near);
+    BIND(0xB7170,district_fixture_corps);BIND(0xAFDC0,district_fixture_enemy_near);
     district_fixture_context_corps=corps;
     {const unsigned city15[4]={5,1,2,15},city10[4]={5,1,2,10},gate15[4]={6,1,2,15};
     using district_intercept::transport_safety;

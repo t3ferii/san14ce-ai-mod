@@ -31,29 +31,29 @@ static int __fastcall capture_search(SortieNativePath *path,Obj,unsigned from,un
 }
 static void __fastcall capture_update(Obj army) {
     ++capture_updates;SortieNativePath path{};unsigned to=word(army,0x3A);
-    check(reinterpret_cast<SortieSearch>(compat_target(0x301BD9))(&path,image+48,word(army,0x2A),&to,1,11,13)==1,
+    check(reinterpret_cast<SortieSearch>(compat_target(0x303FC9))(&path,image+48,word(army,0x2A),&to,1,11,13)==1,
         "26C940 mock command update invokes the actual installed 301BD9 caller thunk");
     unsigned short next=3;memcpy(army+0x48,&next,2);
 }
 static void *callsite_capture_function(unsigned rva) {
     switch(rva) {
-    case 0x32F500:return reinterpret_cast<void *>(&capture_valid);
-    case 0x22DA10:return reinterpret_cast<void *>(&capture_army_id);
-    case 0x2AA850:return reinterpret_cast<void *>(&capture_distance);
-    case 0xA2410:return reinterpret_cast<void *>(&capture_clear);
-    case 0x2EAAE0:return reinterpret_cast<void *>(&capture_mode);
-    case 0x2EAB40:return reinterpret_cast<void *>(&capture_target);
-    case 0x2EE1E0:return reinterpret_cast<void *>(&capture_waypoint);
-    case 0x26C940:return reinterpret_cast<void *>(&capture_update);
+    case 0x331780:return reinterpret_cast<void *>(&capture_valid);
+    case 0x22F4A0:return reinterpret_cast<void *>(&capture_army_id);
+    case 0x2ACB80:return reinterpret_cast<void *>(&capture_distance);
+    case 0xA3370:return reinterpret_cast<void *>(&capture_clear);
+    case 0x2ECEA0:return reinterpret_cast<void *>(&capture_mode);
+    case 0x2ECF00:return reinterpret_cast<void *>(&capture_target);
+    case 0x2F05A0:return reinterpret_cast<void *>(&capture_waypoint);
+    case 0x26E260:return reinterpret_cast<void *>(&capture_update);
     default:return nullptr;
     }
 }
 static void restored_capture_tests() {
-    unsigned index=0;while(index<kSortieSearchCount && sortie_search_sites[index]!=0x301BD9)++index;
+    unsigned index=0;while(index<kSortieSearchCount && sortie_search_sites[index]!=0x303FC9)++index;
     check(index<kSortieSearchCount,"301BD9 is present in the graph-derived caller table");
     SortieSearch saved_next=sortie_search_nexts[index];sortie_search_nexts[index]=capture_search;
     Obj saved_world=world(),root=static_cast<Obj>(calloc(1,0x90000));check(root!=nullptr,"capture fixture world allocated");
-    *reinterpret_cast<Obj *>(image+0x277DF18)=root;
+    *reinterpret_cast<Obj *>(image+0x2780F60)=root;
     unsigned char army[0x200]={},tiles[3][0x30]={};unsigned short from=2;memcpy(army+0x2A,&from,2);
     for(unsigned i=0;i<3;++i)*reinterpret_cast<Obj *>(root+0xE270+(i+2)*8)=tiles[i];
     capture_target(army,9,4);capture_updates=capture_searches=0;callsite_capture_active=true;
@@ -66,7 +66,7 @@ static void restored_capture_tests() {
     check(!memcmp(army+0x2C,saved.bytes,sizeof(saved.bytes)),"campaign trace restores native command fields");
     check(capture_updates==3 && capture_searches==3 && !sortie_trace_output && !campaign_native_trace && !native_search_depth,
         "both capture paths execute original-next and clean up all trace and search scopes");
-    callsite_capture_active=false;*reinterpret_cast<Obj *>(image+0x277DF18)=saved_world;free(root);sortie_search_nexts[index]=saved_next;
+    callsite_capture_active=false;*reinterpret_cast<Obj *>(image+0x2780F60)=saved_world;free(root);sortie_search_nexts[index]=saved_next;
 }
 static void callsite_sortie_tests() {
     const LONG saved_enabled=enabled;enabled=0;
@@ -81,7 +81,7 @@ static void callsite_sortie_tests() {
     for(unsigned scenario=0;scenario<4;++scenario) {
         for(unsigned k=0;k<kSortieCallCount;++k)memcpy(image+sites[k],saved[k],5);
         if(scenario==1)for(unsigned k=0;k<kSortieCallCount;++k)compat_set_call(sites[k],foreign+k*16);
-        if(scenario==2) {image[sites[0]]=0xCC;compat_set_call(sites[1],image+0x1000);image[sites[5]]=0x90;compat_set_call(sites[kSortieSearchEnd],image+0x1000);image[0x1EC890]=0xCC;}
+        if(scenario==2) {image[sites[0]]=0xCC;compat_set_call(sites[1],image+0x1000);image[sites[5]]=0x90;compat_set_call(sites[kSortieSearchEnd],image+0x1000);image[0x1EDC30]=0xCC;}
         if(scenario==3)for(unsigned k=0;k<5;++k)image[sites[k]]=0xCC;
         SortieCode code{};
         check(sortie_guards_match()==(scenario!=3),"guard fails only when all five planner callers fail");
@@ -91,7 +91,7 @@ static void callsite_sortie_tests() {
         check(prepare_sortie(code,relay)==(scenario!=3),"prepare keeps individual mismatches local");
         check(log_perf::calls-logged==(scenario>=2?5:0),"every skipped caller invokes the common log_event writer");
         diagnostic_logging=saved_logging;
-        if(scenario==3) {memcpy(image+0x1EC890,entries[5],64);continue;}
+        if(scenario==3) {memcpy(image+0x1EDC30,entries[5],64);continue;}
         check(VirtualProtect(relay,8192,PAGE_EXECUTE_READWRITE,&old)!=0,"fixture relays executable");
         check(publish_sortie(code),"valid remaining caller hooks published");
         check(path_fast_guards_match(),"combat caller hooks preserve path_fast fingerprints");
@@ -123,7 +123,7 @@ static void callsite_sortie_tests() {
         check(image[sites[2]-1]==neighbour,"restore preserves unrelated neighbouring bytes");image[sites[2]-1]^=1;
         for(unsigned k=0;k<kSortieCallCount;++k)if(k!=3 && k!=4 && !(scenario==2 && (k==0 || k==1 || k==5 || k==kSortieSearchEnd)))
             check(compat_target(sites[k])==(scenario==1?foreign+k*16:image+sites[k]+5+*reinterpret_cast<int *>(saved[k]+1)),"restored caller points to its exact original or external next");
-        memcpy(image+0x1EC890,entries[5],64);
+        memcpy(image+0x1EDC30,entries[5],64);
     }
     for(unsigned k=0;k<kSortieCallCount;++k)memcpy(image+sites[k],saved[k],5);
     for(unsigned k=0;k<8;++k)memcpy(image+sortie_entries[k].rva,entries[k],64);

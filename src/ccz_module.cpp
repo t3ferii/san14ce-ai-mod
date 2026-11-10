@@ -40,8 +40,8 @@ template<class T> static T next_pick(T next,unsigned rva) {return next?next:fn<T
 static unsigned short word(Obj p,unsigned off) {return *reinterpret_cast<unsigned short *>(p+off);}
 static unsigned dword(Obj p,unsigned off) {return *reinterpret_cast<unsigned *>(p+off);}
 static Obj pointer(Obj p,unsigned off) {return *reinterpret_cast<Obj *>(p+off);}
-static Obj world() {return pointer(image,GA(GA_277DF18));}
-static bool valid(Obj obj) {return obj!=nullptr && fn<int(__fastcall *)(Obj)>(GA(GA_32F500))(obj)!=0;}
+static Obj world() {return pointer(image,GA(GA_2780F60));}
+static bool valid(Obj obj) {return obj!=nullptr && fn<int(__fastcall *)(Obj)>(GA(GA_331780))(obj)!=0;}
 static Obj table(unsigned offset,unsigned id,unsigned maximum) {
     Obj root=world();
     return root && id<=maximum?pointer(root,offset+id*8):nullptr;
@@ -51,19 +51,6 @@ static bool mod_ini_path(wchar_t *out,const wchar_t *file) {
     if(!GetModuleFileNameW(self_module,out,MAX_PATH))return false;
     wchar_t *slash=wcsrchr(out,L'\\');if(!slash)return false;*slash=0;
     return !wcscat_s(out,MAX_PATH,L"\\AI_TacticsMod\\") && !wcscat_s(out,MAX_PATH,file);
-}
-static bool patch_pointer(unsigned rva,unsigned expected,void *replacement) {
-    auto slot=reinterpret_cast<void **>(image+rva);DWORD old=0;
-    if(*slot!=image+expected || !VirtualProtect(slot,8,PAGE_READWRITE,&old))return false;
-    void *previous=InterlockedCompareExchangePointer(slot,replacement,image+expected);
-    DWORD restored=0;VirtualProtect(slot,8,old,&restored);
-    return previous==image+expected;
-}
-static void restore_pointer(unsigned rva,unsigned original,void *replacement) {
-    auto slot=reinterpret_cast<void **>(image+rva);DWORD old=0,restored=0;
-    if(!VirtualProtect(slot,8,PAGE_READWRITE,&old))return;
-    InterlockedCompareExchangePointer(slot,image+original,replacement);
-    VirtualProtect(slot,8,old,&restored);
 }
 #include "native_layout_client.inl"   // 2026-11-05: the army-display slot is registered with SAN14_Layout.dll (whitelist row, body stays here)
 #include "native_ccz_sprites.inl"
@@ -75,7 +62,7 @@ static void __cdecl initialize(Obj base,CczLog log,void (__cdecl *overlay)()) {i
 #endif
     COST_SCOPE("ccz_api_initialize");ccz_sprites::reload_appearance();}
 static bool __cdecl sprites_guards() { COST_SCOPE("ccz_api_sprites_guards");return image && ccz_sprites::guards_match();}
-static bool __cdecl install_sprites(bool hide,bool depth,bool far_keep) { COST_SCOPE("ccz_api_install_sprites");return image && ccz_sprites::install(hide,depth,far_keep);}
+static bool __cdecl install_sprites(bool hide,bool depth,bool far_keep,bool fallback) { COST_SCOPE("ccz_api_install_sprites");return image && ccz_sprites::install(hide,depth,far_keep,fallback);}
 static bool __cdecl needs_present() { COST_SCOPE("ccz_api_needs_present");return ccz_sprites::needs_present();}
 static void __cdecl on_present(ID3D11Device *d,ID3D11DeviceContext *c,ID3D11Texture2D *back,const D3D11_TEXTURE2D_DESC &desc) { COST_SCOPE("ccz_api_on_present");ccz_sprites::on_present(d,c,back,desc);}
 static void __cdecl configure_combat(bool block,bool critical) { COST_SCOPE("ccz_api_configure_combat");ccz_combat::configure(block,critical);}

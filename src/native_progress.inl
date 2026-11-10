@@ -27,9 +27,9 @@ static void progress_phase(unsigned phase,unsigned rva,Obj manager,Obj subject) 
     fn<ProgressPhase>(rva)(manager,subject);
     QueryPerformanceCounter(&end);sample->ticks[phase]+=end.QuadPart-begin.QuadPart;++sample->calls[phase];
 }
-static void __fastcall progress_force(Obj manager,Obj subject) {COST_SCOPE("native_force_ai");progress_phase(0,GA(GA_D3D50),manager,subject);}
-static void __fastcall progress_district(Obj manager,Obj subject) {COST_SCOPE("native_district_ai");progress_phase(1,GA(GA_D3CE0),manager,subject);}
-static void __fastcall progress_army(Obj manager,Obj subject) {COST_SCOPE("native_army_ai");progress_phase(2,GA(GA_D3C70),manager,subject);}
+static void __fastcall progress_force(Obj manager,Obj subject) {COST_SCOPE("native_force_ai");progress_phase(0,GA(GA_D4DE0),manager,subject);}
+static void __fastcall progress_district(Obj manager,Obj subject) {COST_SCOPE("native_district_ai");progress_phase(1,GA(GA_D4D70),manager,subject);}
+static void __fastcall progress_army(Obj manager,Obj subject) {COST_SCOPE("native_army_ai");progress_phase(2,GA(GA_D4D00),manager,subject);}
 static void progress_cost_original_ai(Obj context) {COST_SCOPE("native_ai_root");original_progress_ai(context);}
 static void __fastcall progress_native_ai(Obj context) { COST_CRUMB_HOT("progress_native_ai",context);
     if(!progress_native_active || !progress_native_profile) {original_progress_ai(context);return;}
@@ -38,7 +38,7 @@ static void __fastcall progress_native_ai(Obj context) { COST_CRUMB_HOT("progres
     __try {progress_cost_original_ai(context);}
     __finally {progress_sample=previous;}
     QueryPerformanceCounter(&end);
-    PATH_COUNT_FLUSH();
+    services::run_progress_flush();
     // Scalar lines only after the root call. No per-subject IO in the timed AI.
     log_event("progress_original_ai_microseconds",0,progress_microseconds(end.QuadPart-begin.QuadPart),GetCurrentThreadId());
     const char *names[]={"progress_force_microseconds","progress_district_microseconds","progress_army_microseconds"};
@@ -46,11 +46,11 @@ static void __fastcall progress_native_ai(Obj context) { COST_CRUMB_HOT("progres
 }
 struct ProgressNativeCode {CodeLink distance,ai,phases[3];};
 static bool progress_native_guards_match() {
-    return !ga::mcmp(image,GA_2AA850,0,progress_distance_bytes,sizeof(progress_distance_bytes)) &&
-           !ga::mcmp(image,GA_43E030,0,progress_ai_entry_bytes,sizeof(progress_ai_entry_bytes)) &&
-           !ga::mcmp(image,GA_43E0A0,0,progress_force_call_bytes,16) &&
-           !ga::mcmp(image,GA_43E120,0,progress_district_call_bytes,16) &&
-           !ga::mcmp(image,GA_43E4C0,0,progress_army_call_bytes,16);
+    return !ga::mcmp(image,GA_2ACB80,0,progress_distance_bytes,sizeof(progress_distance_bytes)) &&
+           !ga::mcmp(image,GA_4403E0,0,progress_ai_entry_bytes,sizeof(progress_ai_entry_bytes)) &&
+           !ga::mcmp(image,GA_440450,0,progress_force_call_bytes,16) &&
+           !ga::mcmp(image,GA_4404D0,0,progress_district_call_bytes,16) &&
+           !ga::mcmp(image,GA_440870,0,progress_army_call_bytes,16);
 }
 static bool prepare_progress_native(ProgressNativeCode &code,Obj relay) {
     if(!progress_native_guards_match())return false;
@@ -59,7 +59,7 @@ static bool prepare_progress_native(ProgressNativeCode &code,Obj relay) {
     // Complete instructions, no relative operands; FF25 jumps preserve GPRs.
     static_assert(sizeof(progress_kernel_bytes)<=128,"Distance relay/gate overlap");
     memcpy(relay,progress_kernel_bytes,sizeof(progress_kernel_bytes));
-    memcpy(relay+128,progress_distance_bytes,8);absolute_jump(relay+136,image+GA(GA_2AA858));
+    memcpy(relay+128,progress_distance_bytes,8);absolute_jump(relay+136,image+GA(GA_2ACB88));
     original_progress_distance=reinterpret_cast<ProgressDistance>(relay+128);
     Obj coordinates=reinterpret_cast<Obj>(progress_grid.coordinates);
     Obj original=relay+128;
@@ -70,10 +70,10 @@ static bool prepare_progress_native(ProgressNativeCode &code,Obj relay) {
     // A memory JMP FF25 is recognized as an epilog by the x64 unwinder. These
     // PUSHs are not undone here, so use a volatile-register branch instead.
     relay[230]=0x49;relay[231]=0xBB;
-    Obj continuation=image+GA(GA_43E036);memcpy(relay+232,&continuation,8);
+    Obj continuation=image+GA(GA_4403E6);memcpy(relay+232,&continuation,8);
     relay[240]=0x41;relay[241]=0xFF;relay[242]=0xE3;
     original_progress_ai=reinterpret_cast<ProgressAi>(relay+224);
-    if(!prepare_link(code.distance,GA(GA_2AA850),0xE9,relay) || !prepare_link(code.ai,GA(GA_43E030),0xE9,relay+192))return false;
+    if(!prepare_link(code.distance,GA(GA_2ACB80),0xE9,relay) || !prepare_link(code.ai,GA(GA_4403E0),0xE9,relay+192))return false;
     memset(code.distance.modified+5,0x90,3);code.ai.modified[5]=0x90;
     // The original gate executes two nonvolatile PUSHs. Register their unwind
     // information so exceptions/profiling inside this small prolog are valid.
@@ -81,7 +81,7 @@ static bool prepare_progress_native(ProgressNativeCode &code,Obj relay) {
     runtime->BeginAddress=224;runtime->EndAddress=243;runtime->UnwindData=272;
     const unsigned char unwind[]={1,6,2,0,6,0xC0,4,0x50};
     memcpy(relay+272,unwind,sizeof(unwind));
-    const unsigned calls[]={GA(GA_43E0A5),GA(GA_43E122),GA(GA_43E4C8)};
+    const unsigned calls[]={GA(GA_440455),GA(GA_4404D2),GA(GA_440878)};
     const ProgressPhase wrappers[]={progress_force,progress_district,progress_army};
     for(unsigned phase=0;phase<3;++phase) {
         Obj stub=relay+288+phase*32;absolute_jump(stub,reinterpret_cast<void *>(wrappers[phase]));
@@ -114,7 +114,7 @@ static bool install_progress_native() {
     if(!progress_native_guards_match()) {log_event("progress_native_guard_rejected");return false;}
     if(!QueryPerformanceFrequency(&progress_clock_frequency) || progress_clock_frequency.QuadPart<=0)return false;
     progress_grid.initialize();
-    Obj relay=allocate_near(image+GA(GA_2AA850));if(!relay)return false;
+    Obj relay=allocate_near(image+GA(GA_2ACB80));if(!relay)return false;
     ProgressNativeCode code;
     if(!prepare_progress_native(code,relay)) {VirtualFree(relay,0,MEM_RELEASE);return false;}
     DWORD old;

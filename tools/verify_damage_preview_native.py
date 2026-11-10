@@ -3,12 +3,12 @@ import sys as _s,os as _o;_s.path.insert(0,_o.path.join(_o.path.dirname(_o.path.
 from pathlib import Path
 import hashlib,json,struct,sys
 P=Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(P/'data/diagnostics/combat_formula_20261021'))
-import inspect_formula as pe
-spans=[(0x7FA230,0x7FA763),(0x7D0460,0x7D05DD),(0x7F55D0,0x7F5795),
-       (0x16A1D0,0x16A780),(0x2B21A0,0x2B2440),(0x2B2440,0x2B2684),
-       (0x2A9E50,0x2AA123),(0x2AA2E0,0x2AA563),(0x18FDA0,0x18FEFD),
-       (0x92F810,0x92F886),(0x22C6D0,0x22C723),(0x191760,0x191C28)]
+sys.path.insert(0,str(P/'tools'))
+import current_image as pe   # decoded 1a4a447d image (the former inspect_formula module reads the previous build)
+spans=[(0x7FC700,0x7FCC33),(0x7D2810,0x7D298D),(0x7F7AA0,0x7F7C65),
+       (0x16B180,0x16B730),(0x2B4460,0x2B4700),(0x2B4750,0x2B4994),
+       (0x2AC0A0,0x2AC373),(0x2AC5A0,0x2AC823),(0x191130,0x19128D),
+       (0x931DA0,0x931E16),(0x22E110,0x22E163),(0x192AF0,0x192FB8)]
 def fnv(b):
     h=0xcbf29ce484222325
     for v in b:h=((h^v)*0x100000001b3)&0xffffffffffffffff
@@ -20,10 +20,10 @@ import re
 path=P/'src/damage_preview_profile.h'
 rows=[(int(a,16),int(b,16),int(c,16)) for a,b,c in re.findall(r'\{0x([0-9A-F]+),0x([0-9A-F]+),0x([0-9A-F]+)ull\}',path.read_text(encoding='utf-8'))]
 assert rows==[(r['rva'],r['size'],r['hash']) for r in records],'native profile differs'
-assert pe.read(0x7FA230,9)==bytes.fromhex('4885d20f8429050000')
-assert pe.read(0x7FA653,5)==bytes.fromhex('e878fb96ff')
-assert pe.read(0x7FA67C,5)==bytes.fromhex('e84ffb96ff')
-assert pe.read(0x7FA762,1)==b'\xc3'
+assert pe.read(0x7FC700,9)==bytes.fromhex('4885d20f8429050000')
+assert pe.read(0x7FCB23,5)==bytes.fromhex('e858e696ff')
+assert pe.read(0x7FCB4C,5)==bytes.fromhex('e82fe696ff')
+assert pe.read(0x7FCC32,1)==b'\xc3'
 assert hashlib.sha256((P.parent/'SAN14CE_KO.exe').read_bytes()).hexdigest() in ('87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a','782cf229a56cdde2b95399e0e7536740b3f5e96bea702679365e4dad061abdce') # Steam EXE: 87ed4e46 = before the 2026-11-05 update (the decoded evidence above), 782cf229 = buildid 25953386 (per-build resolution: tools/check_addresses.py, nothing weakened)
 out=P/'build/development/damage_preview';out.mkdir(parents=True,exist_ok=True)
 (out/'native_evidence.json').write_text(json.dumps(dict(source=str(pe.SOURCE),sha256=hashlib.sha256(pe.data).hexdigest(),ranges=records,

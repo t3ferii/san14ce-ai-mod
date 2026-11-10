@@ -107,7 +107,7 @@ static size_t encode(const uint8_t *src,size_t n,const uint8_t rank[256],uint8_t
     return w.overflow?0:w.pos;
 }
 // Same rank as 9332B0: counts, stable-by-index selection sort descending; table = rank->byte.
-static void ranks(const uint8_t *src,size_t n,uint8_t rank[256],uint8_t table[256]) {
+inline void ranks(const uint8_t *src,size_t n,uint8_t rank[256],uint8_t table[256]) {
     uint32_t count[256]={};
     for(size_t i=0;i<n;++i)++count[src[i]];
     for(int i=0;i<256;++i)table[i]=static_cast<uint8_t>(i);

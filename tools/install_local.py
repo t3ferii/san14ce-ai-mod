@@ -2,6 +2,7 @@
 
   python -B -X utf8 tools/install_local.py prepare <version> --modules loader,layout,combat,convenience,ccz [--gui] --note "<what>"
   python -B -X utf8 tools/install_local.py install <version>
+  python -B -X utf8 tools/install_local.py switch-package <package folder> [--dry-run]
 
 Only the listed modules are replaced from build/development/loader_split_diagnostic (build them first
 with tools/build_split.ps1 -RuntimeDiagnostics); every other installed DLL is kept byte-for-byte.
@@ -345,10 +346,73 @@ def rollback(a):
         'settings_preserved':True,'other_modules_preserved':True,'layout_restored':bool(p.get('layout')),
         'local_overrides_restored':sorted(p.get('preexisting_selected_overrides',{}))}))
 
+SWITCH_SKIP_DIRS=('AI_TacticsMod/docs/',)
+def switch_files(root):
+    """Package files the switch copies: everything except the project documents (README/사용안내/docs), which stay as they are."""
+    out=[]
+    for q in sorted(root.rglob('*')):
+        if not q.is_file(): continue
+        rel=q.relative_to(root).as_posix()
+        if rel.startswith(SWITCH_SKIP_DIRS): continue
+        if rel.startswith('AI_TacticsMod/') and rel.count('/')==1 and rel.lower().endswith('.md'): continue
+        out.append(rel)
+    return out
+def run_manager(action,tag):
+    no_game()
+    r=subprocess.run(['powershell.exe','-NoProfile','-STA','-ExecutionPolicy','Bypass','-File',str(P/'관리.ps1'),
+        '-Action',action,'-GameDirectory',str(G),'-NonInteractive'],cwd=G,capture_output=True)
+    log=P/('build/development/switch_'+tag+'_'+action.lower()+'.log'); log.parent.mkdir(parents=True,exist_ok=True)
+    log.write_bytes(r.stdout+r.stderr)
+    return r.returncode,log
+def switch_package(a):
+    """user 2026-11-10 (F4): install another released package (e.g. updates/v15.7.1/files) the way the installer's version
+    change does it: the CURRENT 관리.ps1 Restore (original index/DLLs back), copy the package files (project documents are
+    never overwritten), the PACKAGE's 관리.ps1 Apply, then verify the five DLLs, the installer and the state against the
+    package manifest. Everything it overwrites is copied first to backup/switch_<version>_<time>/files."""
+    src=Path(a.version).resolve()   # relative to the current directory
+    assert (src/'AI_TacticsMod/관리.ps1').is_file() and (src/'AI_TacticsMod/build/input_package/manifest.json').is_file(),\
+        'Not a release package folder (needs AI_TacticsMod/관리.ps1 and build/input_package/manifest.json): '+str(src)
+    assert not src.is_relative_to(G.resolve()) or {'updates','build'} & set(src.relative_to(G.resolve()).parts),\
+        'Package folder inside the game folder must be under an updates or build folder'
+    target=read(src/'AI_TacticsMod/build/input_package/manifest.json'); version=target['release_version']
+    files=switch_files(src)
+    tag=version.replace('.','_')+'_'+datetime.now().strftime('%Y%m%d_%H%M%S')
+    backup=P/'backup'/('switch_'+tag)
+    keep=sorted(set(files)|{'AI_TacticsMod/기능설정.ini','AI_TacticsMod/backup/input_state.json','0002/ScreenLayout.rdb',*NAMES.values()})
+    keep=[rel for rel in keep if (G/rel).is_file()]
+    current=read(P/'backup/input_state.json').get('release_version') if (P/'backup/input_state.json').is_file() else None
+    plan=dict(status='switch_dry_run' if a.dry_run else 'switching',from_version=current,to_version=version,package=str(src),
+        files=len(files),skipped_documents=sum(1 for q in src.rglob('*') if q.is_file())-len(files),backup=str(backup),backed_up=len(keep))
+    if a.dry_run:
+        print(json.dumps(plan,ensure_ascii=False)); return
+    no_game(); assert sha(G/'SAN14CE_KO.exe')==ORIGINAL_SHA,'Original EXE changed'
+    for rel in keep:
+        dest=backup/'files'/rel; dest.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(G/rel,dest)
+    save(backup/'switch.json',plan)
+    settings_before=settings()
+    if (P/'관리.ps1').is_file():
+        rc,log=run_manager('Restore',tag)
+        assert rc==0,'Current 관리.ps1 Restore failed (nothing copied yet); see '+str(log)
+    for rel in files: atomic_write(G/rel,(src/rel).read_bytes())
+    rc,log=run_manager('Apply',tag)
+    assert rc==0,version+' 관리.ps1 Apply failed; files before the switch are in '+str(backup/'files')+'; see '+str(log)
+    m=read(P/'build/input_package/manifest.json'); assert m['release_version']==version
+    bad=[n for n,h in m['split_modules']['files'].items() if not (G/n).is_file() or sha(G/n)!=h]
+    gui=m.get('gui_installer',{})
+    if gui.get('file') and (G/gui['file']).is_file() and sha(G/gui['file'])!=gui.get('sha256'): bad.append(gui['file'])
+    state=read(P/'backup/input_state.json')
+    assert not bad,'Installed files differ from the package manifest: '+', '.join(bad)
+    assert state['release_version']==version and state['installed'],'State does not record '+version
+    assert sha(G/'SAN14CE_KO.exe')==ORIGINAL_SHA
+    after=settings(); changed=sorted(k for k,v in settings_before.items() if after.get(k)!=v)
+    plan.update(status='switched_and_verified',settings_changed=changed,installed_at=datetime.now(timezone.utc).isoformat())
+    save(backup/'switch.json',plan); print(json.dumps(plan,ensure_ascii=False))
+
 if __name__=='__main__':
-    ap=argparse.ArgumentParser(); ap.add_argument('action',choices=('prepare','install','rollback')); ap.add_argument('version')
+    ap=argparse.ArgumentParser(); ap.add_argument('action',choices=('prepare','install','rollback','switch-package')); ap.add_argument('version',help='version, or the package folder for switch-package')
     ap.add_argument('--modules',default=''); ap.add_argument('--gui',action='store_true'); ap.add_argument('--note',default='')
     ap.add_argument('--release',action='store_true')
     ap.add_argument('--diagnostics-on',action='store_true',help='install sets [groups] diagnostics=1 (nothing else in 기능설정.ini)')
     ap.add_argument('--layout',default='',help='folder with a rebuilt traits9_layout.bin/.json (keeps every staged record)')
-    a=ap.parse_args(); {'prepare':prepare,'install':install,'rollback':rollback}[a.action](a)
+    ap.add_argument('--dry-run',action='store_true',help='switch-package: print what would be copied and backed up, change nothing')
+    a=ap.parse_args(); {'prepare':prepare,'install':install,'rollback':rollback,'switch-package':switch_package}[a.action](a)

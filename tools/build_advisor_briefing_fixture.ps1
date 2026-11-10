@@ -14,7 +14,7 @@ try {
     try {
         & cl.exe /nologo /W4 /WX /wd4505 /utf-8 /O2 /MT /std:c++17 /EHsc (Join-Path $taskProject 'tests/advisor_briefing_fixture.cpp') /Feadvisor_briefing_fixture.exe /link kernel32.lib user32.lib
         if($LASTEXITCODE -ne 0){throw 'Advisor behavior fixture build failed'}
-        $taskResult=& './advisor_briefing_fixture.exe' (Join-Path $taskProject 'legacy/FogMod_Source/native_game_analysis/running_code_text.bin')
+        $taskResult=& './advisor_briefing_fixture.exe' (Join-Path $taskProject 'build/ui_native_analysis/fixture/1a4a447d_text.bin')
         if($LASTEXITCODE -ne 0){throw 'Advisor behavior fixture failed'}
         $taskResult
         & cl.exe /nologo /W4 /WX /wd4505 /utf-8 /O2 /MT /std:c++17 /EHsc (Join-Path $taskProject 'tests/advisor_overlay_fixture.cpp') /Feadvisor_overlay_fixture.exe /link kernel32.lib user32.lib gdi32.lib d3d11.lib dxguid.lib

@@ -15,7 +15,7 @@ try {
     try {
         & cl.exe /nologo /W4 /WX /utf-8 /O2 /MT /std:c++17 /EHsc (Join-Path $taskProject 'tests/area_index_fixture.cpp') /Fearea_index_fixture.exe /link kernel32.lib
         if($LASTEXITCODE -ne 0){throw 'Area index fixture build failed'}
-        $taskResult=& './area_index_fixture.exe' (Join-Path $taskProject 'legacy/FogMod_Source/native_game_analysis/running_code_text.bin')
+        $taskResult=& './area_index_fixture.exe' (Join-Path $taskProject 'build/ui_native_analysis/fixture/1a4a447d_text.bin')
         if($LASTEXITCODE -ne 0){throw 'Area index fixture failed'}
         [IO.File]::WriteAllText((Join-Path $taskProject 'build/area_index_fixture.json'),($taskResult | Select-Object -Last 1),(New-Object Text.UTF8Encoding($false)))
         $taskResult

@@ -49,18 +49,36 @@ static void install_present_tables(void **table,void **table1) {
     if(table1)hook_abs_slot("layout_present1",&table1[22],reinterpret_cast<void *>(&present1_hook),const_cast<void **>(&present1_next),LAYOUT_CHAIN_OK,L"dxgi.dll");
 }
 static volatile LONG present_attempted;
+// Review F-06: transient probe failures (d3d11.dll not loaded yet, probe window/device creation) re-arm the one-shot after an interval, at most
+// kPresentRetries times; the retry is driven from the UI built callback (present_retry_tick) and from later overlay subscriptions. A hook
+// that was registered (installed, chained or refused by the manager) is final and never retried.
+static const LONG kPresentRetries=8;
+static const ULONGLONG kPresentRetryMs=2000;
+static volatile LONG present_retries;
+static ULONGLONG present_retry_at;
+#ifdef LAYOUT_FIXTURE
+static int fixture_present_fail;   // fixture seam: >0 = the next probes fail transiently
+#endif
 #ifdef LAYOUT_FIXTURE
 static void **fixture_table,**fixture_table1;
 #endif
 // Same probe as the former Convenience hook: a hidden temporary device exposes the swap-chain vtables.
+static void present_transient_failure(unsigned stage) {
+    LONG n=InterlockedIncrement(&present_retries);
+    emit("layout_present_retry",stage,static_cast<unsigned>(n),0);
+    if(n>kPresentRetries)return;   // bounded: stays attempted (permanent)
+    present_retry_at=GetTickCount64()+kPresentRetryMs;
+    InterlockedExchange(&present_attempted,0);
+}
 static void install_present_once() {
     if(InterlockedCompareExchange(&present_attempted,1,0)!=0)return;
 #ifdef LAYOUT_FIXTURE
+    if(fixture_present_fail>0) {--fixture_present_fail;present_transient_failure(9);return;}
     if(fixture_table) {install_present_tables(fixture_table,fixture_table1);return;}
 #endif
-    HMODULE library=GetModuleHandleW(L"d3d11.dll");if(!library)return;
-    auto create=reinterpret_cast<decltype(&D3D11CreateDeviceAndSwapChain)>(GetProcAddress(library,"D3D11CreateDeviceAndSwapChain"));if(!create)return;
-    HWND probe=CreateWindowExW(0,L"STATIC",L"san14-layout-probe",WS_POPUP,0,0,64,64,nullptr,nullptr,nullptr,nullptr);if(!probe)return;
+    HMODULE library=GetModuleHandleW(L"d3d11.dll");if(!library) {present_transient_failure(1);return;}
+    auto create=reinterpret_cast<decltype(&D3D11CreateDeviceAndSwapChain)>(GetProcAddress(library,"D3D11CreateDeviceAndSwapChain"));if(!create) {present_transient_failure(2);return;}
+    HWND probe=CreateWindowExW(0,L"STATIC",L"san14-layout-probe",WS_POPUP,0,0,64,64,nullptr,nullptr,nullptr,nullptr);if(!probe) {present_transient_failure(3);return;}
     DXGI_SWAP_CHAIN_DESC desc={};desc.BufferCount=1;desc.BufferDesc.Width=64;desc.BufferDesc.Height=64;
     desc.BufferDesc.Format=DXGI_FORMAT_R8G8B8A8_UNORM;desc.BufferUsage=DXGI_USAGE_RENDER_TARGET_OUTPUT;
     desc.OutputWindow=probe;desc.SampleDesc.Count=1;desc.Windowed=TRUE;desc.SwapEffect=DXGI_SWAP_EFFECT_DISCARD;
@@ -76,7 +94,15 @@ static void install_present_once() {
         install_present_tables(table,extra);
         if(extended)extended->Release();
     } else emit("layout_present_probe_failed",static_cast<unsigned>(result),0,0);
+    const bool probe_failed=!(SUCCEEDED(result) && chain);
     if(temporary_context)temporary_context->Release();if(temporary)temporary->Release();if(chain)chain->Release();DestroyWindow(probe);
+    if(probe_failed)present_transient_failure(4);
+}
+// Cheap check on the UI thread: re-arms a transient Present failure once the interval passed while someone still wants the overlay.
+static void present_retry_tick() {
+    if(!present_retries || present_attempted || InterlockedCompareExchange(&overlay_count,0,0)<=0)return;
+    if(GetTickCount64()<present_retry_at)return;
+    install_present_once();
 }
 static int api_overlay_subscribe(void (*draw)(void *,void *),void *ctx) {
     int index=subscribe(overlay_subs,&overlay_count,reinterpret_cast<void *>(draw),ctx);

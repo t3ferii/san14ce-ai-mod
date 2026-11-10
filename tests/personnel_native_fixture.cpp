@@ -98,12 +98,12 @@ static void test_auto_employ(Obj district,Obj force) {
     batch_city=object(1);batch_district=district;
     void *city_vtable[17]={};city_vtable[16]=reinterpret_cast<void *>(&mock_order_district);
     putptr(batch_city,0,city_vtable);
-    native_functions[0x32C130]=reinterpret_cast<void *>(&mock_city);
-    native_functions[0x6D3660]=reinterpret_cast<void *>(&mock_cost);
-    native_functions[0x233960]=reinterpret_cast<void *>(&mock_player);
-    native_functions[0x1EFE60]=reinterpret_cast<void *>(&mock_command_valid);
-    native_functions[0x2F36B0]=reinterpret_cast<void *>(&mock_advice);
-    native_functions[0x1ED920]=reinterpret_cast<void *>(&mock_issue);
+    native_functions[0x32E3B0]=reinterpret_cast<void *>(&mock_city);
+    native_functions[0x6D5A50]=reinterpret_cast<void *>(&mock_cost);
+    native_functions[0x235300]=reinterpret_cast<void *>(&mock_player);
+    native_functions[0x1F1210]=reinterpret_cast<void *>(&mock_command_valid);
+    native_functions[0x2F5AA0]=reinterpret_cast<void *>(&mock_advice);
+    native_functions[0x1EECC0]=reinterpret_cast<void *>(&mock_issue);
     Obj a=object(201),b=object(202),c=object(203),d=object(204);
     Obj first=object(301),second=object(302),third=object(303),fourth=object(304);
     for(Obj person:{a,b,c,d,first,second,third,fourth})slot(0x158,word(person,0x10),person);
@@ -209,54 +209,7 @@ static void test_auto_employ(Obj district,Obj force) {
     result=personnel_auto_employ(nullptr,selected);expect(result.failed==1 && batch_orders.empty());
     list_free(selected);list_free(duplicated);free(batch_city);
 }
-static int __fastcall mock_friend_has(Obj person,Obj other) {
-    if(!valid(other))return 0;
-    for(unsigned i=0;i<8;++i)if(word(person,0xC0+i*2)==word(other,0x10))return 1;
-    return 0;
-}
-static void __fastcall mock_friend_add(Obj person,Obj other) {
-    if(mock_friend_has(person,other))return;
-    for(unsigned i=0;i<8;++i)if(word(person,0xC0+i*2)==0) {
-        put16(person,0xC0+i*2,word(other,0x10));return;
-    }
-}
-static void __fastcall mock_friend_remove(Obj person,Obj other) {
-    unsigned n=0;
-    for(unsigned i=0;i<8;++i) {
-        unsigned id=word(person,0xC0+i*2);
-        if(id!=word(other,0x10))put16(person,0xC0+n++*2,id);
-    }
-    for(;n<8;++n)put16(person,0xC0+n*2,0);
-}
-static void test_friendship_bindings() {
-    original_friend_add=&mock_friend_add;original_friend_has=&mock_friend_has;
-    original_friend_remove=&mock_friend_remove;
-    Obj person=object(1000);std::vector<Obj> friends;
-    unsigned char protected_bytes[0x130];
-    memset(person+0xD0,0xA5,sizeof(protected_bytes));memcpy(protected_bytes,person+0xD0,sizeof(protected_bytes));
-    expanded_friends.clear();friendship_world=root;
-    for(unsigned id=1001;id<=1500;++id) {
-        Obj other=object(id);friends.push_back(other);friendship_add(person,other);
-        expect(friendship_has(person,other)==1);
-    }
-    expect(expanded_friends.list(1000,friendship_native(person)).size()==500);
-    expect(mock_friend_has(person,friends[7]) && !mock_friend_has(person,friends[8]));
-    expect(memcmp(person+0xD0,protected_bytes,sizeof(protected_bytes))==0);
-    Obj excess=object(1501);friendship_add(person,excess);
-    expect(!friendship_has(person,excess));expect(!friendship_mutual(person,excess));
-    expect(!friendship_has(excess,person));
-    friendship_remove(person,friends.back());expect(!friendship_has(person,friends.back()));
-    expect(friendship_mutual(person,excess));
-    expect(friendship_has(person,excess) && friendship_has(excess,person));
-    expect(expanded_friends.list(1000,friendship_native(person)).size()==500);
-    enabled=0;expect(!friendship_has(person,excess));expect(friendship_has(person,friends.front()));enabled=1;
-    // World pointer changes cannot retain relationships from another game.
-    Obj replacement=static_cast<Obj>(calloc(1,0x90000));putptr(image,0x277DF18,replacement);
-    expect(!friendship_has(person,excess));putptr(image,0x277DF18,root);
-    expect(friendship_has(person,friends.front()));
-    free(replacement);free(person);free(excess);for(Obj other:friends)free(other);
-}
-#include "friendship_bindings_fixture.inl"
+// User 2026-11-07 W7: the retired 500-friend candidate and its five tests were removed; personnel/loyalty/injury coverage below is retained.
 static void test_loyalty_instructions() {
     Obj saved_image=image;
     Obj page=static_cast<Obj>(VirtualAlloc(nullptr,4096,MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE));
@@ -265,13 +218,13 @@ static void test_loyalty_instructions() {
     // a private fixture page. RBX is preserved according to the Windows ABI.
     const unsigned char text[]={0x53,0x0F,0xB6,0x19,0xB8,0x64,0,0,0,0x39,0xC3,
                                 0x0F,0x4F,0xD8,0x89,0xD8,0x5B,0xC3};
-    memcpy(page+0x2A,text,sizeof(text));image=page-0x35CA00;
+    memcpy(page+0x2A,text,sizeof(text));image=page-0x35EEF0;
     auto formatter=reinterpret_cast<unsigned(__fastcall *)(unsigned char *)>(page+0x2A);
     for(unsigned value:{0u,99u,100u,101u,120u,140u,255u}) {
         unsigned char raw=static_cast<unsigned char>(value);expect(formatter(&raw)==(value>100?100:value));
     }
     const unsigned char nops[]={0x90,0x90,0x90};CodeLink text_link;
-    expect(prepare_bytes(text_link,0x35CA35,nops,3));expect(publish_link(text_link));
+    expect(prepare_bytes(text_link,0x35EF25,nops,3));expect(publish_link(text_link));
     for(unsigned value:{0u,99u,100u,101u,120u,140u,255u}) {
         unsigned char raw=static_cast<unsigned char>(value);expect(formatter(&raw)==value && raw==value);
     }
@@ -281,16 +234,16 @@ static void test_loyalty_instructions() {
     const unsigned char number[]={0x48,0x83,0xEC,0x18,0xC7,0x04,0x24,0x64,0,0,0,
         0x89,0x4C,0x24,0x08,0x48,0x8D,0x04,0x24,0x48,0x8D,0x54,0x24,0x08,
         0x83,0xF9,0x64,0x48,0x0F,0x4E,0xC2,0x8B,0x00,0x48,0x83,0xC4,0x18,0xC3};
-    memcpy(page+0x2B,number,sizeof(number));image=page-0x34A890;
+    memcpy(page+0x2B,number,sizeof(number));image=page-0x34CB50;
     auto numeric=reinterpret_cast<unsigned(__fastcall *)(unsigned)>(page+0x2B);
     for(unsigned value:{0u,99u,100u,101u,120u,140u,255u})expect(numeric(value)==(value>100?100:value));
     const unsigned char raw_pointer[]={0x48,0x89,0xD0,0x90};CodeLink numeric_link;
-    expect(prepare_bytes(numeric_link,0x34A8D6,raw_pointer,4));expect(publish_link(numeric_link));
+    expect(prepare_bytes(numeric_link,0x34CB96,raw_pointer,4));expect(publish_link(numeric_link));
     for(unsigned value:{0u,99u,100u,101u,120u,140u,255u})expect(numeric(value)==value);
     restore_link(numeric_link);expect(memcmp(page+0x2B,number,sizeof(number))==0);
     // A competing byte change rejects the whole 16-byte publication. No
     // partially published display clamp is left behind after that failure.
-    expect(prepare_bytes(numeric_link,0x34A8D6,raw_pointer,4));page[0x40]^=1;
+    expect(prepare_bytes(numeric_link,0x34CB96,raw_pointer,4));page[0x40]^=1;
     expect(!publish_link(numeric_link));expect(memcmp(page+0x46,number+27,4)==0);
     image=saved_image;VirtualFree(page,0,MEM_RELEASE);
 }
@@ -298,22 +251,22 @@ static void test_loyalty_instructions() {
 #include "injury_fixture.inl"
 int main() {
     image=static_cast<Obj>(calloc(1,0x2800000));root=static_cast<Obj>(calloc(1,0x90000));
-    putptr(image,0x277DF18,root);putptr(image,0x27D10E8,root);putptr(image,0x27D10F0,heads);
-    put32(image,0x27D1120,4096);enabled=1;
-    native_functions={{0x32F500,reinterpret_cast<void *>(&mock_valid)},
-        {0x22CA00,reinterpret_cast<void *>(&mock_owner)},
-        {0xBF7A40,reinterpret_cast<void *>(&mock_store)},
-        {0xB26470,reinterpret_cast<void *>(&mock_object)},
-        {0x21E2B0,reinterpret_cast<void *>(&mock_list_init)},
-        {0x18DF0,reinterpret_cast<void *>(&mock_list_add)},
-        {0x335060,reinterpret_cast<void *>(&mock_remove)},
-        {0x424D60,reinterpret_cast<void *>(&mock_list_free)},
-        {0x2B5620,reinterpret_cast<void *>(&mock_family)},
-        {0x6DA8A0,reinterpret_cast<void *>(&mock_envoys)},
-        {0x232A00,reinterpret_cast<void *>(&mock_dislikes)},
-        {0x232EE0,reinterpret_cast<void *>(&mock_likes)}};
-    for(unsigned rva:{0x7B360u,0x39490u,0x3D170u,0x2CC50u,0x53E50u,0x7E550u,0x34F10u,
-                     0x35770u,0x3DBF0u,0x3E490u,0x3E100u,0x36320u})
+    putptr(image,0x2780F60,root);putptr(image,0x27D4138,root);putptr(image,0x27D4140,heads);
+    put32(image,0x27D4170,4096);enabled=1;
+    native_functions={{0x331780,reinterpret_cast<void *>(&mock_valid)},
+        {0x22E450,reinterpret_cast<void *>(&mock_owner)},
+        {0x1137FF0,reinterpret_cast<void *>(&mock_store)},
+        {0xB28D20,reinterpret_cast<void *>(&mock_object)},
+        {0x01AC60,reinterpret_cast<void *>(&mock_list_init)},
+        {0x18D50,reinterpret_cast<void *>(&mock_list_add)},
+        {0x21A350,reinterpret_cast<void *>(&mock_remove)},
+        {0x1BFFF0,reinterpret_cast<void *>(&mock_list_free)},
+        {0x2B79A0,reinterpret_cast<void *>(&mock_family)},
+        {0x6DCBB0,reinterpret_cast<void *>(&mock_envoys)},
+        {0x2343A0,reinterpret_cast<void *>(&mock_dislikes)},
+        {0x234880,reinterpret_cast<void *>(&mock_likes)}};
+    for(unsigned rva:{0x7C300u,0x39FF0u,0x3DCD0u,0x2D720u,0x54AD0u,0x7F4F0u,0x35A70u,
+                     0x362D0u,0x3E750u,0x3EF50u,0x3EBC0u,0x36E80u})
         native_functions[rva]=reinterpret_cast<void *>(&mock_node);
     Obj district=object(1),own_force=object(10),foreign_force=object(20),ruler=object(10);
     district[0x10]=1;slot(0xDF30,1,own_force);slot(0x158,10,ruler);slot(0xE0D0,1,district);
@@ -382,11 +335,6 @@ int main() {
     test_recruit_ai_publication();
     test_injury();
     test_injury_publication();
-    test_friendship_bindings();
-    test_friendship_persistence();
-    test_friendship_archive_bridges();
-    test_friendship_publication();
-    test_friendship_lifecycle();
     list_free(actors);list_free(targets);
     printf("{\"status\":\"personnel_native_fixture_passed\",\"checks\":%u,\"gameplay_verified\":false,\"installed\":false}\n",checks);
     return 0;

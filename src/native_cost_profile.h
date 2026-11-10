@@ -21,7 +21,7 @@ static CrumbRing crumb_rings[64];
 static volatile LONG crumbs_enabled;
 static __declspec(thread) CrumbRing *thread_ring;
 static __declspec(thread) bool pair_pending;
-static void set_crumbs_enabled(bool value) {InterlockedExchange(&crumbs_enabled,value?1:0);}
+inline void set_crumbs_enabled(bool value) {InterlockedExchange(&crumbs_enabled,value?1:0);}
 static CrumbRing *get_crumb_ring() {
     if(thread_ring)return thread_ring;
     LONG id=static_cast<LONG>(GetCurrentThreadId());
@@ -69,7 +69,7 @@ struct Entry {uint64_t calls;LONGLONG total,self,maximum;};
 struct Frame {LONGLONG children;};
 struct ThreadState {Entry values[maximum];Frame frames[128];unsigned depth;ULONGLONG window,sequence,writes;};
 static __declspec(thread) ThreadState state;
-static void initialize(HMODULE module) {
+inline void initialize(HMODULE module) {
     LARGE_INTEGER q;QueryPerformanceFrequency(&q);frequency=q.QuadPart;on=frequency>0;
     if(!GetModuleFileNameW(module,file_path,MAX_PATH)) {file_path[0]=0;return;}
     wchar_t *slash=wcsrchr(file_path,L'\\');if(!slash) {file_path[0]=0;return;}

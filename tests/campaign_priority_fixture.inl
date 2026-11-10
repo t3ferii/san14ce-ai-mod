@@ -35,8 +35,8 @@ static void campaign_priority_tests(Obj actor,Obj home_area,Obj neighbor,Obj tar
     auto bindings=functions;auto states=std::vector<Progress>(progress,progress+501);
     unsigned soldier=word(actor,0x16),morale=actor[0x1A];Obj group=object(159);slot(0x7F8D8,159,group);
     put16(actor,0x58,159);put16(group,0x14,10);put16(group,0x16,2);actor[0x1A]=100;
-    BIND(0x229EA0,priority_area);BIND(0x232680,priority_city_area);BIND(0x232BF0,priority_port_area);
-    BIND(0xB9070,priority_candidates);BIND(0x2A7AA0,priority_nearby);BIND(0x22FB10,priority_building);
+    BIND(0x22B8E0,priority_area);BIND(0x234020,priority_city_area);BIND(0x234590,priority_port_area);
+    BIND(0xBA100,priority_candidates);BIND(0x2A9C90,priority_nearby);BIND(0x2315A0,priority_building);
     SortieSearch saved_search=original_sortie_search;original_sortie_search=priority_reentrant_search;
     priority_search_army=actor;priority_search_calls=0;priority_search_blocked=false;
     SortieNativePath ignored={};unsigned nested_target=22064;
@@ -62,7 +62,7 @@ static void campaign_priority_tests(Obj actor,Obj home_area,Obj neighbor,Obj tar
     table(0xE270,22064,48399)[0x14]=2;table(0xE270,22065,48399)[0x14]=2;
     put16(actor,0x2A,22064);observe_capture(actor);
     check(p->credit && p->build_chain && !p->campaign,"independent worker observes mission capture between callbacks outside an offensive campaign");
-    BIND(0xBF7A40,mock_blackboard);BIND(0xB26470,mock_variable);
+    BIND(0x1137FF0,mock_blackboard);BIND(0xB28D20,mock_variable);
     Obj saved_current=current_army;current_army=actor;unsigned worker_original=original_nodes;
     Progress worker_state=*p;SortieOrder worker_order=sortie_order(actor);
     retreat_node(actor,actor,actor);

@@ -15,7 +15,7 @@ static Obj expert_option(Obj options,unsigned key) {
     return options+(key==4?0x24C:0x264);
 }
 static unsigned __fastcall expert_native_adjacency_option(Obj options,unsigned key,unsigned preset) { COST_SCOPE("battle_expert_native_adjacency_option");
-    unsigned value=fn<unsigned(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_3EA400))(options,key,preset);
+    unsigned value=fn<unsigned(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_3EC920))(options,key,preset);
     // Keep the native regional count and force traits. The packed settings
     // themselves are interpreted only for a unit in an actual player battle.
     return (key==4 || key==5) && expert_combat::tagged(value)?100:value;
@@ -49,8 +49,8 @@ static unsigned combat_record_force(Obj record) {
     if(kind==5 || kind==6) {
         if(kind==6) {if(!id || id>10)return 0;id+=51;}
         else if(!id || id>51)return 0;
-        Obj goal=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32C130))(world(),id);
-        Obj owner=valid(goal)?fn<Obj(__fastcall *)(Obj)>(GA(GA_22C990))(goal):nullptr;
+        Obj goal=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32E3B0))(world(),id);
+        Obj owner=valid(goal)?fn<Obj(__fastcall *)(Obj)>(GA(GA_22E3E0))(goal):nullptr;
         if(!valid(owner))return 0;
         return (*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(owner,0)+0x60))(owner);
     }
@@ -65,7 +65,7 @@ static float __fastcall expert_unit_power(Obj army,Obj city,int parts,int kind) 
 }
 static unsigned expert_field_force(Obj army,Obj city) {
     if(valid(army))return army_force(army);
-    Obj owner=valid(city)?fn<Obj(__fastcall *)(Obj)>(GA(GA_22C990))(city):nullptr;
+    Obj owner=valid(city)?fn<Obj(__fastcall *)(Obj)>(GA(GA_22E3E0))(city):nullptr;
     return valid(owner)?(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(owner,0)+0x60))(owner):0;
 }
 static Obj __fastcall expert_field_stats(Obj context,Obj entries) { COST_SCOPE("battle_expert_field_stats");
@@ -77,13 +77,13 @@ static Obj __fastcall expert_field_stats(Obj context,Obj entries) { COST_SCOPE("
         unsigned a=expert_field_force(army,pointer(context,0xA0));
         unsigned b=expert_field_force(opponent,pointer(context,0xB0)),player=player_force();
         if(a>0 && a<46 && b>0 && b<46) {
-            bool enemies=a!=b && fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(a,b)!=0;
+            bool enemies=a!=b && fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(a,b)!=0;
             combat_scope={a,b,enemies && a!=player && b!=player,
                 enemies && player && (a==player || b==player),valid(army),valid(opponent)};
         }
         expert_unit_scope={army,true};
     }
-    Obj result=fn<Obj(__fastcall *)(Obj,Obj)>(GA(GA_16B880))(context,entries);
+    Obj result=fn<Obj(__fastcall *)(Obj,Obj)>(GA(GA_16C830))(context,entries);
     expert_unit_scope=previous_unit;combat_scope=previous;
     return result;
 }
@@ -96,26 +96,22 @@ static void __fastcall combat_pair_scores(Obj pair,Obj history,Obj output) { COS
         combat_scope.second=combat_record_force(pair+8);
         unsigned a=combat_scope.first,b=combat_scope.second;
         bool enemies=a>0 && a<46 && b>0 && b<46 && a!=b &&
-            fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(a,b)!=0;
+            fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(a,b)!=0;
         combat_scope.fixed=enemies && a!=player && b!=player;
         combat_scope.player_battle=enemies && player && (a==player || b==player);
         combat_scope.first_unit=pointer(pair,0) && dword(pointer(pair,0),4)==27;
         combat_scope.second_unit=dword(pair+8,4)==27;
     }
-    fn<void(__fastcall *)(Obj,Obj,Obj)>(GA(GA_16A030))(pair,history,output);
+    fn<void(__fastcall *)(Obj,Obj,Obj)>(GA(GA_16AFE0))(pair,history,output);
     combat_scope=previous;
 }
 // Per-mille-of-a-percent regional rate the NATIVE adjacency function itself applied for `force` (build 25953386 conflict 1,
-// docs/BUILD_25953386_COMBAT.md): 1fbe6be7 only raised it to 16/24 (special/ultimate AI) when mode flag E58!=0, so the mod's
-// E58==0 paths saw 4. 1a4a447d (2B2A90) applies the AI rate in every mode: AI force and AI level (E58==0: cfg+0x134, else
-// cfg+0x28) 3 -> 16, above 3 -> 24. cfg = the E58 flag address minus 0xE58 (same object native 3E9C90 returns).
-static int adjacency_floor_mode=-1;   // fixtures: 0 = 1fbe6be7 semantics, 1 = 1a4a447d semantics; -1 follows the running build
-static bool adjacency_native_ai_rate() {return adjacency_floor_mode<0?ga::build_index()!=0:adjacency_floor_mode!=0;}
+// docs/HISTORY.md): 1a4a447d (2B2A90) applies the AI rate in every mode: AI force and AI level (E58==0: cfg+0x134,
+// else cfg+0x28) 3 -> 16, above 3 -> 24. cfg = the E58 flag address minus 0xE58 (same object native 3E9C90 returns).
 static int adjacency_native_rate(unsigned force) {
-    if(!adjacency_native_ai_rate())return 4;
     unsigned player=player_force();
     if(player && force==player)return 4;
-    Obj cfg=image+GA(GA_1A47AF8)-0xE58;
+    Obj cfg=image+GA(GA_1A4AAE8)-0xE58;
     int level=static_cast<int>(dword(cfg,0xE58)==0?dword(cfg,0x134):dword(cfg,0x28));
     return level==3?16:level>3?24:4;
 }
@@ -138,9 +134,9 @@ static float __fastcall contextual_adjacency(Obj tile,int force,int *occupation_
         combat_scope.player_battle && member && (first?combat_scope.first_unit:combat_scope.second_unit);
     bool applicable=!combat_scope.first || (combat_scope.player_battle && member);
     if(unit && applicable &&
-       dword(image,GA(GA_1A47AF8))==0) {
+       dword(image,GA(GA_1A4AAE8))==0) {
         unsigned key=static_cast<unsigned>(force)==player_force()?4:5;
-        unsigned value=dword(expert_option(image+GA(GA_1A46CA8),key),0);
+        unsigned value=dword(expert_option(image+GA(GA_1A49C98),key),0);
         if(expert_combat::encoded(value)) {
             auto settings=expert_combat::decode(value);
             // Native already contains 1 + score*(rate + native force traits)/10000 (rate 4, or the AI 16/24 on 1a4a447d).
@@ -148,9 +144,9 @@ static float __fastcall contextual_adjacency(Obj tile,int force,int *occupation_
                    (1.0f+static_cast<float>(score)*static_cast<float>(adjacency_native_rate(static_cast<unsigned>(force)))*0.0001f);
         }
     }
-    // Build 25953386 (user 2026-11-05): the new original applies the AI 16/24 percent step in expert mode (E58==0) too, where the
-    // old build never did. Outside the encoded settings above, expert mode must give the old build's result: remove the excess.
-    if(adjacency_native_ai_rate() && dword(image,GA(GA_1A47AF8))==0) {
+    // Build 25953386 (user 2026-11-05): the original applies the AI 16/24 percent step in expert mode (E58==0) too, where the
+    // previous build never did. Outside the encoded settings above, expert mode must give the previous build's result: remove the excess.
+    if(dword(image,GA(GA_1A4AAE8))==0) {
         int excess=adjacency_native_rate(static_cast<unsigned>(force))-4;
         if(excess>0)native-=static_cast<float>(score)*static_cast<float>(excess)*0.0001f;
     }

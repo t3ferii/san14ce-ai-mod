@@ -11,11 +11,11 @@ static void campaign_support_tests() {
     auto saved_hits=std::vector<CampaignHit>(campaign_hits,campaign_hits+501);
     Obj force=table(0xDF30,2,51);
     Obj band_definition=table(0x73958,7,30);
-    root=static_cast<Obj>(calloc(1,0x90000));putptr(image,0x277DF18,root);putptr(root,0x871E8,player);slot(0xDF30,2,force);
+    root=static_cast<Obj>(calloc(1,0x90000));putptr(image,0x2780F60,root);putptr(root,0x871E8,player);slot(0xDF30,2,force);
     slot(0x73958,7,band_definition);
     memset(progress,0,sizeof(progress));memset(campaign_hits,0,sizeof(campaign_hits));fixture_day=100;
     goal=object(9);put16(goal,0x4E,9);put16(goal,0x3A,22074);*reinterpret_cast<unsigned *>(goal+0x3C)=10000;
-    BIND(0x2AA850,revision_distance);BIND(0x22D740,revision_city_hex);BIND(0x22FB10,support_building);BIND(0xB9070,support_candidates);BIND(0x22DDA0,support_hex);
+    BIND(0x2ACB80,revision_distance);BIND(0x22F190,revision_city_hex);BIND(0x2315A0,support_building);BIND(0xBA100,support_candidates);BIND(0x22F830,support_hex);
     area=object(1);put16(area,0x3A,22060);put16(area,0x56,2);area[0x66]=1;slot(0x6CAF0,1,area);
     Obj c=object(2);put16(c,0x3A,22074);put16(c,0x56,1);put16(c,0x58,3);c[0x66]=3;c[0x34]=1;slot(0x6CAF0,2,c);
     Obj b=object(3);put16(b,0x3A,22084);put16(b,0x56,2);b[0x66]=1;slot(0x6CAF0,3,b);
@@ -114,7 +114,7 @@ static void campaign_support_tests() {
     }
     check(avoiding==0,"castle fire avoidance remains disabled across all turns");
     region_tiles.clear();root=saved_root;goal=saved_goal;area=saved_area;current_army=saved_current;fixture_day=saved_day;
-    money=saved_money;cap_reached=saved_cap;legal_facilities=saved_legal;putptr(image,0x277DF18,root);
+    money=saved_money;cap_reached=saved_cap;legal_facilities=saved_legal;putptr(image,0x2780F60,root);
     std::copy(saved_progress.begin(),saved_progress.end(),progress);std::copy(saved_hits.begin(),saved_hits.end(),campaign_hits);
-    BIND(0x2AA850,mock_distance);BIND(0x22D740,mock_goal_hex);BIND(0x22FB10,mock_building);BIND(0xB9070,mock_candidates);BIND(0x22DDA0,mock_id);
+    BIND(0x2ACB80,mock_distance);BIND(0x22F190,mock_goal_hex);BIND(0x2315A0,mock_building);BIND(0xBA100,mock_candidates);BIND(0x22F830,mock_id);
 }

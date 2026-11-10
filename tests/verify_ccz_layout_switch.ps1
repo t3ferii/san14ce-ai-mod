@@ -19,8 +19,13 @@ $patch | Add-Member -NotePropertyName Bytes -NotePropertyValue ([IO.File]::ReadA
 $patch | Add-Member -NotePropertyName Hash -NotePropertyValue $patch.bank_sha256
 $keys=@([uint32]0x3DA1641D,[uint32]0x757F1A41,[uint32]0x5C046EA3)
 $speedKeys=@([uint32]0x301526D7,[uint32]0xFEA5F28CL,[uint32]0x40F993CE,[uint32]0x454A1BCC)
-$on=@{'groups.convenience'=1;'ccz.ccz_sprites'=1}
-$off=@{'groups.convenience'=1;'ccz.ccz_sprites'=0}
+# local17: the two auto-command toggles own the main-screen records 0x24E16FBE/0x036BB544; their keys default off,
+# so a missing key keeps those records out. $on/$off turn them on to keep the CCZ/speed cases about CCZ/speed.
+$autoKeys=@([uint32]0x24E16FBE,[uint32]0x036BB544)
+$autoInBank=@($patch.records | Where-Object {$autoKeys -contains [uint32]$_.ktid}).Count
+$total=@($patch.records).Count
+$on=@{'groups.convenience'=1;'ccz.ccz_sprites'=1;'game_flow.auto_search'=1;'game_flow.auto_reward'=1}
+$off=@{'groups.convenience'=1;'ccz.ccz_sprites'=0;'game_flow.auto_search'=1;'game_flow.auto_reward'=1}
 $checks=0
 try {
     [void][IO.Directory]::CreateDirectory((Join-Path $taskGame '0002'))
@@ -33,18 +38,19 @@ try {
     Check ([Text.Encoding]::ASCII.GetString([Convert]::FromBase64String($record.original_entry)) -match '8d5cc@7d5') 'independent backup army original'
     [IO.File]::WriteAllBytes($path,$original)
     $state=$null
-    foreach($features in @($off,$on,$off,$on,@{'groups.convenience'=0;'ccz.ccz_sprites'=1},$on,@{'groups.convenience'=1;'ccz.ccz_sprites'=1;'game_flow.speed_buttons'=0},$on,@{'groups.convenience'=1;'ccz.ccz_sprites'=0;'game_flow.speed_buttons'=0})) {
+    foreach($features in @($off,$on,$off,$on,@{'groups.convenience'=0;'ccz.ccz_sprites'=1},$on,@{'groups.convenience'=1;'ccz.ccz_sprites'=1;'game_flow.speed_buttons'=0},$on,@{'groups.convenience'=1;'ccz.ccz_sprites'=0;'game_flow.speed_buttons'=0},@{'groups.convenience'=1;'ccz.ccz_sprites'=1},$on,@{'groups.convenience'=1;'ccz.ccz_sprites'=1;'game_flow.auto_search'=0;'game_flow.auto_reward'=0},@{'groups.convenience'=1;'ccz.ccz_sprites'=1;'game_flow.auto_reward'=1},@{'groups.convenience'=0;'ccz.ccz_sprites'=1;'game_flow.auto_search'=1},$on)) {
         $before=Read-LayoutIndex ([IO.File]::ReadAllBytes($path))
         $plan=Get-TraitLayoutPlan $state $patch $true $features;Commit $plan
         $state=[pscustomobject]@{installed=$true;layout=[pscustomobject]$plan.State}
         $active=$features['groups.convenience'] -and (-not $features.Contains('groups.ccz') -or $features['groups.ccz']) -and $features['ccz.ccz_sprites']
         $speed=$features['groups.convenience'] -and (-not $features.Contains('game_flow.speed_buttons') -or $features['game_flow.speed_buttons'])
-        $count=14-$(if($active){0}else{3})-$(if($speed){0}else{4})
+        $auto=$features['groups.convenience'] -and (($features.Contains('game_flow.auto_search') -and $features['game_flow.auto_search']) -or ($features.Contains('game_flow.auto_reward') -and $features['game_flow.auto_reward']))
+        $count=$total-$(if($active){0}else{3})-$(if($speed){0}else{4})-$(if($auto){0}else{$autoInBank})
         Check ($plan.State.applied.Count -eq $count) 'selected layout count follows effective CCZ'
         $after=Read-LayoutIndex ([IO.File]::ReadAllBytes($path))
         foreach($r in $patch.records){
             $entry=$after.Entries[$after.ByKtid[[uint32]$r.ktid]]
-            if((-not $active -and $keys -contains [uint32]$r.ktid) -or (-not $speed -and $speedKeys -contains [uint32]$r.ktid)){Check (Same $entry ([Convert]::FromBase64String($r.original_entry))) 'CCZ OFF exact original entry'}
+            if((-not $active -and $keys -contains [uint32]$r.ktid) -or (-not $speed -and $speedKeys -contains [uint32]$r.ktid) -or (-not $auto -and $autoKeys -contains [uint32]$r.ktid)){Check (Same $entry ([Convert]::FromBase64String($r.original_entry))) 'CCZ OFF exact original entry'}
             else{Check ((Get-LayoutLocator $entry) -eq (Get-LayoutTarget $r $plan.State.bank)) 'enabled/non-CCZ entry remains applied'}
         }
         $unchanged=$true
@@ -60,7 +66,10 @@ try {
         [BitConverter]::GetBytes([int]0x80).CopyTo($stub,0x3C);[BitConverter]::GetBytes([uint32]0x4550).CopyTo($stub,0x80);[BitConverter]::GetBytes($Stamp).CopyTo($stub,0x88)
         [IO.File]::WriteAllBytes($exe,$stub)
     }
-    foreach($case in @(@{Stamp=[uint32]0x6AD06F53;Applied=10;Off=$true},@{Stamp=[uint32]0x6A983C25;Applied=14;Off=$false})) {
+    # local18: since local10 no real build withholds traits9 ($taskBuildLayoutOff is empty), so the gate is exercised with a
+    # fixture-only stamp 0x7FFF0001; the current Steam build 0x6AD06F53 must apply every record.
+    $taskBuildLayoutOff['7FFF0001']=@('traits9')
+    foreach($case in @(@{Stamp=[uint32]0x7FFF0001;Applied=($total-4);Off=$true},@{Stamp=[uint32]0x6AD06F53;Applied=$total;Off=$false},@{Stamp=[uint32]0x6A983C25;Applied=$total;Off=$false})) {
         Reset-Fixture $original
         Write-StubExe $case.Stamp
         $plan=Get-TraitLayoutPlan $null $patch $true $on;Commit $plan
@@ -80,15 +89,16 @@ try {
     Write-StubExe ([uint32]0x6A983C25)
     $oldPlan=Get-TraitLayoutPlan $null $patch $true $on;Commit $oldPlan
     $oldState=[pscustomobject]@{installed=$true;layout=[pscustomobject]$oldPlan.State}
-    Check ($oldPlan.State.applied.Count -eq 14) 'upgrade fixture starts with 14 applied records'
-    Write-StubExe ([uint32]0x6AD06F53)
+    Check ($oldPlan.State.applied.Count -eq $total) 'upgrade fixture starts with every record applied'
+    Write-StubExe ([uint32]0x7FFF0001)
     $newPlan=Get-TraitLayoutPlan $oldState $patch $true $on;Commit $newPlan
     $up=Read-LayoutIndex ([IO.File]::ReadAllBytes($path))
-    Check ($newPlan.State.applied.Count -eq 10) 'upgrade to the traits9-off build re-applies only ten records'
+    Check ($newPlan.State.applied.Count -eq ($total-4)) 'upgrade to the traits9-off build re-applies all but the four traits9 records'
     foreach($r in $patch.records | Where-Object {$t9Keys -contains [uint32]$_.ktid}) {
         Check (Same $up.Entries[$up.ByKtid[[uint32]$r.ktid]] ([Convert]::FromBase64String($r.original_entry))) 'upgrade restores the exact original nine-slot entries'
     }
     [IO.File]::Delete($exe)
+    [void]$taskBuildLayoutOff.Remove('7FFF0001')
     # Master OFF restores the user's previous entries even while CCZ sprites stay enabled.
     Reset-Fixture $original
     $onPlan=Get-TraitLayoutPlan $null $patch $true $on;Commit $onPlan
@@ -155,7 +165,9 @@ try {
     # D: a historical bank hash restores the same locator and is deleted when unused.
     $oldBin=Join-Path $taskProject 'build/public_v15_3_package/traits9_layout.bin'
     if(-not [IO.File]::Exists($oldBin)){$oldBin=Join-Path $taskProject 'updates/v15.3/files/AI_TacticsMod/build/input_package/traits9_layout.bin'}
-    if(-not [IO.File]::Exists($oldBin)){throw 'D fixture missing v15.3 bank'}
+    # local18: a worktree has no untracked build/updates folders; fall back to the main checkout beside it (read only).
+if(-not [IO.File]::Exists($oldBin)){$oldBin=Join-Path (Split-Path -Parent $taskProject) 'AI_TacticsMod/updates/v15.3/files/AI_TacticsMod/build/input_package/traits9_layout.bin'}
+if(-not [IO.File]::Exists($oldBin)){throw 'D fixture missing v15.3 bank'}
     Reset-Fixture (Build-LayoutIndex $c);[IO.File]::WriteAllBytes((Get-LayoutBankPath 28),[IO.File]::ReadAllBytes($oldBin))
     $plan=Get-TraitLayoutPlan ([pscustomobject]@{installed=$false}) $patch $false;Commit $plan
     Check (-not [IO.File]::Exists((Get-LayoutBankPath 28))) 'D known historical bank restored and deleted'

@@ -85,6 +85,30 @@ struct San14LayoutApiV1 {
     // ga_table: the Layout-resolved table (GA_COUNT values; *count receives GA_COUNT) for modules that start before/without own resolution.
     uint32_t (*ga_resolve)(uint32_t id);
     const uint32_t *(*ga_table)(uint32_t *count);
+    // Appended by the UI-ownership work (user 2026-11-07, docs/UI_RESOURCE_LIFECYCLE.md 10; size-gated). A feature module brackets its UI
+    // calls with ui_begin(owner)/ui_end() on the game UI thread it was called on; ui_begin returns 0 unless the owner's registry hooks are
+    // installed/chained (feature published). Inside a scope the runtime UI calls above (clone_control, set_text, bind_click, set_visible)
+    // work outside layout events and tag their objects with the owner.
+    //  ui_create_window: descriptor window (870410, same assembly as the native sub-panes); ui_activate: vt+0x38 (register with the UI manager);
+    //  ui_node/ui_set_node_text/ui_set_node_visible: 92CEE0/930D20/931DA0 on any layout table; ui_select: radio setter (radios made by clone_control kind 1);
+    //  ui_sync_visibility: own follows source visibility/alpha; ui_release(owner,next): original destroy sequence of every pane of the owner
+    //  (vt+0x40, vt+0x28(obj,next), vt[0](obj,1)), `next` = second argument of the screen's leave. Returns panes released, -1 outside a scope.
+    int (*ui_begin)(const char *owner);
+    void (*ui_end)();
+    void *(*ui_create_window)(void *parent,int x,int y,int w,int h,const void *desc,int count);
+    int (*ui_activate)(void *pane);
+    void *(*ui_node)(void *layout,int node);
+    int (*ui_set_node_text)(void *layout,int node,const wchar_t *text);
+    int (*ui_set_node_visible)(void *layout,int node,int on);
+    int (*ui_select)(void *radio,int on);
+    int (*ui_sync_visibility)(void *own,void *source);
+    int (*ui_release)(const char *owner,void *next);
+    // Appended by the tactic priority fixes (user 2026-11-07; size-gated, V1 consumers check the size). Both need an open ui scope.
+    //  ui_enable(control,on): a control made inside a scope is disabled (input flag +0x40 bit 4 cleared: the original CCmnButton update 860830 then shows its disabled state and presses are ignored) or restored;
+    //  ui_tooltip(text): the owner's mouse-over balloon (the CSimpleBalloonLayout trait_hover builds, same assembly) shows `text` next to the
+    //  mouse, nullptr hides it; ui_release destroys it with the owner's panes.
+    int (*ui_enable)(void *control,int on);
+    int (*ui_tooltip)(const wchar_t *text);
 };
 // destroy() results: 0 destroyed now, 1 hidden and left to its owner layout (freed when the owner dies), -1 rejected (not created by us / outside an event).
 enum : int {LAYOUT_DESTROY_DONE=0,LAYOUT_DESTROY_DEFERRED=1,LAYOUT_DESTROY_REJECTED=-1};

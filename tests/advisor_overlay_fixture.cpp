@@ -332,8 +332,12 @@ int main() {
     check((pixels[520*1920+130]&0xffffffu)==0x516f66u,"사용자 결정 2026-10-28 드래그 헤드: outside the bubble shadow has exactly the 18 percent focus dim");
     check((pixels[800*1920+152]&0xffffffu)<0x303030u,"ink background is dark instead of washed-out gray");
     bitmap("advisor_briefing_preview.bmp",pixels,1920,1080);
-    const unsigned name_inks[]={0x105467,0x872c30,0x254685,0x2c6437,0x683984,0x855014};unsigned colored_pixels=0;
-    for(int y=310;y<470;++y)for(int x=210;x<360;++x)for(unsigned ink:name_inks)if((pixels[y*1920+x]&0xffffffu)==ink)++colored_pixels;
+    // The panel is look::kPanelOpacity translucent: a glyph pixel is the name colour at that opacity plus at most the rest of the scene (<= 18 per channel).
+    unsigned colored_pixels=0;
+    for(int y=310;y<470;++y)for(int x=210;x<360;++x)for(unsigned ink:look::kNames){
+        bool near_ink=true;for(int shift=0;shift<24;shift+=8){int want=static_cast<int>(((ink>>shift)&255)*look::kPanelOpacity),got=static_cast<int>((pixels[y*1920+x]>>shift)&255);if(got<want-4 || got>want+22)near_ink=false;}
+        if(near_ink)++colored_pixels;
+    }
     check(colored_pixels>20,"rendered officer names use the repeating high-contrast palette rather than plain body ink");
     HDC dc=CreateCompatibleDC(nullptr);HFONT font=serif_font(dc,23);auto old=SelectObject(dc,font);wchar_t face[LF_FACESIZE]{};GetTextFaceW(dc,LF_FACESIZE,face);
     check(_wcsicmp(face,L"Noto Serif KR")==0 || _wcsicmp(face,L"함초롬바탕")==0 || _wcsicmp(face,L"바탕")==0 || _wcsicmp(face,L"Batang")==0,"bubble uses an available Korean serif family instead of the old system sans font");SelectObject(dc,old);DeleteObject(font);DeleteDC(dc);
@@ -345,13 +349,24 @@ int main() {
     check(!portrait_confirmation.present,"format reset clears the CPU confirmation sample");
     auto srgb_staging=staging;srgb_staging.Format=srgb_desc.Format;check(SUCCEEDED(d->CreateTexture2D(&srgb_staging,nullptr,&srgb_readback)),"sRGB readback created");c->CopyResource(srgb_readback,srgb_back);
     check(SUCCEEDED(c->Map(srgb_readback,0,D3D11_MAP_READ,0,&mapped)),"sRGB output mapped");unsigned actual=*reinterpret_cast<const unsigned *>(static_cast<const unsigned char *>(mapped.pData)+800*mapped.RowPitch+152*4);c->Unmap(srgb_readback,0);
-    for(unsigned channel=0;channel<3;++channel)check(std::abs(static_cast<int>((actual>>(channel*8))&255)-static_cast<int>((expected>>(channel*8))&255))<=2,"sRGB output retains intended ink colors rather than lifting them to gray");
+    for(unsigned channel=0;channel<3;++channel)check(std::abs(static_cast<int>((actual>>(channel*8))&255)-static_cast<int>((expected>>(channel*8))&255))<=12,"sRGB output retains intended ink colors rather than lifting them to gray (blending the translucent panel in linear space differs by a few levels, a gray lift by far more)");
     srgb_readback->Release();srgb_back->Release();
     check(widget(74,1000,false)==1 && widget(30,956,false)==0,"only the circular face consumes portrait clicks");
     check(bubble.w==1160 && bubble.h==1000,"user 2026-10-27: window width and height double independently");
     check(widget(1252,79,true)==2 && widget(1000,79,true)==3 && widget(1168,79,true)==4,"user 2026-10-27: top-right arrows and close hit boxes match the header controls");
     check(widget(208,985,true)==9 && widget(260,985,true)==9,"old footer arrow positions no longer dispatch navigation");
-    check(widget(1078,985,true)==5 && widget(1194,985,true)==6 && widget(400,800,true)==9 && widget(1198,205,true)==7,"deletion, detail and body input stay within the redesigned bubble");
+    check(widget(1078,985,true)==5 && widget(1194,985,true)==6 && widget(400,800,true)==9 && widget(1198,205,true)==7,"deletion, real-estate and body input stay within the redesigned bubble");
+    toast(L"지금부터 낙양의 토목공사를 시작합니다.");
+    check(!toast_text.empty() && toast_at && raster_toast(c,toast_text) && toast_view,"the 5-second military toast rasterizes through the real device");
+    toast_text.clear();toast_at=0;
+    {   // 2026-11-08 user: the seventh button opens the owned-castle list; rows are direct hit targets.
+        m.city_list=true;m.cities={L"낙양",L"허창",L"업"};++m.generation;publish(m,true);opened_at=GetTickCount64()-300;
+        Rect panel=panel_rect(head.x);
+        for(unsigned i=0;i<3;++i){Rect cell=city_cell(panel,i,3);check(widget(cell.x+4,cell.y+4,true)==100+static_cast<int>(i),"city row hit box matches the three-column grid");}
+        check(widget(control(3,panel).x+2,control(3,panel).y+2,true)==9 && widget(control(5,panel).x+2,control(5,panel).y+2,true)==9,"report paging/deletion buttons are not hit targets in the city list");
+        check(widget(control(7,panel).x+2,control(7,panel).y+2,true)==7,"the real-estate button stays available as the way back");
+        m.city_list=false;m.cities.clear();++m.generation;publish(m,true);
+    }
     dc=CreateCompatibleDC(nullptr);HFONT body=cached_font(dc,0);LOGFONTW actual_font{};GetObjectW(body,sizeof(actual_font),&actual_font);
     check(actual_font.lfHeight==-23 && actual_font.lfWeight>=FW_SEMIBOLD && cached_font(dc,0)==body,"user 2026-10-27: stronger body strokes retain font size and cached response speed");
     SelectObject(dc,body);int extent=0;auto lines=body_lines(dc,L"• 가나다라마바 사아자차카타 파하가나다라 마바사아자차\n\n다음 보고",125,extent);
@@ -363,6 +378,36 @@ int main() {
     lines=body_lines(dc,L"• 10일차 · "+income,1048,extent);
     check(lines.size()==26 && lines[7].right==lines[12].right && lines[12].right==lines[17].right && lines[17].right==lines[22].right,"gold, grain, soldiers and military-point stock values share one fixed right edge");
     check(lines[6].y==lines[10].y && lines[1].header && !lines[6].header && lines[7].text==L"56,105","table headers and all five cells stay on their own shared row baseline");
+    check(lines[2].right==lines[7].right && lines[2].header && lines[7].right>lines[7].x,"numeric columns right-align their header with their values");
+    {   // ---- user 2026-11-07: tab-separated runs are aligned tables; messages without a row stay text ----
+        auto width_of=[&](const std::wstring &t){SIZE e{};GetTextExtentPoint32W(dc,t.c_str(),static_cast<int>(t.size()),&e);return static_cast<int>(e.cx);};
+        std::vector<TableBand> bands;
+        const std::wstring table=table_block({discovery_scene_row(0,L"관우",L"청룡언월도",L"",true),discovery_scene_row(2,L"장비",L"호로병",L"낙양",true),discovery_scene_row(0,L"조운",L"용담창",L"",true)});
+        lines=body_lines(dc,L"• 앞 소식\n\n"+table+L"\n\n• 뒤 소식",1048,extent,&bands);
+        check(bands.size()==4 && bands[0].header && !bands[1].header && bands[0].index==0 && bands[3].index==3 && bands[0].y<bands[1].y && bands[2].y<bands[3].y,"one band per table row, the first one is the header");
+        check(lines.size()==18 && lines.front().text==L"앞 소식" && lines.back().text==L"뒤 소식" && !lines.front().table && !lines.back().table && lines[1].table && lines[16].table,"text before and after a table stay ordinary text lines (fallback for unparsed messages)");
+        bool aligned=true,inside=true;
+        for(int row=1;row<4;++row)for(int col=0;col<4;++col){
+            const auto &head_cell=lines[1+col],&cell=lines[1+row*4+col];
+            aligned=aligned && cell.x==head_cell.x && cell.y==lines[1+row*4].y && !cell.header && cell.table;
+            inside=inside && cell.y>=bands[row].y && cell.y<bands[row].y+bands[row].h;
+        }
+        check(aligned && inside && lines[1].header && lines[1].x<lines[2].x && lines[2].x<lines[3].x && lines[3].x<lines[4].x,"cells of one column share x, columns run left to right, each row's text lies inside its band");
+        std::vector<std::wstring> columns[4];for(int row=0;row<4;++row)for(int col=0;col<4;++col)columns[col].push_back(lines[1+row*4+col].text);
+        bool measured=true;for(int col=0;col<3;++col){int widest=0;for(const auto &t:columns[col])widest=(std::max)(widest,width_of(t));measured=measured && lines[2+col].x-lines[1+col].x>=widest+look::kCellGap;}
+        check(measured && bands[1].h==look::kLinePitch+look::kRowPad,"column widths come from the measured content plus the gap; single-line rows have the base height");
+        // a narrow window wraps long cells, keeps every character and every line inside the window
+        const std::wstring wide=table_block({discovery_scene_row(1,L"가후",L"조루",L"진창",true),discovery_scene_row(1,L"조조",L"유도",L"",false)});
+        std::vector<TableBand> narrow_bands;auto narrow=body_lines(dc,wide,360,extent,&narrow_bands);
+        size_t want=0,got=0;for(wchar_t ch:wide)if(ch!=L'\t' && ch!=L'\n' && ch!=L' ')++want;
+        bool fits=true;for(const auto &l:narrow){for(wchar_t ch:l.text)if(ch!=L' ')++got;fits=fits && (l.right?l.right:l.x+width_of(l.text))<=56+360-look::kTablePad+1;}
+        check(want==got && fits && narrow.size()>12 && narrow_bands.size()==3 && narrow_bands[1].h>look::kLinePitch+look::kRowPad,"in a narrow window long cells wrap inside their column, no text is lost or clipped");
+        // paging: a different card is a different body; tables are rebuilt without stale bands
+        std::vector<TableBand> second;lines=body_lines(dc,L"• 한 줄",1048,extent,&second);
+        check(second.empty() && lines.size()==1,"a body without a table has no bands");
+        lines=body_lines(dc,L"항목\t값\n가\t1,200\n나\t-30\n\n• 끝",1048,extent,&second);
+        check(second.size()==3 && lines.size()==7 && lines[3].right>0 && lines[5].right==lines[3].right && lines[6].text==L"끝","a numeric second column is right-aligned from the header down");
+    }
     DeleteDC(dc);
     check(input(nullptr,WM_KEYUP,VK_ESCAPE,0) && flag(&pending)==2,"Escape closes the bubble without passing through to game");
     unsigned generation=0;check(take(generation)==2 && generation==m.generation && input_dispatches==1,"diagnostic input delay measures queue dispatch without changing game memory");
@@ -372,6 +417,15 @@ int main() {
     LPARAM face_point=MAKELPARAM(49,667);
     check(input(fixture_window,WM_LBUTTONDOWN,0,face_point) && armed==1,"real client geometry maps a 1280x720 face press to the virtual portrait");
     check(input(fixture_window,WM_LBUTTONUP,0,face_point) && take(generation)==1 && generation==m.generation,"matching press/release publishes one portrait click");
+    {   // 2026-11-08 user live report: city names looked like plain text. The real input path must post the row action.
+        m.city_list=true;m.cities={L"낙양",L"허창",L"업"};++m.generation;publish(m,true);
+        Rect panel=panel_rect(head.x),cell=city_cell(panel,1,3);
+        const int cx=static_cast<int>((cell.x+4)*1280/1920),cy=static_cast<int>((cell.y+4)*720/1080);
+        LPARAM city_point=MAKELPARAM(cx,cy);
+        check(input(fixture_window,WM_LBUTTONDOWN,0,city_point) && armed==101,"real client click arms the second city row");
+        check(input(fixture_window,WM_LBUTTONUP,0,city_point) && take(generation)==101 && generation==m.generation,"city row click posts its index action through the real input path");
+        m.city_list=false;m.cities.clear();++m.generation;publish(m,true);
+    }
     input(fixture_window,WM_LBUTTONDOWN,0,face_point);++m.generation;publish(m,true);input(fixture_window,WM_LBUTTONUP,0,face_point);
     check(take(generation)==0 && input_cancel_generation==1,"generation cancellation is counted separately from queue and drawing latency");
     input(fixture_window,WM_LBUTTONDOWN,0,face_point);input(fixture_window,WM_CAPTURECHANGED,0,0);input(fixture_window,WM_LBUTTONUP,0,face_point);
@@ -395,6 +449,23 @@ int main() {
     m.open=true;m.title=L"수입과 지출 · 4건";m.body=L"• 10일차 · "+income+L"\n\n• 10일차 · "+income_summary(L"제2군단",{{10,L"22667"},{11,L"(-3005)"},{12,L"0"},{13,L"3005"},{19,L"128268"},{20,L"(-2406)"},{21,L"0"},{22,L"2406"},{28,L"41626"},{29,L"(+0)"},{30,L"0"},{31,L"—"},{37,L"0"},{38,L"(+0)"},{39,L"0"},{40,L"—"}});++m.generation;post_input(4,m.generation);check(take(generation)==4,"navigation latency probe consumes its own posted ticket");publish(m,true,true);opened_at=GetTickCount64()-300;frame();c->CopyResource(readback,back);
     check(input_accepted==1 && render_input_started==0 && input_posts>=3,"accepted input is timed through updated GPU command submission without changing its dispatch");
     check(SUCCEEDED(c->Map(readback,0,D3D11_MAP_READ,0,&mapped)),"aligned income preview mapped");for(unsigned y=0;y<1080;++y)memcpy(pixels.data()+y*1920,static_cast<unsigned char *>(mapped.pData)+y*mapped.RowPitch,1920*4);c->Unmap(readback,0);bitmap("advisor_income_preview.bmp",pixels,1920,1080);
+    {   // visual preview of the report tables (user 2026-11-07): a 22-message "전해 온 소식" page shaped like the in-game screenshot, merged into one table per kind
+        Card page;page.kind=Kind::News;
+        auto msg=[&](unsigned day,const wchar_t *text){Event e;e.day=day;e.text=text;page.events.push_back(e);};
+        msg(10,L"정욱, 양양의 탐색에 실패");msg(10,L"최림, 격려의 서 발견");msg(8,L"전령\n보고드립니다.\n김선군의 사자가\n조조님께 알현을 요청하였습니다.");
+        {Event e;e.day=8;e.text=e.report=L"한기가 여궁에서 명승을 발견했습니다.";e.row=discovery_scene_row(0,L"한기",L"여궁",L"",true);page.events.push_back(e);}
+        msg(10,L"조휴부대, 병사감소에 의해 퇴각");msg(7,L"천시가 변했습니다.");msg(10,L"채염, 교란의 서 발견");msg(9,L"전령\n보고드립니다.\n유도군의 사자가\n조조님께 알현을 요청하였습니다.");
+        msg(10,L"조조군, 유도군의 교환요청 거부");msg(6,L"서서, 풍운의 서 발견");msg(9,L"한현군, 유비군에 항복");msg(5,L"조조군, 유표군의 공격요청 승낙");
+        msg(4,L"장합부대, 비어에 의해 출진불가");msg(4,L"황개, 시상의 탐색에 실패");msg(3,L"홍수가 발생했습니다.");msg(3,L"조운, 청룡의 서 발견");
+        msg(2,L"조조군, 손권군측과 동맹 실패");msg(9,L"곽가, 모략의 서 발견");msg(2,L"전령\n유도군의 사자가 찾아왔습니다.");msg(1,L"가후가 새 임무를 받았습니다.");msg(10,L"조조, 유도의 등용에 성공");msg(6,L"최림, 완의 탐색을 단념");
+        Model tm=m;tm.title=L"전해 온 소식 · 22건";tm.names={L"정욱",L"최림",L"한기",L"채염",L"서서",L"조운",L"황개",L"곽가",L"조조",L"전령"};
+        tm.body=card_body(page);
+        ++tm.generation;publish(tm,true,false);opened_at=GetTickCount64()-300;frame();c->CopyResource(readback,back);
+        check(SUCCEEDED(c->Map(readback,0,D3D11_MAP_READ,0,&mapped)),"report tables preview mapped");for(unsigned y=0;y<1080;++y)memcpy(pixels.data()+y*1920,static_cast<unsigned char *>(mapped.pData)+y*mapped.RowPitch,1920*4);c->Unmap(readback,0);bitmap("advisor_tables_preview.bmp",pixels,1920,1080);
+        scrolling.shown=scrolling.target=720;frame();c->CopyResource(readback,back);   // second half of the same page
+        check(SUCCEEDED(c->Map(readback,0,D3D11_MAP_READ,0,&mapped)),"scrolled report tables preview mapped");for(unsigned y=0;y<1080;++y)memcpy(pixels.data()+y*1920,static_cast<unsigned char *>(mapped.pData)+y*mapped.RowPitch,1920*4);c->Unmap(readback,0);bitmap("advisor_tables_scrolled_preview.bmp",pixels,1920,1080);scrolling.reset();
+        publish(m,true,false);opened_at=GetTickCount64()-300;frame();
+    }
     portrait_attempt_at=0;request_portrait({10,10,88,88},4);frame();
     for(int attempt=0;attempt<60 && !captured(4);++attempt){c->Flush();Sleep(2);frame();}
     check(captured(4),"asynchronous portrait validation completes on a later Present");
@@ -420,16 +491,18 @@ int main() {
     std::vector<unsigned> clipped_pixels(1920*1080);
     for(unsigned y=0;y<1080;++y)memcpy(clipped_pixels.data()+y*1920,static_cast<unsigned char *>(mapped.pData)+y*mapped.RowPitch,1920*4);
     c->Unmap(readback,0);
-    check((header_pixel&0xffffffu)!=0xece5d3u && (footer_pixel&0xffffffu)!=0xece5d3u,"Claude 2026-10-28: 종이 영역 밖 표본 — header and footer remain ink outside the paper");
+    const unsigned paper_pixel=sampled(reading.x+reading.w-6,reading.y+reading.h/2)&0xffffffu;   // body background (translucent navy over the dimmed scene), no text there
+    check((header_pixel&0xffffffu)!=paper_pixel && (footer_pixel&0xffffffu)!=paper_pixel,"Claude 2026-10-28: 종이 영역 밖 표본 — header and footer are chrome, not the body background");
     // Draw the identical production frame with only ScissorEnable changed.
     auto *enabled_scissor=scissor_state;scissor_state=raster_state;frame();scissor_state=enabled_scissor;
     c->CopyResource(readback,back);check(SUCCEEDED(c->Map(readback,0,D3D11_MAP_READ,0,&mapped)),"unclipped comparison frame mapped");
     for(float row:{reading.y-8,reading.y+reading.h+8}){
-        unsigned leaking_glyphs=0;
+        unsigned leaking_glyphs=0;const int edge=static_cast<int>(reading.x+reading.w-6);
+        const unsigned unclipped_paper=sampled(static_cast<float>(edge),row)&0xffffffu,clipped_paper=clipped_pixels[static_cast<size_t>(row)*1920+edge]&0xffffffu;
         for(int x=static_cast<int>(reading.x);x<static_cast<int>(reading.x+reading.w);++x){
             unsigned unclipped=sampled(static_cast<float>(x),row)&0xffffffu;
             unsigned clipped=clipped_pixels[static_cast<size_t>(row)*1920+x]&0xffffffu;
-            if(unclipped!=0xece5d3u){++leaking_glyphs;check(clipped==0xece5d3u,"scissor removes glyph pixels immediately outside the reading viewport");}
+            if(unclipped!=unclipped_paper){++leaking_glyphs;check(clipped==clipped_paper,"scissor removes glyph pixels immediately outside the reading viewport");}
         }
         check(leaking_glyphs>0,"Claude 2026-10-28: 종이 영역 밖 표본 — disabling scissor exposes text above and below the reading viewport");
     }

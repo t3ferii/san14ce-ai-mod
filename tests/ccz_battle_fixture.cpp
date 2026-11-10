@@ -21,15 +21,15 @@ static int __fastcall mock_fix(Obj,Obj,Obj){++original_calls;return static_cast<
 static int __fastcall mock_valid(Obj p){return p!=nullptr;}
 static unsigned char __fastcall mock_force(Obj p){return static_cast<unsigned char>(p==attacker.data()?af:vf);}
 static bool __fastcall mock_enemy(unsigned a,unsigned b){return a!=b && enemies;}
-static int __fastcall mock_war(Obj,unsigned stat,unsigned mask){check(stat==1 && mask==0xFFF,"effective war ABI");++stat_calls;return 80;}
+static int __fastcall mock_war(Obj,unsigned stat,unsigned mask){check((stat==1 || stat==2) && mask==0xFFF,"effective stat ABI");++stat_calls;return 80;}
 static unsigned ccz_fixture_roll(){++rolls;return die_roll;}
 static void *ccz_fixture_function(unsigned rva){
     switch(rva){
-    case 0x16FDD0:return reinterpret_cast<void *>(&mock_fix);
-    case 0x32F500:return reinterpret_cast<void *>(&mock_valid);
-    case 0x22CC40:return reinterpret_cast<void *>(&mock_force);
-    case 0x2CA280:return reinterpret_cast<void *>(&mock_enemy);
-    case 0x22FCE0:return reinterpret_cast<void *>(&mock_war);
+    case 0x170D80:return reinterpret_cast<void *>(&mock_fix);
+    case 0x331780:return reinterpret_cast<void *>(&mock_valid);
+    case 0x22E690:return reinterpret_cast<void *>(&mock_force);
+    case 0x2CC630:return reinterpret_cast<void *>(&mock_enemy);
+    case 0x231770:return reinterpret_cast<void *>(&mock_war);
     default:std::fprintf(stderr,"unexpected native function %X\n",rva);std::exit(2);
     }
 }
@@ -62,7 +62,7 @@ static void unchanged(unsigned expected_next=7){
 }
 int main(){
     image=static_cast<Obj>(VirtualAlloc(nullptr,0x2800000,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));
-    check(image!=nullptr,"fixture image allocated");point(image,0x277DF18,root.data());
+    check(image!=nullptr,"fixture image allocated");point(image,0x2780F60,root.data());
     reset();af=vf=1;unchanged();
     reset();enemies=false;unchanged(); // treaty/coalition, different forces
     reset();af=52;unchanged();
@@ -87,16 +87,16 @@ int main(){
     r=rolls;ccz_combat::fix(nullptr,pair.data(),output.data());
     check(word(output.data(),0x20)==100 && ccz_sprites::buffs[0].guard==static_cast<int>(saved) && rolls==r,"friendly exchange cannot spend an existing block charge");
     af=1;vf=2;die_roll=999;
-    for(unsigned i=0;i<4;++i){short_value(output.data(),0x20,100);short_value(output.data(),0x22,20);ccz_combat::fix(nullptr,pair.data(),output.data());check(!word(output.data(),0x20) && !word(output.data(),0x22),"remaining block charge is used only by an actual hostile hit");}
-    ccz_sprites::buff_read(victim.data(),day,guard,fury);check(!guard,"five actual blocks exhaust the charge state");
+    for(unsigned i=0;i<7;++i){short_value(output.data(),0x20,100);short_value(output.data(),0x22,20);ccz_combat::fix(nullptr,pair.data(),output.data());check(!word(output.data(),0x20) && !word(output.data(),0x22),"remaining block charge is used only by an actual hostile hit");}
+    ccz_sprites::buff_read(victim.data(),day,guard,fury);check(!guard,"eight actual blocks exhaust the charge state");
     short_value(output.data(),0x20,100);short_value(output.data(),0x22,20);ccz_combat::fix(nullptr,pair.data(),output.data());
-    check(word(output.data(),0x20)==100 && word(output.data(),0x22)==20,"sixth hit with a failed roll is not blocked");
+    check(word(output.data(),0x20)==100 && word(output.data(),0x22)==20,"ninth hit with a failed roll is not blocked");
     reset();ccz_combat::configure(false,true);ccz_combat::fix(nullptr,pair.data(),output.data());
     check(word(output.data(),0x20)==150 && word(output.data(),0x22)==30 && ccz_sprites::units[0].crit_at,"hostile critical scales final components and marks actual attacker");
     reset();ccz_combat::configure(false,true);die_roll=999;
     ccz_sprites::buff_use(attacker.data(),day,false,true);
     ccz_combat::fix(nullptr,pair.data(),output.data());
-    check(word(output.data(),0x20)==150 && ccz_sprites::buffs[0].fury==3,"existing critical charge works on next hostile hit without a new roll");
+    check(word(output.data(),0x20)==150 && ccz_sprites::buffs[0].fury==6,"existing critical charge works on next hostile hit without a new roll");
     reset();display.fill(0);attacker[0x1B]=1;point(attacker.data(),0x148,display.data());
     point(display.data(),0,image+ccz_sprites::kDisplayVtable);point(display.data(),0x40,attacker.data());
     float pos[3]={100,0,100},angle=0;memcpy(display.data()+0x90,pos,sizeof(pos));memcpy(display.data()+0x744,&angle,4);

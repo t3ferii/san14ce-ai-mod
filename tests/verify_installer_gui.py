@@ -53,19 +53,47 @@ ok('Math.Max(0, Math.Min(3, n))' in gui and "[Math]::Max(0, [Math]::Min(3, $task
 ok('0 — 기준: foam ON / renderer ON' in gui and '[0 기준]' in menu and '번호=값' in menu,'GUI/PS expose four terrain diagnostic choices')
 ok('A/B/C는 진단 전용입니다.' in gui and '실제 지형 편집·저장에는 사용하지 마세요.' in menu,'terrain diagnostic warning')
 ok('AssemblyVersion("15.4.0.0")' in gui,'installer assembly version 15.4.0.0')
-tabs=('전투','편의성','성능','게임성','조조전','기타(개발용)')
+tabs=('게임렉제거(성능)','전투','편의성','게임성','조조전','기타(개발용)')
 for (s,k),(g,d,r,i,t) in cs.items():
     ok(t in tabs,'unknown tab %s'%t)
     ok(g=='' or ('groups.'+g) in ids,'unknown group for %s.%s'%(s,k))
     ok(r=='' or r in ids,'unknown parent for %s.%s'%(s,k))
     ok(i=='' or i in ids,'unknown inherit for %s.%s'%(s,k))
-    if r and (s,k) not in {('progress_native','geometry'),('ccz','ccz_hide_model'),('ccz','ccz_depth'),('ccz','ccz_far_keep'),('domestic','population_rate'),('personnel','merit_troops_level')}:
+    if (s,k)==('diagnostics','ai_trace_original'):
+        ok('f.trace_original = f.ai_trace && GetPrivateProfileIntW(L"diagnostics", L"ai_trace_original"' in adapter,'DLL does not AND ai_trace_original with ai_trace')
+    elif r and (s,k) not in {('progress_native','geometry'),('ccz','ccz_hide_model'),('ccz','ccz_depth'),('ccz','ccz_far_keep'),('domestic','population_rate'),('personnel','merit_troops_level')}:
         # The DLL must AND the parent so a child can never run alone.
         parent=r.split('.')[1]
         ok(re.search(r'f\.%s = f\.%s && feature_key\(config, L"%s", L"%s"'%(k,parent,s,k),adapter) is not None,'DLL does not AND %s with %s'%(k,parent))
     if i:
         ok(re.search(r'f\.%s = on && feature_key\(config, L"%s", L"%s", f\.%s\)'%(k,s,k,i.split('.')[1]),adapter) is not None,'DLL inherit differs for %s'%k)
 masters={k for (s,k),(g,*_) in cs.items() if g==''}
+# W9 dependency audit: every feature-level AND / split inheritance in the DLL must be a child row in the installer.
+expected_requires={
+ ('combat','builder_ruler_fill'):'combat.mission_v2',
+ ('domestic','region_officer_traits'):'domestic.region_officers',
+ ('personnel','awards_ai'):'personnel.awards',
+ ('personnel','merit_friendship'):'personnel.merit',
+ ('domestic','domestic_free'):'domestic.domestic',
+ ('domestic','domestic_direct'):'domestic.domestic',
+ ('extensions','stats200_growth'):'extensions.stats200',
+ ('performance','face_prefetch'):'performance.face_keep',
+ ('diagnostics','ai_trace_original'):'diagnostics.ai_trace',
+ ('real_estate','terrain_edit'):'game_flow.advisor_briefing',
+}
+for (s,k),parent in expected_requires.items():
+    ok(cs.get((s,k),(None,None,None,None,None))[2]==parent,'installer Requires missing for %s.%s -> %s'%(s,k,parent))
+expected_inherit={('personnel','recruit_ai'):'personnel.recruit',('personnel','injury_herbal'):'personnel.injury'}
+for (s,k),parent in expected_inherit.items():
+    ok(cs.get((s,k),(None,None,None,None,None))[3]==parent,'installer Inherit missing for %s.%s -> %s'%(s,k,parent))
+# Player-facing descriptions: every active non-development item explains itself and keeps internal evidence out.
+imap_data=json.loads((P/'development/installer_map.json').read_text(encoding='utf-8-sig'))
+for item in imap_data['items']:
+    if item.get('retired') or item['section'] in ('groups','diagnostics'):
+        continue
+    note=item.get('note','')
+    ok(len(note)>=30 and not re.search(r'GA_|0x[0-9A-Fa-f]|RVA|훅|hook',note),
+       'installer description is too short or technical: %s.%s'%(item['section'],item['key']))
 ok(cs.get(('combat','district_intercept_block'))==('convenience',1,'','','게임성'),'district intercept policy must be an independent gameplay option owned by the convenience module (no combat AI needed)')
 ok(cs.get(('stratagem','building_destruction_all'))==('convenience',0,'','','게임성'),'area building destruction must be an opt-in convenience gameplay option')
 # Dependent rows: the checkbox starts after the measured width of the "└ 종속" tag (any DPI), and the tag toggles it too.

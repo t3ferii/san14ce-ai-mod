@@ -11,11 +11,11 @@ namespace terrain_trees {
 alignas(8) static volatile LONG64 perf_calls,perf_total_us,perf_frame_us,perf_max_us;
 static const LONGLONG perf_frequency=[] {LARGE_INTEGER f={};QueryPerformanceFrequency(&f);return f.QuadPart?f.QuadPart:1;}();
 #endif
-static const unsigned Slot=GA(GA_1694958),UpdateRva=GA(GA_BB10F0),SetterRva=GA(GA_B91330);
+static const unsigned Slot=GA(GA_1697960),UpdateRva=GA(GA_BB3AC0),SetterRva=GA(GA_B93A90);
 static constexpr unsigned Size=1024,HexCount=48400,FrameLimit=64;
 static constexpr unsigned char update_bytes[16]={0x40,0x55,0x53,0x56,0x41,0x55,0x41,0x56,0x48,0x8D,0xAC,0x24,0x10,0xE7,0xFF,0xFF};
 static constexpr unsigned char setter_bytes[16]={0x48,0x89,0x5C,0x24,0x18,0x48,0x89,0x74,0x24,0x20,0x48,0x89,0x54,0x24,0x10,0x57};
-// Decoded EXE SHA256 1fbe6be7... (2026-10-29), BB10F0..BB1412:
+// Decoded EXE (근거: 1a4a447d 이전 기록, docs/HISTORY.md) (2026-10-29), BB10F0..BB1412:
 // rbp = entry_rsp-0x1918. +1940/+1948/+1950/+1958 are arguments 5..8.
 // BB9F0B..BB9F4B and common dispatch D67C34..D67C45 supply a pointer and
 // three u32 masks at caller rsp+20/+28/+30/+38, with no argument beyond 8.
@@ -130,11 +130,11 @@ static bool readable(Obj object,size_t bytes) {
     return true;
 }
 static bool resource(Obj s,Obj &r,Obj &data) {
-    if(!readable(s,0x70D8) || pointer(s,0)!=image+GA(GA_1694928) ||
+    if(!readable(s,0x70D8) || pointer(s,0)!=image+GA(GA_1697930) ||
        *reinterpret_cast<unsigned *>(s+0x7084)!=Size || *reinterpret_cast<unsigned *>(s+0x7088)!=Size ||
        *reinterpret_cast<unsigned *>(s+0x708C)!=128 || *reinterpret_cast<unsigned *>(s+0x7090)!=128 || s[0x70B4]!=1)return false;
     r=pointer(s,0x70D0);
-    if(!readable(r,0x98) || pointer(r,0)!=image+GA(GA_1692770) ||
+    if(!readable(r,0x98) || pointer(r,0)!=image+GA(GA_16955C0) ||
        *reinterpret_cast<unsigned *>(r+0x14)!=Size || *reinterpret_cast<unsigned *>(r+0x18)!=Size)return false;
     data=pointer(r,0x58);return readable(data,static_cast<size_t>(Size)*Size);
 }

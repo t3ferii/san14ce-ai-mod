@@ -20,7 +20,7 @@ static bool outer_handler(){
 }
 int main(){
     ui_call_trace::begin(0,&writer);
-    auto result=ui_call_trace::call(12,0x2BEFE0,&thirteen,uintptr_t(1),uintptr_t(2),uintptr_t(3),uintptr_t(4),uintptr_t(5),uintptr_t(6),uintptr_t(7),uintptr_t(8),uintptr_t(9),uintptr_t(10),uintptr_t(11),uintptr_t(12),uintptr_t(13));
+    auto result=ui_call_trace::call(12,0x2C1360,&thirteen,uintptr_t(1),uintptr_t(2),uintptr_t(3),uintptr_t(4),uintptr_t(5),uintptr_t(6),uintptr_t(7),uintptr_t(8),uintptr_t(9),uintptr_t(10),uintptr_t(11),uintptr_t(12),uintptr_t(13));
     check(result==819 && calls==1,"all 13 register/stack arguments and return preserved with one invocation");
     ui_call_trace::call(13,0x1234,&void_target,2u);check(calls==3,"void call preserves arguments and executes once");
     auto owned=ui_call_trace::run(14,[]{return std::make_unique<unsigned>(77);});check(owned && *owned==77,"C++ stage preserves move-only result");

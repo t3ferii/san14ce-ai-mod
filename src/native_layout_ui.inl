@@ -10,7 +10,7 @@
 // The hooks are registered only when somebody subscribes or the diagnostic probes are compiled in (no behaviour change for a
 // production build without subscribers).
 //
-// Original ABI used here (unpacked 1fbe6be7..., ghidra_full C + callers, see docs/LAYOUT_P4_DIAG.md for the evidence table):
+// Original ABI used here ((근거: 1a4a447d 이전 기록, docs/HISTORY.md), ghidra_full C + callers, see docs/LAYOUT_P4_DIAG.md for the evidence table):
 //  3F6BC0(size) alloc | 864C50(obj) CUILayout ctor | 92AB70(obj+0x130) table ctor | vtable 1342530 then pane 13E4E80
 //  86E0C0(obj,int x,int y,parent,name,0,async) load (86C570 sets obj+0x90 job, +0x98=job+0x20, +0x124/+0x128 = x/y, +0x12C=1)
 //  92CEE0(table,node) control by node | 92E430(table,node,style,kind,1,0) control from an unbound node (table+8 [node] != 0)
@@ -64,11 +64,11 @@ struct Live {Obj obj;unsigned ktid,name_hash;char name[48];};
 struct Pending {Obj obj;unsigned hash;char name[48];int async;};
 struct LayoutSub {void *cb;void *ctx;unsigned ktid;char name[48];bool destroyed;};
 enum CreatedKind : unsigned {CK_PANE=1,CK_BUTTON=2,CK_LABEL=3};
-struct Created {void *obj;unsigned kind;void *owner;};
-// 2026-11-05 local3 (INSTALL_LOCAL2_TRIAGE 9-10): the live table was a 512-entry linear array that filled during a normal session
+struct Created {void *obj;unsigned kind;void *owner;char feature[24];bool radio;};   // feature = owner feature of a UI-ownership scope (ui_begin), empty for event-callback objects
+// 2026-11-05 local3 (docs/HISTORY.md 9-10): the live table was a 512-entry linear array that filled during a normal session
 // (12,736 builds, 1,395 matched destroys). It is now an open-addressing hash table (linear probing, backward-shift erase) keyed by
 // the layout address; a power of two, bounded probing, never grows. Overflow is still counted and logged once (table_full).
-static const unsigned kLiveMax=8192,kPendingMax=64,kSubMax=32,kCreatedMax=128;
+static const unsigned kLiveMax=8192,kPendingMax=64,kSubMax=32,kCreatedMax=256;
 static Live live[kLiveMax];
 static unsigned live_count;
 static unsigned live_hash(const void *object) {
@@ -113,6 +113,8 @@ static Created created[kCreatedMax];
 static unsigned created_count;
 static SRWLOCK ui_lock=SRWLOCK_INIT;
 static thread_local int dispatch_depth;
+static thread_local int scope_depth;          // ui_begin/ui_end: a published feature owns this thread's UI calls (tactic_priority UI ownership)
+static thread_local char scope_owner[24];
 static volatile LONG pending_count;
 static volatile LONG nested_dropped,async_loads,async_built,sync_built,destroyed_events,table_full,other_thread_calls,ui_rejected;
 static volatile LONG first_thread;
@@ -136,7 +138,7 @@ static void *destroy_trampoline;
 static int built_handle,destroy_handle;
 static volatile LONG observation_registered;
 static volatile LONG subscriber_total;
-static const uint32_t kBuiltSite=GA(GA_86E338),kBuiltOriginal=GA(GA_92B0A0),kDestroyEntry=GA(GA_865560);
+static const uint32_t kBuiltSite=GA(GA_8706E8),kBuiltOriginal=GA(GA_92D550),kDestroyEntry=GA(GA_8678B0);
 static const uint8_t kDestroyExpect[6]={0x40,0x57,0x48,0x83,0xEC,0x30};   // push rdi; sub rsp,30h (instruction boundary at 6)
 static bool probe_enabled() {
 #ifdef NO_RUNTIME_LOG
@@ -252,11 +254,10 @@ static void api_note_layout_load(void *layout,const char *name,int async) {
 // ---- diagnostics (diagnostic builds only; fixtures switch them on explicitly) ----
 #ifndef NO_RUNTIME_LOG
 struct Screen {unsigned vtable;const char *tag;unsigned id;};
-static const Screen kScreens[]={{GA(GA_1473DC8),"speed",1},{GA(GA_146AFE8),"lord_footer",2},{GA(GA_141BE88),"expert",3},{GA(GA_13E4C78),"ccz_title",4}};
+static const Screen kScreens[]={{GA(GA_1476E58),"speed",1},{GA(GA_146E078),"lord_footer",2},{GA(GA_141EF18),"expert",3},{GA(GA_13E7D08),"ccz_title",4}};
 struct NameDump {unsigned hash;unsigned d[16];bool used;};
 static NameDump name_dumps[48];
 static unsigned res_seq,screen_seen[5],ktid_match_logs,ktid_stat_logs,same_total,diff_total,same_eq[16],diff_eq[16];
-static bool life_done;
 static const struct {const char *name;unsigned ktid;} kKnownKtid[]={{"cmn_footer_re_cn",0xD8913AB2u}};
 static void probe_resource(Obj layout,const Live &info) {
     Obj handle=rdptr(layout,0x90);
@@ -309,7 +310,7 @@ static void probe_screen(Obj layout,unsigned thread) {
         emit("layout_p4_layout_xy",s.id,rd32(layout,0x124),rd32(layout,0x128));
         for(unsigned node=0;node<count && node<64;++node) {
             Obj control=nullptr;
-            if(!guarded([&] {control=gf<Obj(__fastcall *)(Obj,int)>(GA(GA_92CEE0))(table,static_cast<int>(node));}) || !control)continue;
+            if(!guarded([&] {control=gf<Obj(__fastcall *)(Obj,int)>(GA(GA_92F390))(table,static_cast<int>(node));}) || !control)continue;
             unsigned key=(s.id<<16)|node;
             emit("layout_p4_node",key,static_cast<unsigned>(reinterpret_cast<uintptr_t>(control)),static_cast<unsigned>(reinterpret_cast<uintptr_t>(control)>>32));
             emit("layout_p4_node_xy",key,rd32(control,0x20),rd32(control,0x24));   // ints: setPosition 874600 stores +0x20/+0x24
@@ -318,7 +319,6 @@ static void probe_screen(Obj layout,unsigned thread) {
         return;
     }
 }
-static void probe_lifetime();
 // 2026-11-05 local3 (triage 10-4): destroys of layouts the live table does not know. count + the vtable RVA of the object (the first
 // 24 and every 512th); the vtable shows which layout classes escape the build observation.
 static volatile LONG destroy_unmatched;
@@ -382,11 +382,11 @@ static void probe_forget_screen(Obj layout) {
 // ---- stats ----
 static volatile LONG64 built_calls,built_orig_ns,built_hook_ns,built_orig_max,built_hook_max,destroy_calls,destroy_ns,destroy_max;
 static LARGE_INTEGER qpc_frequency;
-static unsigned long long to_ns(LONGLONG ticks) {
+[[maybe_unused]] static unsigned long long to_ns(LONGLONG ticks) {
     if(!qpc_frequency.QuadPart)QueryPerformanceFrequency(&qpc_frequency);
     return static_cast<unsigned long long>(ticks)*1000000000ull/static_cast<unsigned long long>(qpc_frequency.QuadPart);
 }
-static void raise_max(volatile LONG64 *slot,LONG64 value) {
+[[maybe_unused]] static void raise_max(volatile LONG64 *slot,LONG64 value) {
     for(LONG64 seen=*slot;value>seen;seen=*slot)if(InterlockedCompareExchange64(slot,value,seen)==seen)break;
 }
 // ---- built / destroyed ----
@@ -399,6 +399,7 @@ static bool track_live(const Live &info) {
 }
 static void on_built(Obj layout) {
     if(!layout)return;
+    present_retry_tick();   // review F-06: bounded re-arm of a transient Present probe failure
     unsigned thread=GetCurrentThreadId();
     if(InterlockedCompareExchange(&first_thread,static_cast<LONG>(thread),0)!=0 && first_thread!=static_cast<LONG>(thread))
         InterlockedIncrement(&other_thread_calls);
@@ -425,7 +426,6 @@ static void on_built(Obj layout) {
     if(probe_enabled()) {
         probe_resource(layout,info);
         probe_screen(layout,thread);
-        if(!life_done && rdptr(layout,0)==image+GA(GA_146AFE8)) {life_done=true;probe_lifetime();}
     }
 #endif
     dispatch(false,info);
@@ -508,10 +508,14 @@ static void __fastcall destroy_hook(Obj self,unsigned long long a,unsigned long 
     reinterpret_cast<void (__fastcall *)(Obj,unsigned long long,unsigned long long,unsigned long long)>(destroy_trampoline)(self,a,b,c);
 }
 // ---- runtime UI services (only inside an event callback = game UI thread) ----
-static bool in_event() {return dispatch_depth>0;}
+static bool in_event() {return dispatch_depth>0 || scope_depth>0;}
 static void track(void *object,unsigned kind,void *owner) {
     AcquireSRWLockExclusive(&ui_lock);
-    if(created_count<kCreatedMax)created[created_count++]={object,kind,owner};
+    if(created_count<kCreatedMax) {
+        Created &c=created[created_count++];
+        c.obj=object;c.kind=kind;c.owner=owner;c.radio=false;
+        strcpy_s(c.feature,scope_depth>0?scope_owner:"");
+    }
     ReleaseSRWLockExclusive(&ui_lock);
 }
 static unsigned kind_of(const void *object,void **owner=nullptr) {
@@ -531,14 +535,14 @@ static void *svc_load_sublayout(void *parent,const char *name,float x,float y) {
     Obj pane=nullptr;bool ok=false;
     unsigned long long loaded=0;   // 86E0C0 return value (diagnostic: layout_ui_load_detail)
     bool clean=guarded([&] {
-        pane=gf<Obj(__fastcall *)(size_t)>(GA(GA_3F6BC0))(0x178);
+        pane=gf<Obj(__fastcall *)(size_t)>(GA(GA_3F90E0))(0x178);
         if(!pane)return;
         memset(pane,0,0x178);
-        gf<Obj(__fastcall *)(Obj)>(GA(GA_864C50))(pane);
-        *reinterpret_cast<Obj *>(pane)=image+GA(GA_1342530);
-        gf<Obj(__fastcall *)(Obj)>(GA(GA_92AB70))(pane+0x130);
-        *reinterpret_cast<Obj *>(pane)=image+GA(GA_13E4E80);
-        loaded=gf<unsigned long long(__fastcall *)(Obj,int,int,Obj,const char *,int,unsigned long long)>(GA(GA_86E0C0))(
+        gf<Obj(__fastcall *)(Obj)>(GA(GA_866FA0))(pane);
+        *reinterpret_cast<Obj *>(pane)=image+GA(GA_1345530);
+        gf<Obj(__fastcall *)(Obj)>(GA(GA_92D020))(pane+0x130);
+        *reinterpret_cast<Obj *>(pane)=image+GA(GA_13E7F10);
+        loaded=gf<unsigned long long(__fastcall *)(Obj,int,int,Obj,const char *,int,unsigned long long)>(GA(GA_870470))(
             pane,to_int(x),to_int(y),static_cast<Obj>(parent),name,0,0);
         ok=rd32(pane,0x12C)==1 && rdptr(pane,0x98)!=nullptr;
     });
@@ -559,8 +563,8 @@ static int svc_attach(void *parent,int node,void *child) {
     if(node>=static_cast<int>(rd32(table,0x10)))return -1;
     bool ok=false;
     if(!guarded([&] {
-        gf<void(__fastcall *)(Obj,int,Obj,int,int,int)>(GA(GA_92E0B0))(table,node,static_cast<Obj>(child),8,1,0);
-        ok=gf<Obj(__fastcall *)(Obj,int)>(GA(GA_92CEE0))(table,node)==child;
+        gf<void(__fastcall *)(Obj,int,Obj,int,int,int)>(GA(GA_930640))(table,node,static_cast<Obj>(child),8,1,0);
+        ok=gf<Obj(__fastcall *)(Obj,int)>(GA(GA_92F390))(table,node)==child;
     }))return -1;
     if(ok) {
         AcquireSRWLockExclusive(&ui_lock);
@@ -580,10 +584,13 @@ static void *svc_clone_control(void *layout,int node,int style,int kind) {
         emit("layout_ui_clone_unavailable",static_cast<unsigned>(node),nodes?1u:0u,0);return nullptr;
     }
     Obj control=nullptr;
-    if(!guarded([&] {control=gf<Obj(__fastcall *)(Obj,int,int,int,int,int)>(GA(GA_92E430))(table,node,style,kind,1,0);})) {
+    if(!guarded([&] {control=gf<Obj(__fastcall *)(Obj,int,int,int,int,int)>(GA(GA_9309C0))(table,node,style,kind,1,0);})) {
         emit("layout_ui_fault",2,static_cast<unsigned>(node),0);return nullptr;
     }
-    if(control)track(control,CK_BUTTON,layout);
+    if(control) {
+        track(control,CK_BUTTON,layout);
+        if(kind==1) {AcquireSRWLockExclusive(&ui_lock);int i=find_created_locked(control);if(i>=0)created[i].radio=true;ReleaseSRWLockExclusive(&ui_lock);}
+    }
     return control;
 }
 static void *svc_create_label(void *parent,int node) {
@@ -596,17 +603,17 @@ static void *svc_create_label(void *parent,int node) {
     Obj label=nullptr;bool ok=false;
     bool clean=guarded([&] {
         // same sequence as the native 1A0A40 label loop: 3F6BC0(0x188), 84B150, geometry from the node, vt+0x138, 92E0B0 (kind 0xC)
-        label=gf<Obj(__fastcall *)(size_t)>(GA(GA_3F6BC0))(0x188);
+        label=gf<Obj(__fastcall *)(size_t)>(GA(GA_3F90E0))(0x188);
         if(!label)return;
-        label=gf<Obj(__fastcall *)(Obj)>(GA(GA_84B150))(label);
+        label=gf<Obj(__fastcall *)(Obj)>(GA(GA_84D4B0))(label);
         if(!label)return;
-        unsigned long long position=gf<unsigned long long(__fastcall *)(Obj)>(GA(GA_92CD00))(node_ptr);
-        unsigned long long size=gf<unsigned long long(__fastcall *)(Obj)>(GA(GA_92D040))(node_ptr);
+        unsigned long long position=gf<unsigned long long(__fastcall *)(Obj)>(GA(GA_92F1B0))(node_ptr);
+        unsigned long long size=gf<unsigned long long(__fastcall *)(Obj)>(GA(GA_92F4F0))(node_ptr);
         reinterpret_cast<void(__fastcall *)(Obj,int,int,int,int,Obj,int)>(vslot(label,0x138))(
             label,static_cast<int>(position&0xFFFFFFFFu),static_cast<int>(size>>32),static_cast<int>(size&0xFFFFFFFFu),
             static_cast<int>(size>>32),static_cast<Obj>(parent),0);
-        gf<void(__fastcall *)(Obj,int,Obj,int,int,int)>(GA(GA_92E0B0))(table,node,label,0xC,1,0);
-        ok=gf<Obj(__fastcall *)(Obj,int)>(GA(GA_92CEE0))(table,node)==label;
+        gf<void(__fastcall *)(Obj,int,Obj,int,int,int)>(GA(GA_930640))(table,node,label,0xC,1,0);
+        ok=gf<Obj(__fastcall *)(Obj,int)>(GA(GA_92F390))(table,node)==label;
     });
     if(!clean) {emit("layout_ui_fault",3,static_cast<unsigned>(node),0);return nullptr;}
     if(!label)return nullptr;
@@ -621,14 +628,14 @@ static int svc_set_text(void *control,const wchar_t *text) {
     if(kind!=CK_BUTTON && kind!=CK_LABEL)return -1;   // only controls we made
     bool ok=guarded([&] {
         if(kind==CK_BUTTON)reinterpret_cast<void(__fastcall *)(Obj,const wchar_t *)>(vslot(static_cast<Obj>(control),0x1D8))(static_cast<Obj>(control),text);
-        else gf<void(__fastcall *)(Obj,const wchar_t *)>(GA(GA_85C9E0))(static_cast<Obj>(control),text);
+        else gf<void(__fastcall *)(Obj,const wchar_t *)>(GA(GA_85ED10))(static_cast<Obj>(control),text);
     });
     return ok?0:-1;
 }
 static int svc_set_visible(void *control,int on) {
     if(!in_event()) {reject("set_visible",1);return -1;}
     if(!control || !game_object(control))return -1;
-    return guarded([&] {gf<void(__fastcall *)(Obj,int)>(GA(GA_8741D0))(static_cast<Obj>(control),on?1:0);})?0:-1;
+    return guarded([&] {gf<void(__fastcall *)(Obj,int)>(GA(GA_876580))(static_cast<Obj>(control),on?1:0);})?0:-1;
 }
 static int svc_set_position(void *control,int x,int y) {
     if(!in_event()) {reject("set_position",1);return -1;}
@@ -644,7 +651,7 @@ struct ClickCallable {void **vtable;void (*callback)(void *,void *);void *ctx;};
 static void *__fastcall click_copy(ClickCallable *self,ClickCallable *where) {COST_SCOPE("layout_click_copy");if(where)*where=*self;return where;}
 static void __fastcall click_call(ClickCallable *self,Obj *arg) {COST_SCOPE("layout_click_call");self->callback(arg?*arg:nullptr,self->ctx);}
 static void *__fastcall click_type(ClickCallable *) {COST_SCOPE("layout_click_type");return nullptr;}
-static void __fastcall click_delete(ClickCallable *self,bool heap) {COST_SCOPE("layout_click_delete");if(heap)gf<void(__fastcall *)(void *)>(GA(GA_3F6C50))(self);}
+static void __fastcall click_delete(ClickCallable *self,bool heap) {COST_SCOPE("layout_click_delete");if(heap)gf<void(__fastcall *)(void *)>(GA(GA_3F9170))(self);}
 static void *__fastcall click_get(ClickCallable *self) {COST_SCOPE("layout_click_get");return &self->callback;}
 static void *click_vtable[6]={reinterpret_cast<void *>(&click_copy),reinterpret_cast<void *>(&click_copy),reinterpret_cast<void *>(&click_call),
     reinterpret_cast<void *>(&click_type),reinterpret_cast<void *>(&click_delete),reinterpret_cast<void *>(&click_get)};
@@ -658,7 +665,7 @@ static int svc_bind_click(void *control,void (*cb)(void *,void *),void *ctx) {
     Obj button=static_cast<Obj>(control);
     return guarded([&] {
         *reinterpret_cast<unsigned *>(button+0x84)=1;   // 92E430 already stored the node id at +0x80
-        gf<void(__fastcall *)(Obj,int,void *)>(GA(GA_1A3CB0))(button,0x7FFFFFFE,local);   // copies, then destroys local
+        gf<void(__fastcall *)(Obj,int,void *)>(GA(GA_1A4FB0))(button,0x7FFFFFFE,local);   // copies, then destroys local
     })?0:-1;
 }
 static int svc_destroy(void *object) {
@@ -679,8 +686,208 @@ static int svc_destroy(void *object) {
         return LAYOUT_DESTROY_DONE;
     }
     // controls registered in an owner's table are freed with that table: hide now, forget when the owner dies
-    guarded([&] {gf<void(__fastcall *)(Obj,int)>(GA(GA_8741D0))(static_cast<Obj>(object),0);});
+    guarded([&] {gf<void(__fastcall *)(Obj,int)>(GA(GA_876580))(static_cast<Obj>(object),0);});
     return LAYOUT_DESTROY_DEFERRED;
+}
+// ---- UI ownership for published features (user 2026-11-07: the Layout DLL owns every UI entry point of a mod feature) ----
+// The feature module keeps behaviour only (what a click does, labels, data). It brackets its UI calls with ui_begin(owner)/ui_end():
+// ui_begin succeeds only while the owner's registry hooks are installed/chained, so an unchecked, refused or unpublished feature
+// never gets a UI object and the original screen stays intact. Everything created inside a scope is tagged with the owner;
+// ui_release(owner,next) removes it with the original destroy sequence (vt+0x40, vt+0x28, scalar deleting destructor).
+static int svc_ui_begin(const char *owner) {
+    if(!owner || !*owner || !image || strlen(owner)>=sizeof(scope_owner))return 0;
+    if(scope_depth>0) {if(strcmp(owner,scope_owner))return 0;++scope_depth;return 1;}   // nested scope of the same owner
+    const int state=api_hook_owner_state(owner);
+    if(state!=LAYOUT_STATE_INSTALLED && state!=LAYOUT_STATE_CHAINED) {reject("ui_begin",static_cast<unsigned>(state));return 0;}
+    strcpy_s(scope_owner,owner);scope_depth=1;return 1;
+}
+static void svc_ui_end() {if(scope_depth>0 && --scope_depth==0)scope_owner[0]=0;}
+static void *svc_ui_create_window(void *parent,int x,int y,int w,int h,const void *desc,int count) {
+    if(!in_event() || scope_depth<=0 || !desc || count<=0 || count>=256 || !image)return nullptr;
+    if(parent && !game_object(parent))return nullptr;
+    Obj pane=nullptr;bool ok=false;
+    bool clean=guarded([&] {
+        // same assembly as the original sub-panes (6F3DC0): allocate 0x178, 866FA0, vt 1345530 -> table ctor -> final vt, then 870410.
+        pane=gf<Obj(__fastcall *)(size_t)>(GA(GA_3F90E0))(0x178);
+        if(!pane)return;
+        memset(pane,0,0x178);
+        gf<Obj(__fastcall *)(Obj)>(GA(GA_866FA0))(pane);
+        *reinterpret_cast<Obj *>(pane)=image+GA(GA_1345530);
+        gf<Obj(__fastcall *)(Obj)>(GA(GA_92D020))(pane+0x130);
+        *reinterpret_cast<Obj *>(pane)=image+GA(GA_13E7F10);
+        gf<unsigned long long(__fastcall *)(Obj,int,int,int,int,Obj,const void *,int)>(GA(GA_870410))(pane,x,y,w,h,static_cast<Obj>(parent),desc,count);
+        ok=rd32(pane+0x130,0x10)==static_cast<unsigned>(count);
+    });
+    if(!clean) {emit("layout_ui_fault",4,static_cast<unsigned>(count),0);return nullptr;}   // partially built pane is leaked on purpose
+    if(!pane)return nullptr;
+    if(!ok) {emit("layout_ui_window_failed",static_cast<unsigned>(count),rd32(pane+0x130,0x10),0);return nullptr;}
+    track(pane,CK_PANE,parent);
+    return pane;
+}
+// vt+0x38 = 869210: registers the layout with the UI manager's layer lists (92D3B0/92D330 on its table, 869120). Every original
+// construction (7DDD00 enter, 6F3DC0) calls it once the controls exist; without it the pane is neither drawn nor updated.
+static int svc_ui_activate(void *pane) {
+    if(!in_event() || scope_depth<=0 || kind_of(pane)!=CK_PANE)return -1;
+    return guarded([&] {reinterpret_cast<void(__fastcall *)(Obj)>(vslot(static_cast<Obj>(pane),0x38))(static_cast<Obj>(pane));})?0:-1;
+}
+static void *svc_ui_node(void *layout,int node) {   // read-only lookup, allowed without a scope (idle-frame checks)
+    if(!layout || node<0 || !game_object(layout))return nullptr;
+    Obj table=static_cast<Obj>(layout)+0x130;
+    if(node>=static_cast<int>(rd32(table,0x10)))return nullptr;
+    Obj control=nullptr;
+    if(!guarded([&] {control=gf<Obj(__fastcall *)(Obj,int)>(GA(GA_92F390))(table,node);}))return nullptr;
+    return control;
+}
+static int svc_ui_set_node_text(void *layout,int node,const wchar_t *text) {
+    if(!in_event() || !layout || !text || node<0 || !game_object(layout))return -1;
+    Obj table=static_cast<Obj>(layout)+0x130;
+    if(node>=static_cast<int>(rd32(table,0x10)))return -1;
+    return guarded([&] {gf<void(__fastcall *)(Obj,int,const wchar_t *,int)>(GA(GA_9332B0))(table,node,text,1);})?0:-1;
+}
+static int svc_ui_set_node_visible(void *layout,int node,int on) {
+    if(!in_event() || !layout || node<0 || !game_object(layout))return -1;
+    Obj table=static_cast<Obj>(layout)+0x130;
+    if(node>=static_cast<int>(rd32(table,0x10)))return -1;
+    return guarded([&] {gf<void(__fastcall *)(Obj,unsigned,int)>(GA(GA_931DA0))(table,static_cast<unsigned>(node),on?1:0);})?0:-1;
+}
+static int svc_ui_select(void *radio,int on) {
+    if(!in_event() || !radio)return -1;
+    bool is_radio=false;
+    AcquireSRWLockShared(&ui_lock);
+    int i=find_created_locked(radio);
+    if(i>=0)is_radio=created[i].radio;
+    ReleaseSRWLockShared(&ui_lock);
+    if(!is_radio)return -1;   // 85AD20 writes +0x198, only radios (kind 1) have that field
+    return guarded([&] {gf<void(__fastcall *)(Obj,int)>(GA(GA_85D050))(static_cast<Obj>(radio),on?1:0);})?0:-1;
+}
+// Visibility/alpha of `own` follow `source` (86F250 needs both low bits; native_ccz_title.inl sync).
+static int svc_ui_sync_visibility(void *own,void *source) {
+    if(!in_event() || !own || !source || !game_object(own) || !game_object(source))return -1;
+    return guarded([&] {
+        Obj o=static_cast<Obj>(own),s=static_cast<Obj>(source);
+        const unsigned before=rd32(o,0x40),after=(before&~0xBu)|(rd32(s,0x40)&0xBu);
+        if(before!=after) {
+            *reinterpret_cast<unsigned *>(o+0x40)=after;
+            gf<void(__fastcall *)(Obj,int)>(GA(GA_875720))(o,1);
+        }
+        if(rd32(o,0x30)!=rd32(s,0x30))gf<void(__fastcall *)(Obj,int)>(GA(GA_875800))(o,static_cast<int>(rd32(s,0x30)));
+    })?0:-1;
+}
+// Disabled look of a control made by a scope (user 2026-11-07, tactic priority: the remember toggle is not usable without an officer).
+// Original mechanism (0086.c 860830 = CCmnButton / CCmnRadioButton vtable slot 2, the per-frame update; 0085.c 85CE40/85CF70 set the same bit on
+// composite widgets): a widget is enabled while input flag +0x40 bit 4 is set. The button update 860830 reads it every frame; with the bit
+// clear it calls vt+0x1C0(button, 4 / 5 / 6) = the disabled states (disable / disable+focus / disable+selected), i.e. the original greyed
+// look, and the mouse press handler 873260 (requires the bit) does nothing. So only that bit is changed: no own dimming, no own skin.
+static int svc_ui_enable(void *control,int on) {
+    if(!in_event() || scope_depth<=0 || !control || !game_object(control))return -1;
+    Obj o=static_cast<Obj>(control);
+    AcquireSRWLockExclusive(&ui_lock);
+    const int i=find_created_locked(control);
+    const bool ours=i>=0 && created[i].kind==CK_BUTTON;
+    ReleaseSRWLockExclusive(&ui_lock);
+    if(!ours)return -1;
+    const bool done=guarded([&] {
+        unsigned *flags=reinterpret_cast<unsigned *>(o+0x40);
+        *flags=on?(*flags|4u):(*flags&~4u);
+    });
+    emit("layout_ui_enable",on?1u:0u,done?1u:0u,rd32(o,0x40));
+    return done?0:-1;
+}
+// Mouse-over balloon for the owner (same CSimpleBalloonLayout assembly and show sequence as native_trait_hover.inl make_tip/show_impl:
+// 3F6BC0(0x180), 864C50, 92AB70, vt 139C540, 89C320, vt+0xC8, 8A18C0(0xFF), vt+0x70(6); show = 8A2140 text, vt+0x38 once, 8A5D60 with the
+// offset block, vt+0xC8(1)). One balloon per process, owned by the scope owner, destroyed by svc_ui_release.
+struct TipState {Obj tip;bool registered,failed;wchar_t text[1024];char owner[24];};
+static TipState tip_state;
+static void tip_hide() {
+    if(tip_state.tip)guarded([&] {reinterpret_cast<void(__fastcall *)(Obj,int)>(vslot(tip_state.tip,0xC8))(tip_state.tip,0);});
+    tip_state.text[0]=0;
+}
+static bool tip_make() {
+    if(tip_state.tip)return true;
+    if(tip_state.failed)return false;
+    Obj tip=nullptr;bool ok=false;
+    const bool clean=guarded([&] {
+        tip=gf<Obj(__fastcall *)(size_t)>(GA(GA_3F90E0))(0x180);
+        if(!tip)return;
+        gf<Obj(__fastcall *)(Obj)>(GA(GA_866FA0))(tip);
+        gf<void(__fastcall *)(Obj)>(GA(GA_92D020))(tip+0x130);
+        *reinterpret_cast<Obj *>(tip)=image+GA(GA_139F580);
+        *reinterpret_cast<Obj *>(tip+0x178)=nullptr;
+        tip_state.tip=tip;
+        gf<void(__fastcall *)(Obj,int)>(GA(GA_89E550))(tip,0);
+        reinterpret_cast<void(__fastcall *)(Obj,int)>(vslot(tip,0xC8))(tip,0);
+        if(rdptr(tip,0x138)) {
+            tip[0x40]|=8;
+            gf<void(__fastcall *)(Obj,int)>(GA(GA_8A3AC0))(tip,0xFF);
+            reinterpret_cast<void(__fastcall *)(Obj,int)>(vslot(tip,0x70))(tip,6);
+            ok=true;
+        }
+    });
+    emit("layout_ui_tip_built",clean&&ok?1u:0u,tip?1u:0u,0);
+    if(!clean || !ok) {tip_state.failed=true;return false;}
+    tip_state.registered=false;
+    return true;
+}
+static int svc_ui_tooltip(const wchar_t *text) {
+    if(!in_event() || scope_depth<=0 || !image)return -1;
+    if(!text || !*text) {tip_hide();return 0;}
+    if(!tip_make())return -1;
+    strcpy_s(tip_state.owner,scope_owner);
+    Obj tip=tip_state.tip;
+    const bool changed=wcsncmp(tip_state.text,text,1023)!=0;
+    const bool ok=guarded([&] {
+        if(changed) {
+            gf<void(__fastcall *)(Obj,const wchar_t *)>(GA(GA_8A4380))(tip,text);
+            wcsncpy_s(tip_state.text,text,_TRUNCATE);
+        }
+        if(!tip_state.registered) {reinterpret_cast<void(__fastcall *)(Obj)>(vslot(tip,0x38))(tip);tip_state.registered=true;}
+        alignas(16) unsigned char m[0x40]={};
+        *reinterpret_cast<Obj *>(m+0x10)=tip;
+        *reinterpret_cast<int *>(m+0x38)=20;*reinterpret_cast<int *>(m+0x3C)=20;
+        gf<void(__fastcall *)(void *)>(GA(GA_8A7F60))(m);
+        reinterpret_cast<void(__fastcall *)(Obj,int)>(vslot(tip,0xC8))(tip,1);
+    });
+    return ok?0:-1;
+}
+// ui_release: the balloon goes first, with the same destroy sequence as trait_hover release_impl (hide, vt+0x40, vt+0x28(obj,next), vt[0](obj,1)).
+static void tip_release(const char *owner,void *next) {
+    if(!tip_state.tip || strcmp(tip_state.owner,owner))return;
+    Obj tip=tip_state.tip;
+    guarded([&] {
+        reinterpret_cast<void(__fastcall *)(Obj,int)>(vslot(tip,0xC8))(tip,0);
+        if(tip_state.registered)reinterpret_cast<void(__fastcall *)(Obj)>(vslot(tip,0x40))(tip);
+        reinterpret_cast<void(__fastcall *)(Obj,Obj)>(vslot(tip,0x28))(tip,static_cast<Obj>(next));
+        reinterpret_cast<void(__fastcall *)(Obj,int)>(vslot(tip,0))(tip,1);
+    });
+    emit("layout_ui_tip_released",0,0,0);
+    memset(&tip_state,0,sizeof(tip_state));
+}
+// Original teardown of a layout owned by its creator (7DC200 leave, 933BA0): vt+0x40 (unregister from the UI manager, 86BBD0),
+// vt+0x28(obj,next) (table controls, own detach from the parent through parent vt+0xE0, 87A690) then vt[0](obj,1) (428DE0, frees 0x178).
+// `next` is the second argument of the screen's leave. Returns the number of panes released.
+static int svc_ui_release(const char *owner,void *next) {
+    if(!owner || !in_event() || scope_depth<=0 || strcmp(owner,scope_owner))return -1;
+    tip_release(owner,next);
+    void *panes[32];unsigned n=0;
+    AcquireSRWLockExclusive(&ui_lock);
+    for(unsigned i=created_count;i>0 && n<32;--i)
+        if(created[i-1].kind==CK_PANE && !strcmp(created[i-1].feature,owner))panes[n++]=created[i-1].obj;
+    // forget everything the owner made inside scopes (panes, their controls, the footer button of the screen that is about to be destroyed)
+    for(unsigned i=created_count;i>0;--i)
+        if(!strcmp(created[i-1].feature,owner)) {created[i-1]=created[created_count-1];--created_count;}
+    ReleaseSRWLockExclusive(&ui_lock);
+    int done=0;
+    for(unsigned k=n;k>0;--k) {   // newest first
+        Obj p=static_cast<Obj>(panes[k-1]);
+        if(guarded([&] {
+            reinterpret_cast<void(__fastcall *)(Obj)>(vslot(p,0x40))(p);
+            reinterpret_cast<void(__fastcall *)(Obj,Obj)>(vslot(p,0x28))(p,static_cast<Obj>(next));
+            reinterpret_cast<void(__fastcall *)(Obj,int)>(vslot(p,0))(p,1);
+        }))++done;
+        else emit("layout_ui_fault",5,0,0);
+    }
+    if(n)emit("layout_ui_released",n,static_cast<unsigned>(done),hash32(owner));
+    return done;
 }
 static void *api_load_sublayout(void *parent,const char *name,float x,float y) {return svc_load_sublayout(parent,name,x,y);}
 static int api_attach(void *parent,int node,void *child) {return svc_attach(parent,node,child);}
@@ -692,36 +899,16 @@ static int api_bind_click(void *control,void (*cb)(void *,void *),void *ctx) {re
 static int api_destroy(void *object) {return svc_destroy(object);}
 static int api_set_position(void *control,int x,int y) {return svc_set_position(control,x,y);}
 static int api_get_position(void *control,int *x,int *y) {return svc_get_position(control,x,y);}
-// ---- one-build lifetime test (diagnostic builds): load our own instance of the footer layout, clone node 14, move, label, destroy ----
-#ifndef NO_RUNTIME_LOG
-static void probe_click(void *,void *) {}
-static void probe_lifetime() {
-    // Never touches the live footer: the footer's own nodes are bound by native 85FCE0 later. Everything lives in a private pane
-    // that is destroyed before this function returns; each stage logs layout_p4_life(stage,status,detail).
-    void *pane=svc_load_sublayout(nullptr,"cmn_footer_re_cn",0.0f,0.0f);
-    emit("layout_p4_life",1,pane?1u:0u,pane?rd32(static_cast<Obj>(pane)+0x130,0x10):0u);   // 1 load_sublayout: ok, node count
-    if(!pane)return;
-    emit("layout_p4_life_xy",1,rd32(pane,0x124),rd32(pane,0x128));
-    void *button=svc_clone_control(pane,14,2,0);
-    emit("layout_p4_life",2,button?1u:0u,0);                                                // 2 clone_control(node 14, hanyou, kind 0)
-    if(button) {
-        int x=0,y=0,x2=0,y2=0;
-        svc_get_position(button,&x,&y);
-        emit("layout_p4_life_xy",2,static_cast<unsigned>(x),static_cast<unsigned>(y));       // position before
-        emit("layout_p4_life_wh",2,rd32(button,0x28),rd32(button,0x2C));
-        int moved=svc_set_position(button,x+29,y);                                           // 3 set_position (vt+0x78)
-        svc_get_position(button,&x2,&y2);
-        emit("layout_p4_life",3,moved==0?1u:0u,static_cast<unsigned>(x2-x));
-        emit("layout_p4_life_xy",3,static_cast<unsigned>(x2),static_cast<unsigned>(y2));
-        emit("layout_p4_life",4,svc_set_text(button,L"P4")==0?1u:0u,0);                      // 4 set_text
-        emit("layout_p4_life",5,svc_bind_click(button,&probe_click,nullptr)==0?1u:0u,0);     // 5 bind_click
-        emit("layout_p4_life",6,svc_set_visible(button,0)==0?1u:0u,0);                       // 6 set_visible
-    }
-    void *label=svc_create_label(pane,17);
-    emit("layout_p4_life",7,label?1u:0u,label?(rdptr(label,0x178)?1u:0u):2u);               // 7 create_label (node 0x11), text node found
-    if(label)emit("layout_p4_life",8,svc_set_text(label,L"P4")==0?1u:0u,0);                  // 8 label text
-    int result=svc_destroy(pane);
-    emit("layout_p4_life",9,static_cast<unsigned>(result),created_count);                    // 9 destroy(pane): result, tracked entries left
-}
-#endif
+static int api_ui_begin(const char *owner) {return svc_ui_begin(owner);}
+static void api_ui_end() {svc_ui_end();}
+static void *api_ui_create_window(void *parent,int x,int y,int w,int h,const void *desc,int count) {return svc_ui_create_window(parent,x,y,w,h,desc,count);}
+static int api_ui_activate(void *pane) {return svc_ui_activate(pane);}
+static void *api_ui_node(void *layout,int node) {return svc_ui_node(layout,node);}
+static int api_ui_set_node_text(void *layout,int node,const wchar_t *text) {return svc_ui_set_node_text(layout,node,text);}
+static int api_ui_set_node_visible(void *layout,int node,int on) {return svc_ui_set_node_visible(layout,node,on);}
+static int api_ui_select(void *radio,int on) {return svc_ui_select(radio,on);}
+static int api_ui_sync_visibility(void *own,void *source) {return svc_ui_sync_visibility(own,source);}
+static int api_ui_release(const char *owner,void *next) {return svc_ui_release(owner,next);}
+static int api_ui_enable(void *control,int on) {return svc_ui_enable(control,on);}
+static int api_ui_tooltip(const wchar_t *text) {return svc_ui_tooltip(text);}
 }

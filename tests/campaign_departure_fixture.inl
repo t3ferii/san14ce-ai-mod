@@ -9,8 +9,8 @@ static void campaign_departure_tests() {
     auto saved_functions=functions;
     auto saved_progress=std::vector<Progress>(progress,progress+501);
     unsigned stock=dword(sortie_city,0x3C),enemy=dword(goal,0x3C);int day=fixture_day;
-    BIND(0x32C130,reinforcement_goal);BIND(0x22C990,reinforcement_owner);
-    BIND(0x22D740,revision_city_hex);BIND(0x2AA850,revision_distance);BIND(0x26C940,mock_finalize);
+    BIND(0x32E3B0,reinforcement_goal);BIND(0x22E3E0,reinforcement_owner);
+    BIND(0x22F190,revision_city_hex);BIND(0x2ACB80,revision_distance);BIND(0x26E260,mock_finalize);
     put16(sortie_city,0x3A,22050);put16(goal,0x3A,22074);
     Obj first=sortie_people[0];unsigned char female=first[0xA9];unsigned home=word(first,0xE2);
     put16(first,0xE2,2);sortie_planner_node=nullptr;
@@ -56,7 +56,7 @@ static void campaign_departure_tests() {
         "automatic female departure is capped at one thousand without modifying the caller command");
     reset();Obj saved_root=root;
     Obj ownforce=table(0xDF30,2,51);Obj formations[21]={};for(unsigned i=1;i<=20;++i)formations[i]=table(0x77428,i,20);
-    root=static_cast<Obj>(calloc(1,0x90000));putptr(image,0x277DF18,root);putptr(root,0x871E8,player);
+    root=static_cast<Obj>(calloc(1,0x90000));putptr(image,0x2780F60,root);putptr(root,0x871E8,player);
     slot(0xDF30,2,ownforce);slot(0xE0D0,2,sortie_district);
     for(unsigned i=1;i<=20;++i)slot(0x77428,i,formations[i]);
     for(Obj person:sortie_people)slot(0x158,word(person,0x10),person);
@@ -85,7 +85,7 @@ static void campaign_departure_tests() {
     check(sortie_issued>2 && sortie_groups[150].active && dword(sortie_city,0x3C)==4000,
         "twenty-eight thousand city also proactively forms a real paid cohort and preserves four thousand");
     sortie_groups[150]={};campaign_departure_force[2]=saved_force;campaign_departure_city[2]=saved_city;
-    root=saved_root;putptr(image,0x277DF18,root);
+    root=saved_root;putptr(image,0x2780F60,root);
     reset();first[0xA9]=female;put16(first,0xE2,home);
     *reinterpret_cast<unsigned *>(sortie_city+0x3C)=stock;*reinterpret_cast<unsigned *>(goal+0x3C)=enemy;
     std::copy(saved_progress.begin(),saved_progress.end(),progress);functions=saved_functions;fixture_day=day;

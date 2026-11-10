@@ -189,9 +189,9 @@ static void __fastcall mock_variable(Obj, unsigned, Obj *out, int) { *out = curr
 #define BIND(rva, name) functions[rva] = reinterpret_cast<void *>(&name)
 static void setup() {
     image = static_cast<Obj>(VirtualAlloc(nullptr, 0x2800000, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
-    root = static_cast<Obj>(calloc(1, 0x90000)); putptr(image, 0x277DF18, root);
-    putptr(image, 0x27D10E8, image); putptr(image, 0x27D10F0, heads);
-    *reinterpret_cast<unsigned *>(image + 0x27D1120) = 4096;
+    root = static_cast<Obj>(calloc(1, 0x90000)); putptr(image, 0x2780F60, root);
+    putptr(image, 0x27D4138, image); putptr(image, 0x27D4140, heads);
+    *reinterpret_cast<unsigned *>(image + 0x27D4170) = 4096;
     wcscpy_s(log_path, L"native_fixture.log");
     player = object(1); player[0x3A]=1; Obj forcevt = static_cast<Obj>(calloc(1, 0x100)); putptr(forcevt, 0x60, reinterpret_cast<void *>(&mock_id)); putptr(player, 0, forcevt);
     putptr(root, 0x871E8, player);Obj ownforce=object(2);putptr(ownforce,0,forcevt);slot(0xDF30,2,ownforce);goal_owner=player;
@@ -201,22 +201,22 @@ static void setup() {
     for (unsigned i=100;i<=119;++i) { Obj tile = object(i);put16(tile,0x12,1);tile[0x14] = 2; slot(0xE270, i, tile); }
     for (unsigned i : {6u,4u,7u,3u,11u,12u,14u,13u}) slot(0x73958, i, object(i));
     slot(0x158, 1, object(1)); Obj troops = object(1); put16(troops, 0x14, 8); put16(troops, 0x16, 1); slot(0x7F8D8, 1, troops);
-    BIND(0x32F500,mock_valid); BIND(0x22CC40,mock_force); BIND(0x32E910,mock_player); BIND(0x2CA280,mock_hostile);
-    BIND(0x229EA0,mock_area); BIND(0x2AA850,mock_distance); BIND(0x21E2B0,mock_init); BIND(0x18DF0,mock_append); BIND(0x424D60,mock_free);
-    BIND(0xC0C80,mock_predicate); BIND(0xD06D0,mock_cut); BIND(0x22DA10,mock_army_id); BIND(0x22DDA0,mock_id);
-    BIND(0xA2410,mock_clear); BIND(0x2EAAE0,mock_action); BIND(0x2EAB40,mock_target); BIND(0x26C940,mock_finalize);
-    BIND(0x2EE1E0,mock_waypoint);
-    BIND(0x22A5A0,mock_origin); BIND(0x22BAA0,mock_district); BIND(0x32C130,mock_goal); BIND(0x22C990,mock_goal_force);
-    BIND(0x2AB390,mock_cost); BIND(0x278FA0,mock_possible); BIND(0xB9070,mock_candidates); BIND(0x22FB10,mock_building); BIND(0x2AC120,mock_maximum);
-    BIND(0x201E0,mock_original); BIND(0x1F3A0,mock_original); BIND(0x68CE0,mock_original); BIND(0xB6070,mock_resolve);
-    BIND(0xBF7A40,mock_blackboard); BIND(0xB26470,mock_variable);
-    BIND(0x61120,mock_original); BIND(0x32BA50,mock_day); BIND(0x22D740,mock_goal_hex);
-    BIND(0x2A7AA0,mock_nearby); BIND(0x232680,mock_zone_flag); BIND(0x232BF0,mock_zone_flag); BIND(0xCC560,mock_region);
-    original_damage=mock_damage;BIND(0x22B090,mock_active_formation);BIND(0x2B0290,mock_route_speed);
-    BIND(0x269150,mock_daily_points);BIND(0x2318B0,mock_terrain);BIND(0xBE120,mock_hex_cost);
-    BIND(0x2C9E30,mock_cap);BIND(0x16A030,mock_pair);original_adjacency=mock_adjacency;
-    Obj manager=object(1);putptr(manager,0x28,manager);putptr(image,0x1B9A4A0,manager);
-    for(unsigned rva : {0x20060u,0x1FFE0u,0x1FF60u,0x1F120u,0x1FEA0u,0x1FF00u}) BIND(rva,mock_alternative);
+    BIND(0x331780,mock_valid); BIND(0x22E690,mock_force); BIND(0x330B90,mock_player); BIND(0x2CC630,mock_hostile);
+    BIND(0x22B8E0,mock_area); BIND(0x2ACB80,mock_distance); BIND(0x01AC60,mock_init); BIND(0x18D50,mock_append); BIND(0x1BFFF0,mock_free);
+    BIND(0xC1D10,mock_predicate); BIND(0xD1760,mock_cut); BIND(0x22F4A0,mock_army_id); BIND(0x22F830,mock_id);
+    BIND(0xA3370,mock_clear); BIND(0x2ECEA0,mock_action); BIND(0x2ECF00,mock_target); BIND(0x26E260,mock_finalize);
+    BIND(0x2F05A0,mock_waypoint);
+    BIND(0x22BFE0,mock_origin); BIND(0x22D4E0,mock_district); BIND(0x32E3B0,mock_goal); BIND(0x22E3E0,mock_goal_force);
+    BIND(0x2AD6C0,mock_cost); BIND(0x27A8D0,mock_possible); BIND(0xBA100,mock_candidates); BIND(0x2315A0,mock_building); BIND(0x2AE450,mock_maximum);
+    BIND(0x201C0,mock_original); BIND(0x1F380,mock_original); BIND(0x69AB0,mock_original); BIND(0xB7100,mock_resolve);
+    BIND(0x1137FF0,mock_blackboard); BIND(0xB28D20,mock_variable);
+    BIND(0x61C90,mock_original); BIND(0x32DD00,mock_day); BIND(0x22F190,mock_goal_hex);
+    BIND(0x2A9C90,mock_nearby); BIND(0x234020,mock_zone_flag); BIND(0x234590,mock_zone_flag); BIND(0xCC560,mock_region);
+    original_damage=mock_damage;BIND(0x22CAD0,mock_active_formation);BIND(0x2B2550,mock_route_speed);
+    BIND(0x26AB00,mock_daily_points);BIND(0x233310,mock_terrain);BIND(0xBF1B0,mock_hex_cost);
+    BIND(0x2CC1E0,mock_cap);BIND(0x16AFE0,mock_pair);original_adjacency=mock_adjacency;
+    Obj manager=object(1);putptr(manager,0x28,manager);putptr(image,0x1B9D4F0,manager);
+    for(unsigned rva : {0x20040u,0x1FFC0u,0x1FF40u,0x1F100u,0x1FE80u,0x1FEE0u}) BIND(rva,mock_alternative);
     enabled = 1;
 }
 static unsigned checks,failures;
@@ -234,8 +234,8 @@ static unsigned __fastcall mock_catapult_base_hex(Obj base) {return word(base,0x
 static void catapult_policy_tests(Obj army) {
     auto saved_features=mod_features;auto saved_cache=catapult_ground_cache;auto saved_tile_areas=tile_areas;
     int saved_day=fixture_day;unsigned saved_lookups=catapult_base_lookups;
-    auto saved_goal=functions[0x32C130],saved_owner=functions[0x22C990],saved_hex=functions[0x22D740];
-    BIND(0x32C130,mock_catapult_base);BIND(0x22C990,mock_catapult_base_owner);BIND(0x22D740,mock_catapult_base_hex);
+    auto saved_goal=functions[0x32E3B0],saved_owner=functions[0x22E3E0],saved_hex=functions[0x22F190];
+    BIND(0x32E3B0,mock_catapult_base);BIND(0x22E3E0,mock_catapult_base_owner);BIND(0x22F190,mock_catapult_base_hex);
     Obj areas[10],tiles[10],old_areas[10],old_tiles[10];
     for(unsigned i=0;i<10;++i) {
         old_areas[i]=table(0x6CAF0,450+i,500);old_tiles[i]=table(0xE270,48000+i,48399);
@@ -307,9 +307,9 @@ static void catapult_policy_tests(Obj army) {
     check(!allows(0) && catapult_base_lookups==lookups,"same-day cache remains a snapshot of base ownership");
     ++fixture_day;check(allows(0) && catapult_base_lookups==lookups+61,"day change rebuilds cache and removes captured castle regions");
     castle[0x150]=1;lookups=catapult_base_lookups;
-    Obj alternate_root=static_cast<Obj>(malloc(0x90000));memcpy(alternate_root,root,0x90000);putptr(image,0x277DF18,alternate_root);
+    Obj alternate_root=static_cast<Obj>(malloc(0x90000));memcpy(alternate_root,root,0x90000);putptr(image,0x2780F60,alternate_root);
     check(!allows(0) && catapult_base_lookups==lookups+61,"world change rebuilds cache even with same day and player");
-    putptr(image,0x277DF18,root);free(alternate_root);allows(0);lookups=catapult_base_lookups;
+    putptr(image,0x2780F60,root);free(alternate_root);allows(0);lookups=catapult_base_lookups;
     player=force;
     check(!allows(7,normal_player) && catapult_base_lookups==lookups+61,"player force change rebuilds around the new player's castle");
     player=normal_player;check(!allows(0),"restored player rebuilds its own region set");
@@ -320,7 +320,7 @@ static void catapult_policy_tests(Obj army) {
     check(allows(0) && catapult_base_lookups==lookups,"option off skips refresh even after key change");
     for(unsigned i=0;i<10;++i) {slot(0x6CAF0,450+i,old_areas[i]);slot(0xE270,48000+i,old_tiles[i]);}
     slot(0x6CAF0,499,missing_area);tile_areas=saved_tile_areas;catapult_bases.clear();catapult_base_lookups=saved_lookups;
-    functions[0x32C130]=saved_goal;functions[0x22C990]=saved_owner;functions[0x22D740]=saved_hex;
+    functions[0x32E3B0]=saved_goal;functions[0x22E3E0]=saved_owner;functions[0x22F190]=saved_hex;
     fixture_day=saved_day;catapult_ground_cache=saved_cache;mod_features=saved_features;
 }
 #include "domestic_fixture.inl"
@@ -352,7 +352,7 @@ static int __fastcall corridor_core(Obj a) {return a && a[0x34]==1;}
 static Obj __fastcall corridor_origin(Obj) {return corridor_origin_city;}
 static unsigned __fastcall corridor_hex(Obj o) {return word(o,0x20);}
 static void corridor_tests() {
-    BIND(0x232680,corridor_core);BIND(0x22A5A0,corridor_origin);BIND(0x22D740,corridor_hex);
+    BIND(0x234020,corridor_core);BIND(0x22BFE0,corridor_origin);BIND(0x22F190,corridor_hex);
     const unsigned edges[][2]={{401,403},{401,406},{401,410},{403,404},{403,405},{404,402},{404,406},{405,402},
         {410,411},{411,402},{401,407},{407,408},{408,412},{412,409},{409,402}};
     Obj areas[13];
@@ -374,11 +374,11 @@ static void corridor_tests() {
     put16(troops,0x16,8);mission_route_corridor(troops,lead,40002);
     check(word(troops,0x1A)==40006,"mission_v2 corridor: a new goal gets a fresh offer");
     for(unsigned i=0;i<13;++i) {slot(0x6CAF0,400+i,nullptr);slot(0xE270,40000+i,nullptr);}
-    BIND(0x232680,mock_zone_flag);BIND(0x22A5A0,mock_origin);BIND(0x22D740,mock_goal_hex);
+    BIND(0x234020,mock_zone_flag);BIND(0x22BFE0,mock_origin);BIND(0x22F190,mock_goal_hex);
 }
 static void recheck_tests() {
-    BIND(0xBF7A40,recheck_blackboard);BIND(0xB26300,recheck_read);BIND(0xB26990,recheck_write);
-    BIND(0x7DC00,recheck_strength);BIND(0x91030,recheck_minus);
+    BIND(0x1137FF0,recheck_blackboard);BIND(0xB28BB0,recheck_read);BIND(0xB29250,recheck_write);
+    BIND(0x7EBA0,recheck_strength);BIND(0x92080,recheck_minus);
     Obj strength=object(1),minus=object(1);
     *reinterpret_cast<unsigned *>(strength+0x3C)=0x47EAF02Bu;*reinterpret_cast<unsigned *>(strength+0x40)=5;
     *reinterpret_cast<unsigned *>(minus+0x38)=0xB57EAF65u;*reinterpret_cast<unsigned *>(minus+0x3C)=0x47EAF02Bu;
@@ -396,7 +396,7 @@ static void fast_menu_tests() {
     auto saved=mod_features;
     (void)&fast_menu::install;
     mod_features.fast_menu=true;mod_features.lord_change=false;
-    BIND(0x56FF60,mock_map_busy);
+    BIND(0x5727C0,mock_map_busy);
     Obj state=object(0);
     for(unsigned i=0;i<3;++i) {
         Obj table=image+fast_menu::kSlots[i]-0x30;putptr(state,0,table);
@@ -448,7 +448,7 @@ int main() {
     {   // [combat] mission_v2 siege ground (user 2026-11-01): sites stand 3..6 hexes from the hostile castle;
         // a 건설 5 ruler fills regardless only while builder_ruler_fill is on.
         Progress saved=*p;unsigned char order[0x34];memcpy(order,army+0x2C,sizeof(order));
-        auto saved_hex=functions[0x22D740];BIND(0x22D740,mock_siege_castle_hex);mod_features.mission_v2=true;
+        auto saved_hex=functions[0x22F190];BIND(0x22F190,mock_siege_castle_hex);mod_features.mission_v2=true;
         Obj force=table(0xDF30,2,51),ruler=object(77);unsigned short saved_ruler=word(force,0x10);
         put16(force,0x10,77);slot(0x158,77,ruler);unsigned short saved_city=word(goal,0x4E);put16(goal,0x4E,9);
         auto attempt=[&](unsigned castle) {
@@ -468,7 +468,7 @@ int main() {
         mod_features.builder_ruler_fill=true;
         check(attempt(107) && p->facility,"builder_ruler_fill on: a 건설 5 ruler builds outside the siege range");
         mod_features.builder_ruler_fill=false;mod_features.mission_v2=false;
-        put16(force,0x10,saved_ruler);put16(goal,0x4E,saved_city);functions[0x22D740]=saved_hex;*p=saved;memcpy(army+0x2C,order,sizeof(order));
+        put16(force,0x10,saved_ruler);put16(goal,0x4E,saved_city);functions[0x22F190]=saved_hex;*p=saved;memcpy(army+0x2C,order,sizeof(order));
     }
     legal_facilities = (1u<<4)|(1u<<7)|(1u<<3);
     check(try_build(army,*p) && p->facility==4,"unavailable catapult falls through to fortress");
@@ -491,10 +491,10 @@ int main() {
     memset(&progress[1],0,sizeof(progress[1])); center[0x14]=3;
     check(belongs_to_troops(army,troops2) && !belongs_to_troops(ai_enemy,troops2),
           "troop membership resolves object identity despite shared state fields");
-    BIND(0x68CE0,mock_city_capture);
+    BIND(0x69AB0,mock_city_capture);
     check(city_node(node,node,troops2)==1 && army[0x37]==8 && army[0x46]==6,
           "city hook observes capture and builds for the actual troop group");
-    BIND(0x68CE0,mock_original);
+    BIND(0x69AB0,mock_original);
     // A new operation after the previous construction test. Target city 9
     // remains the strategic goal even when native construction changes action.
     put16(goal,0x4E,9);put16(troops2,0x16,9);put16(troops2,0x14,10);put16(army,0x16,6000);
@@ -732,12 +732,8 @@ int main() {
     original_adjacency=mock_adjacency;
     {   // build 25953386 conflict 1: native 2B2A90 applies the AI 16/24 percent rate in every mode. User 2026-11-05: AI-vs-AI fixed path stays 4 percent on both builds (intended design); adjacency_native_rate still gives the real native rate for player-battle subtraction.
         put16(pair+8,0,2);*reinterpret_cast<unsigned *>(pair+12)=27;
-        Obj cfg=image+GA(GA_1A47AF8)-0xE58;unsigned saved_e58=dword(cfg,0xE58),saved_l134=dword(cfg,0x134),saved_l28=dword(cfg,0x28);
+        Obj cfg=image+GA(GA_1A4AAE8)-0xE58;unsigned saved_e58=dword(cfg,0xE58),saved_l134=dword(cfg,0x134),saved_l28=dword(cfg,0x28);
         auto level=[&](unsigned v){*reinterpret_cast<unsigned *>(cfg+0x134)=v;};
-        adjacency_floor_mode=0;level(5);combat_pair_scores(pair,nullptr,nullptr);
-        check(observed_adjacency>1.119f && observed_adjacency<1.121f && adjacency_native_rate(2)==4,
-              "1fbe6be7 semantics: AI-vs-AI fixed rate stays 4 percent whatever the AI level");
-        adjacency_floor_mode=1;
         level(3);combat_pair_scores(pair,nullptr,nullptr);
         check(observed_adjacency>1.119f && observed_adjacency<1.121f && adjacency_native_rate(2)==16,
               "1a4a447d semantics: AI level 3 (special): AI-vs-AI fixed path stays 4 percent (user 2026-11-05), native rate value is 16");
@@ -754,22 +750,21 @@ int main() {
         *reinterpret_cast<unsigned *>(cfg+0xE58)=saved_e58;*reinterpret_cast<unsigned *>(cfg+0x28)=saved_l28;level(saved_l134);
         {   // User 2026-11-05 conditions (1)-(4): old/new build x expert mode on/off x own/other force.
             // E58==0 is expert mode. Native model: old build raises AI 16/24 only when E58!=0, new build in every mode; player 4.
-            static int model_build;static Obj model_cfg;
+            static Obj model_cfg;
             struct M {static float __fastcall native(Obj,int force,int *score) {
                 *score=300;int rate=4;
-                if(static_cast<unsigned>(force)!=player_force() && (model_build==1 || dword(model_cfg,0xE58)!=0)) {
+                if(static_cast<unsigned>(force)!=player_force()) {
                     int lvl=static_cast<int>(dword(model_cfg,0xE58)==0?dword(model_cfg,0x134):dword(model_cfg,0x28));
                     rate=lvl==3?16:lvl>3?24:4;
                 }
                 return 1.0f+300.0f*static_cast<float>(rate)*0.0001f;}};
             model_cfg=cfg;original_adjacency=M::native;
-            unsigned pf=player_force(),af=pf==2?3:2;Obj opt=image+GA(GA_1A46CA8);
+            unsigned pf=player_force(),af=pf==2?3:2;Obj opt=image+GA(GA_1A49C98);
             unsigned saved4=dword(opt,0x24C),saved5=dword(opt,0x264);
             auto setopt=[&](unsigned v){*reinterpret_cast<unsigned *>(opt+0x24C)=v;*reinterpret_cast<unsigned *>(opt+0x264)=v;};
             expert_combat::Settings st;st.base=100;st.region=10;
             CombatScope saved_scope=combat_scope;
-            for(int b=0;b<2;b++)for(int e58=0;e58<2;e58++)for(int own=0;own<2;own++) {
-                model_build=b;adjacency_floor_mode=b;
+            for(int e58=0;e58<2;e58++)for(int own=0;own<2;own++) {
                 *reinterpret_cast<unsigned *>(cfg+0xE58)=e58;level(4);*reinterpret_cast<unsigned *>(cfg+0x28)=4;
                 unsigned force=own?pf:af;int sc=0;
                 combat_scope={pf,af,false,true,true,true};
@@ -795,7 +790,6 @@ int main() {
             *reinterpret_cast<unsigned *>(cfg+0xE58)=saved_e58;*reinterpret_cast<unsigned *>(cfg+0x28)=saved_l28;level(saved_l134);
             combat_scope=saved_scope;*reinterpret_cast<unsigned *>(opt+0x24C)=saved4;*reinterpret_cast<unsigned *>(opt+0x264)=saved5;
         }
-        adjacency_floor_mode=-1;
         original_adjacency=mock_adjacency;
     }
     // Demo has a loaded context with controlling-force byte 0. It still runs
@@ -844,7 +838,7 @@ int main() {
         rp->build_chain=false;rp->credit=false;rp->work_reviewed_center=48400;prepare_local_build(recovery,*rp);
         check(!rp->build_chain && !rp->credit,"mission_v2: a friendly region far from the siege castle grants no construction");
         {   // user 2026-11-01: own ground within ten hexes of the hostile castle (was eight).
-            auto saved_hex=functions[0x22D740];BIND(0x22D740,mock_siege_castle_hex);
+            auto saved_hex=functions[0x22F190];BIND(0x22F190,mock_siege_castle_hex);
             // Earlier cases left siege facilities in this region; hide them for this opportunity check.
             std::vector<std::pair<Obj,unsigned char>> owners;std::vector<std::pair<unsigned,unsigned char>> plans;
             for(unsigned i=1;i<=3000;++i) {Obj b=table(0x6DA98,i,3000);if(valid(b) && b[0x13]) {owners.push_back({b,b[0x13]});b[0x13]=0;}}
@@ -855,7 +849,7 @@ int main() {
             check(!beyond && rp->build_chain,"mission_v2: own ground ten hexes from the castle is a build opportunity, eleven is not");
             for(auto &o:owners)o.first[0x13]=o.second;
             for(auto &f:plans)progress[f.first].facility=f.second;
-            rp->build_chain=false;functions[0x22D740]=saved_hex;
+            rp->build_chain=false;functions[0x22F190]=saved_hex;
         }
         unsigned char a37=recovery[0x37],a38=recovery[0x38];unsigned short a3a=word(recovery,0x3A);
         recovery[0x37]=4;recovery[0x38]=5;put16(recovery,0x3A,9);
@@ -1081,59 +1075,59 @@ int main() {
     district_intercept_tests();
 #endif
     enabled=0;
-    memcpy(image+0xD2486,kCutCallBytes,5);
-    memcpy(image+0x1749A0,kDamageEntryBytes,5);
-    memcpy(image+0x169F44,kPairCallBytes,5);memcpy(image+0x2B07C0,kAdjacencyEntryBytes,5);
-    memcpy(image+0x279190,kBuildPermissionEntryBytes,5);
-    memcpy(image+0x295160,kDomesticTickEntryBytes,5);
-    memcpy(image+0x36423,kDomesticBudgetBranchBytes,6);
-    memcpy(image+0x1ED475,kDomesticCostLoadBytes,6);memcpy(image+0x302980,population_entry,16);
-    putptr(image,0x1344518,image+0x201E0); putptr(image,0x1343C98,image+0x1F3A0); putptr(image,0x134B4F8,image+0x68CE0);
-    putptr(image,0x134AF00,image+0x61120);
-    putptr(image,0x1346E70,image+0x36320);putptr(image,0x134C8F8,image+0x7A110);
-    image[0x1749A0]=0xCC;
-    check(!install() && !enabled && image[0xD2486]==0xE8,"unexpected damage call rejects installation before publishing any hooks");
-    memcpy(image+0x1749A0,kDamageEntryBytes,5);
-    image[0x2B07C0]=0xCC;
-    check(!install() && !enabled && image[0xD2486]==0xE8 && pointer(image,0x1344518)==image+0x201E0,
+    memcpy(image+0xD3516,kCutCallBytes,5);
+    memcpy(image+0x175950,kDamageEntryBytes,5);
+    memcpy(image+0x16AEF4,kPairCallBytes,5);memcpy(image+0x2B2A90,kAdjacencyEntryBytes,5);
+    memcpy(image+0x27AAC0,kBuildPermissionEntryBytes,5);
+    memcpy(image+0x297070,kDomesticTickEntryBytes,5);
+    memcpy(image+0x36F83,kDomesticBudgetBranchBytes,6);
+    memcpy(image+0x1EE815,kDomesticCostLoadBytes,6);memcpy(image+0x304D70,population_entry,16);
+    putptr(image,0x1347518,image+0x201C0); putptr(image,0x1346C98,image+0x1F380); putptr(image,0x134E518,image+0x69AB0);
+    putptr(image,0x134DF20,image+0x61C90);
+    putptr(image,0x1349E98,image+0x36E80);putptr(image,0x134F918,image+0x7B0B0);
+    image[0x175950]=0xCC;
+    check(!install() && !enabled && image[0xD3516]==0xE8,"unexpected damage call rejects installation before publishing any hooks");
+    memcpy(image+0x175950,kDamageEntryBytes,5);
+    image[0x2B2A90]=0xCC;
+    check(!install() && !enabled && image[0xD3516]==0xE8 && pointer(image,0x1347518)==image+0x201C0,
           "unexpected adjacency entry rejects the complete installation without changing other links");
-    memcpy(image+0x2B07C0,kAdjacencyEntryBytes,5);
-    image[0x279190]=0xCC;
-    check(!install() && !enabled && pointer(image,0x1344518)==image+0x201E0,
+    memcpy(image+0x2B2A90,kAdjacencyEntryBytes,5);
+    image[0x27AAC0]=0xCC;
+    check(!install() && !enabled && pointer(image,0x1347518)==image+0x201C0,
           "unexpected build permission entry rejects installation before any patch is published");
-    memcpy(image+0x279190,kBuildPermissionEntryBytes,5);
-    image[0x295160]=0xCC;
-    check(!install() && !enabled && pointer(image,0x1346E70)==image+0x36320,"unexpected domestic tick signature rejects all new hooks");
-    memcpy(image+0x295160,kDomesticTickEntryBytes,5);
-    image[0x302980]=0xCC;
-    check(!install() && !enabled && pointer(image,0x1344518)==image+0x201E0,
+    memcpy(image+0x27AAC0,kBuildPermissionEntryBytes,5);
+    image[0x297070]=0xCC;
+    check(!install() && !enabled && pointer(image,0x1349E98)==image+0x36E80,"unexpected domestic tick signature rejects all new hooks");
+    memcpy(image+0x297070,kDomesticTickEntryBytes,5);
+    image[0x304D70]=0xCC;
+    check(!install() && !enabled && pointer(image,0x1347518)==image+0x201C0,
           "changed monthly population entry rejects installation before publishing any hooks");
-    memcpy(image+0x302980,population_entry,16);
+    memcpy(image+0x304D70,population_entry,16);
     const unsigned char population_tail[]={0x48,0x8B,0xC1,0x5F,0x5E,0x5B,0x5D,0xC3};
     DWORD population_old=0;
-    check(VirtualProtect(image+0x302000,0x1000,PAGE_EXECUTE_READWRITE,&population_old)!=0,
+    check(VirtualProtect(image+0x304000,0x1000,PAGE_EXECUTE_READWRITE,&population_old)!=0,
           "synthetic population continuation page executable");
     // Original prologue writes saved RBP into the caller's shadow space.
     // The synthetic tail tests the fourth integer argument and restores RBP.
     unsigned char build_tail[]={0x41,0x83,0xF9,7,0x0F,0x94,0xC0,0x48,0x8B,0x6C,0x24,0x10,0xC3};
-    memcpy(image+0x279195,build_tail,sizeof(build_tail));
+    memcpy(image+0x27AAC5,build_tail,sizeof(build_tail));
     // The exact stolen store saves the third argument in the caller's shadow
     // space; synthetic native tail returns preview+11 and writes the output.
     unsigned char domestic_tail[]={0x41,0xC7,0,0x7B,0,0,0,0x8D,0x42,0x0B,0xC3};
-    memcpy(image+0x295165,domestic_tail,sizeof(domestic_tail));
+    memcpy(image+0x297075,domestic_tail,sizeof(domestic_tail));
     unsigned char damage_tail[]={0x41,0xC7,0,0x7B,0,0,0,0x48,0xB8,0xF0,0xDE,0xBC,0x9A,0x78,0x56,0x34,0x12,0x41,0x5E,0x5F,0x5D,0xC3};
-    memcpy(image+0x1749A5,damage_tail,sizeof(damage_tail));
+    memcpy(image+0x175955,damage_tail,sizeof(damage_tail));
     DWORD damage_old=0;
-    check(VirtualProtect(image+0x174000,0x1000,PAGE_EXECUTE_READWRITE,&damage_old)!=0,"synthetic damage page executable");
+    check(VirtualProtect(image+0x175000,0x1000,PAGE_EXECUTE_READWRITE,&damage_old)!=0,"synthetic damage page executable");
     DWORD domestic_old=0;
-    check(VirtualProtect(image+0x295000,0x1000,PAGE_EXECUTE_READWRITE,&domestic_old)!=0,"synthetic domestic page executable");
+    check(VirtualProtect(image+0x297000,0x1000,PAGE_EXECUTE_READWRITE,&domestic_old)!=0,"synthetic domestic page executable");
     DWORD build_old=0;
-    check(VirtualProtect(image+0x279000,0x1000,PAGE_EXECUTE_READWRITE,&build_old)!=0,
+    check(VirtualProtect(image+0x27A000,0x1000,PAGE_EXECUTE_READWRITE,&build_old)!=0,
           "synthetic native build permission page made executable for ABI test");
     // Execute a synthetic native tail with the exact stolen PUSH prologue.
     // This checks actual trampoline/argument/stack behavior, not just opcodes.
     unsigned char tail[]={0x41,0xC7,0,0x2C,1,0,0,0xB8,0,0,0,0,0x66,0x0F,0x6E,0xC0,0x41,0x5F,0x5D,0x5B,0xC3};
-    float native_value=1.72f;memcpy(tail+8,&native_value,4);memcpy(image+0x2B07C5,tail,sizeof(tail));
+    float native_value=1.72f;memcpy(tail+8,&native_value,4);memcpy(image+0x2B2A95,tail,sizeof(tail));
     DWORD executable_old=0;check(VirtualProtect(image+0x2B0000,0x10000,PAGE_EXECUTE_READWRITE,&executable_old)!=0,
                               "synthetic native function page made executable for ABI test");
     check(install() && enabled,"atomic code and vtable installation on fixture image");
@@ -1145,37 +1139,37 @@ int main() {
         if(begin<=trampoline-32 && end>=trampoline+19)population_flushed=true;
     }
     check(population_flushed,"production install flushes both monthly population relay and full trampoline before publication");
-    memcpy(image+0x302985,population_tail,sizeof(population_tail));
-    FlushInstructionCache(GetCurrentProcess(),image+0x302980,32);
+    memcpy(image+0x304D75,population_tail,sizeof(population_tail));
+    FlushInstructionCache(GetCurrentProcess(),image+0x304D70,32);
     enabled=0;
     check(original_population_growth(origin)==reinterpret_cast<uint64_t>(origin) &&
-          reinterpret_cast<PopulationGrowth>(image+0x302980)(origin)==reinterpret_cast<uint64_t>(origin),
+          reinterpret_cast<PopulationGrowth>(image+0x304D70)(origin)==reinterpret_cast<uint64_t>(origin),
           "monthly growth trampoline and installed entry preserve argument, 64 bit return and all four pushed registers");
     enabled=1;
     int damage_output=0;
     check(original_damage(nullptr,nullptr,reinterpret_cast<Obj>(&damage_output))==0x123456789ABCDEF0ull && damage_output==123,
           "damage trampoline preserves third argument pointer, 64-bit return and nonvolatile PUSH registers");
     original_damage=mock_damage; // wrapper relay forwarding uses the private native mock
-    intptr_t damage_delta=*reinterpret_cast<int32_t *>(image+0x1749A1);
-    auto installed_damage=reinterpret_cast<uint64_t(__fastcall *)(Obj,Obj,Obj)>(image+0x1749A5+damage_delta);
+    intptr_t damage_delta=*reinterpret_cast<int32_t *>(image+0x175951);
+    auto installed_damage=reinterpret_cast<uint64_t(__fastcall *)(Obj,Obj,Obj)>(image+0x175955+damage_delta);
     check(installed_damage(nullptr,nullptr,nullptr)==0x123456789ABCDEF0ull,"installed damage relay preserves three arguments and 64-bit native return");
-    check(pointer(image,0x1344518)==reinterpret_cast<Obj>(&first_army_node),"first node hook installed");
-    check(pointer(image,0x134AF00)==reinterpret_cast<Obj>(&retreat_node),"construction return hook installed");
-    check(image[0x169F44]==0xE8 && image[0x2B07C0]==0xE9,"combat scope and adjacency trampoline links installed atomically");
-    check(image[0x279190]==0xE9,"central native construction permission hook installed");
-    check(pointer(image,0x1346E70)==reinterpret_cast<Obj>(&domestic_officer_node) &&
-          pointer(image,0x134C8F8)==reinterpret_cast<Obj>(&domestic_selection_node),"automatic officer and selection vtable hooks installed");
-    check(image[0x295160]==0xE9 && image[0x1ED475]==0xE8 && image[0x1ED47A]==0x90 &&
-          memcmp(image+0x36423,"\x90\x90\x90\x90\x90\x90",6)==0,"complete domestic code links installed");
+    check(pointer(image,0x1347518)==reinterpret_cast<Obj>(&first_army_node),"first node hook installed");
+    check(pointer(image,0x134DF20)==reinterpret_cast<Obj>(&retreat_node),"construction return hook installed");
+    check(image[0x16AEF4]==0xE8 && image[0x2B2A90]==0xE9,"combat scope and adjacency trampoline links installed atomically");
+    check(image[0x27AAC0]==0xE9,"central native construction permission hook installed");
+    check(pointer(image,0x1349E98)==reinterpret_cast<Obj>(&domestic_officer_node) &&
+          pointer(image,0x134F918)==reinterpret_cast<Obj>(&domestic_selection_node),"automatic officer and selection vtable hooks installed");
+    check(image[0x297070]==0xE9 && image[0x1EE815]==0xE8 && image[0x1EE81A]==0x90 &&
+          memcmp(image+0x36F83,"\x90\x90\x90\x90\x90\x90",6)==0,"complete domestic code links installed");
     int domestic_output=0;
     check(original_domestic_tick(nullptr,7,&domestic_output)==18 && domestic_output==123,
           "domestic tick trampoline preserves integer argument output pointer and shadow space");
     domestic_output=0;
-    check(reinterpret_cast<DomesticTick>(image+0x295160)(nullptr,7,&domestic_output)==18 && domestic_output==123,
+    check(reinterpret_cast<DomesticTick>(image+0x297070)(nullptr,7,&domestic_output)==18 && domestic_output==123,
           "installed domestic entry forwards preview without synchronizing or corrupting arguments");
     check(original_build_permission(player,center,earth,7) && !original_build_permission(player,center,earth,0),
           "native build trampoline preserves RBP shadow space fourth argument and boolean return");
-    auto installed_permission=reinterpret_cast<BuildPermission>(image+0x279190);
+    auto installed_permission=reinterpret_cast<BuildPermission>(image+0x27AAC0);
     check(!installed_permission(ai_force,center,earth,7) && !installed_permission(ai_force,center,stone,7),
           "actual installed native entry refuses both AI wall definitions");
     check(installed_permission(player,center,earth,7) && !installed_permission(player,center,stone,0),
@@ -1185,7 +1179,7 @@ int main() {
     adj_score=0;check(original_adjacency(center,2,&adj_score)==1.72f && adj_score==300,
                       "native trampoline preserves original return value, output pointer and stack");
     combat_scope={2,3,true};
-    float hooked=reinterpret_cast<Adjacency>(image+0x2B07C0)(center,2,&adj_score);
+    float hooked=reinterpret_cast<Adjacency>(image+0x2B2A90)(center,2,&adj_score);
     check(hooked>1.119f && hooked<1.121f,"actual installed entry jump calls contextual modifier and native trampoline");
     combat_scope={};
 #ifdef SORTIE_FORMATION

@@ -384,7 +384,7 @@ static void dump_mask_locked(const WaterMask &m) {
 #endif
 // Optional water_diag callback ([diagnostics] water_diag=1): reports whether the
 // bound VS t0 is the fitted mask. Selection belongs to the fit (local56).
-static void confirm_mask(ID3D11Texture2D *texture,const float *uv) {
+[[maybe_unused]] static void confirm_mask(ID3D11Texture2D *texture,const float *uv) {
 #ifndef NO_RUNTIME_LOG
     if(!active())return;
     AcquireSRWLockShared(&ctrl_lock);
@@ -1019,7 +1019,7 @@ static bool guards_locked() {
 static bool guards_match() {
     AcquireSRWLockShared(&slot_lock);bool ok=guards_locked();ReleaseSRWLockShared(&slot_lock);return ok;
 }
-static bool hooks_active() {
+[[maybe_unused]] static bool hooks_active() {
     AcquireSRWLockShared(&slot_lock);
     bool active=false;for(const auto &s:slots)if(s.published){active=true;break;}
     ReleaseSRWLockShared(&slot_lock);return active;

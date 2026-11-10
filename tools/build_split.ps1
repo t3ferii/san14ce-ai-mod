@@ -19,6 +19,9 @@ try {
     Push-Location -LiteralPath $taskBuild
     try {
         $taskFlags=@('/nologo','/W4','/WX','/wd4505','/utf-8','/O2','/MT','/std:c++17','/EHsc','/DMERIT_CANDIDATE','/DRECRUITMENT_UI_CANDIDATE','/DHIDDEN_LOYALTY','/DINJURY_PROTECTION','/DAWARD_WAREHOUSE','/DSORTIE_FORMATION','/DLAYOUT_OWNS_PRESENT')   # 2026-11-05 user exception: Present/WndProc owned by SAN14_Layout.dll
+        # W5-3 (docs/MODULARIZATION_PLAN.md): in every DLL build an unreferenced local function (C4505) is an error. The split fixture build
+        # (SPLIT_MODULE_FIXTURE, flags also read by tools/run_checks.py) keeps /wd4505: it compiles fixture-only seams the production roots do not use.
+        if(-not $Fixture){$taskFlags=@($taskFlags | ForEach-Object {if($_ -eq '/wd4505'){'/we4505'}else{$_}})}
         $taskDiagnosticLink=@()
         if($RuntimeDiagnostics){$taskFlags+=@('/Zi','/DRUNTIME_COST_PROFILE');$taskDiagnosticLink=@('/DEBUG:FULL','/OPT:REF','/OPT:ICF','/MAP')}
         if($RuntimeCosts){$taskFlags+=@('/DRUNTIME_COST_PROFILE','/DNO_RUNTIME_LOG')}
@@ -26,10 +29,6 @@ try {
         elseif(-not $RuntimeDiagnostics) {$taskFlags+='/DNO_RUNTIME_LOG'}
         $taskBase=if($Fixture){'SplitBaseFixture.dll'}else{'SAN14_Convenience.dll'}
         $taskCombat=if($Fixture){'SplitCombatFixture.dll'}else{'SAN14_CombatAI.dll'}
-        if(-not $Fixture) {
-            & python -B -X utf8 (Join-Path $taskProject 'tools\prepare_traits9.py') $taskBuild
-            if($LASTEXITCODE -ne 0){throw 'Traits9 source preparation failed.'}
-        }
         $taskBaseSources=@((Join-Path $taskProject 'src\native_adapter.cpp'))
         if(-not $Fixture){$taskBaseSources+=(Join-Path $taskProject 'src\gpu_profile.cpp')}
         & cl.exe @taskFlags "/I$taskBuild" /DSPLIT_BASE /LD @taskBaseSources "/Fe$taskBase" /link @taskDiagnosticLink kernel32.lib user32.lib gdi32.lib bcrypt.lib dxguid.lib
@@ -80,7 +79,7 @@ try {
         if($Fixture) {
             & cl.exe @taskFlags (Join-Path $taskProject 'tests\split_module_fixture.cpp') /Fesplit_module_fixture.exe /link kernel32.lib user32.lib
             if($LASTEXITCODE -ne 0){throw 'Split module fixture build failed.'}
-            $taskResult=& '.\split_module_fixture.exe' (Join-Path $taskProject 'legacy\FogMod_Source\native_game_analysis\running_code_text.bin')
+            $taskResult=& '.\split_module_fixture.exe' (Join-Path $taskProject 'build\ui_native_analysis\fixture\1a4a447d_text.bin')
             if($LASTEXITCODE -ne 0){throw 'Split module integration fixture failed.'}
             [IO.File]::WriteAllText((Join-Path $taskProject 'build\split_module_fixture.json'),($taskResult | Select-Object -Last 1),(New-Object Text.UTF8Encoding($false)))
             $taskResult
@@ -107,13 +106,13 @@ try {
             $taskLayoutP4
             & python -B -X utf8 (Join-Path $taskProject 'tests\verify_layout_registry.py')
             if($LASTEXITCODE -ne 0){throw 'Layout registry static verification failed.'}
-            $taskFailure=& '.\split_module_fixture.exe' (Join-Path $taskProject 'legacy\FogMod_Source\native_game_analysis\running_code_text.bin') '--failure'
+            $taskFailure=& '.\split_module_fixture.exe' (Join-Path $taskProject 'build\ui_native_analysis\fixture\1a4a447d_text.bin') '--failure'
             if($LASTEXITCODE -ne 0){throw 'Partial split publication rollback failed.'}
             [IO.File]::WriteAllText((Join-Path $taskProject 'build\split_module_failure_fixture.json'),($taskFailure | Select-Object -Last 1),(New-Object Text.UTF8Encoding($false)))
             $taskFailure
             # 사용자 결정 2026-11-03: 통합 인사 제거. Keep shared CCZ/HUD guard coverage.
-            foreach($taskCompat in @('--compat','--ccz','--ccz-guard','--merit','--save','--off','--empty','--combat-guard','--base-failure','--combat-failure','--base-prepare','--both-failure','--recheck','--briefing','--briefing-guard','--briefing-pointer-guard','--opt-merit','--opt-recruit','--opt-recruit-ai','--opt-injury','--opt-awards','--opt-loyalty','--opt-expert')) {
-                $taskCompatResult=& '.\split_module_fixture.exe' (Join-Path $taskProject 'legacy\FogMod_Source\native_game_analysis\running_code_text.bin') $taskCompat
+            foreach($taskCompat in @('--compat','--ccz','--ccz-guard','--merit','--save','--off','--empty','--combat-guard','--base-failure','--combat-failure','--base-prepare','--both-failure','--recheck','--briefing','--briefing-guard','--briefing-pointer-guard','--opt-merit','--opt-recruit','--opt-recruit-ai','--opt-injury','--opt-awards','--opt-loyalty','--opt-expert','--combat-alone','--base-alone')) {
+                $taskCompatResult=& '.\split_module_fixture.exe' (Join-Path $taskProject 'build\ui_native_analysis\fixture\1a4a447d_text.bin') $taskCompat
                 if($LASTEXITCODE -ne 0){throw "Split compat fixture failed: $taskCompat"}
                 $taskCompatResult
             }

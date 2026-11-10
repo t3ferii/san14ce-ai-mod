@@ -9,7 +9,7 @@ static unsigned recruit_ai_reason(Obj target,Obj district,Obj envoy) {
     Obj ruler=valid(force)?table(0x158,word(force,0x10),6000):nullptr;
     // The requested AI policy never spends an envoy on a hated recruiting
     // ruler, including a spouse/sworn sibling envoy. Manual UI is unchanged.
-    if(valid(ruler) && fn<int(__fastcall *)(Obj,Obj)>(GA(GA_232A00))(target,ruler))
+    if(valid(ruler) && fn<int(__fastcall *)(Obj,Obj)>(GA(GA_2343A0))(target,ruler))
         reason|=personnel::DislikedRuler;
     return reason;
 }
@@ -27,13 +27,13 @@ static bool recruit_ai_family_available(Obj target,Obj district,GameList &envoys
         if(!valid(actor) || personnel_force(actor)!=force || (word(actor,0x15E)&1) ||
            !personnel_family_envoy(target,actor) || recruit_ai_blocked(recruit_ai_reason(target,district,actor)))continue;
         PersonnelEmployCommand command={target,actor,0,0};
-        if(fn<int(__fastcall *)(PersonnelEmployCommand *)>(GA(GA_1EFE60))(&command))return true;
+        if(fn<int(__fastcall *)(PersonnelEmployCommand *)>(GA(GA_1F1210))(&command))return true;
     }
     return false;
 }
 static uint64_t __fastcall recruit_ai_targets(Obj node,Obj context,Obj subject) { COST_SCOPE("recruit_ai_targets");
     NativePhase phase("ai_recruit_targets");
-    uint64_t result=fn<Execute>(GA(GA_7B360))(node,context,subject);
+    uint64_t result=fn<Execute>(GA(GA_7C300))(node,context,subject);
     if(!enabled || result!=1)return result;
     Obj district=personnel_context_object(node,context,0x38);
     Obj output=personnel_context_object(node,context,0x3C);
@@ -52,8 +52,8 @@ static uint64_t __fastcall recruit_ai_targets(Obj node,Obj context,Obj subject) 
             if(!(reason & (personnel::MissingContext|personnel::DislikedRuler)) &&
                !personnel::recruitment_hard_blocked(reason)) {
                 if(!envoys_ready) {
-                    list_init(envoys,GA(GA_13436B0));
-                    fn<unsigned(__fastcall *)(Obj,GameList *)>(GA(GA_6DA8A0))(district,&envoys);
+                    list_init(envoys,GA(GA_13466B0));
+                    fn<unsigned(__fastcall *)(Obj,GameList *)>(GA(GA_6DCBB0))(district,&envoys);
                     envoys_ready=true;
                 }
                 exception=recruit_ai_family_available(target,district,envoys);
@@ -76,7 +76,7 @@ static uint64_t __fastcall recruit_ai_command(Obj node,Obj context,Obj subject) 
         if(!valid(actor) || !valid(target))return 2;
 #ifdef INJURY_PROTECTION
         if(!personnel::may_auto_work(actor[0x161])) {
-            log_event("wounded_auto_command_blocked",word(actor,0x10),actor[0x161],GA(GA_2CC50));
+            log_event("wounded_auto_command_blocked",word(actor,0x10),actor[0x161],GA(GA_2D720));
             return 2;
         }
 #endif
@@ -86,5 +86,5 @@ static uint64_t __fastcall recruit_ai_command(Obj node,Obj context,Obj subject) 
             return 2; // no 1ED920 dispatch, order allocation or actor busy flag
         }
     }
-    return fn<Execute>(GA(GA_2CC50))(node,context,subject);
+    return fn<Execute>(GA(GA_2D720))(node,context,subject);
 }

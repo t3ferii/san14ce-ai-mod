@@ -1,5 +1,5 @@
 #pragma once
-#include "friendship_save.h"
+#include "save_binding.h"
 #include <set>
 
 // One merit-origin record per awarded officer, with a reciprocal ruler view.
@@ -10,6 +10,10 @@ constexpr unsigned MaxOfficer=6000,MaxForce=51;
 struct Context {unsigned force=0,ruler=0,grade=0;bool alive=false;};
 struct Bond {uint16_t officer,ruler;uint8_t force;uint8_t native_slot=0;};
 using Reader=Context (*)(unsigned,void *);
+// Family of one ruler (father, mother, spouse, sworn brothers). The callback returns an empty list while the
+// extension is inactive (ruler below grade 3), so the Store needs no separate grade query.
+using Family=std::vector<uint16_t> (*)(unsigned ruler,void *context);
+using Grade=unsigned (*)(unsigned id,void *context);
 using Cleanup=void (*)(const Bond &);
 class Store {
     std::map<unsigned,Bond> bonds_;
@@ -105,6 +109,49 @@ public:
         auto index=rulers_.find(owner);
         if(index!=rulers_.end())for(unsigned officer:index->second) {
             const Bond &b=bonds_.at(officer);if(valid(b,read,context))ids.push_back(b.officer);
+        }
+        return ids;
+    }
+    // Live extension (no stored state): officers bonded to a grade-3 ruler also see that ruler's family as friends,
+    // and family members see every officer bonded to their ruler. `family` returns empty while inactive.
+    bool contains_ext(unsigned owner,unsigned other,Reader read,Family family,void *context) const {
+        if(contains(owner,other,read,context))return true;
+        if(!family || !friendship::valid_id(owner) || !friendship::valid_id(other) || owner==other)return false;
+        auto it=bonds_.find(owner);
+        if(it!=bonds_.end() && valid(it->second,read,context))
+            for(uint16_t id:family(it->second.ruler,context))if(id==other)return true;
+        it=bonds_.find(other);
+        if(it!=bonds_.end() && valid(it->second,read,context))
+            for(uint16_t id:family(it->second.ruler,context))if(id==owner)return true;
+        return false;
+    }
+    std::vector<uint16_t> list_ext(unsigned owner,Reader read,Family family,void *context) const {
+        std::vector<uint16_t> ids=list(owner,read,context);
+        if(!family || !friendship::valid_id(owner))return ids;
+        auto present=[&ids](unsigned id) {for(uint16_t entry:ids)if(entry==id)return true;return false;};
+        auto it=bonds_.find(owner);
+        if(it!=bonds_.end() && valid(it->second,read,context)) {
+            unsigned added=0;
+            for(uint16_t id:family(it->second.ruler,context)) {
+                if(added>=7)break;
+                if(!friendship::valid_id(id) || id==owner || present(id))continue;
+                ids.push_back(id);++added;
+            }
+        }
+        if(read) {
+            Context own=read(owner,context);
+            if(friendship::valid_id(own.ruler)) {
+                bool member=false;
+                for(uint16_t id:family(own.ruler,context))if(id==owner) {member=true;break;}
+                if(member) {
+                    auto index=rulers_.find(own.ruler);
+                    if(index!=rulers_.end())for(unsigned officer:index->second) {
+                        const Bond &b=bonds_.at(officer);
+                        if(!valid(b,read,context) || officer==owner || present(officer))continue;
+                        ids.push_back(static_cast<uint16_t>(officer));
+                    }
+                }
+            }
         }
         return ids;
     }

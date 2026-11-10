@@ -19,11 +19,11 @@ static void campaign_revision_tests() {
     Obj saved_root=root,saved_goal=goal,revision_own_force=table(0xDF30,2,51);int saved_day=fixture_day;
     auto saved_progress=std::vector<Progress>(progress,progress+501);
     auto saved_hits=std::vector<CampaignHit>(campaign_hits,campaign_hits+501);
-    root=static_cast<Obj>(calloc(1,0x90000));putptr(image,0x277DF18,root);putptr(root,0x871E8,player);
+    root=static_cast<Obj>(calloc(1,0x90000));putptr(image,0x2780F60,root);putptr(root,0x871E8,player);
     goal=object(9);*reinterpret_cast<unsigned *>(goal+0x3C)=1000000;put16(goal,0x4E,9);put16(goal,0x3A,22074);fixture_day=100;
     memset(progress,0,sizeof(progress));memset(campaign_hits,0,sizeof(campaign_hits));
-    BIND(0x2AA850,revision_distance);BIND(0x22D740,revision_city_hex);
-    BIND(0x26C940,mock_finalize);BIND(0x2B0290,mock_route_speed);BIND(0x22B090,mock_active_formation);
+    BIND(0x2ACB80,revision_distance);BIND(0x22F190,revision_city_hex);
+    BIND(0x26E260,mock_finalize);BIND(0x2B2550,mock_route_speed);BIND(0x22CAD0,mock_active_formation);
     Obj areas[5]={};
     for(unsigned id=1;id<=4;++id) {areas[id]=object(id);slot(0x6CAF0,id,areas[id]);}
     put16(areas[1],0x3A,22050);put16(areas[2],0x3A,22060);put16(areas[3],0x3A,22070);
@@ -182,7 +182,7 @@ static void campaign_revision_tests() {
     }
     Obj previous_owner=goal_owner;goal_owner=revision_own_force;slot(0xDF30,2,revision_own_force);
     revision_siege_goal=object(8);put16(revision_siege_goal,0x4E,8);put16(revision_siege_goal,0x3A,22090);
-    BIND(0x32C130,revision_home_goal);BIND(0x22C990,revision_home_owner);
+    BIND(0x32E3B0,revision_home_goal);BIND(0x22E3E0,revision_home_owner);
     Obj home_group=table(0x7F8D8,word(a,0x58),500);put16(home_group,0x14,10);put16(home_group,0x16,8);
     *reinterpret_cast<unsigned *>(goal+0x3C)=4999;slot(0x7E838,3,enemy);put16(enemy,0x16,5000);put16(enemy,0x2A,22084);
     fixture_day=342;p->motion_day=fixture_day;p->combat_target=0;p->combat_city=0;p->siege_city=0;
@@ -208,7 +208,7 @@ static void campaign_revision_tests() {
     check(!campaign_individual_priority(a,*p),"army eleven hexes from home cannot receive local interception");
     put16(a,0x2A,22064);
     check(!campaign_individual_priority(a,*p),"enemy twenty hexes from army cannot lure it across the defended city");
-    goal_owner=previous_owner;BIND(0x32C130,mock_goal);BIND(0x22C990,mock_goal_force);
+    goal_owner=previous_owner;BIND(0x32E3B0,mock_goal);BIND(0x22E3E0,mock_goal_force);
     // Culture is already part of native deltas: small/large positive deltas
     // both scale fourfold; losses, unrelated cities and the native cap stay intact.
     original_population_growth=revision_population;
@@ -220,7 +220,7 @@ static void campaign_revision_tests() {
     put16(areas[1],0x70,static_cast<unsigned>(-10));put16(areas[2],0x70,0);population_growth(goal);
     check(word(areas[1],0x52)==1030 && word(areas[2],0x52)==1100,"population losses and zero increase are never multiplied");
     enabled=0;put16(areas[1],0x70,10);population_growth(goal);check(word(areas[1],0x52)==1040,"disabled growth hook forwards unchanged native behavior");enabled=1;
-    region_tiles.clear();origin=saved_origin;root=saved_root;goal=saved_goal;fixture_day=saved_day;putptr(image,0x277DF18,root);
+    region_tiles.clear();origin=saved_origin;root=saved_root;goal=saved_goal;fixture_day=saved_day;putptr(image,0x2780F60,root);
     std::copy(saved_progress.begin(),saved_progress.end(),progress);std::copy(saved_hits.begin(),saved_hits.end(),campaign_hits);
-    BIND(0x2AA850,mock_distance);BIND(0x22D740,mock_goal_hex);
+    BIND(0x2ACB80,mock_distance);BIND(0x22F190,mock_goal_hex);
 }

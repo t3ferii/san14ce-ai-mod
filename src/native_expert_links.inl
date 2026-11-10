@@ -2,30 +2,30 @@
 /* One owner: SAN14_Convenience, alongside its existing combat-pair hook. */
 struct ExpertCall {unsigned site,size;unsigned char bytes[8];void *replacement;unsigned char opcode;};
 static const ExpertCall expert_calls[]={
-    {GA(GA_2B0B69),5,{0xE8,0x92,0x98,0x13,0x00},reinterpret_cast<void *>(&expert_native_adjacency_option),0xE8},
-    {GA(GA_6566E0),6,{0x40,0x57,0x41,0x56,0x41,0x57},reinterpret_cast<void *>(&expert_populate),0xE9},
-    {GA(GA_6362DB),5,{0xE8,0x60,0x89,0xF8,0xFF},reinterpret_cast<void *>(&expert_number_current),0xE8},
-    {GA(GA_2A8D40),7,{0x48,0x8B,0xC4,0x44,0x89,0x48,0x20},reinterpret_cast<void *>(&expert_unit_power),0xE9},
-    {GA(GA_173B44),5,{0xE8,0x37,0x7D,0xFF,0xFF},reinterpret_cast<void *>(&expert_field_stats),0xE8},
-    {GA(GA_5F14DA),5,{0xE8,0x51,0xCF,0x33,0x00},reinterpret_cast<void *>(&expert_number_factory),0xE8}
+    {GA(GA_2B2E28),5,{0xE8,0xF3,0x9A,0x13,0x00},reinterpret_cast<void *>(&expert_native_adjacency_option),0xE8},
+    {GA(GA_658DF0),6,{0x40,0x57,0x41,0x56,0x41,0x57},reinterpret_cast<void *>(&expert_populate),0xE9},
+    {GA(GA_638B8B),5,{0xE8,0x40,0x8A,0xF8,0xFF},reinterpret_cast<void *>(&expert_number_current),0xE8},
+    {GA(GA_2AAF30),7,{0x48,0x8B,0xC4,0x44,0x89,0x48,0x20},reinterpret_cast<void *>(&expert_unit_power),0xE9},
+    {GA(GA_174AF4),5,{0xE8,0x37,0x7D,0xFF,0xFF},reinterpret_cast<void *>(&expert_field_stats),0xE8},
+    {GA(GA_5F3D3A),5,{0xE8,0x81,0xCC,0x33,0x00},reinterpret_cast<void *>(&expert_number_factory),0xE8}
 };
 static constexpr unsigned expert_call_count=sizeof(expert_calls)/sizeof(expert_calls[0]);
 struct ExpertPointer {unsigned slot,original;void *replacement;void **next;};
 static const ExpertPointer expert_pointers[]={
-    {GA(GA_141BE88),GA(GA_5A73A0),reinterpret_cast<void *>(&expert_destroy),&next_expert_destroy},
-    {GA(GA_141BCC8),GA(GA_5B9110),reinterpret_cast<void *>(&expert_list_bind),&next_expert_list_bind},
-    {GA(GA_141BCF8),GA(GA_5A7450),reinterpret_cast<void *>(&expert_row_destroy),&next_expert_row_destroy},
-    {GA(GA_141BD20),GA(GA_6475C0),reinterpret_cast<void *>(&expert_row_leave),&next_expert_row_leave},
-    {GA(GA_14296B8),GA(GA_65E810),reinterpret_cast<void *>(&expert_slider_event),&next_expert_slider},
-    {GA(GA_1429728),GA(GA_65EDD0),reinterpret_cast<void *>(&expert_choice_event),&next_expert_choice},
-    {GA(GA_14296F0),GA(GA_65F890),reinterpret_cast<void *>(&expert_number_event),&next_expert_number_event},
-    {GA(GA_1429798),GA(GA_65E8C0),reinterpret_cast<void *>(&expert_number_confirm),&next_expert_number_confirm}
+    {GA(GA_141EF18),GA(GA_5A9950),reinterpret_cast<void *>(&expert_destroy),&next_expert_destroy},
+    {GA(GA_141ED58),GA(GA_5BBA10),reinterpret_cast<void *>(&expert_list_bind),&next_expert_list_bind},
+    {GA(GA_141ED88),GA(GA_5A9A60),reinterpret_cast<void *>(&expert_row_destroy),&next_expert_row_destroy},
+    {GA(GA_141EDB0),GA(GA_649CD0),reinterpret_cast<void *>(&expert_row_leave),&next_expert_row_leave},
+    {GA(GA_142C748),GA(GA_660E20),reinterpret_cast<void *>(&expert_slider_event),&next_expert_slider},
+    {GA(GA_142C7B8),GA(GA_661470),reinterpret_cast<void *>(&expert_choice_event),&next_expert_choice},
+    {GA(GA_142C780),GA(GA_661ED0),reinterpret_cast<void *>(&expert_number_event),&next_expert_number_event},
+    {GA(GA_142C828),GA(GA_660F00),reinterpret_cast<void *>(&expert_number_confirm),&next_expert_number_confirm}
 };
 #ifdef LAYOUT_ROUTED
 // User 2026-11-05 Layout compatibility design 8.3: in production the expert UI hooks go through the SAN14_Layout.dll
 // manager. The 6566E0 entry patch is replaced by its three callers; 6362DB / 5F14DA are E8 registrations; all eight
 // vtable slots are chained/yielded by the manager. Only the three non-UI links (2B0B69, 2A8D40, 173B44) stay here.
-static bool expert_routed_site(unsigned site) {return site==GA(GA_6566E0) || site==GA(GA_6362DB) || site==GA(GA_5F14DA);}
+static bool expert_routed_site(unsigned site) {return site==GA(GA_658DF0) || site==GA(GA_638B8B) || site==GA(GA_5F3D3A);}
 #else
 static bool expert_routed_site(unsigned) {return false;}
 #endif
@@ -34,7 +34,7 @@ static bool expert_guards_match() {
     for(const auto &e:expert_calls) {
 #ifdef LAYOUT_ROUTED
         // The two routed E8 sites are judged by the manager (chain/refuse); the 6566E0 entry must stay original.
-        if(e.site==GA(GA_6362DB) || e.site==GA(GA_5F14DA))continue;
+        if(e.site==GA(GA_638B8B) || e.site==GA(GA_5F3D3A))continue;
 #endif
         if(ga::mcmp_at(image,e.site,e.bytes,e.size))return false;
     }
@@ -45,7 +45,7 @@ static bool expert_guards_match() {
 }
 static bool prepare_expert(ExpertCode &code) {
     if(!expert_guards_match())return false;
-    code.relay=allocate_near(image+GA(GA_5B919E));if(!code.relay)return false;
+    code.relay=allocate_near(image+GA(GA_5BBA9E));if(!code.relay)return false;
     bool ready=true;
     for(unsigned i=0;i<expert_call_count && ready;++i) {
         absolute_jump(code.relay+i*32,expert_calls[i].replacement);
@@ -53,10 +53,10 @@ static bool prepare_expert(ExpertCode &code) {
         ready=prepare_link(code.links[i],expert_calls[i].site,expert_calls[i].opcode,code.relay+i*32);
     }
     memcpy(code.relay+256,expert_calls[1].bytes,6);
-    absolute_jump(code.relay+262,image+GA(GA_6566E6));
+    absolute_jump(code.relay+262,image+GA(GA_658DF6));
     original_expert_populate=reinterpret_cast<ExpertPopulate>(code.relay+256);
     memcpy(code.relay+512,expert_calls[3].bytes,7);
-    absolute_jump(code.relay+519,image+GA(GA_2A8D47));
+    absolute_jump(code.relay+519,image+GA(GA_2AAF37));
     original_expert_unit_power=reinterpret_cast<ExpertUnitPower>(code.relay+512);
     if(ready)for(unsigned i=0;i<expert_call_count;++i)
         if(!expert_routed_site(expert_calls[i].site))
@@ -71,13 +71,15 @@ static bool prepare_expert(ExpertCode &code) {
 #ifdef LAYOUT_ROUTED
 static bool register_expert_routed() {
     // Calls first (populate sites, number_current, number_factory), then the vtable slots (same order as the former links).
-    if(layout_client::call(GA(GA_5F10F7),reinterpret_cast<void *>(&expert_populate_site<0>),&next_expert_populate[0])<=0 ||
-       layout_client::call(GA(GA_5F5B27),reinterpret_cast<void *>(&expert_populate_site<1>),&next_expert_populate[1])<=0 ||
-       layout_client::call(GA(GA_65EAAD),reinterpret_cast<void *>(&expert_populate_site<2>),&next_expert_populate[2])<=0 ||
-       layout_client::call(GA(GA_6362DB),reinterpret_cast<void *>(&expert_number_current),&next_expert_number_current)<=0 ||
-       layout_client::call(GA(GA_5F14DA),reinterpret_cast<void *>(&expert_number_factory),&next_expert_number_factory)<=0)return false;
+    if(layout_client::call(GA(GA_5F3957),reinterpret_cast<void *>(&expert_populate_site<0>),&next_expert_populate[0])<=0 ||
+       layout_client::call(GA(GA_5F8357),reinterpret_cast<void *>(&expert_populate_site<1>),&next_expert_populate[1])<=0 ||
+       layout_client::call(GA(GA_6610BD),reinterpret_cast<void *>(&expert_populate_site<2>),&next_expert_populate[2])<=0 ||
+       layout_client::call(GA(GA_638B8B),reinterpret_cast<void *>(&expert_number_current),&next_expert_number_current)<=0 ||
+       layout_client::call(GA(GA_5F3D3A),reinterpret_cast<void *>(&expert_number_factory),&next_expert_number_factory)<=0)return false;
     for(const auto &e:expert_pointers)
         if(layout_client::vt(e.slot,e.replacement,e.next)<=0)return false;
+    // PW30: optional 확인-button hooks (expert_ingame). A rejection keeps the expert hooks registered above.
+    expert_ingame_install();
     return true;
 }
 #endif

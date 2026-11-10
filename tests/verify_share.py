@@ -21,8 +21,8 @@ def check(value,label):
     assert value,label
     checks+=1
 def invoke(game,mode,success=True):
-    script='AI모드_적용.cmd' if mode=='Apply' else 'AI모드_해제_원본복구.cmd'
-    run=subprocess.run(f'cmd.exe /d /c call ".\\{script}" --no-pause',cwd=game,capture_output=True,timeout=30)
+    # v15.10: the installer calls the same manager; packages contain no CMD launchers.
+    run=subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',str(game/'AI_TacticsMod/관리.ps1'),mode,'-NonInteractive'],cwd=game,capture_output=True,timeout=30)
     check((run.returncode==0)==success,run.stdout.decode('utf-8',errors='replace')+run.stderr.decode('utf-8',errors='replace'))
 try:
     for index,provider in enumerate([None,b'fixture original input provider']):

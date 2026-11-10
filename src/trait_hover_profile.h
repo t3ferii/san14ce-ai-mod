@@ -1,50 +1,50 @@
 #pragma once
-// Trait hover (docs/TRAIT_HOVER_PLAN.md 3.4/3.5, 2026-11-06): address-table ids and function-hash guards.
-// Hashes are the original-build (1fbe6be7) FNV-1a values; GH() maps them to the current build via the generated pair table.
+// Trait hover (docs/HISTORY.md 3.4/3.5, 2026-11-06): address-table ids and function-hash guards.
+// Hashes are the FNV-1a values of the reference build 1a4a447d (src/game_addresses.h GH()).
 #include "game_addresses.h"
 
 struct TraitHoverGuard {unsigned rva,size;unsigned long long hash;};
 static const TraitHoverGuard trait_hover_guards[]={
-    {GA(GA_10FC0),0x40,GH(0xB5056BEAE1B8E535ull)},
-    {GA(GA_11290),0x40,GH(0x591548C89BC4D397ull)},
-    {GA(GA_86B3B0),0x14,GH(0x96F4EA5773F4FECDull)},
-    {GA(GA_AE0370),0x10,GH(0xBA97BD8A3F377964ull)},
-    {GA(GA_32F500),0x24,GH(0xB302042A0360860Cull)},
-    {GA(GA_401C0),0x2C,GH(0x2678C1755B9BA606ull)},
-    {GA(GA_2305D0),0x7A,GH(0xA84CB8298B0B46A6ull)},
-    {GA(GA_3594B0),0x40,GH(0x1F087CDCF91473E6ull)},
-    {GA(GA_8A2140),0x40,GH(0x1242FD2F9EE4486Full)},
-    {GA(GA_8A5D60),0x40,GH(0x9C48369062BFAF08ull)},
-    {GA(GA_89C320),0x40,GH(0x40B480808CDFA5E0ull)},
-    {GA(GA_8A18C0),0x15,GH(0x40EE501236F2DBD8ull)},
-    {GA(GA_3F6BC0),0x40,GH(0x7A7E60DC15FE1D4Eull)},
-    {GA(GA_864C50),0x10,GH(0x7675919B3FCE29EDull)},
-    {GA(GA_92AB70),0x10,GH(0x98C50CE4B192947Aull)},
-    {GA(GA_30CF80),0x32,GH(0x81CE476597762421ull)},
-    {GA(GA_92CEE0),0x2A,GH(0x3F5EB08BB653F311ull)},
-    {GA(GA_363550),0x1B,GH(0xAB4EEE6A633754DFull)},
-    {GA(GA_365710),0x35,GH(0x54A695AF793F0AC5ull)},
-    {GA(GA_3657B0),0x40,GH(0x5D560EBBD6D8727Aull)},
-    {GA(GA_358BB0),0x20,GH(0x1B86B336E008C55Aull)},
-    {GA(GA_358D30),0x40,GH(0xDF3F1E8811BEA338ull)},
-    {GA(GA_358C20),0x20,GH(0xCF9A463A28031891ull)},
-    {GA(GA_358E20),0x40,GH(0xED797723570FC22Cull)},
+    {GA(GA_10F20),0x40,GH(0x69D10CB45918726Aull)},
+    {GA(GA_111F0),0x40,GH(0x3B6E1FADC90C9B9Aull)},
+    {GA(GA_86D760),0x14,GH(0x96F4EA5773F4FECDull)},
+    {GA(GA_AE2ED0),0x10,GH(0xBA97BD8A3F377964ull)},
+    {GA(GA_331780),0x24,GH(0xB302042A0360860Cull)},
+    {GA(GA_58D90),0x2C,GH(0x7A5D434C0E2EC176ull)},
+    {GA(GA_232030),0x7A,GH(0x7ACE89D2DD11FB31ull)},
+    {GA(GA_35B940),0x40,GH(0x2CB817820971DFCEull)},
+    {GA(GA_8A4380),0x40,GH(0xE1B606A18AFBE99Bull)},
+    {GA(GA_8A7F60),0x40,GH(0xD211FF2DB91B4E76ull)},
+    {GA(GA_89E550),0x40,GH(0x5C9AF3AA480CF018ull)},
+    {GA(GA_8A3AC0),0x15,GH(0x0519B25EC013662Full)},
+    {GA(GA_3F90E0),0x40,GH(0x171DA37B27108C19ull)},
+    {GA(GA_866FA0),0x10,GH(0x7675919B3FCE29EDull)},
+    {GA(GA_92D020),0x10,GH(0x98C50CE4B192947Aull)},
+    {GA(GA_30F010),0x32,GH(0x53E7A649731493BBull)},
+    {GA(GA_92F390),0x2A,GH(0xD3DEE020886CCAA8ull)},
+    {GA(GA_365A30),0x1B,GH(0x20CA4C13FCE454B0ull)},
+    {GA(GA_367BF0),0x35,GH(0xB0E652921CFCC42Bull)},
+    {GA(GA_367C90),0x40,GH(0xAED0C92E6D4106D3ull)},
+    {GA(GA_35B040),0x20,GH(0x46EF8A1758985631ull)},
+    {GA(GA_35B1C0),0x40,GH(0x4D86087B70EAB301ull)},
+    {GA(GA_35B0B0),0x20,GH(0x002E5AF4A11F2507ull)},
+    {GA(GA_35B2B0),0x40,GH(0x4B7CFD5C200493FFull)},
     // tactic feature-tab column formatters (docs/TRAIT_HOVER_TACTIC_TEXT.md 3.2)
-    {GA(GA_365FD0),0x09,GH(0x836D5B8137481FFAull)},
-    {GA(GA_356F10),0x40,GH(0x152C588A0AD17874ull)},
-    {GA(GA_365FE0),0x40,GH(0x236B7AE8CBB7C17Aull)},
-    {GA(GA_3586C0),0x40,GH(0x5DACB979EEA32D88ull)},
-    {GA(GA_358C90),0x40,GH(0xB714E8FC5887DC66ull)},
+    {GA(GA_3684C0),0x09,GH(0xD2DA04B86B5D8ABEull)},
+    {GA(GA_3592F0),0x40,GH(0x7110CD2EC7AD7A2Full)},
+    {GA(GA_3684D0),0x40,GH(0x9AAD1D8CFFDAB6E8ull)},
+    {GA(GA_35AAA0),0x40,GH(0xAC1D85DF64262211ull)},
+    {GA(GA_35B120),0x40,GH(0x0C48C3A479021BACull)},
 };
 
 // Exact-byte guard sites and context ids (plan 3.5 items 3/4).
-static const unsigned trait_hover_empty_tick_rva=GA(GA_92AD0);          // C2 00 00
-static const unsigned trait_hover_slot_getter_rva=GA(GA_23064A);        // 83 FB 05|09
-static const unsigned trait_hover_duel_call_rvas[]={GA(GA_806D51),GA(GA_8070B1),GA(GA_807D92),GA(GA_80807C)};
-static const unsigned trait_hover_duel_target_rva=GA(GA_930D20);
-static const unsigned trait_hover_balloon_ctx_rva=GA(GA_1A176A);        // B9 80 01 00 00 (optional guard)
-static const unsigned trait_hover_balloon_vtable_rva=GA(GA_139C540);
-static const unsigned trait_hover_tactic_columns_rva=GA(GA_1A3A6A0);   // CTacticsData list column descriptor table (0x60 bytes per column)
+static const unsigned trait_hover_empty_tick_rva=GA(GA_8CA1C0);          // C2 00 00
+static const unsigned trait_hover_slot_getter_rva=GA(GA_2320AA);        // 83 FB 05|09
+static const unsigned trait_hover_duel_call_rvas[]={GA(GA_809461),GA(GA_8097C1),GA(GA_80A4A2),GA(GA_80A78C)};
+static const unsigned trait_hover_duel_target_rva=GA(GA_9332B0);
+static const unsigned trait_hover_balloon_ctx_rva=GA(GA_1A2A6A);        // B9 80 01 00 00 (optional guard)
+static const unsigned trait_hover_balloon_vtable_rva=GA(GA_139F580);
+static const unsigned trait_hover_tactic_columns_rva=GA(GA_1A3D680);   // CTacticsData list column descriptor table (0x60 bytes per column)
 
 // ---------------------------------------------------------------------------------------------------------------------------
 // S2 pure logic (plan 1.3-1.9, 3.3). No game memory is read here: every function takes its inputs as arguments so the fixture
@@ -270,7 +270,7 @@ inline HeaderReject decode_header_handler(const unsigned char *code,size_t avail
 // ---- editor 7-function table (1.6) ----
 struct EditFunc {unsigned ga_id;unsigned title_id;};
 static const EditFunc kEditFuncs[7]={
-    {GA_363550,0x7FB},{GA_365710,0x7FC},{GA_3657B0,0x53F},{GA_358BB0,0x404},{GA_358D30,0x800},{GA_358C20,0x405},{GA_358E20,0x801}};
+    {GA_365A30,0x7FB},{GA_367BF0,0x7FC},{GA_367C90,0x53F},{GA_35B040,0x404},{GA_35B1C0,0x800},{GA_35B0B0,0x405},{GA_35B2B0,0x801}};
 inline unsigned edit_func_rva(unsigned i) {return i<7?ga::rva(kEditFuncs[i].ga_id):0;}
 inline unsigned edit_title_id(unsigned i) {return i<7?kEditFuncs[i].title_id:0;}
 // cut to at most limit wchar without leaving a lone high surrogate at the end
@@ -299,7 +299,7 @@ inline std::wstring compose_edit_text(const wchar_t *const *caption,const wchar_
 struct TacticField {unsigned ga_id,caption_id,column;};
 static const unsigned kTacticFields=5,kTacticColStride=0x60,kTacticColFormatter=0x18,kTacticColCaption=0x48;
 static const TacticField kTacticFieldTable[kTacticFields]={   // CTacticsData list feature tab (old 1A3A6A0 / new 1A3D680)
-    {GA_365FD0,0x455,1},{GA_356F10,0x456,2},{GA_365FE0,0x4B4,3},{GA_3586C0,0x404,12},{GA_358C90,0x405,13}};
+    {GA_3684C0,0x455,1},{GA_3592F0,0x456,2},{GA_3684D0,0x4B4,3},{GA_35AAA0,0x404,12},{GA_35B120,0x405,13}};
 inline unsigned tactic_func_rva(unsigned k) {return k<kTacticFields?ga::rva(kTacticFieldTable[k].ga_id):0;}
 inline unsigned tactic_caption_id(unsigned k) {return k<kTacticFields?kTacticFieldTable[k].caption_id:0;}
 // column descriptor check: +0x00 column number, +0x18 formatter VA, +0x48 caption message id (+0x5C is mutable at run time, not compared)
@@ -343,7 +343,7 @@ struct RecordTable {
 
 // ---- guard table self check (4-1): size <= 0x40 (2305D0 alone 0x7A), no zero ids, no duplicate rva ----
 inline bool guards_table_ok(const TraitHoverGuard *g,size_t n) {
-    const unsigned special=GA(GA_2305D0);
+    const unsigned special=GA(GA_232030);
     for(size_t i=0;i<n;++i) {
         if(g[i].rva==0 || g[i].size==0)return false;
         if(g[i].size>((g[i].rva==special)?0x7Au:0x40u))return false;

@@ -4,16 +4,16 @@
 #include "game_addresses.h"
 #include "area_index.h"
 namespace area_index {
-static const unsigned kCheck=GA(GA_2C9E30);
+static const unsigned kCheck=GA(GA_2CC1E0);
 struct Guard {unsigned rva,size;unsigned long long hash;};
 static const Guard guards[]={
-    {GA(GA_2C9E30),0x124,GH(0x477e3fd94e0a7ab9ull)},
-    {GA(GA_231EB0),0x99,GH(0xf5e3e1fc63d0094full)},
-    {GA(GA_332F80),0x22,GH(0x52d52e608ad67f7aull)},
-    {GA(GA_22FB10),0x2C,GH(0x99a5ed6df7e7ff2eull)},
-    {GA(GA_229EA0),0x2C,GH(0xa2e199fe100a4e74ull)}
+    {GA(GA_2CC1E0),0x124,GH(0x752061834cdd958eull)},
+    {GA(GA_233850),0x99,GH(0x27e47a6c73d1aba7ull)},
+    {GA(GA_335200),0x22,GH(0x52d52e608ad67f7aull)},
+    {GA(GA_2315A0),0x2C,GH(0x810a4ad693aee636ull)},
+    {GA(GA_22B8E0),0x2C,GH(0x5520af45e33caaa0ull)}
 };
-static const unsigned callers[]={GA(GA_279290),GA(GA_7E4B8E),GA(GA_7F962F)};
+static const unsigned callers[]={GA(GA_27ABC0),GA(GA_7E707E),GA(GA_7FBAFF)};
 static bool guards_match() {
     for(const auto &g:guards) {
         unsigned long long h=0xcbf29ce484222325ull;
@@ -44,8 +44,8 @@ static area_index_core::Identity identity() {
 }
 struct Native {
     unsigned region(Obj c) const {return word(c,0x12);}
-    Obj building(Obj c) const {return fn<Obj(__fastcall *)(Obj)>(GA(GA_22FB10))(c);}
-    bool valid(Obj p) const {return fn<Check>(GA(GA_32F500))(p)!=0;}
+    Obj building(Obj c) const {return fn<Obj(__fastcall *)(Obj)>(GA(GA_2315A0))(c);}
+    bool valid(Obj p) const {return fn<Check>(GA(GA_331780))(p)!=0;}
     Obj type(Obj b) const {const unsigned id=b[0x12];return pointer(world(),0x73958+(id<0x1F?id:0)*8);}
     unsigned kind(Obj t) const {return t[0x2C];}
 };
@@ -54,7 +54,7 @@ static int __fastcall check(Obj area) { COST_SCOPE_HOT("check");
     COST_SCOPE("area_index_check");
 #endif
     // Native 32F500 returns EAX=0 or 1; retain its zero result on invalid input.
-    const int valid=fn<Check>(GA(GA_32F500))(area);if(!valid)return valid;
+    const int valid=fn<Check>(GA(GA_331780))(area);if(!valid)return valid;
     if(!TryAcquireSRWLockShared(&lock))return original(area);
     auto id=identity();
     unsigned idx=area_index_core::region(reinterpret_cast<uintptr_t>(area),id.area0);

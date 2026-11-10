@@ -18,7 +18,7 @@ static uint64_t __fastcall mock_ai_native_command(Obj node,Obj context,Obj) {
     Obj actor=personnel_context_object(node,context,0x38),target=personnel_context_object(node,context,0x3C);
     if(!valid(actor) || !valid(target))return 2;
     PersonnelEmployCommand command={target,actor,0,0};
-    fn<void(__fastcall *)(PersonnelEmployCommand *,int)>(0x1ED920)(&command,0);
+    fn<void(__fastcall *)(PersonnelEmployCommand *,int)>(0x1EECC0)(&command,0);
     return 1;
 }
 static void test_recruit_ai() {
@@ -28,10 +28,10 @@ static void test_recruit_ai() {
     for(Obj p:{ruler,other_ruler,target,actor,relative,allowed})slot(0x158,word(p,0x10),p);
     actor[0xE0]=5;owners[actor]=force;owners[relative]=other_force;owners[target]=other_force;
     put32(node,0x38,1);put32(node,0x3C,2);envoys={actor};family.clear();batch_district=district;
-    void *old_command=native_functions[0x2CC50],*old_issue=native_functions[0x1ED920],*old_check=native_functions[0x1EFE60];
-    native_functions[0x2CC50]=reinterpret_cast<void *>(&mock_ai_native_command);
-    native_functions[0x1ED920]=reinterpret_cast<void *>(&mock_ai_issue);
-    native_functions[0x1EFE60]=reinterpret_cast<void *>(&mock_ai_command_valid);
+    void *old_command=native_functions[0x2D720],*old_issue=native_functions[0x1EECC0],*old_check=native_functions[0x1F1210];
+    native_functions[0x2D720]=reinterpret_cast<void *>(&mock_ai_native_command);
+    native_functions[0x1EECC0]=reinterpret_cast<void *>(&mock_ai_issue);
+    native_functions[0x1F1210]=reinterpret_cast<void *>(&mock_ai_command_valid);
     GameList candidates;list_init(candidates);
     auto filter=[&]() {
         values={{1,district},{2,reinterpret_cast<Obj>(&candidates)}};
@@ -92,14 +92,14 @@ static void test_recruit_ai() {
     // The shared player/manual dispatch is never hooked by this feature.
     put16(actor,0x15E,0);district[0x14]=5;ai_player_sent=0;
     PersonnelEmployCommand manual={target,actor,0,0};
-    fn<void(__fastcall *)(PersonnelEmployCommand *,int)>(0x1ED920)(&manual,1);
+    fn<void(__fastcall *)(PersonnelEmployCommand *,int)>(0x1EECC0)(&manual,1);
     expect(ai_player_sent==1 && district[0x14]==4);
     // On another computer force, only hatred/ban for that current ruler matters.
     district[0x10]=7;owners[actor]=other_force;put16(actor,0x15E,0);expect(filter());dispatch(true);
     put16(target,0xD0,2102);expect(!filter());dispatch(false);
     put16(target,0xD0,0);put16(target,0x162,2102);expect(!filter());dispatch(false);
     list_free(candidates);envoys.clear();
-    native_functions[0x2CC50]=old_command;native_functions[0x1ED920]=old_issue;native_functions[0x1EFE60]=old_check;
+    native_functions[0x2D720]=old_command;native_functions[0x1EECC0]=old_issue;native_functions[0x1F1210]=old_check;
     slot(0xE0D0,5,nullptr);slot(0xDF30,6,nullptr);slot(0xDF30,7,nullptr);
     for(Obj p:{ruler,other_ruler,target,actor,relative,allowed}) {slot(0x158,word(p,0x10),nullptr);owners.erase(p);free(p);}
     free(district);free(force);free(other_force);free(node);

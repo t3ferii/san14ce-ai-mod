@@ -28,6 +28,7 @@ static void log_event(const char *name,unsigned=0,unsigned=0,unsigned=0) {
 static void *function(unsigned);
 template<class T> static T fn(unsigned rva) {return reinterpret_cast<T>(function(rva));}
 #define TERRAIN_FOAM_FIXTURE_LOOKUP() (++lookups)
+#define COST_SCOPE(x)
 #include "../src/native_terrain_foam.inl"
 static unsigned char objects[terrain_foam::Count][0xF0],handles[terrain_foam::Count][0x28];
 static bool __fastcall original_create(Obj a,Obj b,Obj c,Obj handle,Obj properties) {
@@ -63,13 +64,13 @@ static void __fastcall set_quat(Obj p,const float *v){setter(p,v,0x24);}
 static void __fastcall set_scale(Obj p,const float *v){setter(p,v,0x34);}
 static void *function(unsigned rva) {
     switch(rva) {
-    case 0xE17CA0:return reinterpret_cast<void *>(&original_create);
-    case 0xE1B580:return reinterpret_cast<void *>(&original_complete);
-    case 0xE18280:return reinterpret_cast<void *>(&original_destroy);
-    case 0xE1B7B0:case 0xE19690:return reinterpret_cast<void *>(&original_callback);
-    case 0xE1AAE0:return reinterpret_cast<void *>(&set_pos);
-    case 0xE1ADD0:return reinterpret_cast<void *>(&set_quat);
-    case 0xE1B160:return reinterpret_cast<void *>(&set_scale);
+    case 0xE1A140:return reinterpret_cast<void *>(&original_create);
+    case 0xE1DA50:return reinterpret_cast<void *>(&original_complete);
+    case 0xE1A720:return reinterpret_cast<void *>(&original_destroy);
+    case 0xE1DC80:case 0xE1BB60:return reinterpret_cast<void *>(&original_callback);
+    case 0xE1CFB0:return reinterpret_cast<void *>(&set_pos);
+    case 0xE1D2A0:return reinterpret_cast<void *>(&set_quat);
+    case 0xE1D630:return reinterpret_cast<void *>(&set_scale);
     default:require(false,"unexpected native function");return nullptr;
     }
 }
@@ -81,7 +82,7 @@ static void callback(unsigned i,bool time=true) {
 }
 static void add(unsigned i,bool ready=true) {
     using namespace terrain_foam;
-    memset(objects[i],0,sizeof(objects[i]));put(objects[i],0,image+0x16DA140);
+    memset(objects[i],0,sizeof(objects[i]));put(objects[i],0,image+0x16DD160);
     memcpy(objects[i]+0x18,sources[i].pos,12);memcpy(objects[i]+0x24,sources[i].quat,16);memcpy(objects[i]+0x34,sources[i].scale,12);
     create_object=objects[i];
     require(create(image+1,image+2,image+3,handles[i],image+4),"original create result");
@@ -99,7 +100,7 @@ int main(int argc,char **argv) {
         require(!capture_fields(handle,sample),"null object rejected");
         put(handle,0x20,object);
         require(!capture_fields(handle,sample),"foreign object vtable rejected");
-        put(object,0,image+0x16DA140);
+        put(object,0,image+0x16DD160);
         memcpy(object+0x18,sources[0].pos,12);memcpy(object+0x24,sources[0].quat,16);memcpy(object+0x34,sources[0].scale,12);
         require(capture_fields(handle,sample) && sample.object==object,"valid native-created identity retained");
         require(!memcmp(sample.pos,sources[0].pos,12) && !memcmp(sample.quat,sources[0].quat,16) && !memcmp(sample.scale,sources[0].scale,12),"all original transforms snapshotted exactly");
@@ -109,7 +110,7 @@ int main(int argc,char **argv) {
         DWORD old=0;require(VirtualProtect(pages+info.dwPageSize,info.dwPageSize,PAGE_NOACCESS,&old)!=0,"second page inaccessible");
         require(!capture_fields(pages+info.dwPageSize,sample),"inaccessible handle rejected without crash");
         put(handle,0x20,pages+info.dwPageSize);require(!capture_fields(handle,sample),"inaccessible object rejected without crash");
-        Obj truncated=pages+info.dwPageSize-0x24;put(truncated,0,image+0x16DA140);
+        Obj truncated=pages+info.dwPageSize-0x24;put(truncated,0,image+0x16DD160);
         put(handle,0x20,truncated);require(!capture_fields(handle,sample),"readable identity with inaccessible transform rejected");
         require(VirtualFree(pages,0,MEM_RELEASE)!=0,"protected-memory fixture released");
     }
@@ -202,6 +203,15 @@ int main(int argc,char **argv) {
     mark(sources[0].owner,0,24);callback(0,false);require(consumer_render==before && effects[0].job,"render cannot consume after time callback observed");callback(0);
     for(unsigned i=0;i<10000;++i){mark(sources[0].owner,(i%2)?24:0,24);callback(0);}
     require(!memcmp(objects[0]+0x34,sources[0].scale,12),"10000 hide restore requests preserve absolute targets");
+    // Review F-08: a foreign hook sitting on one slot is never overwritten and the hook stays published (bypass); the others restore.
+    {
+        void **foreign_slot=reinterpret_cast<void **>(image+hooks[0].slot);void *foreign=image+0x77;void *ours=*foreign_slot;
+        require(ours==hooks[0].wrapper,"slot holds our wrapper before restore");*foreign_slot=foreign;
+        restore();
+        require(!installed && *foreign_slot==foreign && hooks[0].published,"restore keeps a foreign slot value and the published state");
+        for(unsigned i=1;i<sizeof(hooks)/sizeof(hooks[0]);++i)require(!hooks[i].published && *reinterpret_cast<void **>(image+hooks[i].slot)==image+hooks[i].rva,"other slots are restored");
+        *foreign_slot=image+hooks[0].rva;restore();require(!hooks[0].published,"slot already original: published cleared");
+    }
     restore();require(!installed,"restore disables experiment");
     require(creates==36 && destroys==1 && consumer_time>0 && ready_logs>0,"lifecycle and consumer evidence present");
     printf("{\"ok\":true,\"checks\":%u,\"native_calls\":%u,\"setters\":%u}\n",checks,native_calls,set_calls);

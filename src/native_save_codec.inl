@@ -8,9 +8,9 @@
 #include "game_addresses.h"
 #include "save_codec.h"
 namespace save_codec_hook {
-static const unsigned kEncoder=GA(GA_9321F0),kDecoder=GA(GA_9330A0),kCall=GA(GA_933C5B);
-static const unsigned long long kEncoderHash=GH(0xb7d3b29eb8ff66acull),kDecoderHash=GH(0xe8860c2d623774f0ull);
-static const unsigned kSrc=GA(GA_27DB9E8),kSrcSize=GA(GA_27DB9F0),kOut=GA(GA_27DBA00),kCursor=GA(GA_27DB9F8),kCoded=GA(GA_27DB9F4),kCap=GA(GA_27DBA08),kLimit=GA(GA_27DBA0C);
+static const unsigned kEncoder=GA(GA_934780),kDecoder=GA(GA_935630),kCall=GA(GA_9361FB);
+static const unsigned long long kEncoderHash=GH(0xaf0d36e12e4a5d98ull),kDecoderHash=GH(0x84fbc8b8be640d52ull);
+static const unsigned kSrc=GA(GA_27DEA38),kSrcSize=GA(GA_27DEA40),kOut=GA(GA_27DEA50),kCursor=GA(GA_27DEA48),kCoded=GA(GA_27DEA44),kCap=GA(GA_27DEA58),kLimit=GA(GA_27DEA5C);
 using Encoder=unsigned long long(__fastcall *)(uint8_t *,void *,unsigned,Obj);
 static volatile LONG used,fallbacks;
 static unsigned long long fingerprint(unsigned rva,unsigned size) {
@@ -47,7 +47,7 @@ static unsigned long long __fastcall encode(uint8_t *rank,void *notify,unsigned 
     global<uint8_t *>(kOut)=out;global<uint8_t *>(kCursor)=out+coded;global<int>(kCoded)=static_cast<int>(coded);
     if(static_cast<int>(coded)<global<int>(kLimit)) {
         // The original notifies its progress target once more on success (IAT 13408B0).
-        if(notify)reinterpret_cast<void(__stdcall *)(void *,unsigned,unsigned long long,long long)>(pointer(image,GA(GA_13408B0)))(notify,wparam,0,0);
+        if(notify)reinterpret_cast<void(__stdcall *)(void *,unsigned,unsigned long long,long long)>(pointer(image,GA(GA_13438B0)))(notify,wparam,0,0);
         return 0;
     }
     return 1;

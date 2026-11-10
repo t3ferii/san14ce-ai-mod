@@ -4,13 +4,13 @@
  * command preparation/dispatch; we do not forge a native behaviour node. */
 struct CampaignReinforcementAudit {Obj root;int day;};
 static CampaignReinforcementAudit campaign_reinforcement_attempt[52][52],campaign_reinforcement_source[52];
-static unsigned campaign_city_owner(Obj city) {
-    Obj force=valid(city)?fn<Obj(__fastcall *)(Obj)>(GA(GA_22C990))(city):nullptr;if(!valid(force))return 0;
+static unsigned campaign_city_owner(Obj city) { COST_SCOPE("campaign_reinforcements:campaign_city_owner");
+    Obj force=valid(city)?fn<Obj(__fastcall *)(Obj)>(GA(GA_22E3E0))(city):nullptr;if(!valid(force))return 0;
     auto id=*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(force,0)+0x60);return id(force);
 }
-static unsigned campaign_incoming(Obj army,unsigned city) {
+static unsigned campaign_incoming(Obj army,unsigned city) { COST_SCOPE("campaign_reinforcements:campaign_incoming");
     unsigned sum=0;Obj goal=campaign_goal(city);if(!goal)return 0;
-    unsigned center=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(goal);
+    unsigned center=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(goal);
     for(unsigned i=1;i<=500;++i) {
         Obj a=table(0x7E838,i,500);if(!valid(a) || army_force(a)!=army_force(army) ||
            word(a,0x2A)>=48400 || distance(word(a,0x2A),center)<=15)continue;
@@ -20,10 +20,10 @@ static unsigned campaign_incoming(Obj army,unsigned city) {
     }
     return sum;
 }
-static unsigned campaign_reinforcement_reserve(Obj source,unsigned force) {
+[[maybe_unused]] static unsigned campaign_reinforcement_reserve(Obj source,unsigned force) { COST_SCOPE("campaign_reinforcements:campaign_reinforcement_reserve");
     return campaign_source_reserve(source,force);
 }
-static bool campaign_request_reinforcements(Obj army,Progress &p,uint64_t needed,unsigned guard_region,unsigned guard_goal) {
+static bool campaign_request_reinforcements(Obj army,Progress &p,uint64_t needed,unsigned guard_region,unsigned guard_goal) { COST_SCOPE("campaign_reinforcements:campaign_request_reinforcements");
     unsigned force=army_force(army),goal=p.city;int day=game_day();Obj target=campaign_goal(goal);
     if(!force || force>51 || !target || !campaign_controlled(army) || !hostile_city(army,goal))return false;
     bool protector=guard_region!=0;
@@ -32,35 +32,35 @@ static bool campaign_request_reinforcements(Obj army,Progress &p,uint64_t needed
     auto &audit=campaign_reinforcement_attempt[force][goal];
     if(audit.root==world() && day>=audit.day && day-audit.day<10)return false;
     audit={world(),day};
-    Obj origin=fn<Obj(__fastcall *)(Obj)>(GA(GA_22A5A0))(army);unsigned target_hex=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(target);
+    Obj origin=fn<Obj(__fastcall *)(Obj)>(GA(GA_22BFE0))(army);unsigned target_hex=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(target);
     std::vector<Obj> sources;
     for(unsigned id=1;id<=51;++id) {
-        Obj c=campaign_goal(id);if(!c || campaign_city_owner(c)!=force || distance(fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(c),target_hex)>60)continue;
+        Obj c=campaign_goal(id);if(!c || campaign_city_owner(c)!=force || distance(fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(c),target_hex)>60)continue;
         const auto &used=campaign_reinforcement_source[id];if(used.root==world() && used.day==day)continue;
         if(protector) {
             Obj region=table(0x6CAF0,guard_region,500);
-            if(!valid(region) || distance(fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(c),word(region,0x3A))>15)continue;
+            if(!valid(region) || distance(fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(c),word(region,0x3A))>15)continue;
         }
         unsigned stock=campaign::available(dword(c,0x3C));
         if(stock>=1000u)sources.push_back(c);
     }
     std::sort(sources.begin(),sources.end(),[origin,target_hex](Obj a,Obj b){
         if((a==origin)!=(b==origin))return a==origin;
-        return distance(fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(a),target_hex)<distance(fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(b),target_hex);
+        return distance(fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(a),target_hex)<distance(fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(b),target_hex);
     });
     unsigned dispatched=0,total=0;
     for(Obj source:sources) {
         unsigned stock=campaign::available(dword(source,0x3C));
-        GameList people;list_init(people,GA(GA_13436B0));
-        fn<void(__fastcall *)(Obj,GameList *)>(GA(GA_2D7180))(source,&people);
-        fn<void(__fastcall *)(GameList *)>(GA(GA_2A0780))(&people);
-        fn<void(__fastcall *)(GameList *,int,int,int)>(GA(GA_D32C0))(&people,0,1,0);
+        GameList people;list_init(people,GA(GA_13466B0));
+        fn<void(__fastcall *)(Obj,GameList *)>(GA(GA_2D9530))(source,&people);
+        fn<void(__fastcall *)(GameList *)>(GA(GA_2A26B0))(&people);
+        fn<void(__fastcall *)(GameList *,int,int,int)>(GA(GA_D4350))(&people,0,1,0);
         std::vector<Obj> candidates;
         for(Link *l=list_first(people);l;l=l->next)if(sortie_auto_person(l->value) && !l->value[0x161])candidates.push_back(l->value);
         list_free(people);
         std::sort(candidates.begin(),candidates.end(),[](Obj a,Obj b){
-            return fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_22FCE0))(a,0,0xFFF)>
-                   fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_22FCE0))(b,0,0xFFF);
+            return fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(a,0,0xFFF)>
+                   fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(b,0,0xFFF);
         });
         for(Obj person:candidates) {
             bool deployed=false;
@@ -70,7 +70,7 @@ static bool campaign_request_reinforcements(Obj army,Progress &p,uint64_t needed
             }
             if(deployed)continue;
             stock=campaign::available(dword(source,0x3C));if(stock<1000u)break;
-            Obj district=table(0xE0D0,person[0xE0],51);int capacity=fn<int(__fastcall *)(Obj)>(GA(GA_2311A0))(person);
+            Obj district=table(0xE0D0,person[0xE0],51);int capacity=fn<int(__fastcall *)(Obj)>(GA(GA_232C00))(person);
             unsigned formation=sortie_field_formation(person);
             if(!valid(district) || !district[0x14] || capacity<1000 || !formation)continue;
             unsigned soldiers=protector?1000:(std::min)(static_cast<unsigned>(capacity),(std::min)(stock,
@@ -121,7 +121,7 @@ static bool campaign_request_reinforcements(Obj army,Progress &p,uint64_t needed
     return dispatched!=0;
 }
 
-static bool campaign_request_companion(Obj army,Progress &p,unsigned target) {
+static bool campaign_request_companion(Obj army,Progress &p,unsigned target) { COST_SCOPE("campaign_reinforcements:campaign_request_companion");
     if(!mod_features.support)return false;   // [combat] support
     if(!p.campaign || !hostile_city(army,p.city) || p.companion_parent)return false;
     if(p.companion_target && p.companion_target<=500) {
@@ -139,14 +139,14 @@ static bool campaign_request_companion(Obj army,Progress &p,unsigned target) {
     if(!secondary)return false;
     for(unsigned id=1;id<=51;++id) {
         Obj source=campaign_goal(id);if(!source || campaign_city_owner(source)!=army_force(army) || campaign::available(dword(source,0x3C))<1000 ||
-           distance(fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(source),target)>60)continue;
-        GameList people;list_init(people,GA(GA_13436B0));fn<void(__fastcall *)(Obj,GameList *)>(GA(GA_2D7180))(source,&people);
-        fn<void(__fastcall *)(GameList *)>(GA(GA_2A0780))(&people);fn<void(__fastcall *)(GameList *,int,int,int)>(GA(GA_D32C0))(&people,0,1,0);
+           distance(fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(source),target)>60)continue;
+        GameList people;list_init(people,GA(GA_13466B0));fn<void(__fastcall *)(Obj,GameList *)>(GA(GA_2D9530))(source,&people);
+        fn<void(__fastcall *)(GameList *)>(GA(GA_2A26B0))(&people);fn<void(__fastcall *)(GameList *,int,int,int)>(GA(GA_D4350))(&people,0,1,0);
         std::vector<Obj> candidates;for(Link *l=list_first(people);l;l=l->next)if(sortie_auto_person(l->value) && !l->value[0x161])candidates.push_back(l->value);
         list_free(people);
         for(Obj person:candidates) {
             Obj district=table(0xE0D0,person[0xE0],51);unsigned f=sortie_capture_formation(person);
-            if(!f || !valid(district) || !district[0x14] || fn<int(__fastcall *)(Obj)>(GA(GA_2311A0))(person)<1000)continue;
+            if(!f || !valid(district) || !district[0x14] || fn<int(__fastcall *)(Obj)>(GA(GA_232C00))(person)<1000)continue;
             bool deployed=false;for(unsigned j=1;j<=500;++j) {Obj a=table(0x7E838,j,500);if(valid(a) && word(a,0x12)==word(person,0x10)) {deployed=true;break;}}
             if(deployed)continue;
             unsigned command[30];sortie_command(nullptr,campaign_goal(p.city),person,f,1000,command);

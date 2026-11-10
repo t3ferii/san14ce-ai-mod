@@ -43,7 +43,9 @@ static const San14LayoutApiV1 api={sizeof(San14LayoutApiV1),san14_layout_abi,
     api_overlay_subscribe,api_wndproc_subscribe,
     api_peer_present,api_slot_owner,api_log,
     api_wndproc_bind,api_set_log_sink,api_hook_jump,api_peer_for_owner,api_hook_owner_state,api_hook_span,api_hook_bytes,
-    api_note_layout_load,api_layout_unsubscribe,api_set_position,api_get_position,api_ga_resolve,api_ga_table};
+    api_note_layout_load,api_layout_unsubscribe,api_set_position,api_get_position,api_ga_resolve,api_ga_table,
+    api_ui_begin,api_ui_end,api_ui_create_window,api_ui_activate,api_ui_node,api_ui_set_node_text,api_ui_set_node_visible,api_ui_select,
+    api_ui_sync_visibility,api_ui_release,api_ui_enable,api_ui_tooltip};
 // ---- unpack wait (moved from the convenience coordinator; same five-byte probes, 3/4 stable match) ----
 struct Probe {unsigned rva;unsigned char bytes[5];};
 // 12 prologues identical in every known build (game_addresses_data.inl ga_probes, same set as the other modules).

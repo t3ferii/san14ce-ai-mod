@@ -65,13 +65,13 @@ static uint64_t __fastcall destroy(Obj,Obj,Obj,Obj);
 static uint64_t __fastcall time_update(Obj,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t);
 static uint64_t __fastcall render(Obj,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t);
 static Hook hooks[]={
-    {GA(GA_16DA5C8),GA(GA_E17CA0),{0x40,0x55,0x53,0x56,0x41,0x55,0x41,0x57,0x48,0x8D,0xAC,0x24,0x50,0xFE,0xFF,0xFF},reinterpret_cast<void *>(&create),false},
-    {GA(GA_16DA5E8),GA(GA_E1B580),{0x48,0x89,0x5C,0x24,0x10,0x55,0x56,0x57,0x41,0x54,0x41,0x57,0x48,0x8D,0x6C,0x24},reinterpret_cast<void *>(&complete),false},
-    {GA(GA_16DA5D0),GA(GA_E18280),{0x48,0x89,0x5C,0x24,0x08,0x48,0x89,0x6C,0x24,0x10,0x48,0x89,0x74,0x24,0x18,0x57},reinterpret_cast<void *>(&destroy),false},
-    {GA(GA_16DA1A0),GA(GA_E1B7B0),{0xF3,0x0F,0x10,0x44,0x24,0x40,0xF3,0x0F,0x59,0x05,0x3A,0x31,0x59,0x00,0x4C,0x89},reinterpret_cast<void *>(&time_update),false},
-    {GA(GA_16DA170),GA(GA_E19690),{0x48,0x89,0x5C,0x24,0x10,0x55,0x56,0x57,0x41,0x54,0x41,0x55,0x41,0x56,0x41,0x57},reinterpret_cast<void *>(&render),false}
+    {GA(GA_16DD5E8),GA(GA_E1A140),{0x40,0x55,0x53,0x56,0x41,0x55,0x41,0x57,0x48,0x8D,0xAC,0x24,0x50,0xFE,0xFF,0xFF},reinterpret_cast<void *>(&create),false},
+    {GA(GA_16DD608),GA(GA_E1DA50),{0x48,0x89,0x5C,0x24,0x10,0x55,0x56,0x57,0x41,0x54,0x41,0x57,0x48,0x8D,0x6C,0x24},reinterpret_cast<void *>(&complete),false},
+    {GA(GA_16DD5F0),GA(GA_E1A720),{0x48,0x89,0x5C,0x24,0x08,0x48,0x89,0x6C,0x24,0x10,0x48,0x89,0x74,0x24,0x18,0x57},reinterpret_cast<void *>(&destroy),false},
+    {GA(GA_16DD1C0),GA(GA_E1DC80),{0xF3,0x0F,0x10,0x44,0x24,0x40,0xF3,0x0F,0x59,0x05,0xDA,0x3C,0x59,0x00,0x4C,0x89},reinterpret_cast<void *>(&time_update),false},
+    {GA(GA_16DD190),GA(GA_E1BB60),{0x48,0x89,0x5C,0x24,0x10,0x55,0x56,0x57,0x41,0x54,0x41,0x55,0x41,0x56,0x41,0x57},reinterpret_cast<void *>(&render),false}
 };
-static const unsigned SetterRvas[]={GA(GA_E1AAE0),GA(GA_E1ADD0),GA(GA_E1B160)};
+static const unsigned SetterRvas[]={GA(GA_E1CFB0),GA(GA_E1D2A0),GA(GA_E1D630)};
 static constexpr unsigned char SetterBytes[][16]={
     {0x48,0x8B,0xC4,0x48,0x89,0x58,0x08,0x48,0x89,0x70,0x10,0x48,0x89,0x78,0x18,0x4C},
     {0x48,0x8B,0xC4,0x48,0x89,0x58,0x10,0x48,0x89,0x78,0x18,0x55,0x48,0x8D,0x68,0x98},
@@ -102,7 +102,7 @@ static bool capture_fields(Obj handle,CaptureFields &out) {
     // Keep both identity validation and fault rejection, including an invalid handle.
     __try {
         Obj p=handle?pointer(handle,0x20):nullptr;
-        if(!p || pointer(p,0)!=image+GA(GA_16DA140))return false;
+        if(!p || pointer(p,0)!=image+GA(GA_16DD160))return false;
         out.object=p;memcpy(out.pos,p+0x18,sizeof(out.pos));
         memcpy(out.quat,p+0x24,sizeof(out.quat));memcpy(out.scale,p+0x34,sizeof(out.scale));
         return true;
@@ -185,13 +185,13 @@ static void capture(Obj handle) {
 }
 static bool __fastcall create(Obj a,Obj b,Obj c,Obj d,Obj e) { COST_SCOPE("create");
     TERRAIN_SCOPE(FoamCreate);
-    bool result=terrain_profile::invoke(terrain_profile::Id::FoamCreateNative,fn<Create>(GA(GA_E17CA0)),a,b,c,d,e);
+    bool result=terrain_profile::invoke(terrain_profile::Id::FoamCreateNative,fn<Create>(GA(GA_E1A140)),a,b,c,d,e);
     if(result && active())capture(d);
     return result;
 }
 static bool __fastcall complete(Obj a,Obj b,Obj c,Obj handle,unsigned *state,unsigned char *flag) { COST_SCOPE("complete");
     TERRAIN_SCOPE(FoamComplete);
-    bool result=terrain_profile::invoke(terrain_profile::Id::FoamCompleteNative,fn<Complete>(GA(GA_E1B580)),a,b,c,handle,state,flag);
+    bool result=terrain_profile::invoke(terrain_profile::Id::FoamCompleteNative,fn<Complete>(GA(GA_E1DA50)),a,b,c,handle,state,flag);
     if(!active())return result;
     AcquireSRWLockExclusive(&lock);
     int index=find_locked(handle?pointer(handle,0x20):nullptr);
@@ -214,7 +214,7 @@ static uint64_t __fastcall destroy(Obj a,Obj b,Obj c,Obj handle) { COST_SCOPE("d
     if(index>=0) {log_event("foam_destroy",static_cast<unsigned>(index),generation,GetCurrentThreadId());effects[index]={};update_watch_locked();}
     ReleaseSRWLockExclusive(&lock);
     TERRAIN_SCOPE(FoamDestroyNative);
-    return fn<Destroy>(GA(GA_E18280))(a,b,c,handle);
+    return fn<Destroy>(GA(GA_E1A720))(a,b,c,handle);
 }
 static void plan_locked() {
     TERRAIN_SCOPE(FoamPlan);
@@ -254,9 +254,9 @@ static void apply_locked(unsigned index,bool from_time) {
     log_event(from_time?"foam_consume_time":"foam_consume_render",op,index,GetCurrentThreadId());
     log_event("foam_set_target",op,e.hex,e.hidden?1:0);
     // Each changed property goes directly from current to target once; no zero/reset round trip.
-    if(memcmp(e.object+0x18,pos,12))terrain_profile::invoke(terrain_profile::Id::FoamPosition,fn<Setter>(GA(GA_E1AAE0)),e.object,pos);
-    if(memcmp(e.object+0x24,quat,16))terrain_profile::invoke(terrain_profile::Id::FoamRotation,fn<Setter>(GA(GA_E1ADD0)),e.object,quat);
-    if(memcmp(e.object+0x34,scale,12))terrain_profile::invoke(terrain_profile::Id::FoamScale,fn<Setter>(GA(GA_E1B160)),e.object,scale);
+    if(memcmp(e.object+0x18,pos,12))terrain_profile::invoke(terrain_profile::Id::FoamPosition,fn<Setter>(GA(GA_E1CFB0)),e.object,pos);
+    if(memcmp(e.object+0x24,quat,16))terrain_profile::invoke(terrain_profile::Id::FoamRotation,fn<Setter>(GA(GA_E1D2A0)),e.object,quat);
+    if(memcmp(e.object+0x34,scale,12))terrain_profile::invoke(terrain_profile::Id::FoamScale,fn<Setter>(GA(GA_E1D630)),e.object,scale);
     if(e.restore_job)log_event("foam_restore_done",op,index,generation);
     e.job=e.restore_job=false;
 }
@@ -288,21 +288,26 @@ static uint64_t __fastcall time_update(Obj a,uintptr_t b,uintptr_t c,uintptr_t d
     TERRAIN_SCOPE(FoamTime);
     if(watch)observe(a,true);
     TERRAIN_SCOPE(FoamTimeNative);
-    return fn<Callback>(GA(GA_E1B7B0))(a,b,c,d,e,f,g,h);
+    return fn<Callback>(GA(GA_E1DC80))(a,b,c,d,e,f,g,h);
 }
 static uint64_t __fastcall render(Obj a,uintptr_t b,uintptr_t c,uintptr_t d,uintptr_t e,uintptr_t f,uintptr_t g,uintptr_t h) { COST_SCOPE("render");
     TERRAIN_SCOPE(FoamRender);
     if(watch)observe(a,false);
     TERRAIN_SCOPE(FoamRenderNative);
-    return fn<Callback>(GA(GA_E19690))(a,b,c,d,e,f,g,h);
+    return fn<Callback>(GA(GA_E1BB60))(a,b,c,d,e,f,g,h);
 }
 static void restore() {
     installed=false;before_world_change();
     for(auto &h:hooks)if(h.published) {
         auto slot=reinterpret_cast<void **>(image+h.slot);DWORD old=0,ignored=0;
         if(VirtualProtect(slot,8,PAGE_READWRITE,&old)) {
-            InterlockedCompareExchangePointer(slot,image+h.rva,h.wrapper);
-            VirtualProtect(slot,8,old,&ignored);h.published=false;
+            // Review F-08: restore only while the slot is still ours. Anything else (a later mod hooked on top of us) keeps the hook
+            // published; installed=false already turns every wrapper into a pass-through to the original (bypass), and we never
+            // overwrite the foreign value.
+            void *seen=InterlockedCompareExchangePointer(slot,image+h.rva,h.wrapper);
+            VirtualProtect(slot,8,old,&ignored);
+            if(seen==h.wrapper || seen==image+h.rva)h.published=false;
+            else log_event("foam_restore_bypass",h.slot,0,0);
         }
     }
 }

@@ -58,9 +58,9 @@ static void *fixture_function(unsigned rva) {
 }
 static void bind(Obj object,Obj map,Obj data) {
     memset(object,0,0x7400);memset(map,0,0x98);
-    put(object,0,image+0x1694928);number(object,0x7084,1024);number(object,0x7088,1024);
+    put(object,0,image+0x1697930);number(object,0x7084,1024);number(object,0x7088,1024);
     number(object,0x708C,128);number(object,0x7090,128);object[0x70B4]=1;put(object,0x70D0,map);
-    put(map,0,image+0x1692770);number(map,0x14,1024);number(map,0x18,1024);put(map,0x58,data);
+    put(map,0,image+0x16955C0);number(map,0x14,1024);number(map,0x18,1024);put(map,0x58,data);
 }
 static void callback(Obj object=s) {
     expected_s=object;callback_thread=GetCurrentThreadId();in_callback=true;

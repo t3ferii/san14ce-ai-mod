@@ -86,13 +86,13 @@ static void __fastcall set_face(Obj,int,Obj){++face_calls;}
 static void *dispatch(unsigned r){
     switch(r){
 #define N(rva,f) case rva:return reinterpret_cast<void *>(&f)
-    N(0x18f10,get_map);N(0x32c130,city_at);N(0x22b090,get_formation);N(0x2a8d40,common);
-    N(0x2b21a0,power);N(0x2b2440,power);N(0x2a9e50,defense);N(0x16a1d0,damage);
-    N(0x2aa2e0,breach_power);N(0x22dea0,object_id);N(0x2ca280,hostile);N(0x22c850,get_force);
-    N(0x22c0f0,effect);N(0x41c200,policy);N(0x26a2c0,slots);N(0x2aa850,hex_distance);
-    N(0x232650,is_city);N(0x18fd20,effect_type);N(0x18fda0,coefficient);N(0x18fe30,maxdur);
-    N(0x401c0,leader);N(0x22ab60,mayor);N(0x2c5460,has_resistance);N(0x2b2da0,get_resistance);
-    N(0x354950,unit_name);N(0x930d20,set_text);N(0x92f810,show_part);N(0x92ed60,set_face);
+    N(0x18e70,get_map);N(0x32e3b0,city_at);N(0x22cad0,get_formation);N(0x2aaf30,common);
+    N(0x2b4460,power);N(0x2b4750,power);N(0x2ac0a0,defense);N(0x16b180,damage);
+    N(0x2ac5a0,breach_power);N(0x22f930,object_id);N(0x2cc630,hostile);N(0x22e2a0,get_force);
+    N(0x22db30,effect);N(0x41e570,policy);N(0x26bbe0,slots);N(0x2acb80,hex_distance);
+    N(0x233FF0,is_city);N(0x1910b0,effect_type);N(0x191130,coefficient);N(0x1911c0,maxdur);
+    N(0x58d90,leader);N(0x22c5a0,mayor);N(0x2c7810,has_resistance);N(0x2b5120,get_resistance);
+    N(0x356D30,unit_name);N(0x9332b0,set_text);N(0x931da0,show_part);N(0x9312f0,set_face);
 #undef N
     default:std::fprintf(stderr,"unexpected native call %X\n",r);std::exit(1);
     }
@@ -100,14 +100,14 @@ static void *dispatch(unsigned r){
 int main(int argc,char **argv){
     check(argc==2,"plain-copy argument");
     std::ifstream file(argv[1],std::ios::binary);
-    std::vector<unsigned char> pe((std::istreambuf_iterator<char>(file)),{}),mapped(0x2A00000);
+    std::vector<unsigned char> pe((std::istreambuf_iterator<char>(file)),{}),mapped(0x2A0C000);
     check(pe.size()>0x1000,"plain copy read");
     auto u16=[&](size_t o){unsigned short v;std::memcpy(&v,pe.data()+o,2);return v;};
     auto u32=[&](size_t o){unsigned v;std::memcpy(&v,pe.data()+o,4);return v;};
     const unsigned nt=u32(0x3c),sec=nt+24+u16(nt+20);
     for(unsigned i=0;i<u16(nt+6);++i){const unsigned at=sec+40*i,va=u32(at+12),n=u32(at+16),off=u32(at+20);check(va+n<=mapped.size() && off+n<=pe.size(),"PE section bounds");std::memcpy(mapped.data()+va,pe.data()+off,n);}
     image=mapped.data();check(damage_forecast::guards_match(),"current native profile");
-    image[0x7fa230]^=1;check(!damage_forecast::guards_match(),"mismatched entry rejected");image[0x7fa230]^=1;
+    image[0x7fc700]^=1;check(!damage_forecast::guards_match(),"mismatched entry rejected");image[0x7fc700]^=1;
     Obj vt[32]={};vt[2]=reinterpret_cast<Obj>(&object_kind);vt[25]=reinterpret_cast<Obj>(&panel_visible);
     Object own(27,reinterpret_cast<Obj>(vt)),enemy(27,reinterpret_cast<Obj>(vt)),base(2,reinterpret_cast<Obj>(vt)),
         building(11,reinterpret_cast<Obj>(vt)),castle(11,reinterpret_cast<Obj>(vt)),shape(0,nullptr),towerdef(0,nullptr),

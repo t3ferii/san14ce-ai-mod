@@ -7,14 +7,14 @@ import re
 import struct
 
 P=Path(__file__).resolve().parents[1]
-b=(P/'build/ui_native_analysis/editor83_plain/game.exe.unpacked.exe').read_bytes()
-capture=(P/'legacy/FogMod_Source/native_game_analysis/running_code_text.bin').read_bytes()
+b=(P/'build/ui_native_analysis/editor83_b25953386/game.exe.unpacked.exe').read_bytes()
+capture=(P/'build/ui_native_analysis/fixture/1a4a447d_text.bin').read_bytes()
 checks=0
 def check(ok,label):
     global checks
     checks+=1
     assert ok,label
-check(hashlib.sha256(b).hexdigest()=='1fbe6be7466a66466fe97cf3ab7d49392913346879c7d40de7f4eaf86eef81c6','decoded identity')
+check(hashlib.sha256(b).hexdigest()=='1a4a447d14e68c40ad2a5107c29c7341c10eee8fc297a7b35032900c341dbcaa','decoded identity')
 check(hashlib.sha256((P.parent/'SAN14CE_KO.exe').read_bytes()).hexdigest() in ('87ed4e46590e0939c9efcaef14fa0f892917604dfda86e0a4be319fccffa2d6a','782cf229a56cdde2b95399e0e7536740b3f5e96bea702679365e4dad061abdce'),'original Steam identity') # Steam EXE: 87ed4e46 = before the 2026-11-05 update (the decoded evidence below), 782cf229 = buildid 25953386 (its decoded copy is checked at the end; nothing weakened)
 pe=struct.unpack_from('<I',b,60)[0]
 st=pe+24+struct.unpack_from('<H',b,pe+20)[0]
@@ -39,16 +39,22 @@ for aa,tt in re.findall(r'\{0x([0-9A-F]+),0x([0-9A-F]+)\}',slots):
 for aa,tt in re.findall(r'\{0x([0-9A-F]+),0x([0-9A-F]+)\}',sites):
     a,t=int(aa,16),int(tt,16)
     check(read(a,1)==b'\xe8' and a+5+struct.unpack('<i',read(a+1,4))[0]==t,f'original call {aa}')
-# User 2026-10-28 live PID9808: modpack 0x230098 and advisor 930D20 relay made
+# User 2026-10-28 live PID9808: modpack 0x231AFB and advisor 930D20 relay made
 # guards fail and disabled both settings. Known same-mod windows hash as original.
 inl=(P/'src/native_diplomacy_intel.inl').read_text(encoding='utf-8-sig')
-modpack=(P/'src/modpack_tables.h').read_text(encoding='utf-8-sig')
-check('{0x230098,8,{0x74,0x48,0x66,0x0F,0x1F,0x44,0x00,0x00},{0x75,0x06,0x83,0xFE,0x64,0x7C,0x43,0x90}}' in modpack,'modpack window source')
-check('{0x230098,8,{0x74,0x48,0x66,0x0F,0x1F,0x44,0x00,0x00},{0x75,0x06,0x83,0xFE,0x64,0x7C,0x43,0x90},false}' in inl,'modpack window accepted')
-check('{0x930D20,5,{0x48,0x89,0x5C,0x24,0x08},{0xE9},true}' in inl,'advisor relay window accepted')
-check(read(0x230098,8)==bytes([0x74,0x48,0x66,0x0F,0x1F,0x44,0,0]) and read(0x930D20,5)==bytes([0x48,0x89,0x5C,0x24,0x08]),'known windows original bytes')
+modpack_src=(P/'src/native_modpack.inl').read_text(encoding='utf-8-sig')
+# 2026-11-06 G1-d: the modpack ability-cap window is no longer a fixed table row; both modules find it at run time (JE rel8, NOP3,
+# target MOV ESI,100) and the diplomacy guard treats the 5-byte target as original when it holds the MOV or an E9 relay jump.
+R=0x231AFB
+check('unsigned r=0x231AFB;' in inl and 'unsigned r=0x231AFB;' in modpack_src,'both modules anchor the short-form window at the same address')
+CLAMP=R+2+struct.unpack('<b',read(R+1,1))[0]
+check(read(R,1)==b'\x74' and read(R+2,3)==bytes([0x0F,0x1F,0x00]) and R+5<CLAMP<R+0x80 and read(CLAMP,5)==bytes([0xBE,0x64,0,0,0]),'modpack short-form window found by pattern in the current image (JE rel8, NOP3, target MOV ESI,100)')
+check('image[t]==0xE9 || !ga::mcmp_at(image,t,mov,5)?t:0' in inl and 'return mov[rva-t]' in inl,'modpack window accepted (original MOV or E9 relay)')
+check(read(0x231770,0x4B5)[CLAMP-0x231770:CLAMP-0x231770+5]==bytes([0xBE,0x64,0,0,0]),'the window lies inside the 231770 guard range')
+check('{0x9332B0,5,{0x48,0x89,0x5C,0x24,0x08},{0xE9},true}' in inl,'advisor relay window accepted')
+check(read(0x9332B0,5)==bytes([0x48,0x89,0x5C,0x24,0x08]),'known advisor window original bytes')
 advisor=(P/'src/native_advisor_briefing.inl').read_text(encoding='utf-8-sig')
-check('prepare_link(text_link,0x930D20,0xE9,relay)' in advisor,'advisor 930D20 uses JMP relay')
+check('prepare_link(text_link,0x9332B0,0xE9,relay)' in advisor,'advisor 930D20 uses JMP relay')
 def masked(a,n,patches):
     data=bytearray(read(a,n))
     for pa,pb in patches:
@@ -56,7 +62,7 @@ def masked(a,n,patches):
     return bytes(data)
 def emulate(a,n,patches):
     data=bytearray(masked(a,n,patches))
-    for ka,orig,alt,anyjmp in [(0x230098,bytes([0x74,0x48,0x66,0x0F,0x1F,0x44,0,0]),bytes([0x75,0x06,0x83,0xFE,0x64,0x7C,0x43,0x90]),False),(0x930D20,bytes([0x48,0x89,0x5C,0x24,0x08]),b'\xe9',True)]:
+    for ka,orig,alt,anyjmp in [(CLAMP,bytes([0xBE,0x64,0,0,0]),b'\xe9',True),(0x9332B0,bytes([0x48,0x89,0x5C,0x24,0x08]),b'\xe9',True)]:
         if a<=ka<a+n:
             w=bytes(data[ka-a:ka-a+len(orig)])
             if w==orig or (w[0]==0xE9 if anyjmp else w==alt):data[ka-a:ka-a+len(orig)]=orig
@@ -64,37 +70,46 @@ def emulate(a,n,patches):
             # the bytes stay as found and the guard hash must then differ from the original's.
     return fnv(data)
 guards={int(x,16):(int(y,16),int(z,16)) for x,y,z in re.findall(r'\{0x([0-9A-F]+),0x([0-9A-F]+),0x([0-9A-F]+)ull\}',code)}
-patched=[(0x230098,bytes([0x75,0x06,0x83,0xFE,0x64,0x7C,0x43,0x90])),(0x930D20,b'\xe9\xdb\xf2\x58\xff')]
-check(emulate(0x22FCE0,*[guards[0x22FCE0][0]],patched)==guards[0x22FCE0][1],'22FCE0 guard passes with modpack ability cap')
-check(emulate(0x930D20,*[guards[0x930D20][0]],patched)==guards[0x930D20][1],'930D20 guard passes with advisor relay')
-check(emulate(0x22FCE0,guards[0x22FCE0][0],[(0x230098,b'\x90'*8)])!=guards[0x22FCE0][1],'unknown change in known window still rejected (hash differs)')
-check(emulate(0x930D20,guards[0x930D20][0],[(0x930D20,b'\xcc\x90\x90\x90\x90')])!=guards[0x930D20][1],'non-jump change at 930D20 still rejected (hash differs)')
-check(fnv(masked(0x22FCE0,guards[0x22FCE0][0],[(0x22FD00,b'\xcc')]))!=guards[0x22FCE0][1],'change outside known window still rejected')
+patched=[(CLAMP,b'\xe9\x11\x22\x33\x44'),(0x9332B0,b'\xe9\xdb\xf2\x58\xff')]
+check(emulate(0x231770,*[guards[0x231770][0]],patched)==guards[0x231770][1],'22FCE0 guard passes with modpack ability cap')
+check(emulate(0x9332B0,*[guards[0x9332B0][0]],patched)==guards[0x9332B0][1],'930D20 guard passes with advisor relay')
+check(emulate(0x231770,guards[0x231770][0],[(CLAMP,b'\x90'*5)])!=guards[0x231770][1],'unknown change in known window still rejected (hash differs)')
+check(emulate(0x9332B0,guards[0x9332B0][0],[(0x9332B0,b'\xcc\x90\x90\x90\x90')])!=guards[0x9332B0][1],'non-jump change at 930D20 still rejected (hash differs)')
+check(fnv(masked(0x231770,guards[0x231770][0],[(0x231780,b'\xcc')]))!=guards[0x231770][1],'change outside known window still rejected')
 # User 2026-11-03: verify the native calls and the hidden-mode exclusion independently.
-for at in (0x814884,0x8149EE):
-    check(read(at,1)==b'\xe8' and at+5+struct.unpack('<i',read(at+1,4))[0]==0x856620,'original phase-seven resumes the footer with 856620')
-check(read(0x85652C,7)==bytes.fromhex('ffc883f8010f86'),'generic footer opener excludes modes one and two')
-check(struct.unpack('<Q',read(0x145DBE0,8))[0]==0x140811210,'frame hook retains native four-argument state handler')
+for at in (0x816FB4,0x81711E):
+    check(read(at,1)==b'\xe8' and at+5+struct.unpack('<i',read(at+1,4))[0]==0x858910,'original phase-seven resumes the footer with 858910 (former 856620)')
+check(read(0x85881C,7)==bytes.fromhex('ffc883f8010f86'),'generic footer opener excludes modes one and two')
+check(struct.unpack('<Q',read(0x1460C70,8))[0]==0x140813940,'frame hook retains native four-argument state handler')
 
-cache=P/'research/decomp_cache/1fbe6be7466a6646'
-check(read(0x324E98,4)==bytes.fromhex('3bc77d70'),'native resolver uses strict draw < chance after the original draw')
-check(read(0x816756,5)==bytes.fromhex('ba01000000'),'tail gate replaces one whole MOV EDX,1 after the resolver result is consumed')
-check(read(0x816756,5)==capture[0x816756-0x1000:0x81675B-0x1000],'independent retained tail instruction')
-check(read(0x81675B,3)==bytes.fromhex('488bce') and read(0x816807,4)==bytes.fromhex('488b4590'),'normal resume restores RSI argument; skipped UI path resumes at native container cleanup')
+check(read(0x326F48,4)==bytes.fromhex('3bc77d70'),'native resolver uses strict draw < chance after the original draw')
+check(read(0x818EC6,5)==bytes.fromhex('ba01000000'),'tail gate replaces one whole MOV EDX,1 after the resolver result is consumed')
+check(read(0x818EC6,5)==capture[0x818EC6-0x1000:0x818ECB-0x1000],'independent retained tail instruction')
+check(read(0x818ECB,3)==bytes.fromhex('488bce') and read(0x818F77,4)==bytes.fromhex('488b4590'),'normal resume restores RSI argument; skipped UI path resumes at native container cleanup')
 source=(P/'src/native_diplomacy_intel.inl').read_text(encoding='utf-8')
 check('number(button,0x40)|=2;' in source and 'number(child,0x40)|=2;' in source,'decision visibility matches native phase-seven OR, not an inverted clear')
 check('absolute_jump(at+21,cleanup)' in source and 'absolute_jump(at+40,resume)' in source and 'restore_link(final_tail_link)' in source,'deferred-only tail gate retains both native continuations and publication rollback')
-for address,fragments in {
-    '00815EA0':['1408162e1 CALL 0x140804770','140816726 CALL 0x140324e20','1408167ae CALL qword ptr [RAX + 0x190]'],
-    '00811210':['14081133d CALL 0x140815ea0'],
-    '00322B30':['140322b80 CALL 0x14022fce0','140322bee DIVSD XMM1,qword ptr [0x141342c10]','140322d34 CVTTSD2SI ECX,XMM0'],
-}.items():
-    asm=(cache/(address+'_asm.txt')).read_text(encoding='utf-8')
-    for s in fragments:check(s in asm,'assembly ABI/flow '+s)
-check(struct.unpack('<d',read(0x1342c10,8))[0]==100,'native amount divisor')
-check(struct.unpack('<d',read(0x13b2ad8,8))[0]==10000,'native rounding scale')
-for original,ids in [('0082C960',[0x3c,0x42,0x4d,0x49]),('0082C510',[0x4a,0x50,0x5b,0x57]),('0082CD60',[0x7a,0x80,0x8b,0x87]),('0082D170',[0x4a,0x50,0x5b,0x57])]:
-    c=(cache/(original+'_c.txt')).read_text(encoding='utf-8')
+# 2026-11-07: former decomp_cache asm checks re-derived from the current build's ghidra export (calls.tsv/datarefs.tsv) and image bytes.
+G=P/'research/ghidra_full/1a4a447d14e68c40'
+gcalls=(G/'calls.tsv').read_text(encoding='utf-8');gdata=(G/'datarefs.tsv').read_text(encoding='utf-8')
+for row in ('00818600\t00818A4D\t00806DA0\tdirect','00818600\t00818E96\t00326ED0\tdirect','00818600\t00818F1E\t\tindirect','00813940\t00813A6D\t00818600\tdirect','00324BC0\t00324C10\t00231770\tdirect'):
+    check(row in gcalls,'assembly ABI/flow (ghidra calls) '+row.replace('\t',' '))
+check(read(0x818F1E,6)==bytes.fromhex('ff9090010000'),'phase-seven virtual call [rax+0x190]')
+for at in (0x324C76,0x324C90):
+    check(read(at,4)==bytes.fromhex('f20f5e15') and ('%08X\t00324BC0\t01345C10\tREAD'%at) in gdata,'rate function divides by the amount divisor (ghidra datarefs) %X'%at)
+check(read(0x324DE3,4)==bytes.fromhex('f20f2cc8'),'rate function converts with CVTTSD2SI ECX,XMM0')
+check(struct.unpack('<d',read(0x1345c10,8))[0]==100,'native amount divisor')
+check(struct.unpack('<d',read(0x13b5b48,8))[0]==10000,'native rounding scale')
+def ghidra_c(rva):   # decompiled body of FUN_140<rva> from the current build's ghidra export
+    pat=re.compile(r'\n[A-Za-z_][^\n(]*FUN_140%06x\('%rva)
+    for f in sorted((G/'c').glob('*.c')):
+        t=f.read_text(encoding='utf-8',errors='replace');m=pat.search(t)
+        if m:return t[m.start():t.find('\n}\n',m.start())]
+    raise KeyError(hex(rva))
+# the four per-screen builders (former 82C960/82C510/82CD60/82D170) in the current build, found by their control-id sets
+for original,ids in [('0082F030',[0x3c,0x42,0x4d,0x49]),('0082EB90',[0x4a,0x50,0x5b,0x57]),('0082F490',[0x7a,0x80,0x8b,0x87]),('0082F8F0',[0x4a,0x50,0x5b,0x57])]:
+    c=ghidra_c(int(original,16))
+    check('param_1 + 0x1d8' in c,'screen builder reads the owner state '+original)
     for i in ids:check(hex(i) in c,'screen-specific native control '+original+':'+hex(i))
 for key in ['diplomacy_overinvest','diplomacy_counterturn']:
     for rel in ['installer/InstallerGui.cs','distribution/FeatureSelect.ps1','FeatureSelect.ps1']:
@@ -132,15 +147,5 @@ for at,tgt in ((0x830583,RATE),(0x82FEC3,RATE),(0x830223,RATE),(0x818A0E,RATE),(
     check(nread(at,1)==b'\xe8' and at+5+struct.unpack('<i',nread(at+1,4))[0]==tgt,'new call %X -> %X'%(at,tgt))
 check(nread(0x818EC6,5)==bytes.fromhex('ba01000000') and nread(0x818ECB,3)==bytes.fromhex('488bce'),'new tail MOV EDX,1 / MOV RCX,RSI')
 check(nread(0x818F76,5)==bytes.fromhex('90488b4590'),'new container cleanup: NOP then mov rax,[rbp-0x70]')
-tab={e['old']:e['new'].get('1a4a447d') for e in json.loads((P/'research/rva_map/1fbe6be7_to_1a4a447d/addr_table.json').read_text(encoding='utf-8'))['entries']}
-def newrva(old):
-    v=tab[old]
-    check(v not in (None,'0','') ,'table resolves '+old)
-    return int(v,16)
-for aa,tt in re.findall(r'\{0x([0-9A-F]+),0x([0-9A-F]+)\}',slots):
-    s,o=newrva(aa),newrva(tt)
-    check(struct.unpack('<Q',nread(s,8))[0]==0x140000000+o,'new vtable slot %X -> %X'%(s,o))
-for aa,tt in re.findall(r'\{0x([0-9A-F]+),0x([0-9A-F]+)\}',sites):
-    s,o=newrva(aa),newrva(tt)
-    check(nread(s,1)==b'\xe8' and s+5+struct.unpack('<i',nread(s+1,4))[0]==o,'new call site %X -> %X'%(s,o))
+# the 12 vtable slots and 8 call sites of the profile were checked above directly against this image (source ids are the current build's addresses since the 2026-11-07 re-base).
 print(json.dumps(dict(status='diplomacy_intel_native_verified',checks=checks,code_guards=32,slots=12,sites=8,inline_gates=1,live_game=False)))

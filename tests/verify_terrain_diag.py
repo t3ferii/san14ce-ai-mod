@@ -32,8 +32,10 @@ ok('!(mod_features.terrain_diag_mode & 2u)' in render, 'renderer inactive in B/C
 ok('(mod_features.terrain_diag_mode & 2u) || !guards()' in split, 'height capture unpublished in B/C')
 ok('terrain_foam_active=terrain_foam::active()?1u:0u' in split and 'terrain_render::hooks_active()?1u:0u' in split,
    'diagnostic log reports actual published hooks')
-ok('terrain_render::install_early();' in split and 'terrain_foam::install();' in split and
-   'terrain_height_link::install();' in split, 'baseline install order preserved')
+import registry_text as R
+ok('terrain_render::install_early()' in R.row('terrain_render_early') and 'terrain_foam::install()' in R.row('terrain_foam') and
+   'terrain_height_link::install()' in R.row('terrain_height_link') and
+   R.index('terrain_render_early') < R.index('terrain_foam') < R.index('terrain_height_link'), 'baseline install order preserved')
 ok('fallback_attempted' in ccz and 'ccz_sprites_zoom_fallback' in ccz and
    'w)*8u==static_cast<unsigned long long>(want_width)*3u' in ccz and 'return submitted;' in ccz,
    'CCZ local14 normal and 3/8 fallback rendering retained')

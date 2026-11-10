@@ -7,12 +7,14 @@
 게임 루트 PowerShell에서 실행한다.
 
 ```powershell
+& .\AI_TacticsMod\tools\check_feature.ps1 -Changed -List              # 바뀐 파일 → 소유 모듈 → 그 검사만 (작업본은 -Changed -Base main)
+& .\AI_TacticsMod\tools\check_feature.ps1 -Changed                    # 계획 실행, 통과 결과는 입력 해시로 캐시
 & .\AI_TacticsMod\tools\check_feature.ps1 -Feature region-officers -List
 & .\AI_TacticsMod\tools\build_split.ps1 -RuntimeDiagnostics
 & .\AI_TacticsMod\tools\check_feature.ps1 -Feature dll-split -Build
 ```
 
-기능별 검사를 추가하고, `dll-split -Build`는 전부 통과해야 한다. 새 동작에는 모의 검사를 추가한다. 설치기를 고쳤으면 `AI_TacticsMod/tools/build_installer.ps1`도 실행한다. 모의 검사·빌드 성공과 실게임 확인은 구별한다.
+개발 중에는 `-Changed`(캐시 사용)로 영향받는 검사만 돌리고, 설치·배포 전에는 캐시 없는 `-Feature dll-split -Build`를 1회 전부 통과해야 한다. 선택·캐시·매니페스트 키 규칙은 [CHECKS.md](CHECKS.md). 새 동작에는 모의 검사를 추가한다. 설치기를 고쳤으면 `AI_TacticsMod/tools/build_installer.ps1`도 실행한다. 모의 검사·빌드 성공과 실게임 확인은 구별한다.
 
 `-List`는 실행 계획만 출력한다. `-Build` 없이도 선택된 fixture 도구가 검사 실행 파일을 컴파일할 수 있다. `-Build`는 선택 검사 뒤 개발 DLL 빌드를 추가한다. 개발 DLL은 `build/development`에 쓰며 설치본·Apply·ZIP을 바꾸지 않는다. 일부 기존 fixture 결과는 `build` 바로 아래에도 기록된다.
 
@@ -20,7 +22,7 @@
 - 현재 분리 빌드는 `tools/build_split.ps1`: `native_adapter.cpp`를 `SPLIT_BASE` / `SPLIT_COMBAT`으로 각각 컴파일하고, 로더는 `module_loader.cpp` + `input_proxy.cpp`로 빌드한다.
 - 공통 정의: `MERIT_CANDIDATE`, `RECRUITMENT_UI_CANDIDATE`, `HIDDEN_LOYALTY`, `INJURY_PROTECTION`, `AWARD_WAREHOUSE`, `SORTIE_FORMATION`. 배포는 `NO_RUNTIME_LOG`, 별도 계측 후보는 추가 플래그를 쓴다. include·SDK 경로는 빌드 스크립트가 기준이다.
 - `.inl` 포함 순서와 매크로가 다르므로 심볼/인덱스만으로 DLL 소유권·ABI를 확정하지 않는다. 실제 컴파일 DB 없는 C++ 교차 참조의 누락도 부재 증거가 아니다.
-- 기본 v7 `build_native.ps1 -InputLoader` / `package_input.py build`는 최신 기능을 누락하므로 최신 배포에 사용하지 않는다. 과거 전용 승격 도구도 현재 설치 명령으로 사용하지 않는다.
+- DLL은 `tools/build_split.ps1`로만 만든다(사용자 2026-11-07: 통합 빌드·후보 빌드 퇴역). `tools/build_native_fixture.ps1`은 단위 검사용 실행 파일만 만든다. 과거 전용 승격 도구도 현재 설치 명령으로 사용하지 않는다.
 
 ## 로컬 설치
 

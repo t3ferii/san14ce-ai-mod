@@ -3,6 +3,12 @@
 // No game access (native binding: native_face_keep.inl; fixture: tests/face_keep_fixture.cpp).
 #include <cstddef>
 namespace face_keep_core {
+// U35 2026-11-10: keep selection/strategy portraits only AFTER the chained
+// native setter returns. The same Pins pool and 256-reference cap are reused.
+template<class Setter,class Retain,class Object>
+inline void set_then_retain(Setter setter,Retain retain,Object node,Object person) {
+    setter(node,person);retain(person);
+}
 // User decision 2026-10-25: after another PC's ~10-turn crash report (cause unknown), keep
 // the 256 cap (~600 MB estimate), but replace LRU pins and trim on physical-memory pressure.
 constexpr size_t kMax=256;

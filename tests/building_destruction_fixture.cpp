@@ -71,11 +71,11 @@ static int __fastcall original(Obj cmd){
     native_done=true;return mode==2?2:1;
 }
 static void *dispatch(unsigned r){
-    if(r==GA(GA_1F9DE0))return reinterpret_cast<void *>(&original);
-    if(r==GA(GA_2CA280))return reinterpret_cast<void *>(&enemy);
-    if(r==GA(GA_229EA0))return reinterpret_cast<void *>(&area);
-    if(r==GA(GA_1F42B0))return reinterpret_cast<void *>(&durability);
-    if(r==GA(GA_294B90))return reinterpret_cast<void *>(&native_remove);
+    if(r==GA(GA_1FB170))return reinterpret_cast<void *>(&original);
+    if(r==GA(GA_2CC630))return reinterpret_cast<void *>(&enemy);
+    if(r==GA(GA_22B8E0))return reinterpret_cast<void *>(&area);
+    if(r==GA(GA_1F5680))return reinterpret_cast<void *>(&durability);
+    if(r==GA(GA_296AA0))return reinterpret_cast<void *>(&native_remove);
     check(false,"unexpected native call");return nullptr;
 }
 static void reset(){
@@ -135,20 +135,14 @@ static void behavior(){
     for(int damage:{0,-1}){reset();building_destruction::Context c={};c.command=command.p();building_destruction::current=&c;
         building_destruction::capture(command.p(),buildings[1].p(),region.p(),damage,force.p());check(!c.captured,"nonpositive roll rejected");building_destruction::current=nullptr;}
 }
-static void bridge(unsigned form){
+static void bridge(){
     reset();Obj code=allocate_near(nullptr);check(code!=nullptr,"bridge allocation");
-    unsigned n=building_destruction::make_capture_bridge(code,form);
+    unsigned n=building_destruction::make_capture_bridge(code);
     Obj entry=code+512;unsigned at=0;
-    // Driver frame (both forms): push rbp/r12/r13, sub rsp,100, lea rbp,[rsp+80] (the native RBP-relative slots), RSP 16-byte aligned.
+    // Driver frame: push rbp/r12/r13, sub rsp,100, lea rbp,[rsp+80] (the native RBP-relative slots), RSP 16-byte aligned.
     const unsigned char frame[]={0x55,0x41,0x54,0x41,0x55,0x48,0x81,0xEC,0,1,0,0,0x48,0x8D,0xAC,0x24,0x80,0,0,0};
     std::memcpy(entry+at,frame,sizeof(frame));at+=sizeof(frame);
-    if(form==1) {
-        const unsigned char slots[]={0x48,0x89,0x4D,0xE0,0x48,0x89,0x55,0xA0,                          // command [rbp-20], primary [rbp-60]
-            0x48,0x8B,0x84,0x24,0x40,1,0,0,0x48,0x89,0x45,0xC0,                                        // force (5th argument) -> [rbp-40]
-            0x4D,0x8B,0xE8,0x44,0x89,0xCA,                                                             // r13=region, edx=damage
-            0xC7,0x44,0x24,0x78,0x78,0x56,0x34,0x12};                                                  // native [rsp+78]
-        std::memcpy(entry+at,slots,sizeof(slots));at+=sizeof(slots);
-    } else {
+    {
         const unsigned char slots[]={0x48,0x89,0x4D,0xE0,0x48,0x89,0x55,0xA8,                          // command [rbp-20], primary [rbp-58]
             0x48,0x8B,0x84,0x24,0x40,1,0,0,0x48,0x89,0x45,0xF8,                                        // force -> [rbp-8]
             0x4D,0x8B,0xE8,                                                                            // r13=region
@@ -159,8 +153,7 @@ static void bridge(unsigned form){
     static const unsigned char pattern[16]={1,9,4,8,5,3,2,7,6,11,12,15,13,10,14,16};
     entry[at++]=0x48;entry[at++]=0xB8;put(entry,at,pattern);at+=8;
     for(unsigned xmm=0;xmm<6;++xmm){const unsigned char load[]={0xF3,0x0F,0x6F,static_cast<unsigned char>(xmm*8)};std::memcpy(entry+at,load,4);at+=4;}
-    // form 1: carry set before the call must survive; form 2: the displaced ADDs produce the carry (2^31+(2^31+500)) and it must survive
-    if(form==1)entry[at++]=0xF9;
+    // the displaced ADDs produce the carry (2^31+(2^31+500)) and it must survive
     entry[at++]=0x48;entry[at++]=0xB8;put(entry,at,code);at+=8;
     entry[at++]=0xFF;entry[at++]=0xD0;
     // Sixth argument is an output buffer at native RSP+148 after our frame.
@@ -175,14 +168,12 @@ static void bridge(unsigned form){
     using Driver=unsigned long long(__fastcall *)(Obj,Obj,Obj,int,Obj,Obj);
     const auto result=reinterpret_cast<Driver>(entry)(command.p(),buildings[1].p(),region.p(),500,force.p(),xmm_result);
     building_destruction::current=nullptr;
-    check(result==0x112345678ull,form==1?"real bridge preserves carry and loads original stack into R12D":"real bridge replays the ADDs, preserves their carry and R12D");
-    check(c.captured && c.damage==500 && c.force==1 && c.region==region.p() && c.count==4,"real bridge forwards all five arguments (form 2: final EDX after both ADDs)");
+    check(result==0x112345678ull,"real bridge replays the ADDs, preserves their carry and R12D");
+    check(c.captured && c.damage==500 && c.force==1 && c.region==region.p() && c.count==4,"real bridge forwards all five arguments (final EDX after both ADDs)");
     for(unsigned xmm=0;xmm<6;++xmm)check(!std::memcmp(xmm_result+xmm*16,pattern,16),"real bridge preserves volatile XMM registers");
     check(n<512 && extra_writes==0,"bridge fits relay and capture does not apply writes");
-    char name[40];std::snprintf(name,sizeof(name),"capture_bridge_form%u.bin",form);
-    std::ofstream(name,std::ios::binary).write(reinterpret_cast<char *>(code),n);VirtualFree(code,0,MEM_RELEASE);
+    std::ofstream("capture_bridge_form2.bin",std::ios::binary).write(reinterpret_cast<char *>(code),n);VirtualFree(code,0,MEM_RELEASE);
 }
-static unsigned expected_form;
 static void guards(const char *path){
     std::ifstream f(path,std::ios::binary);std::vector<unsigned char> data((std::istreambuf_iterator<char>(f)),{});check(data.size()>0x1000,"plain PE fixture loaded");
     image=static_cast<Obj>(VirtualAlloc(nullptr,0x4000000,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));check(image!=nullptr,"mapped PE fixture allocated");
@@ -192,20 +183,20 @@ static void guards(const char *path){
         if(raw+size<=data.size() && rva+size<=0x4000000)std::memcpy(image+rva,file+raw,size);}
     check(building_destruction::guards_match(),"all native guard hashes match checked plain CE");
     for(const auto &g:building_destruction::guards){image[g.rva]^=1;check(!building_destruction::guards_match(),"each changed dependency rejects hook");image[g.rva]^=1;}
-    const unsigned form=building_destruction::capture_form(),site=GA(GA_1FA607),block=site&~15u,complete_site=GA(GA_1F91F1);
-    check(form==expected_form,"capture point form of this build");
-    // other shapes are refused: neither form's bytes, and a one-byte change of the form-2 ADD pair
-    image[site+1]^=1;check(building_destruction::capture_form()==0,"unknown capture point shape rejected");image[site+1]^=1;
+    const unsigned site=GA(GA_1FB9E6),block=site&~15u,complete_site=GA(GA_1FA581);
+    check(building_destruction::capture_shape_ok(),"capture point shape of this build");
+    // other shapes are refused: a one-byte change of the ADD pair
+    image[site+1]^=1;check(!building_destruction::capture_shape_ok(),"unknown capture point shape rejected");image[site+1]^=1;
     unsigned char before[16];std::memcpy(before,image+block,16);publications=0;fail_publication=2;
     check(!building_destruction::install(),"second publication failure rejects feature");
     check(!std::memcmp(before,image+block,16) && !building_destruction::installed,"first publication rolled back");
     publications=fail_publication=0;check(building_destruction::install(),"two scoped CALL hooks published");
-    const unsigned displaced=form==1?8:6;
+    const unsigned displaced=6;
     bool nops=true;for(unsigned i=5;i<displaced;++i)nops=nops && image[site+i]==0x90;
     check(image[complete_site]==0xE8 && image[site]==0xE8 && nops,"correct hook footprints and NOP tail");
-    check(image[site+displaced]==(form==1?image[site+displaced]:0x89),"form 2: the native MOV [rbp-70],EDX stays in place after the NOP");
+    check(image[site+displaced]==0x89,"the native MOV [rbp-70],EDX stays in place after the NOP");
     check(building_destruction::install() && publications==2,"installation idempotent");VirtualFree(image,0,MEM_RELEASE);
 }
-int main(int argc,char **argv){check(argc==3,"unpacked executable path and expected capture form supplied");expected_form=static_cast<unsigned>(std::atoi(argv[2]));
-    behavior();bridge(expected_form);guards(argv[1]);
+int main(int argc,char **argv){check(argc==2,"unpacked executable path supplied");
+    behavior();bridge();guards(argv[1]);
     std::printf("{\"status\":\"building_destruction_fixture_verified\",\"checks\":%u,\"live_game_verified\":false}\n",checks);}

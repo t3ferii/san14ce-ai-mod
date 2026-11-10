@@ -237,7 +237,7 @@ static void test_bindings() {
         };
         rows(1700,1700,1,1000);untouched(3,1700);expect(word(records+24,0x12)==1700 && word(records+72,0x12)==1000);
         rows(500,500,1,500);untouched(3,500);expect(word(records+24,0x12)==500 && word(records+72,0x12)==500);
-        rows(1000,1000,3,2);untouched(3,1000);rows(1000,1000,2,0);untouched(3,1000);
+        rows(1000,1000,3,2);untouched(3,1000);rows(1000,1000,2,3);untouched(3,1000);   // local17: shape B stage 3 accepts 0 (written by local16) and 1
         rows(1000,1000,5,1);untouched(2,3);expect(word(records+24,0x12)==1000);
         rows(1000,1000,0,1);untouched(2,3);
         rows(500,500,1,1000);records[4*24+0x10]=5;untouched(2,4);records[4*24+0x10]=2;
@@ -280,19 +280,19 @@ static unsigned __fastcall mock_profile_visible(Obj) {return 1;}
 #include "merit_scroll_fixture.inl"
 static void test_profile() {
     Obj front=object(1);strcpy_s(reinterpret_cast<char *>(front+0x70),128,"CInfoDlgState");Obj states[]={front};
-    putptr(image,0x1B620B0+0x20,states);putptr(image,0x1B620B0+0x10,reinterpret_cast<void *>(1));
-    functions[0x878810]=reinterpret_cast<void *>(&mock_profile_tick);
-    functions[0x86F250]=reinterpret_cast<void *>(&mock_profile_visible);
+    putptr(image,0x1B65100+0x20,states);putptr(image,0x1B65100+0x10,reinterpret_cast<void *>(1));
+    functions[0x87ABC0]=reinterpret_cast<void *>(&mock_profile_tick);
+    functions[0x871600]=reinterpret_cast<void *>(&mock_profile_visible);
     // Own this test's native friends; the preceding test frees its objects.
     std::vector<Obj> friends;
     for(unsigned i=0;i<8;++i) {Obj p=object(200+i);slot(0x158,200+i,p);friends.push_back(p);}
     original_merit_has=&mock_has;original_merit_list=&mock_list;
-    functions[0x908820]=reinterpret_cast<void *>(&mock_profile);
-    functions[0x2323D0]=reinterpret_cast<void *>(&mock_hidden);
-    functions[0x232400]=reinterpret_cast<void *>(&mock_hidden);
-    functions[0x30C020]=reinterpret_cast<void *>(&mock_biography);
-    functions[0x22EEC0]=reinterpret_cast<void *>(&mock_name);
-    functions[0x930D20]=reinterpret_cast<void *>(&mock_label);
+    functions[0x90ACC0]=reinterpret_cast<void *>(&mock_profile);
+    functions[0x233D70]=reinterpret_cast<void *>(&mock_hidden);
+    functions[0x233DA0]=reinterpret_cast<void *>(&mock_hidden);
+    functions[0x30E0B0]=reinterpret_cast<void *>(&mock_biography);
+    functions[0x230950]=reinterpret_cast<void *>(&mock_name);
+    functions[0x9332B0]=reinterpret_cast<void *>(&mock_label);
     Obj profile=object(1);void *vt[64]={};vt[0x198/8]=reinterpret_cast<void *>(&mock_key);putptr(profile,0,vt);
     Obj desc=object(1);Obj descriptors[]={desc};putptr(profile,0x138,descriptors);put32(profile,0x140,1);
     Obj p=table(0x158,100,6000);p[0x1C2]=3;merit_bonds.clear();expect(merit_bonds.award(100,2,merit_context,nullptr));
@@ -322,7 +322,7 @@ static void test_profile() {
     expect(profile_label==L"[열전 1/1 · 휠/PgUp·PgDn]\n논공 친애: 관우\n\n군주 열전");
     test_scroll_input(profile,front);
     original_biography=L"기존 관우 열전";merit_scrolls.clear();free(profile);free(desc);
-    putptr(image,0x1B620B0+0x20,nullptr);putptr(image,0x1B620B0+0x10,nullptr);free(front);
+    putptr(image,0x1B65100+0x20,nullptr);putptr(image,0x1B65100+0x10,nullptr);free(front);
     for(Obj friend_object:friends) {slot(0x158,word(friend_object,0x10),nullptr);free(friend_object);}
 }
 // Merit dialog toggle (local7): a scripted "native" handler writes one nibble, the wrapper must undo raises of a forbidden route.
@@ -333,7 +333,7 @@ static void __fastcall mock_dialog(Obj data,Obj) {
 }
 static void __fastcall mock_refresh(Obj) {++dialog_refreshes;}
 static void test_dialog() {
-    original_merit_dialog=&mock_dialog;functions[0x781DA0]=reinterpret_cast<void *>(&mock_refresh);
+    original_merit_dialog=&mock_dialog;functions[0x783F50]=reinterpret_cast<void *>(&mock_refresh);
     Obj p1=object(110),p2=object(111),p3=object(112);for(Obj p:{p1,p2,p3})slot(0x158,word(p,0x10),p);
     CommandTree tree(110,111,112);Obj data=static_cast<Obj>(calloc(1,0x400));putptr(data,0x198,tree.head);
     auto node=[&](unsigned id)->unsigned char & {return tree.nodes[id-110][0x20];};
@@ -398,8 +398,8 @@ static void __fastcall mock_autofill(Obj data,int mode) {
 }
 static void test_lock_display() {
     original_merit_slot_states=&mock_slot_states;original_merit_autofill=&mock_autofill;
-    functions[0x8759A0]=reinterpret_cast<void *>(&mock_lock_label);functions[0x356810]=reinterpret_cast<void *>(&mock_tier);
-    functions[0x781DA0]=reinterpret_cast<void *>(&mock_fill_refresh);
+    functions[0x877D50]=reinterpret_cast<void *>(&mock_lock_label);functions[0x358BF0]=reinterpret_cast<void *>(&mock_tier);
+    functions[0x783F50]=reinterpret_cast<void *>(&mock_fill_refresh);
     Obj p1=object(110),p2=object(111),p3=object(112);for(Obj p:{p1,p2,p3})slot(0x158,word(p,0x10),p);
     CommandTree tree(110,111,112);Obj data=static_cast<Obj>(calloc(1,0x400));putptr(data,0x198,tree.head);
     auto node=[&](unsigned id)->unsigned char & {return tree.nodes[id-110][0x20];};
@@ -454,7 +454,7 @@ static void test_lock_display() {
     enabled=0;fill(5,1,0,0,0);expect(node(110)==0x11 && fill_refreshes==1);enabled=1;
     free(row);for(Obj l:labels)free(l);
     free(data);for(Obj p:{p1,p2,p3}) {slot(0x158,word(p,0x10),nullptr);free(p);}
-    functions[0x781DA0]=reinterpret_cast<void *>(&mock_refresh);
+    functions[0x783F50]=reinterpret_cast<void *>(&mock_refresh);
 }
 static void test_publication() {
     Obj saved=image;
@@ -462,40 +462,40 @@ static void test_publication() {
     expect(memory!=nullptr);image=memory;Obj relay=memory+0x2800000;
     for(const auto &entry:merit_entries)memcpy(image+entry.rva,entry.bytes,entry.size);
     const unsigned char save[]={0xFF,0x10,0x48,0x83,0x7B,0x18,0x10},load[]={0xFF,0x50,0x08,0x85,0xC0};
-    memcpy(image+0x3F7E32,save,sizeof(save));memcpy(image+0x3FA5C4,load,sizeof(load));
-    putptr(image,0x13E69A0,image+0x50B670);putptr(image,0x13E60F8,image+0x509580);putptr(image,0x13A6BB0,image+0x2390B0);
-    putptr(image,0x1413600,image+0x908820);putptr(image,0x1413488,image+0x878810);
-    memcpy(image+GA(GA_7705F0),merit_dialog_bytes,sizeof(merit_dialog_bytes));
-    memcpy(image+GA(GA_6D9790),merit_slot_bytes,5);memcpy(image+GA(GA_6C40B0),merit_autofill_bytes,6);
+    memcpy(image+0x3FA342,save,sizeof(save));memcpy(image+0x3FCAC4,load,sizeof(load));
+    putptr(image,0x13E9A30,image+0x50DD30);putptr(image,0x13E9188,image+0x50BD20);putptr(image,0x13A9BF0,image+0x23AA60);
+    putptr(image,0x1416690,image+0x90ACC0);putptr(image,0x1416518,image+0x87ABC0);
+    memcpy(image+GA(GA_7726B0),merit_dialog_bytes,sizeof(merit_dialog_bytes));
+    memcpy(image+GA(GA_6DBAA0),merit_slot_bytes,5);memcpy(image+GA(GA_6C6810),merit_autofill_bytes,6);
     MeritCode code;expect(merit_guards_match() && prepare_merit(code,relay) && code.dialog_ready && code.lock_ready && code.autofill_ready);
-    expect(!memcmp(relay+1120,merit_dialog_bytes,5) && pointer(relay+1120,11)==image+GA(GA_7705F0)+5);
+    expect(!memcmp(relay+1120,merit_dialog_bytes,5) && pointer(relay+1120,11)==image+GA(GA_7726B0)+5);
     // Lock stub: mov r9,rbp then jump to the wrapper; gate = prologue + jump back. Auto fill: six bytes, sixth patched byte NOP.
     expect(relay[1152]==0x49 && relay[1153]==0x89 && relay[1154]==0xE9 && pointer(relay+1155,6)==reinterpret_cast<Obj>(&merit_slot_states));
-    expect(!memcmp(relay+1184,merit_slot_bytes,5) && pointer(relay+1184,11)==image+GA(GA_6D9790)+5);
-    expect(!memcmp(relay+1248,merit_autofill_bytes,6) && pointer(relay+1248,12)==image+GA(GA_6C40B0)+6);
+    expect(!memcmp(relay+1184,merit_slot_bytes,5) && pointer(relay+1184,11)==image+GA(GA_6DBAA0)+5);
+    expect(!memcmp(relay+1248,merit_autofill_bytes,6) && pointer(relay+1248,12)==image+GA(GA_6C6810)+6);
     expect(pointer(relay+1216,6)==reinterpret_cast<Obj>(&merit_autofill));
     for(unsigned i=0;i<6;++i) {
         expect(!memcmp(relay+544+i*64,merit_entries[i].bytes,merit_entries[i].size));
         expect(pointer(relay+544+i*64,merit_entries[i].size+6)==image+merit_entries[i].rva+merit_entries[i].size);
     }
     int32_t relative=*reinterpret_cast<int32_t *>(relay+928+3);
-    expect(relay+928+7+relative==image+0x277DF18);
-    expect(pointer(relay+928,13)==image+0x3565D7);
+    expect(relay+928+7+relative==image+0x2780F60);
+    expect(pointer(relay+928,13)==image+0x3589B7);
     expect(!memcmp(relay+992,merit_entries[7].bytes,5));
-    expect(pointer(relay+992,11)==image+0x21B2E5);
-    expect(publish_merit(code) && code.links[10].published && image[GA(GA_7705F0)]==0xE9);
-    expect(code.links[11].published && image[GA(GA_6D9790)]==0xE9 && code.links[12].published && image[GA(GA_6C40B0)]==0xE9 &&
-           image[GA(GA_6C40B0)+5]==0x90);expect(pointer(image,0x13A6BB0)==reinterpret_cast<Obj>(&merit_person_read));
-    restore_merit(code);expect(merit_guards_match() && !memcmp(image+GA(GA_7705F0),merit_dialog_bytes,5));
-    expect(!memcmp(image+GA(GA_6D9790),merit_slot_bytes,5) && !memcmp(image+GA(GA_6C40B0),merit_autofill_bytes,6));
+    expect(pointer(relay+992,11)==image+0x21CCC5);
+    expect(publish_merit(code) && code.links[10].published && image[GA(GA_7726B0)]==0xE9);
+    expect(code.links[11].published && image[GA(GA_6DBAA0)]==0xE9 && code.links[12].published && image[GA(GA_6C6810)]==0xE9 &&
+           image[GA(GA_6C6810)+5]==0x90);expect(pointer(image,0x13A9BF0)==reinterpret_cast<Obj>(&merit_person_read));
+    restore_merit(code);expect(merit_guards_match() && !memcmp(image+GA(GA_7726B0),merit_dialog_bytes,5));
+    expect(!memcmp(image+GA(GA_6DBAA0),merit_slot_bytes,5) && !memcmp(image+GA(GA_6C6810),merit_autofill_bytes,6));
     // Lock display and auto fill fail on their own: changed bytes switch only that part off.
-    image[GA(GA_6D9790)+1]^=1;image[GA(GA_6C40B0)+3]^=1;
+    image[GA(GA_6DBAA0)+1]^=1;image[GA(GA_6C6810)+3]^=1;
     {MeritCode other;expect(prepare_merit(other,relay) && other.dialog_ready && !other.lock_ready && !other.autofill_ready && publish_merit(other) &&
-                            other.links[10].published && image[GA(GA_6D9790)]==0x40 && image[GA(GA_6C40B0)]==0x40);restore_merit(other);}
-    image[GA(GA_6D9790)+1]^=1;image[GA(GA_6C40B0)+3]^=1;
+                            other.links[10].published && image[GA(GA_6DBAA0)]==0x40 && image[GA(GA_6C6810)]==0x40);restore_merit(other);}
+    image[GA(GA_6DBAA0)+1]^=1;image[GA(GA_6C6810)+3]^=1;
     // The dialog hook fails on its own: changed bytes there keep every other merit hook installed.
-    image[GA(GA_7705F0)+1]^=1;{MeritCode other;expect(prepare_merit(other,relay) && !other.dialog_ready && publish_merit(other) && image[GA(GA_7705F0)]==0x40);restore_merit(other);}
-    image[GA(GA_7705F0)+1]^=1;
+    image[GA(GA_7726B0)+1]^=1;{MeritCode other;expect(prepare_merit(other,relay) && !other.dialog_ready && publish_merit(other) && image[GA(GA_7726B0)]==0x40);restore_merit(other);}
+    image[GA(GA_7726B0)+1]^=1;
     expect(prepare_merit(code,relay));image[merit_entries[2].rva+10]^=1;
     expect(!publish_merit(code));restore_merit(code);
     expect(!memcmp(image+merit_entries[0].rva,merit_entries[0].bytes,5));
@@ -503,12 +503,12 @@ static void test_publication() {
 }
 int main() {
     test_store();image=static_cast<Obj>(calloc(1,0x2800000));root=static_cast<Obj>(calloc(1,0x90000));
-    putptr(image,0x277DF18,root);putptr(image,0x27D10E8,root);putptr(image,0x27D10F0,heads);put32(image,0x27D1120,256);
+    putptr(image,0x2780F60,root);putptr(image,0x27D4138,root);putptr(image,0x27D4140,heads);put32(image,0x27D4170,256);
     putptr(image,0x27D1108,list_counts);
     enabled=1;merit_world=root;
-    functions={{0x32F500,reinterpret_cast<void *>(&mock_valid)},{0x22CA00,reinterpret_cast<void *>(&mock_force)},
-        {0x21E2B0,reinterpret_cast<void *>(&mock_init)},{0x18DF0,reinterpret_cast<void *>(&mock_add)},
-        {0x424D60,reinterpret_cast<void *>(&mock_free)}};
+    functions={{0x331780,reinterpret_cast<void *>(&mock_valid)},{0x22E450,reinterpret_cast<void *>(&mock_force)},
+        {0x01AC60,reinterpret_cast<void *>(&mock_init)},{0x18D50,reinterpret_cast<void *>(&mock_add)},
+        {0x1BFFF0,reinterpret_cast<void *>(&mock_free)}};
     force1=object(10);force2=object(20);slot(0xDF30,1,force1);slot(0xDF30,2,force2);
     for(unsigned id=1;id<=2;++id) {Obj d=object(id);d[0x10]=static_cast<unsigned char>(id);slot(0xE0D0,id,d);}
     test_bindings();test_dialog();test_lock_display();test_persistence();test_profile();test_captured_combat();test_publication();

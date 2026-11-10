@@ -1,7 +1,7 @@
 #include "game_addresses.h"
 /* Transit through a still-hostile city region uses a tile, never its castle
  * center. A recruited protector must physically arrive before any shortcut. */
-static std::vector<unsigned> campaign_transit_tiles(Obj army,unsigned region,unsigned goal) {
+static std::vector<unsigned> campaign_transit_tiles(Obj army,unsigned region,unsigned goal) { COST_SCOPE("campaign_logistics:campaign_transit_tiles");
     (void)goal;std::vector<unsigned> result;unsigned here=word(army,0x2A);
     if(!valid(table(0x6CAF0,region,500)) || here>=48400)return result;
     // Every tile in C qualifies, irrespective of its distance to the castle,
@@ -9,12 +9,12 @@ static std::vector<unsigned> campaign_transit_tiles(Obj army,unsigned region,uns
     for(unsigned h=0;h<48400;++h) {
         Obj tile=table(0xE270,h,48399);if(!valid(tile) || word(tile,0x12)!=region)continue;
         unsigned owner=tile[0x14],own=army_force(army);
-        if(!owner || owner==own || fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(own,owner))result.push_back(h);
+        if(!owner || owner==own || fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,owner))result.push_back(h);
     }
     std::sort(result.begin(),result.end(),[here](unsigned a,unsigned b){int da=distance(here,a),db=distance(here,b);return da!=db?da<db:a<b;});
     return result;
 }
-static bool campaign_transit_relay(Obj army,Progress &p,unsigned region,unsigned goal,bool plan) {
+[[maybe_unused]] static bool campaign_transit_relay(Obj army,Progress &p,unsigned region,unsigned goal,bool plan) { COST_SCOPE("campaign_logistics:campaign_transit_relay");
     auto tiles=campaign_transit_tiles(army,region,goal);unsigned attempts=0;
     for(unsigned h:tiles) {
         if(campaign_assign_safe(army,p,h,false,plan))return true;
@@ -25,7 +25,7 @@ static bool campaign_transit_relay(Obj army,Progress &p,unsigned region,unsigned
 #ifdef SORTIE_FORMATION
 static bool campaign_request_reinforcements(Obj army,Progress &p,uint64_t needed,unsigned guard_region,unsigned guard_goal);
 #endif
-static bool campaign_request_guard(Obj army,Progress &p,unsigned region,unsigned goal) {
+static bool campaign_request_guard(Obj army,Progress &p,unsigned region,unsigned goal) { COST_SCOPE("campaign_logistics:campaign_request_guard");
     if(!mod_features.support)return false;   // [combat] support
     Obj center=table(0xE270,goal,48399);if(!valid(center) || center[0x14]==army_force(army))return false;
     Obj winner=nullptr;unsigned target=48400;float best=1.0e9f;CampaignRoute chosen;
@@ -79,7 +79,7 @@ static bool campaign_request_guard(Obj army,Progress &p,unsigned region,unsigned
     return false;
 #endif
 }
-static bool campaign_guard_priority(Obj army,Progress &p) {
+static bool campaign_guard_priority(Obj army,Progress &p) { COST_SCOPE("campaign_logistics:campaign_guard_priority");
     if(!p.guard_requested)return false;
     Obj beneficiary=table(0x7E838,p.guard_beneficiary,500),goal=table(0xE270,p.guard_goal,48399);
     Progress &b=progress[p.guard_beneficiary];
@@ -96,12 +96,12 @@ static bool campaign_guard_priority(Obj army,Progress &p) {
     // Failed assistance is released, allowing another real helper next time.
     p.guard_requested=false;p.guard_beneficiary=0;return false;
 }
-static bool campaign_defensive_wait(Obj army,Progress &p) {
+[[maybe_unused]] static bool campaign_defensive_wait(Obj army,Progress &p) { COST_SCOPE("campaign_logistics:campaign_defensive_wait");
     struct Fort {unsigned hex;};std::vector<Fort> forts;unsigned here=word(army,0x2A),own=army_force(army);
     for(unsigned id=1;id<=3000;++id) {
         Obj b=table(0x6DA98,id,3000);
         if(!valid(b) || b[0x13]!=own || (b[0x12]!=3 && b[0x12]!=4) || word(b,0x10)>=48400 || distance(here,word(b,0x10))>15)continue;
-        int maximum=fn<int(__fastcall *)(Obj)>(GA(GA_2AC120))(b);
+        int maximum=fn<int(__fastcall *)(Obj)>(GA(GA_2AE450))(b);
         if(maximum>0 && word(b,0x14)>=maximum)forts.push_back({word(b,0x10)});
     }
     if(forts.empty())return false;

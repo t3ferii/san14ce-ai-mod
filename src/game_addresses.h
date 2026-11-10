@@ -1,9 +1,11 @@
 #pragma once
 // Central original-game address table + runtime resolver (user 2026-11-05 patch resilience, docs/PATCH_RESILIENCE.md).
-// Feature code never writes an original RVA: it writes GA(GA_<oldRVA>) and gets the RVA of the running build.
-//   - known build (EXE TimeDateStamp in ga_builds): the precomputed per-build table (src/game_addresses_data.inl, generated).
+// Feature code never writes an original RVA: it writes GA(GA_<RVA of the reference build>) and gets the RVA of the running build.
+// Since the W1-E re-base (2026-11-07) the table has ONE build column, the reference build 1a4a447d (ga_builds[0]); tools/addr_promote.py
+// re-bases the table and the sources at every Steam patch.
+//   - known build (EXE TimeDateStamp in ga_builds): the precomputed table (src/game_addresses_data.inl, generated).
 //   - unknown build of the game EXE: signature / RTTI resolution (ga::resolve_image), unresolved ids read as 0.
-//   - any other host (test fixtures, tools): the reference build table (ga_builds[0] = 1fbe6be7), or ga::select_build().
+//   - any other host (test fixtures, tools): the reference build table.
 // An id that is unresolved (or deliberately denied for a changed function) reads 0; guards then fail and
 // ga::file_ok()/split_address_gates() switch the dependent feature off. Resolution methods: see tools/gen_signatures.py.
 #include <windows.h>
@@ -16,6 +18,24 @@
 #include <vector>
 #include <unordered_map>
 #include "game_addresses_data.inl"
+#ifdef GA_EQUIV_DUMP
+// Equivalence dump (tests/ga_equiv_dump.cpp, docs/MODULARIZATION_PLAN.md 1-C). Test builds only, never in a shipped DLL: records every
+// address-table value that is read and the EFFECTIVE expectation of every guard that runs (exact bytes / literal / hash).
+#include <set>
+#include <stdio.h>
+namespace ga {
+inline std::set<std::string> &dump_set() {static std::set<std::string> s;return s;}
+inline void dump_bytes(const char *kind,unsigned rv,size_t n,const unsigned char *exp,int result) {
+    std::string t=kind;char b[40];snprintf(b,sizeof(b)," %X %zu ",rv,n);t+=b;
+    for(size_t k=0;k<n;++k) {snprintf(b,sizeof(b),"%02X",exp[k]);t+=b;}
+    snprintf(b,sizeof(b)," r%d",result?1:0);t+=b;dump_set().insert(t);
+}
+inline void dump_hash(const char *kind,unsigned rv,unsigned n,unsigned long long h) {
+    char b[96];snprintf(b,sizeof(b),"%s %X %u %016llX",kind,rv,n,h);dump_set().insert(b);
+}
+inline void dump_rva(unsigned rv) {char b[32];snprintf(b,sizeof(b),"V %X",rv);dump_set().insert(b);}
+}
+#endif
 
 namespace ga {
 static const uint64_t kPreferredBase=0x140000000ull;
@@ -46,10 +66,19 @@ inline void load_build(State &s,int build) {
     recount(s);
 }
 inline int find_build(unsigned timestamp) {
-    for(int i=0;i<2;++i)if(ga_builds[i].timestamp==timestamp)return i;
+    for(int i=0;i<static_cast<int>(sizeof(ga_builds)/sizeof(ga_builds[0]));++i)if(ga_builds[i].timestamp==timestamp)return i;
     return -1;
 }
+// local25 (user 2026-11-10 lag analysis: the guarded function-local static below cost 14% of every path search,
+// because GA() runs it on each native call). The first call still builds the table under the thread-safe static;
+// afterwards every call reads one pointer. The table object and its values are unchanged.
+inline State *&state_cache() {static State *p=nullptr;return p;}
+inline State &state_slow();
 inline State &state() {
+    State *p=state_cache();
+    return p?*p:state_slow();
+}
+inline State &state_slow() {
     static State s=[]{
         State t={};t.build=-1;
         unsigned ts=0;
@@ -64,18 +93,20 @@ inline State &state() {
         int b=find_build(ts);
         if(b>=0)load_build(t,b);
         else if(t.game_host)load_build(t,-1);      // unknown game build: unresolved until ga::resolve_image
-        else {                                      // fixtures/tools: reference build, or SAN14_GA_BUILD=<index> (address fixtures)
-            char env[8]={};
-            int pick=GetEnvironmentVariableA("SAN14_GA_BUILD",env,sizeof(env))?atoi(env):0;
-            load_build(t,pick>=0 && pick<2?pick:0);
-        }
+        else load_build(t,0);                       // fixtures/tools: the reference build
         return t;
     }();
+    state_cache()=&s;   // published after construction; x64 stores are not reordered before it
     return s;
 }
-inline unsigned rva(unsigned id) {return state().vals[id];}
+inline unsigned rva(unsigned id) {
+    unsigned v=state().vals[id];
+#ifdef GA_EQUIV_DUMP
+    if(v)dump_rva(v);
+#endif
+    return v;
+}
 inline bool known(unsigned id) {return state().vals[id]!=0;}
-inline void select_build(int build) {load_build(state(),build);}    // fixtures: choose ga_builds[build]
 inline int build_index() {return state().build;}
 inline const char *build_name() {int b=state().build;return b>=0?ga_builds[b].name:"unknown";}
 inline const unsigned *table(unsigned *count) {if(count)*count=GA_COUNT;return state().vals;}
@@ -86,39 +117,30 @@ inline void adopt(const unsigned *vals,unsigned count) {
     if(!vals||count!=GA_COUNT||s.build>=0||s.resolved_runtime)return;
     memcpy(s.vals,vals,sizeof(s.vals));s.resolved_runtime=true;recount(s);
 }
-// Guard hash of an original code range (FNV-1a 64 over the bytes): the expected value for the running build. The reference build
-// (and fixtures, unknown builds) keep the source literal; the other known build looks the pair up (0 = range unresolved/changed).
+// Guard hash of an original code range (FNV-1a 64 over the bytes): the expected value for the running build. The source literal IS the
+// reference-build hash (1a4a447d, re-based by tools/addr_promote.py); GH() marks it for the tools (check_addresses, hook map).
 inline unsigned long long hash_expect(unsigned long long reference) {
-    int b=state().build;
-    if(b<=0)return reference;
-    unsigned lo=0,hi=ga_hash_count;
-    while(lo<hi) {
-        unsigned mid=(lo+hi)/2;
-        if(ga_hash_pairs[mid][0]<reference)lo=mid+1;else hi=mid;
-    }
-    return lo<ga_hash_count && ga_hash_pairs[lo][0]==reference?ga_hash_pairs[lo][1]:reference;
+#ifdef GA_EQUIV_DUMP
+    dump_hash("G",0,0,reference);
+#endif
+    return reference;
 }
-// memcmp of original code at table id + byte offset against the bytes expected from the reference build. On the reference
-// build (and fixtures) this is memcmp. On the other KNOWN build the exact bytes of that build (ga_expb: bytes -16..+32, or ..+160 for long guards, around the id,
-// generated from its unpacked EXE) replace the expected bytes: nothing is ignored, so another mod's edit of any byte is seen. Only an
-// UNKNOWN build ignores the relocatable fields (rel32 / RIP displacement, from the reference decode). 0 = unresolved id: never equal.
-// 2026-11-05 local5 (docs/INSTALL_LOCAL2_TRIAGE.md section 13): on a known build with exact bytes (build index 1) a guard range that no
-// exact-byte window covers silently fell back to the reference bytes with the reference wildcard map (name_lookup: a 206-byte entry array
-// with a CALL rel32 at +143 against a 32-byte window). Every such fallback is recorded here so that the guard fixture can fail on it
-// (tools/check_addresses.py (c2)); extend the window in tools/guard_windows.json.
-inline std::vector<std::pair<unsigned,unsigned>> &uncovered() {static std::vector<std::pair<unsigned,unsigned>> v;return v;}
-inline void note_uncovered(unsigned rv,size_t n) {
-    for(const auto &u:uncovered())if(u.first==rv && u.second==n)return;
-    uncovered().push_back({rv,static_cast<unsigned>(n)});
-}
+// memcmp of original code at table id + byte offset against the bytes expected from the reference build (the source literals are the
+// bytes of the reference build): on the known build (and fixtures) this is memcmp, nothing is ignored, so another mod's edit of any byte
+// is seen. Only an UNKNOWN build ignores the relocatable fields (rel32 / RIP displacement, from the reference decode, ga_wild).
+// 0 = unresolved id: never equal.
 inline int mcmp(const unsigned char *code,unsigned id,unsigned off,const void *expected,size_t n) {
     unsigned rv=rva(id);
     if(!rv)return 1;
     const unsigned char *a=code+rv+off,*e=static_cast<const unsigned char *>(expected);
     int b=state().build;
-    if(b==0 || (b<0 && !state().game_host))return memcmp(a,e,n);
-    if(b==1 && off+n<=ga_expb_post_1a4a447d[id])return memcmp(a,ga_expb_pool_1a4a447d+ga_expb_off_1a4a447d[id]+16+off,n);
-    if(b==1)note_uncovered(rv+off,n);
+    if(b==0 || (b<0 && !state().game_host)) {
+        int r=memcmp(a,e,n);
+#ifdef GA_EQUIV_DUMP
+        dump_bytes("M",rv+off,n,e,r);
+#endif
+        return r;
+    }
     unsigned wild=ga_wild[id];
     for(size_t k=0;k<n;++k) {
         unsigned bit=off+static_cast<unsigned>(k);
@@ -128,32 +150,24 @@ inline int mcmp(const unsigned char *code,unsigned id,unsigned off,const void *e
     return 0;
 }
 // Same as mcmp for an address computed by the caller (rows of guard tables, entry bytes at a table-derived RVA, 16-byte code blocks):
-// on the second known build the exact bytes of that build (ga_expb, window -16..+32 around the nearest table id that covers the whole
-// range) replace the expected bytes; on an unknown build the wildcard map of the nearest id at or below the address applies; no such
+// on the known build plain memcmp; on an unknown build the wildcard map of the nearest id at or below the address applies; no such
 // id = plain memcmp.
 inline int mcmp_at(const unsigned char *code,unsigned rv,const void *expected,size_t n) {
     if(!rv)return 1;
     const unsigned char *a=code+rv,*e=static_cast<const unsigned char *>(expected);
     State &s=state();
-    if(s.build==0 || (s.build<0 && !s.game_host))return memcmp(a,e,n);
+    if(s.build==0 || (s.build<0 && !s.game_host)) {
+        int r=memcmp(a,e,n);
+#ifdef GA_EQUIV_DUMP
+        dump_bytes("A",rv,n,e,r);
+#endif
+        return r;
+    }
     static std::vector<std::pair<unsigned,unsigned>> index;static unsigned index_gen=~0u;
     if(index_gen!=s.generation) {
         index.clear();
         for(unsigned i=0;i<GA_COUNT;++i)if(s.vals[i] && ga_entries[i].kind<=1)index.push_back({s.vals[i],i});
         std::sort(index.begin(),index.end());index_gen=s.generation;
-    }
-    if(s.build==1) {
-        // ids whose window [v-16,v+post) covers [rv,rv+n): value v in [rv+n-post, rv+16]; the nearest one wins
-        const unsigned char *best=nullptr;unsigned best_d=~0u;
-        auto lo=std::lower_bound(index.begin(),index.end(),std::make_pair(rv>=160?rv-160:0u,0u));
-        for(auto it=lo;it!=index.end() && it->first<=rv+16;++it) {
-            unsigned id=it->second,v=it->first,post=ga_expb_post_1a4a447d[id];
-            if(rv+16<v || rv+n>v+post)continue;
-            unsigned d=v>rv?v-rv:rv-v;
-            if(d<best_d) {best_d=d;best=ga_expb_pool_1a4a447d+ga_expb_off_1a4a447d[id]+(rv+16-v);}
-        }
-        if(best)return memcmp(a,best,n);
-        note_uncovered(rv,n);
     }
     unsigned wild=0,off=0;
     auto it=std::upper_bound(index.begin(),index.end(),std::make_pair(rv,~0u));
@@ -169,10 +183,10 @@ inline bool file_ok(unsigned file) {return (state().denied[file>>6]&(1ull<<(file
 // every listed source file free of unresolved ids
 inline bool files_ok(std::initializer_list<unsigned> files) {for(unsigned f:files)if(!file_ok(f))return false;return true;}
 
-// ---------------------------------------------------------------- read-only observers (local11, docs/INSTALL_LOCAL2_TRIAGE.md section 18)
+// ---------------------------------------------------------------- read-only observers (local11, docs/HISTORY.md section 18)
 // San14Sim's version.dll replaces the first 5..11 bytes of 23 original functions plus the daily-progress entry by `E9 rel32` (+ NOP padding)
-// whose target lies outside the game image. ga_observers (generated from tools/observer_hooks.json and both unpacked EXEs) lists those
-// entries per known build with the ORIGINAL prefix bytes (identical in both builds, no relocation inside).
+// whose target lies outside the game image. ga_observers (from tools/observer_hooks.json and the unpacked EXE) lists those
+// entries of the known build with the ORIGINAL prefix bytes (no relocation inside).
 // An entry counts as OBSERVED only when all of these hold: image[rva]==E9, the jump target is outside [image,image+SizeOfImage), and the
 // padding bytes up to the prefix length are NOP or INT3. Everything behind the prefix stays under the caller's own guard, which is computed with
 // the prefix replaced by the original bytes (hash_ok / fnv_observed / the .text CRC of native_adapter.cpp), so a patch that lands inside the game,
@@ -212,14 +226,14 @@ inline bool observer_shape(const unsigned char *img,unsigned image_size,unsigned
 inline void observers(const unsigned char *img,ObserverSet &set) {
     set.count=0;
     const int b=state().build;
-    if(b<0 || b>1 || !img)return;
+    if(b<0 || !img)return;
     const unsigned size=image_size_of(img);
     if(!size)return;
     __try {
         for(unsigned i=0;i<GA_OBSERVER_COUNT;++i) {
             const GaObserver &o=ga_observers[i];
-            if(!observer_shape(img,size,o.rva[b],o.len))continue;
-            set.rva[set.count]=o.rva[b];set.len[set.count]=o.len;set.bytes[set.count]=o.bytes;++set.count;
+            if(!observer_shape(img,size,o.rva[0],o.len))continue;
+            set.rva[set.count]=o.rva[0];set.len[set.count]=o.len;set.bytes[set.count]=o.bytes;++set.count;
         }
     } __except(EXCEPTION_EXECUTE_HANDLER) {set.count=0;}
 }
@@ -250,6 +264,9 @@ inline bool hash_ok(const unsigned char *img,unsigned rva,unsigned n,unsigned lo
     if(!rva)return false;
     unsigned long long h=0xcbf29ce484222325ull;
     for(unsigned i=0;i<n;++i)h=(h^img[rva+i])*0x100000001b3ull;
+#ifdef GA_EQUIV_DUMP
+    dump_hash("H",rva,n,expected);
+#endif
     if(h==expected)return true;
     ObserverSet local;
     ObserverSet &u=used?*used:local;

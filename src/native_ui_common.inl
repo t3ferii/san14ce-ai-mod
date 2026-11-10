@@ -6,6 +6,6 @@
 namespace native_ui {
 static void officer_notice(unsigned speaker,const wchar_t *text) {
     // 1F09E0 copies UTF-16 text synchronously before queuing the dialog.
-    fn<void(__fastcall *)(unsigned,const wchar_t *)>(GA(GA_1F09E0))(speaker,text);
+    fn<void(__fastcall *)(unsigned,const wchar_t *)>(GA(GA_1F1DA0))(speaker,text);
 }
 }

@@ -19,7 +19,7 @@ static unsigned __fastcall expert_test_get(Obj options,unsigned key,unsigned pre
 static float __fastcall expert_test_adjacency(Obj,int force,int *score) {
     *score=static_cast<int>(expert_test_score);
     unsigned key=static_cast<unsigned>(force)==player_force()?4:5;
-    unsigned scale=expert_native_adjacency_option(image+0x1A46CA8,key,0);
+    unsigned scale=expert_native_adjacency_option(image+0x1A49C98,key,0);
     return 1.0f+static_cast<float>(expert_test_score*(4+expert_test_trait))*0.0001f*static_cast<float>(scale)*0.01f;
 }
 static void __fastcall expert_test_pair(Obj,Obj,Obj) {
@@ -45,7 +45,9 @@ static void __fastcall expert_test_number(Obj,Obj *,Obj,Obj) {++expert_test_nati
 static Obj __fastcall expert_test_source(Obj,Obj item) {return item;}
 static Obj __fastcall expert_test_row_at(Obj,unsigned) {return expert_test_row;}
 static void __fastcall expert_test_marker(Obj control,int value) {*reinterpret_cast<int *>(control+0x10)=value;}
-static void __fastcall expert_test_bind(Obj row,Obj record,Obj,int,int) {
+static unsigned expert_test_bind_mode;
+static void __fastcall expert_test_bind(Obj row,Obj record,Obj,int,int mode) {
+    expert_test_bind_mode=static_cast<unsigned>(mode);
     memcpy(row+0x220,record,0x60);
     // Even a native control that emits while binding cannot overwrite settings.
     unsigned char callback[16]={};putptr(callback,8,expert_test_layout);
@@ -96,8 +98,8 @@ static void expert_settings_tests() {
     Adjacency saved_adjacency=original_adjacency;
     ExpertPopulate saved_population=original_expert_populate;
     ExpertUnitPower saved_power=original_expert_unit_power;
-    unsigned saved_human=dword(expert_option(image+0x1A46CA8,4),0);
-    unsigned saved_ai=dword(expert_option(image+0x1A46CA8,5),0),saved_mode=dword(image,0x1A47AF8);
+    unsigned saved_human=dword(expert_option(image+0x1A49C98,4),0);
+    unsigned saved_ai=dword(expert_option(image+0x1A49C98,5),0),saved_mode=dword(image,0x1A4AAE8);
     bool roundtrip=true;
     for(unsigned base=50;base<=200;++base)for(unsigned rate=0;rate<=200;++rate) {
         unsigned packed=expert_combat::encode({base,rate});auto decoded=expert_combat::decode(packed);
@@ -121,11 +123,11 @@ static void expert_settings_tests() {
           !expert_combat::encoded(expert_combat::tag|(100u<<8)|201),"malformed packed values are not accepted");
     check(expert_combat::decode(100).region==4 && expert_combat::decode(200).region==8 &&
           expert_combat::decode(50).region==2,"legacy save multiplier values have an explicit UI migration");
-    BIND(0x3EA400,expert_test_get);BIND(0x16A030,expert_test_pair);
+    BIND(0x3EC920,expert_test_get);BIND(0x16AFE0,expert_test_pair);
     original_adjacency=expert_test_adjacency;
-    *reinterpret_cast<unsigned *>(expert_option(image+0x1A46CA8,4))=expert_combat::encode({50,0});
-    *reinterpret_cast<unsigned *>(expert_option(image+0x1A46CA8,5))=expert_combat::encode({200,8});
-    *reinterpret_cast<unsigned *>(image+0x1A47AF8)=0;
+    *reinterpret_cast<unsigned *>(expert_option(image+0x1A49C98,4))=expert_combat::encode({50,0});
+    *reinterpret_cast<unsigned *>(expert_option(image+0x1A49C98,5))=expert_combat::encode({200,8});
+    *reinterpret_cast<unsigned *>(image+0x1A4AAE8)=0;
     unsigned char pair[64]={},first[32]={};putptr(pair,0,first);put16(first,0,1);
     *reinterpret_cast<unsigned *>(first+4)=27;put16(pair+8,0,3);*reinterpret_cast<unsigned *>(pair+12)=27;
     expert_test_force=2;expert_test_score=600;expert_test_trait=0;
@@ -133,7 +135,7 @@ static void expert_settings_tests() {
     check(expert_near(expert_test_result,2.48f),"AI unit against player uses 200/100 + 8/100 * six regions");
     expert_test_force=1;combat_pair_scores(pair,nullptr,nullptr);
     check(expert_near(expert_test_result,0.5f),"player base 50 and regional rate zero apply independently");
-    *reinterpret_cast<unsigned *>(expert_option(image+0x1A46CA8,4))=expert_combat::encode({100,8});
+    *reinterpret_cast<unsigned *>(expert_option(image+0x1A49C98,4))=expert_combat::encode({100,8});
     combat_pair_scores(pair,nullptr,nullptr);
     check(expert_near(expert_test_result,1.48f),"1000 base with six 8-percent regions produces 1480");
     expert_test_score=245;combat_pair_scores(pair,nullptr,nullptr);
@@ -144,18 +146,18 @@ static void expert_settings_tests() {
     check(expert_near(expert_test_result,1.24f),"AI versus AI keeps the existing fixed four percent regardless of custom values");
     int score=0;check(expert_near(contextual_adjacency(table(0xE270,100,48399),2,&score),1.24f),
         "unscoped estimates never apply the player-battle custom base or rate");
-    put16(pair+8,0,3);*reinterpret_cast<unsigned *>(image+0x1A47AF8)=1;combat_pair_scores(pair,nullptr,nullptr);
+    put16(pair+8,0,3);*reinterpret_cast<unsigned *>(image+0x1A4AAE8)=1;combat_pair_scores(pair,nullptr,nullptr);
     check(expert_near(expert_test_result,1.24f),"normal scenario mode cannot activate the expert custom settings");
-    *reinterpret_cast<unsigned *>(image+0x1A47AF8)=0;
-    *reinterpret_cast<unsigned *>(expert_option(image+0x1A46CA8,5))=150;combat_pair_scores(pair,nullptr,nullptr);
+    *reinterpret_cast<unsigned *>(image+0x1A4AAE8)=0;
+    *reinterpret_cast<unsigned *>(expert_option(image+0x1A49C98,5))=150;combat_pair_scores(pair,nullptr,nullptr);
     check(expert_near(expert_test_result,1.36f),"legacy save retains the exact native multiplier before any edit");
-    *reinterpret_cast<unsigned *>(expert_option(image+0x1A46CA8,5))=expert_combat::tag|(49u<<8)|4;
+    *reinterpret_cast<unsigned *>(expert_option(image+0x1A49C98,5))=expert_combat::tag|(49u<<8)|4;
     combat_pair_scores(pair,nullptr,nullptr);
     check(expert_near(expert_test_result,1.24f),"malformed mod-tagged settings cannot become a gigantic native multiplier");
     check(!combat_scope.player_battle && !combat_scope.fixed,"new player combat scope restores TLS after a battle");
-    original_expert_unit_power=expert_test_power;BIND(0x16B880,expert_test_field);
-    *reinterpret_cast<unsigned *>(expert_option(image+0x1A46CA8,4))=expert_combat::encode({50,200});
-    *reinterpret_cast<unsigned *>(expert_option(image+0x1A46CA8,5))=expert_combat::encode({200,8});
+    original_expert_unit_power=expert_test_power;BIND(0x16C830,expert_test_field);
+    *reinterpret_cast<unsigned *>(expert_option(image+0x1A49C98,4))=expert_combat::encode({50,200});
+    *reinterpret_cast<unsigned *>(expert_option(image+0x1A49C98,5))=expert_combat::encode({200,8});
     Obj human_army=table(0x7E838,3,500),ai_army=table(0x7E838,1,500),other_ai=table(0x7E838,2,500);
     expert_test_score=400;expert_test_native_base=177.0f;
     float four=expert_unit_power(human_army,nullptr,1,1);
@@ -181,31 +183,31 @@ static void expert_settings_tests() {
     check(!expert_unit_scope.active && !combat_scope.first,
         "display and field computation restore unit and opponent scopes after native calls");
     putptr(field,0x98,ai_army);putptr(field,0xA8,human_army);expert_test_score=600;
-    *reinterpret_cast<unsigned *>(expert_option(image+0x1A46CA8,5))=expert_combat::encode({100,39,2});
+    *reinterpret_cast<unsigned *>(expert_option(image+0x1A49C98,5))=expert_combat::encode({100,39,2});
     expert_field_stats(field,field);
-    check(expert_near(expert_test_result,335.2f) && expert_native_adjacency_option(image+0x1A46CA8,5,0)==100,
+    check(expert_near(expert_test_result,335.2f) && expert_native_adjacency_option(image+0x1A49C98,5,0)==100,
           "2026-10-23 decimal preset reaches native combat and is normalized before the native option consumer");
-    *reinterpret_cast<unsigned *>(expert_option(image+0x1A46CA8,5))=expert_combat::encode({100,62,5});
+    *reinterpret_cast<unsigned *>(expert_option(image+0x1A49C98,5))=expert_combat::encode({100,62,5});
     expert_field_stats(field,field);
     check(expert_near(expert_test_result,475.0f),"62.5 percent reaches the real production field-stat callback");
     putptr(field,0xA8,other_ai);expert_field_stats(field,field);
     check(expert_near(expert_test_result,124.0f),"decimal presets also keep AI-versus-AI fixed at four percent");
-    BIND(0x466220,expert_test_model);BIND(0x875BC0,expert_test_scroll);
-    BIND(0x640F20,expert_test_bind);BIND(0x85C860,expert_test_marker);
-    BIND(0x86B270,expert_test_source);BIND(0x86B6F0,expert_test_row_at);
-    BIND(0x65E810,expert_test_event);BIND(0x65F890,expert_test_number);
-    BIND(0x65EDD0,expert_test_event);
-    BIND(0x636250,expert_test_popup);BIND(0x5A73A0,expert_test_destroy);
-    BIND(0x92E430,expert_test_button_factory);
-    BIND(0x1A3CB0,expert_test_callback);BIND(0x85C9C0,expert_test_text_set);
-    BIND(0x6475C0,expert_test_leave);BIND(0x5A7450,expert_test_destroy);
-    BIND(0x141E0,expert_test_enable);BIND(0x8741D0,expert_test_visible);
-    BIND(0x85AD00,expert_test_select);BIND(0x85AD20,expert_test_select);expert_test_radio_calls=0;
+    BIND(0x58B6F0,expert_test_model);BIND(0x877F70,expert_test_scroll);
+    BIND(0x643720,expert_test_bind);BIND(0x85EB90,expert_test_marker);
+    BIND(0x86D620,expert_test_source);BIND(0x86DAA0,expert_test_row_at);
+    BIND(0x660E20,expert_test_event);BIND(0x661ED0,expert_test_number);
+    BIND(0x661470,expert_test_event);
+    BIND(0x638B00,expert_test_popup);BIND(0x5A9950,expert_test_destroy);
+    BIND(0x9309C0,expert_test_button_factory);
+    BIND(0x1A4FB0,expert_test_callback);BIND(0x85ECF0,expert_test_text_set);
+    BIND(0x649CD0,expert_test_leave);BIND(0x5A9A60,expert_test_destroy);
+    BIND(0x14140,expert_test_enable);BIND(0x876580,expert_test_visible);
+    BIND(0x85AD00,expert_test_select);BIND(0x85D050,expert_test_select);expert_test_radio_calls=0;
     expert_test_initialized=false;expert_test_registered_nodes.clear();
     Obj layout=static_cast<Obj>(calloc(1,0x1FB0)),list=object(0),row=static_cast<Obj>(calloc(1,0x300)),slider=object(0);
     Obj parent=object(0),standard=object(0),number=object(0);
     putptr(row,0x178,parent);putptr(row,0x1A0,standard);putptr(row,0x198,number);
-    putptr(row,0,image+0x141BCF8);putptr(parent,8,row);putptr(parent,0x148,parent);
+    putptr(row,0,image+0x141ED88);putptr(parent,8,row);putptr(parent,0x148,parent);
     *reinterpret_cast<int *>(standard+0x20)=876;*reinterpret_cast<int *>(standard+0x28)=100;
     *reinterpret_cast<int *>(standard+0x2C)=40;
     *reinterpret_cast<unsigned *>(parent+0x140)=53;
@@ -213,7 +215,7 @@ static void expert_settings_tests() {
     check(expert_number_factory(parent+0x130,7,3,0,1,0)==number,
           "inline creation preserves the original factory return for native row+198 assignment");
     check(expert_test_hides==0,"2026-10-24 local10: creation never hides the presets (hide->show left skin parts hidden)");
-    putptr(layout,0,image+0x141BE88);putptr(layout,0x8C0,list);putptr(list,0x1C0,layout);putptr(row,0x190,slider);
+    putptr(layout,0,image+0x141EF18);putptr(layout,0x8C0,list);putptr(list,0x1C0,layout);putptr(row,0x190,slider);
     *reinterpret_cast<unsigned *>(layout+0x1AC)=1;
     unsigned ids[]={2,3,11,4,5,6,7,16};
     for(unsigned i=0;i<8;++i)*reinterpret_cast<unsigned *>(layout+0xC30+i*0x60)=ids[i];
@@ -291,7 +293,40 @@ static void expert_settings_tests() {
     check(!expert_apply_preset(layout,5) && dword(expert_option(layout+0x1C8,5),0)==before_invalid,
           "unknown difficulty cannot apply a fallback preset");
     expert_test_difficulty=3;*reinterpret_cast<unsigned *>(layout+0x19C)=1;
+    bool saved_ingame=mod_features.expert_ingame;mod_features.expert_ingame=false;
+    unsigned live_before=dword(expert_option(image+0x1A49C98,5),0);
     check(!expert_apply_preset(layout,5),"read-only scenario settings reject preset writes");
+    expert_list_bind(list,layout+0xDB0,0);
+    check(expert_test_bind_mode==1,"flag off: the in-game expert rows stay bound read-only");
+    expert_ui_store(layout,5,7);
+    check(dword(expert_option(image+0x1A49C98,5),0)==live_before &&
+          expert_ui_settings(layout,5).region==7,"flag off: accepted changes stay in the layout copy only");
+    mod_features.expert_ingame=true;
+    expert_list_bind(list,layout+0xDB0,0);
+    check(expert_test_bind_mode==0,"flag on: the other-force row is bound like the new-game dialog");
+    expert_list_bind(list,rows[0].bytes,0);
+    check(expert_test_bind_mode==0,"flag on: the player base row is bound editable");
+    expert_list_bind(list,layout+0xC30,0);
+    check(expert_test_bind_mode==1,"flag on: every other expert row stays read-only");
+    expert_ui_store(layout,5,25);
+    check(expert_ui_settings(layout,5).region==25 &&
+          dword(expert_option(image+0x1A49C98,5),0)==live_before,
+          "flag on: an accepted regional change stays in the view copy until 확인 (뒤로 commits nothing)");
+    expert_test_difficulty=3;expert_choices[layout].selected[1]=1;
+    check(expert_apply_preset(layout,5) && expert_ui_settings(layout,5).region==39 &&
+          expert_ui_settings(layout,5).tenth==2 &&
+          dword(expert_option(image+0x1A49C98,5),0)==live_before,
+          "flag on: a preset applied in game stays in the view copy until 확인");
+    expert_ui_store(layout,62,140);
+    check(expert_ui_settings(layout,5).base==140 &&
+          dword(expert_option(image+0x1A49C98,5),0)==live_before,
+          "flag on: a base-row change stays in the view copy until 확인");
+    check(expert_ingame_commit(layout) &&
+          dword(expert_option(image+0x1A49C98,4),0)==dword(expert_option(layout+0x1C8,4),0) &&
+          dword(expert_option(image+0x1A49C98,5),0)==dword(expert_option(layout+0x1C8,5),0),
+          "확인 copies both option dwords (4 and 5) from the view copy to the live object");
+    check(!expert_ingame_commit(nullptr),"확인 without a rows object changes nothing");
+    mod_features.expert_ingame=saved_ingame;
     *reinterpret_cast<unsigned *>(layout+0x19C)=0;
     expert_ui_store(layout,5,4);expert_ui_store(layout,4,4);
     expert_test_difficulty=4;
@@ -343,7 +378,7 @@ static void expert_settings_tests() {
     expert_test_registered_nodes.clear();
     functions=std::move(saved_functions);original_adjacency=saved_adjacency;original_expert_populate=saved_population;
     original_expert_unit_power=saved_power;
-    *reinterpret_cast<unsigned *>(expert_option(image+0x1A46CA8,4))=saved_human;
-    *reinterpret_cast<unsigned *>(expert_option(image+0x1A46CA8,5))=saved_ai;
-    *reinterpret_cast<unsigned *>(image+0x1A47AF8)=saved_mode;
+    *reinterpret_cast<unsigned *>(expert_option(image+0x1A49C98,4))=saved_human;
+    *reinterpret_cast<unsigned *>(expert_option(image+0x1A49C98,5))=saved_ai;
+    *reinterpret_cast<unsigned *>(image+0x1A4AAE8)=saved_mode;
 }

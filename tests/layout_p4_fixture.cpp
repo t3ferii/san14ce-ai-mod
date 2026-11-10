@@ -29,7 +29,7 @@ static unsigned count_events(const char *kind) {unsigned n=0;for(auto &e:events)
 static const Event *last_event(const char *kind) {for(size_t i=events.size();i>0;--i)if(events[i-1].kind==kind)return &events[i-1];return nullptr;}
 static const Event *find_event(const char *kind,unsigned a) {for(auto &e:events)if(e.kind==kind && e.a==a)return &e;return nullptr;}
 // ---- fake game object model ----
-static const unsigned kPaneVt=0x13E4E80,kFooterVt=0x146AFE8,kSpeedVt=0x1473DC8,kPlainVt=0x1450000,kBtnVt=0x14A0000,kLabelVt=0x14A1000;
+static const unsigned kPaneVt=0x13E7F10,kFooterVt=0x146E078,kSpeedVt=0x1476E58,kPlainVt=0x1450000,kBtnVt=0x14A0000,kLabelVt=0x14A1000;
 static const int kNodes=24;
 static unsigned alloc_count;
 static void *alloc_list[32768];
@@ -75,9 +75,9 @@ static Bytes *make_stub(size_t offset,void *target) {
     Bytes *at=region+offset;at[0]=0xFF;at[1]=0x25;memset(at+2,0,4);*reinterpret_cast<void **>(at+6)=target;return at;
 }
 static void run_86E320(Bytes *o) {   // what 86E320 does after 86E140: call 92B0A0(obj+0x130,obj) through the (possibly hooked) site
-    reinterpret_cast<void (__fastcall *)(Bytes *,Bytes *)>(const_cast<Bytes *>(call_target(0x86E338)))(o+0x130,o);
+    reinterpret_cast<void (__fastcall *)(Bytes *,Bytes *)>(const_cast<Bytes *>(call_target(0x8706E8)))(o+0x130,o);
 }
-static void destroy_game(Bytes *o) {reinterpret_cast<void (__fastcall *)(Bytes *,unsigned long long,unsigned long long,unsigned long long)>(image+0x865560)(o,1,2,3);}
+static void destroy_game(Bytes *o) {reinterpret_cast<void (__fastcall *)(Bytes *,unsigned long long,unsigned long long,unsigned long long)>(image+0x8678B0)(o,1,2,3);}
 static Bytes *__fastcall f_alloc(size_t n) {return static_cast<Bytes *>(fake_alloc(n));}
 static Bytes *__fastcall f_ctor(Bytes *o) {return o;}
 static Bytes *__fastcall f_tablector(Bytes *t) {memset(t,0,0x48);return t;}
@@ -133,25 +133,25 @@ static void __fastcall f_pane_dtor(Bytes *o,int) {
     Bytes *table=o+0x130;
     if(ctrls_of(table))for(int i=*reinterpret_cast<int *>(table+0x10)-1;i>=0;--i)if(ctrls_of(table)[i])dtor_order+='c';
     dtor_order+='P';++pane_dtors;
-    reinterpret_cast<void (__fastcall *)(Bytes *,unsigned long long,unsigned long long,unsigned long long)>(image+0x865560)(o,0,0,0);
+    reinterpret_cast<void (__fastcall *)(Bytes *,unsigned long long,unsigned long long,unsigned long long)>(image+0x8678B0)(o,0,0,0);
 }
 static void __fastcall f_label_dtor(Bytes *,int) {++label_dtors;}
 static void __fastcall foreign_build(Bytes *,Bytes *) {++foreign_calls;}
 static void *resolver(unsigned rva) {
     switch(rva) {
-    case 0x3F6BC0:return reinterpret_cast<void *>(&f_alloc);
-    case 0x864C50:return reinterpret_cast<void *>(&f_ctor);
-    case 0x92AB70:return reinterpret_cast<void *>(&f_tablector);
-    case 0x86E0C0:return reinterpret_cast<void *>(&f_load);
-    case 0x92CEE0:return reinterpret_cast<void *>(&f_92CEE0);
-    case 0x92E430:return reinterpret_cast<void *>(&f_92E430);
-    case 0x92E0B0:return reinterpret_cast<void *>(&f_92E0B0);
-    case 0x92CD00:return reinterpret_cast<void *>(&f_92CD00);
-    case 0x92D040:return reinterpret_cast<void *>(&f_92D040);
-    case 0x84B150:return reinterpret_cast<void *>(&f_84B150);
-    case 0x85C9E0:return reinterpret_cast<void *>(&f_85C9E0);
-    case 0x8741D0:return reinterpret_cast<void *>(&f_8741D0);
-    case 0x1A3CB0:return reinterpret_cast<void *>(&f_1A3CB0);
+    case 0x3F90E0:return reinterpret_cast<void *>(&f_alloc);
+    case 0x866FA0:return reinterpret_cast<void *>(&f_ctor);
+    case 0x92D020:return reinterpret_cast<void *>(&f_tablector);
+    case 0x870470:return reinterpret_cast<void *>(&f_load);
+    case 0x92F390:return reinterpret_cast<void *>(&f_92CEE0);
+    case 0x9309C0:return reinterpret_cast<void *>(&f_92E430);
+    case 0x930640:return reinterpret_cast<void *>(&f_92E0B0);
+    case 0x92F1B0:return reinterpret_cast<void *>(&f_92CD00);
+    case 0x92F4F0:return reinterpret_cast<void *>(&f_92D040);
+    case 0x84D4B0:return reinterpret_cast<void *>(&f_84B150);
+    case 0x85ED10:return reinterpret_cast<void *>(&f_85C9E0);
+    case 0x876580:return reinterpret_cast<void *>(&f_8741D0);
+    case 0x1A4FB0:return reinterpret_cast<void *>(&f_1A3CB0);
     default:return nullptr;
     }
 }
@@ -161,7 +161,7 @@ static void reset_ui_state() {
     memset(layout_subs,0,sizeof(layout_subs));memset(created,0,sizeof(created));created_count=0;
     pending_count=0;nested_dropped=0;async_loads=0;async_built=0;sync_built=0;destroyed_events=0;table_full=0;other_thread_calls=0;ui_rejected=0;first_thread=0;
     dispatch_depth=0;next_built=nullptr;destroy_trampoline=nullptr;built_handle=0;destroy_handle=0;observation_registered=0;subscriber_total=0;
-    ktid_offset=~0u;fixture_probe=false;life_done=false;
+    ktid_offset=~0u;fixture_probe=false;
     memset(name_dumps,0,sizeof(name_dumps));res_seq=0;memset(screen_seen,0,sizeof(screen_seen));ktid_match_logs=0;ktid_stat_logs=0;same_total=0;diff_total=0;
     memset(same_eq,0,sizeof(same_eq));memset(diff_eq,0,sizeof(diff_eq));
     built_calls=0;built_orig_ns=0;built_hook_ns=0;built_orig_max=0;built_hook_max=0;destroy_calls=0;destroy_ns=0;destroy_max=0;
@@ -184,10 +184,10 @@ static void fresh_world() {
     reset_ui_state();
     game_resolver=&resolver;
     // image code: 92B0A0 stub -> fake, the E8 inside 86E320, and the 865560 entry (push rdi; sub rsp,30h; inc [counter]; add rsp,30h; pop rdi; ret)
-    make_stub(0x92B0A0,reinterpret_cast<void *>(&f_92B0A0));
-    set_call_to(0x86E338,image+0x92B0A0);
+    make_stub(0x92D550,reinterpret_cast<void *>(&f_92B0A0));
+    set_call_to(0x8706E8,image+0x92D550);
     orig_counter=reinterpret_cast<unsigned long long *>(region+0x1F00000);
-    Bytes *entry=image+0x865560;
+    Bytes *entry=image+0x8678B0;
     static const Bytes head[6]={0x40,0x57,0x48,0x83,0xEC,0x30};
     memcpy(entry,head,6);
     entry[6]=0x48;entry[7]=0xFF;entry[8]=0x05;
@@ -282,7 +282,7 @@ int main() {
     int late=api.on_layout_built(0,nullptr,cb_hit,&hit_late);
     check(late>0 && observation_registered==1 && built_handle>0 && destroy_handle>0,"late subscription registers both hooks");
     check(state_of(built_handle)==LAYOUT_STATE_INSTALLED && state_of(destroy_handle)==LAYOUT_STATE_INSTALLED,"both hooks installed at once (manager already published)");
-    check(call_target(0x86E338)!=image+0x92B0A0 && image[0x865560]==0xE9 && image[0x865565]==0x90,"E8 inside 86E320 redirected, 865560 entry is E9 + NOP");
+    check(call_target(0x8706E8)!=image+0x92D550 && image[0x8678B0]==0xE9 && image[0x8678B5]==0x90,"E8 inside 86E320 redirected, 865560 entry is E9 + NOP");
     check(api.hook_owner_state("layout_events")==LAYOUT_STATE_INSTALLED && api.hook_owner_state("layout_events_destroy")==LAYOUT_STATE_INSTALLED,"owner states");
     memset(&hit_late,0,sizeof(hit_late));
     Bytes *g1=make_game_layout(kPlainVt);
@@ -400,14 +400,14 @@ int main() {
     // ===== foreign chain / refusals =====
     fresh_world();
     Bytes *foreign=make_stub(kExt+0x100,reinterpret_cast<void *>(&foreign_build));
-    set_call_to(0x86E338,foreign);
+    set_call_to(0x8706E8,foreign);
     memset(&hit_wild,0,sizeof(Hit));
     api.on_layout_built(0,nullptr,cb_hit,&hit_wild);
     check(state_of(built_handle)==LAYOUT_STATE_CHAINED && static_cast<void *>(next_built)==foreign,"E8 already pointing into another module: chained, next is that function");
     run_86E320(make_game_layout(kPlainVt));
     check(foreign_calls==1 && b0a0_calls==0 && hit_wild.n==1,"chained: foreign function runs first, our event still fires");
     fresh_world();
-    image[0x865562]=0x00;
+    image[0x8678B2]=0x00;
     memset(&hit_wild,0,sizeof(Hit));
     api.on_layout_built(0,nullptr,cb_hit,&hit_wild);
     check(built_handle>0 && destroy_handle==0 && count_events("layout_events_destroy_bytes")==1,"865560 bytes differ (other EXE / patched): destroy hook not registered");
@@ -417,7 +417,7 @@ int main() {
     published=0;   // registered while pending, another mod patches the entry before the manager publishes
     api.on_layout_built(0,nullptr,cb_hit,&hit_wild);
     check(destroy_handle>0 && state_of(destroy_handle)==LAYOUT_STATE_PENDING,"registered but not yet installed");
-    image[0x865560]=0xE9;
+    image[0x8678B0]=0xE9;
     publish_hooks();
     check(state_of(destroy_handle)==LAYOUT_STATE_REFUSED && !destroy_observed() && state_of(built_handle)==LAYOUT_STATE_INSTALLED,"entry redirected by another mod before publish: refused, never followed");
     // ===== diagnostic probes =====
@@ -455,24 +455,30 @@ int main() {
     check(find_event("layout_p4_node",(1u<<16)|3) && find_event("layout_p4_node",(1u<<16)|7) && !find_event("layout_p4_node",(1u<<16)|5),"only bound nodes are listed");
     const Event *xy=find_event("layout_p4_node_xy",(1u<<16)|3);
     check(xy && xy->b==30 && xy->c==5 && find_event("layout_p4_node_wh",(1u<<16)|3)->b==100,"node control position and size read back");
-    // lifetime test on the lord footer
-    size_t order_before=dtor_order.size();
+    // lifetime test on the lord footer: the live probe was retired (2026-11-08) because a parentless sublayout load cannot
+    // complete inside the build callback; the footer build/destroy path below is still exercised.
     Bytes *footer=make_game_layout(kFooterVt);
     run_86E320(footer);
-    auto life=[&](unsigned stage)->const Event * {for(auto &e:events)if(e.kind=="layout_p4_life" && e.a==stage)return &e;return nullptr;};
-    check(life(1) && life(1)->b==1 && life(1)->c==kNodes,"lifetime 1: private footer pane loaded");
-    check(life(2) && life(2)->b==1,"lifetime 2: node 14 cloned");
-    check(life(3) && life(3)->b==1 && life(3)->c==29,"lifetime 3: moved by 29");
-    check(life(4)->b==1 && life(5)->b==1 && life(6)->b==1,"lifetime 4-6: text, click, visibility");
-    check(life(7)->b==1 && life(7)->c==1 && life(8)->b==1,"lifetime 7-8: label created with its text node, text set");
-    check(life(9) && life(9)->b==0 && life(9)->c==0 && dtor_order.substr(order_before)=="ccP","lifetime 9: pane destroyed (controls first), creation table empty");
-    check(created_count==0 && life_done,"nothing of the test is left behind");
-    run_86E320(make_game_layout(kFooterVt));
-    check(count_events("layout_p4_life")==9,"the lifetime test runs once");
     for(unsigned i=0;i<70;++i)run_86E320(light_object());
     check(count_events("layout_p4_built_cost")>=1 && last_event("layout_p4_built_cost")->a%64==0 && count_events("layout_p4_orig_cost")>=1 && count_events("layout_p4_counts")>=1,"periodic 86E320 cost lines");
     destroy_game(footer);
     check(destroyed_events==1,"footer destroyed event");
+    // ===== UI ownership scopes (user 2026-11-07): the Layout DLL owns feature UI, a scope opens only for a published owner =====
+    fresh_world();
+    check(api.ui_begin && api.ui_end && api.ui_create_window && api.ui_activate && api.ui_node && api.ui_set_node_text &&
+          api.ui_set_node_visible && api.ui_select && api.ui_sync_visibility && api.ui_release,"UI ownership entries present");
+    check(api.ui_begin("ghost_owner")==0 && api.ui_begin(nullptr)==0 && api.ui_begin("")==0,"ui_begin refuses an owner without published hooks");
+    check(api.ui_release("ghost_owner",nullptr)==-1 && api.ui_create_window(nullptr,0,0,10,10,"x",1)==nullptr && api.ui_activate(region)==-1,"UI calls outside a scope do nothing");
+    int owner_sub=api.on_layout_built(0,nullptr,cb_hit,&hit_late);
+    check(owner_sub>0 && api.hook_owner_state("layout_events")==LAYOUT_STATE_INSTALLED,"published owner available");
+    check(api.ui_begin("layout_events")==1 && api.ui_begin("layout_events")==1 && api.ui_begin("other_owner")==0,"scope opens for the published owner, nests, refuses another owner inside");
+    check(api.ui_release("other_owner",nullptr)==-1 && api.ui_release("layout_events",nullptr)==0,"release is owner-checked and finds no pane of an idle owner");
+    check(api.ui_create_window(nullptr,0,0,10,10,nullptr,1)==nullptr && api.ui_create_window(nullptr,0,0,10,10,"x",0)==nullptr && api.ui_create_window(nullptr,0,0,10,10,"x",256)==nullptr,"window arguments validated");
+    api.ui_end();
+    check(api.ui_release("layout_events",nullptr)==0,"outer scope still open after one ui_end");
+    api.ui_end();
+    check(api.ui_release("layout_events",nullptr)==-1 && api.ui_begin("layout_events")==1,"scope closed by the matching ui_end, reopens");
+    api.ui_end();
     printf("{\"status\":\"layout_p4_fixture_passed\",\"checks\":%u,\"synthetic_image\":true,\"fake_game_model\":true,\"gameplay_verified\":false}\n",checks);
     return 0;
 }

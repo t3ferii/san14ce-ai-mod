@@ -4,9 +4,9 @@ static void crash_diagnostic_tests() {
     wcscpy_s(saved,log_path);
     check(GetTempPathW(MAX_PATH,directory)>0 && GetTempFileNameW(directory,L"aic",0,temporary)!=0,
           "diagnostic fixture uses its own temporary log");
-    wcscpy_s(log_path,temporary);crash_records=0;crash_image_size=0x029FF000;
+    wcscpy_s(log_path,temporary);crash_records=0;crash_image_size=0x02A0B000;
     EXCEPTION_RECORD record={};record.ExceptionCode=EXCEPTION_ACCESS_VIOLATION;
-    record.ExceptionAddress=image+0x19EDEE;record.NumberParameters=2;
+    record.ExceptionAddress=image+0x1A00EE;record.NumberParameters=2;
     record.ExceptionInformation[0]=1;record.ExceptionInformation[1]=0x1234;
     CONTEXT context={};context.Rax=0x11;context.Rdi=0x22;context.R15=0x33;context.Rip=reinterpret_cast<uintptr_t>(record.ExceptionAddress);
     EXCEPTION_POINTERS pointers={&record,&context};
@@ -25,7 +25,7 @@ static void crash_diagnostic_tests() {
     readable=readable && ReadFile(file,contents.data(),static_cast<DWORD>(contents.size()-1),&read,nullptr);
     check(readable,"diagnostic record readable");
     CloseHandle(file);
-    check(strstr(contents.data(),"code=0x00000000C0000005") && strstr(contents.data(),"game_rva=0x000000000019EDEE") &&
+    check(strstr(contents.data(),"code=0x00000000C0000005") && strstr(contents.data(),"game_rva=0x00000000001A00EE") &&
           strstr(contents.data(),"phase=monthly_population") && strstr(contents.data(),"address=0x0000000000001234") &&
           strstr(contents.data(),"rax=0x0000000000000011") && strstr(contents.data(),"rdi=0x0000000000000022") &&
           strstr(contents.data(),"r15=0x0000000000000033") && strstr(contents.data(),"native_exception_widget") &&

@@ -1,6 +1,6 @@
 // [officer_ui] stat_exp (2026-10-23, user request; behaviour of reference_mod SAN14_StatExp, re-derived
 // from the original). The pentagon chart number of each base stat gets "/N%": progress to the next point.
-// Original (REA, unpacked 1fbe6be7...):
+// Original (근거: 1a4a447d 이전 기록, docs/HISTORY.md):
 //   85C420(chart,stat,value,base) formats "%d" / "%d^02+%d^00" ... and writes it with
 //   CALL 930D20(chart+130, element, text, 1) at 85C5D7 (85C5C3 is the argument setup label).
 //   Three windows fill the chart per stat: 22FCE0(person,stat,0xFFF) then 85C420(chart,stat,...):
@@ -12,8 +12,8 @@
 #include "game_addresses.h"
 #include <utility>
 namespace stat_exp {
-static const unsigned kStat=GA(GA_22FCE0),kChart=GA(GA_85C420),kText=GA(GA_930D20),kTextCall=GA(GA_85C5D7);
-static const unsigned kWindows[3]={GA(GA_9073F6),GA(GA_907F79),GA(GA_7F5A8C)};
+static const unsigned kStat=GA(GA_231770),kChart=GA(GA_85E750),kText=GA(GA_9332B0),kTextCall=GA(GA_85E907);
+static const unsigned kWindows[3]={GA(GA_909896),GA(GA_90A419),GA(GA_7F7F5C)};
 static unsigned stat_sites[15],chart_sites[15];
 using StatRead=int(__fastcall *)(Obj,int,int);
 using ChartDraw=void(__fastcall *)(Obj,int,unsigned,unsigned long long);
@@ -41,12 +41,12 @@ static bool guards_match() {return image[kTextCall]==0xE8 && find_sites();}   //
 static int percent(Obj person,int stat) {
     if(!valid(person) || stat<0 || stat>4)return -1;
     unsigned level=person[0xEC+stat];if(level>=100)return -1;
-    Obj table=fn<Obj(__fastcall *)()>(GA(GA_3359E0))();if(!table)return -1;
+    Obj table=fn<Obj(__fastcall *)()>(GA(GA_337C40))();if(!table)return -1;
     auto need=[&](unsigned l,int &out)->bool {
         if(!l) {out=0;return true;}
         Obj entry=pointer(table,0x60+l*8);
-        if(!entry || !fn<int(__fastcall *)(Obj)>(GA(GA_32F4D0))(entry))return false;
-        out=fn<int(__fastcall *)(Obj,int)>(GA(GA_242890))(entry,stat);return true;
+        if(!entry || !fn<int(__fastcall *)(Obj)>(GA(GA_331750))(entry))return false;
+        out=fn<int(__fastcall *)(Obj,int)>(GA(GA_2442F0))(entry,stat);return true;
     };
     int low=0,high=0;if(!need(level,low) || !need(level+1,high) || high<=low)return -1;
     long long have=static_cast<long long>(dword(person,0x104+stat*4))-low;

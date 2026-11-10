@@ -15,13 +15,13 @@ try {
     try {
         & cl.exe /nologo /W4 /WX /wd4505 /utf-8 /O2 /fp:strict /MT /std:c++17 /EHsc (Join-Path $taskProject 'tests/diplomacy_intel_fixture.cpp') /Fediplomacy_intel_fixture.exe /link kernel32.lib user32.lib
         if($LASTEXITCODE -ne 0){throw 'Diplomacy intelligence fixture build failed'}
-        $taskResult=& './diplomacy_intel_fixture.exe' (Join-Path $taskProject 'legacy/FogMod_Source/native_game_analysis/running_code_text.bin')
+        $taskResult=& './diplomacy_intel_fixture.exe' (Join-Path $taskProject 'build/ui_native_analysis/fixture/1a4a447d_text.bin')
         if($LASTEXITCODE -ne 0){throw 'Diplomacy intelligence fixture failed'}
         [IO.File]::WriteAllText((Join-Path $taskProject 'build/diplomacy_intel_fixture.json'),($taskResult | Select-Object -Last 1),(New-Object Text.UTF8Encoding($false)))
         $taskResult
         & cl.exe /nologo /W4 /WX /wd4505 /utf-8 /O2 /fp:strict /MT /std:c++17 /EHsc /DNO_RUNTIME_LOG (Join-Path $taskProject 'tests/diplomacy_intel_fixture.cpp') /Fediplomacy_intel_release_fixture.exe /link kernel32.lib user32.lib
         if($LASTEXITCODE -ne 0){throw 'Diplomacy release fixture build failed'}
-        & './diplomacy_intel_release_fixture.exe' (Join-Path $taskProject 'legacy/FogMod_Source/native_game_analysis/running_code_text.bin')
+        & './diplomacy_intel_release_fixture.exe' (Join-Path $taskProject 'build/ui_native_analysis/fixture/1a4a447d_text.bin')
         if($LASTEXITCODE -ne 0){throw 'Diplomacy release fixture failed'}
     } finally {Pop-Location}
 } finally {$env:PATH=$taskSavedPath;$env:INCLUDE=$taskSavedInclude;$env:LIB=$taskSavedLib}

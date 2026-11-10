@@ -44,13 +44,13 @@ static bool occupied(unsigned hex) {
 // 0 = not computed). Native C0150 zeroes it only at game start, so edited terrain
 // would keep old costs all session: clear it the same way (C05A8 REP STOSB).
 static constexpr unsigned char cost_cache_clear_bytes[]={
-    0x48,0x8B,0x3D,0xF1,0x9E,0xAD,0x01,0x48,0x81,0xC7,0xC0,0x00,0x00,0x00,0x33,0xC0,0xB9,0x40,0x42,0x0F,0x00,0xF3,0xAA};
+    0x48,0x8B,0x3D,0xB1,0xBE,0xAD,0x01,0x48,0x81,0xC7,0xC0,0x00,0x00,0x00,0x33,0xC0,0xB9,0x40,0x42,0x0F,0x00,0xF3,0xAA};
 static void clear_cost_cache() {
 #ifdef TERRAIN_EDIT_FIXTURE_COST_CACHE
     terrain_edit_fixture_cost_cache_clear();
 #else
-    if(ga::mcmp(image,GA_C05A8,0,cost_cache_clear_bytes,sizeof(cost_cache_clear_bytes)))return;
-    Obj cache=pointer(image,GA(GA_1B9A4A0));
+    if(ga::mcmp(image,GA_C1638,0,cost_cache_clear_bytes,sizeof(cost_cache_clear_bytes)))return;
+    Obj cache=pointer(image,GA(GA_1B9D4F0));
     if(cache)memset(cache+0xC0,0,500u*500u*4u);
 #ifndef NO_RUNTIME_LOG
     log_event("terrain_cost_cache_clear",cache?1:0,0,0);

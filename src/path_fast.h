@@ -50,14 +50,18 @@ inline Node *materialize(Node *buffer,const Node *node) {
     }
     return head;
 }
+// local25 (user 2026-11-10 lag analysis: heap work was 20% of each path search): each heap slot carries its own
+// key {f, insertion sequence} next to the node id, so a comparison no longer reads two 40-byte nodes. The order is
+// the same as before (f, then the earlier insertion), so every pop and every result is unchanged.
+struct HeapEntry {std::int32_t f;std::uint32_t sequence;unsigned id;};
 struct Storage {
     std::vector<Node> nodes;
     std::vector<std::uint32_t> generations;
-    std::vector<unsigned> positions,heap;
-    std::vector<std::uint64_t> sequence;
+    std::vector<unsigned> positions;
+    std::vector<HeapEntry> heap;
     std::uint32_t generation=0;
-    std::uint64_t next_sequence=0;
-    explicit Storage(unsigned size=cells):nodes(size),generations(size),positions(size),sequence(size) {
+    std::uint32_t next_sequence=0;
+    explicit Storage(unsigned size=cells):nodes(size),generations(size),positions(size) {
         heap.reserve(size);
     }
     void begin() {
@@ -74,38 +78,43 @@ struct Storage {
         return nodes[i];
     }
     unsigned index(const Node *n) const {return static_cast<unsigned>(n-nodes.data());}
-    bool before(unsigned a,unsigned b) const {
-        return nodes[a].f<nodes[b].f || (nodes[a].f==nodes[b].f && sequence[a]<sequence[b]);
+    static bool before(const HeapEntry &a,const HeapEntry &b) {
+        return a.f<b.f || (a.f==b.f && a.sequence<b.sequence);
     }
-    void exchange(unsigned a,unsigned b) {
-        const unsigned v=heap[a];heap[a]=heap[b];heap[b]=v;
-        positions[heap[a]]=a;positions[heap[b]]=b;
-    }
+    // Sift with a hole: same comparisons and the same final layout as swapping step by step.
     void up(unsigned i) {
-        while(i && before(heap[i],heap[(i-1)/2])) {exchange(i,(i-1)/2);i=(i-1)/2;}
+        const HeapEntry v=heap[i];
+        while(i) {
+            const unsigned parent=(i-1)/2;
+            if(!before(v,heap[parent]))break;
+            heap[i]=heap[parent];positions[heap[i].id]=i;i=parent;
+        }
+        heap[i]=v;positions[v.id]=i;
     }
     void down(unsigned i) {
         const unsigned size=static_cast<unsigned>(heap.size());
+        const HeapEntry v=heap[i];
         for(;;) {
-            unsigned child=i*2+1;if(child>=size)return;
+            unsigned child=i*2+1;if(child>=size)break;
             if(child+1<size && before(heap[child+1],heap[child]))++child;
-            if(!before(heap[child],heap[i]))return;
-            exchange(i,child);i=child;
+            if(!before(heap[child],v))break;
+            heap[i]=heap[child];positions[heap[i].id]=i;i=child;
         }
+        heap[i]=v;positions[v.id]=i;
     }
     void insert(Node *n) {
-        const unsigned id=index(n);sequence[id]=next_sequence++;
-        positions[id]=static_cast<unsigned>(heap.size());heap.push_back(id);up(positions[id]);
+        const unsigned id=index(n);
+        positions[id]=static_cast<unsigned>(heap.size());heap.push_back(HeapEntry{n->f,next_sequence++,id});up(positions[id]);
     }
     void erase(Node *n) {
         const unsigned i=positions[index(n)],last=static_cast<unsigned>(heap.size()-1);
-        if(i!=last)exchange(i,last);
+        if(i!=last) {heap[i]=heap[last];positions[heap[i].id]=i;}
         heap.pop_back();
         if(i<heap.size()) {
             if(i && before(heap[i],heap[(i-1)/2]))up(i);else down(i);
         }
     }
-    Node *pop() {Node *n=&nodes[heap[0]];erase(n);return n;}
+    Node *pop() {Node *n=&nodes[heap[0].id];erase(n);return n;}
 };
 
 #ifndef NO_RUNTIME_LOG

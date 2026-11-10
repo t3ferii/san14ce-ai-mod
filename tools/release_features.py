@@ -12,7 +12,7 @@ import hashlib,json,re,sys,zipfile
 P=Path(__file__).resolve().parents[1]
 ROW=re.compile(r"@\{Group='[\w]*'; Section='(\w+)'; Key='(\w+)'; Default=(\d); Requires='([\w.]*)'; Inherit='[\w.]*'; Tab='[^']+'; (?:Retired=\$true; )?"
                r"Label='((?:[^']|'')*)'; Note='((?:[^']|'')*)'")
-PUBLISHED=('v13.3','v14','v14.1','v14.2','v15','v15.1','v15.2','v15.3','v15.4','v15.5','v15.6')
+PUBLISHED=('v13.3','v14','v14.1','v14.2','v15','v15.1','v15.2','v15.3','v15.4','v15.5','v15.6','v15.7','v15.7.1','v15.8','v15.9')
 
 def catalogue(text):
     rows={}

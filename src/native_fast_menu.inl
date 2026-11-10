@@ -1,6 +1,6 @@
 // [performance] fast_menu (2026-10-23, user request; the "SkipInWait" part of reference_mod
 // SAN14_FastMenu, re-derived from the original; its "PinSlowLayouts" is this mod's layout_keep).
-// Original (REA, unpacked 1fbe6be7...): 56FF60(state), vtable slot +30 of every UI state, answers
+// Original (근거: 1a4a447d 이전 기록, docs/HISTORY.md): 56FF60(state), vtable slot +30 of every UI state, answers
 // "still busy, ignore input": the state's own layout (+60) animating in (+110) or out (+118); phase +6C
 // 1 = wait until no map layout animates in (86EEB0) then 2; phase 4 = wait for out animations (86F110)
 // then 5. After a city/unit menu closes, the map states sit in phase 1 for the whole HUD slide-in.
@@ -9,9 +9,8 @@
 // while the HUD still slides in. Own-layout waits and phase 4 (menu opening) stay original.
 // The same slot also runs lord_change's per-frame status fix (installed when either feature is on).
 #include "game_addresses.h"
-namespace lord_change {static void map_tick();}
 namespace fast_menu {
-static const unsigned kBusy=GA(GA_56FF60),kSlots[3]={GA(GA_13D63A0)+0x30,GA(GA_143C498)+0x30,GA(GA_1457208)+0x30};
+static const unsigned kBusy=GA(GA_5727C0),kSlots[3]={GA(GA_13D9430)+0x30,GA(GA_143F520)+0x30,GA(GA_145A298)+0x30};
 static unsigned long long (__fastcall *next_busy[3])(Obj);   // Layout manager: next of each slot (original 56FF60 unless another mod chained first)
 #ifndef NO_RUNTIME_LOG
 // Diagnostics (2026-10-25, user: "is it really faster?"): per map state, the time from the first
@@ -49,7 +48,7 @@ template<unsigned I> static unsigned long long __fastcall busy(Obj state) { COST
 #if defined(RUNTIME_COST_PROFILE) && !defined(NO_RUNTIME_LOG)
     if(costprofile::call_trace_enabled)record_state(state);
 #endif
-    if(mod_features.lord_change)lord_change::map_tick();   // game thread, map states only
+    services::run_map_tick();   // game thread, map states only (subscribers: lord_change status fix)
     const bool waiting=state && dword(state,0x6C)==1;
 #ifndef NO_RUNTIME_LOG
     if(diagnostic_logging && waiting)wait_begin(state);
@@ -69,8 +68,9 @@ static bool install() {
     // anyway, so with lord_change on the hooks stay (without the YIELD flag) and only the skip is dropped.
     const bool peer=layout_client::yield_to_peer("fast_menu",kSlots[0]);
     if(peer)mod_features.fast_menu=false;
-    if(peer && !mod_features.lord_change)return true;
-    const uint32_t drop=mod_features.lord_change?LAYOUT_YIELD_IF_PEER:0;
+    const bool ticks=services::map_tick.any();   // lord_change subscribes its per-frame status fix
+    if(peer && !ticks)return true;
+    const uint32_t drop=ticks?LAYOUT_YIELD_IF_PEER:0;
     layout_client::Transaction tx;
     if(!layout_client::vt(kSlots[0],reinterpret_cast<void *>(&busy<0>),reinterpret_cast<void **>(&next_busy[0]),drop) ||
        !layout_client::vt(kSlots[1],reinterpret_cast<void *>(&busy<1>),reinterpret_cast<void **>(&next_busy[1]),drop) ||

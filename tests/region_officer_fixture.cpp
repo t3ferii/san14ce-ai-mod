@@ -79,44 +79,44 @@ static void __fastcall native_leave(Obj,Obj){++native_leaves;}
 static Obj __fastcall destroy_face(Obj p,unsigned f){check(f==1,"game allocator owns the face");delete[] p;++freed;return nullptr;}
 static Obj __fastcall native_destroy(Obj p,unsigned f){++native_destroys;last_flags=f;return p;}
 static void *function(unsigned r) {
-    if(r!=0x1A7F50 && r!=0x1A7EA0)++direct_native_calls; // fixture only; no counter in the shipped adapter
+    if(r!=0x1A9250 && r!=0x1A91A0)++direct_native_calls; // fixture only; no counter in the shipped adapter
     switch(r){
-    case 0x864EA0:return reinterpret_cast<void *>(&construct);
-    case 0x86CEC0:return reinterpret_cast<void *>(&create_text);
-    case 0x8740B0:return reinterpret_cast<void *>(&font_size);
-    case 0x8759E0:return reinterpret_cast<void *>(&align_text);
-    case 0x873960:return reinterpret_cast<void *>(&color_text);
-    case 0x8759A0:return reinterpret_cast<void *>(&set_text);
-    case 0x866EF0:return reinterpret_cast<void *>(&begin_text);
-    case 0x869850:return reinterpret_cast<void *>(&end_text);
-    case 0x877DB0:return reinterpret_cast<void *>(&face_leave);
-    case 0x865F30:return reinterpret_cast<void *>(&destroy_text);
-    case 0x2305D0:return reinterpret_cast<void *>(&get_trait);
-    case 0x3F6BC0:return reinterpret_cast<void *>(&allocate);
-    case 0x864C50:return reinterpret_cast<void *>(&construct);
-    case 0x92AB70:return reinterpret_cast<void *>(&initialize);
-    case 0x1B2E80:return reinterpret_cast<void *>(&create_face);
-    case 0x2AD010:return reinterpret_cast<void *>(&color);
-    case 0x875B00:return reinterpret_cast<void *>(&scale);
-    case 0x866E80:return reinterpret_cast<void *>(&begin_face);
-    case 0x869820:return reinterpret_cast<void *>(&end_face);
-    case 0x8782E0:return reinterpret_cast<void *>(&face_leave);
-    case 0x198BE0:return reinterpret_cast<void *>(&destroy_face);
-    case 0x8741D0:return reinterpret_cast<void *>(&show_face);
-    case 0x874650:return reinterpret_cast<void *>(&position);
-    case 0x1B91E0:return reinterpret_cast<void *>(&set_person);
-    case 0x92FA60:return reinterpret_cast<void *>(&set_color);
-    case 0x11170:return reinterpret_cast<void *>(&camera_manager);
-    case 0xEDE0:return reinterpret_cast<void *>(&zoom_level);
-    case 0x86F250:return reinterpret_cast<void *>(&visible);
-    case 0x110E0:return reinterpret_cast<void *>(&popup_manager);
-    case 0x56FC20:return reinterpret_cast<void *>(&current_popup);
-    case 0x1A7F50:return reinterpret_cast<void *>(&frame);
-    case 0x1A74D0:return reinterpret_cast<void *>(&native_leave);
-    case 0x19B1D0:return reinterpret_cast<void *>(&native_destroy);
-    case 0x1A7EA0:return reinterpret_cast<void *>(&frame);
-    case 0x1A75A0:return reinterpret_cast<void *>(&native_leave);
-    case 0x19B350:return reinterpret_cast<void *>(&native_destroy);
+    case 0x8671F0:return reinterpret_cast<void *>(&construct);
+    case 0x86F270:return reinterpret_cast<void *>(&create_text);
+    case 0x876460:return reinterpret_cast<void *>(&font_size);
+    case 0x877D90:return reinterpret_cast<void *>(&align_text);
+    case 0x875D10:return reinterpret_cast<void *>(&color_text);
+    case 0x877D50:return reinterpret_cast<void *>(&set_text);
+    case 0x869280:return reinterpret_cast<void *>(&begin_text);
+    case 0x86BC00:return reinterpret_cast<void *>(&end_text);
+    case 0x87A160:return reinterpret_cast<void *>(&face_leave);
+    case 0x868280:return reinterpret_cast<void *>(&destroy_text);
+    case 0x232030:return reinterpret_cast<void *>(&get_trait);
+    case 0x3F90E0:return reinterpret_cast<void *>(&allocate);
+    case 0x866FA0:return reinterpret_cast<void *>(&construct);
+    case 0x92D020:return reinterpret_cast<void *>(&initialize);
+    case 0x1B4180:return reinterpret_cast<void *>(&create_face);
+    case 0x2AF340:return reinterpret_cast<void *>(&color);
+    case 0x877EB0:return reinterpret_cast<void *>(&scale);
+    case 0x869210:return reinterpret_cast<void *>(&begin_face);
+    case 0x86BBD0:return reinterpret_cast<void *>(&end_face);
+    case 0x87A690:return reinterpret_cast<void *>(&face_leave);
+    case 0x199EB0:return reinterpret_cast<void *>(&destroy_face);
+    case 0x876580:return reinterpret_cast<void *>(&show_face);
+    case 0x876AD0:return reinterpret_cast<void *>(&position);
+    case 0x1BA4E0:return reinterpret_cast<void *>(&set_person);
+    case 0x931FF0:return reinterpret_cast<void *>(&set_color);
+    case 0x110D0:return reinterpret_cast<void *>(&camera_manager);
+    case 0xED40:return reinterpret_cast<void *>(&zoom_level);
+    case 0x871600:return reinterpret_cast<void *>(&visible);
+    case 0x11040:return reinterpret_cast<void *>(&popup_manager);
+    case 0x572480:return reinterpret_cast<void *>(&current_popup);
+    case 0x1A9250:return reinterpret_cast<void *>(&frame);
+    case 0x1A87D0:return reinterpret_cast<void *>(&native_leave);
+    case 0x19C4A0:return reinterpret_cast<void *>(&native_destroy);
+    case 0x1A91A0:return reinterpret_cast<void *>(&frame);
+    case 0x1A88A0:return reinterpret_cast<void *>(&native_leave);
+    case 0x19C620:return reinterpret_cast<void *>(&native_destroy);
     default:check(false,"unexpected native call");return nullptr;
     }
 }
@@ -157,7 +157,7 @@ static void seed_profile(const char *path) {
     auto dos=reinterpret_cast<const IMAGE_DOS_HEADER *>(data.data());
     auto nt=reinterpret_cast<const IMAGE_NT_HEADERS64 *>(data.data()+dos->e_lfanew);
     auto sections=IMAGE_FIRST_SECTION(nt);
-    for(const auto &p:region_officers::profile) {
+    for(const auto &p:region_officers::guard_ranges) {
         bool found=false;
         for(unsigned i=0;i<nt->FileHeader.NumberOfSections;++i) {
             const auto &s=sections[i];
@@ -175,7 +175,7 @@ int main(int argc,char **argv) {
     seed_profile(argv[1]);
     region_officers::heavy_clock=&fixture_now; // manual clock: heavy steps cost 0 unless a test says so
     check(region_officers::guards_match(),"current native byte and slot guards pass");
-    image[0x1B2E80]^=1;check(!region_officers::guards_match(),"changed face ABI bytes reject installation");image[0x1B2E80]^=1;
+    image[0x1B4180]^=1;check(!region_officers::guards_match(),"changed face ABI bytes reject installation");image[0x1B4180]^=1;
     fail_patch=2;check(!region_officers::install(),"partial hook publication fails");
     for(const auto &h:region_officers::hooks)check(pointer(image,h.slot)==image+h.original,"failed publication restores original ownership");
     fail_patch=0;check(region_officers::install(),"all six slots publish once");
@@ -194,7 +194,7 @@ int main(int argc,char **argv) {
     tile[0x14]=2;tick();check(!created,"enemy region creates no resource");tile[0x14]=1;
     number(layout,0x20,2000);tick();check(!created,"offscreen region creates no resource");number(layout,0x20,400);
     set_popup(image+64);tick();check(!created,"modal screens create no resource");set_popup(nullptr);
-    number(image,0x21431FC,3);tick();check(!created,"domestic command mode creates no extra portrait");number(image,0x21431FC,0);
+    number(image,0x214624C,3);tick();check(!created,"domestic command mode creates no extra portrait");number(image,0x214624C,0);
     set_zoom(5);tick();check(!created,"far zoom never creates resources");set_zoom(0);
     tick();check(created==1 && region_officers::panels.at(layout).visible,"owned vacant region displays");
     check(last_parent==layout,"portrait is a child of the native region label");
@@ -225,8 +225,8 @@ int main(int argc,char **argv) {
     set_zoom(4);tick();check(region_officers::panels.at(layout).visible && allocations==baseline_alloc,"zoom return reuses existing face");
     fixture_camera=nullptr;region_officers::view_cache.ready=false;tick();check(!region_officers::panels.at(layout).visible,"missing camera hides safely");fixture_camera=image+128;set_zoom(0);
     tile[0x14]=2;tick();check(!region_officers::panels.at(layout).visible,"ownership loss hides old portrait");tile[0x14]=1;
-    number(image,0x21431FC,7);tick();check(!region_officers::panels.at(layout).visible,"entering regional domestic hides read-only portrait");
-    number(image,0x21431FC,0);tick();check(region_officers::panels.at(layout).visible,"return to world map reuses cached portrait");
+    number(image,0x214624C,7);tick();check(!region_officers::panels.at(layout).visible,"entering regional domestic hides read-only portrait");
+    number(image,0x214624C,0);tick();check(region_officers::panels.at(layout).visible,"return to world map reuses cached portrait");
     unsigned char agriculture[0xE8]{},combat[0xE8]{},commerce[0xE8]{};
     wcscpy_s(reinterpret_cast<wchar_t *>(agriculture+0x10),70,L"농정");agriculture[0xB6]=33;
     wcscpy_s(reinterpret_cast<wchar_t *>(combat+0x10),70,L"맹장");combat[0xB6]=35;
@@ -297,7 +297,7 @@ int main(int argc,char **argv) {
     check(panels.empty() && starts==ends && text_started==text_ended && text_freed==15,"split resources release once");
     // City label (CFootholdInfoLayout): +1F0 object +4E base -> building +10 hex -> tile +12 area -> officer.
     unsigned char city_layout[0x230]{},base_obj[0x60]{},building[0x20]{},city_tile[0x20]{},city_area[0x60]{};
-    memcpy(city_layout,layout2,sizeof(city_layout));put(city_layout,0,image+0x13999B8);put(city_layout,0x1F0,base_obj);
+    memcpy(city_layout,layout2,sizeof(city_layout));put(city_layout,0,image+0x139C9F8);put(city_layout,0x1F0,base_obj);
     short_number(base_obj,0x4E,7);put(fixture_world,0x6DA98+7*8,building);short_number(building,0x10,90);
     put(fixture_world,0xE270+90*8,city_tile);city_tile[0x14]=1;short_number(city_tile,0x12,33);
     put(fixture_world,0x6CAF0+33*8,city_area);short_number(city_area,0x36,10);short_number(city_area,0x3A,90);

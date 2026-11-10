@@ -12,39 +12,52 @@
 // (layout_client::note_load) so its built event can name the layout; no timing/keep work when only names are wanted.
 #include "game_addresses.h"
 #include <string>
+#include "layout_keep_policy.h"
 namespace layout_wait {
 // 86E0C0 forwards its 7th argument as an 8th, so 86C570 takes eight.
 using Load=void(__fastcall *)(Obj,unsigned,unsigned,Obj,const char *,unsigned long long,int,unsigned long long);
-static const unsigned kLoad=GA(GA_86C570),kWrapper=GA(GA_86E0C0),kSites[3]={GA(GA_676767),GA(GA_86CFA5),GA(GA_86DEC9)};
+static const unsigned kLoad=GA(GA_86E920),kWrapper=GA(GA_870470),kSites[3]={GA(GA_678E27),GA(GA_86F355),GA(GA_870279)};
+// U35 (user 2026-11-10 "진행~전략턴 렉 전부 고쳐", "안전가드가 기존 모드를 늦추는지 검사"): CPU trace local26 put ~20% of
+// full-session busy-bin CPU (including startup) in sync loads through the 870470 wrapper (676 callers), missed by 8.3. Its E8
+// (87049C) is a 4th site under its own owner, which yields to R1 (IC memcmp's the wrapper body). A wrapper name is kept
+// after its first slow sync load (local28). local27b still loaded the same HUD layouts twice in 20-32 ms.
+static const unsigned kWrapSite=GA(GA_87049C);
 static const unsigned char kWrapperBytes[0x33]={0x48,0x83,0xEC,0x48,0x48,0x8B,0x84,0x24,0x80,0x00,0x00,0x00,0x48,0x89,0x44,0x24,
     0x38,0x8B,0x44,0x24,0x78,0x89,0x44,0x24,0x30,0x48,0x8B,0x44,0x24,0x70,0x48,0xC7,0x44,0x24,0x28,0x00,0x00,0x00,0x00,0x48,
     0x89,0x44,0x24,0x20,0xE8,0x7F,0xE4,0xFF,0xFF,0xB8,0x01};
 static LARGE_INTEGER frequency,origin;
 static HANDLE file=INVALID_HANDLE_VALUE;
 static SRWLOCK lock=SRWLOCK_INIT;
-static const size_t kKeepMax=512;
 static bool keep_enabled;
 static SRWLOCK keep_lock=SRWLOCK_INIT;
 static std::vector<std::string> kept;          // names already held
 static Obj make_holder() {
     // Same construction as the plain CUILayout container in 882540.
-    Obj holder=fn<Obj(__fastcall *)(size_t)>(GA(GA_3F6BC0))(0x178);
+    Obj holder=fn<Obj(__fastcall *)(size_t)>(GA(GA_3F90E0))(0x178);
     if(!holder)return nullptr;
-    fn<void(__fastcall *)(Obj)>(GA(GA_864C50))(holder);
-    *reinterpret_cast<Obj *>(holder)=image+GA(GA_1342530);
-    fn<void(__fastcall *)(Obj)>(GA(GA_92AB70))(holder+0x130);
+    fn<void(__fastcall *)(Obj)>(GA(GA_866FA0))(holder);
+    *reinterpret_cast<Obj *>(holder)=image+GA(GA_1345530);
+    fn<void(__fastcall *)(Obj)>(GA(GA_92D020))(holder+0x130);
     return holder;
 }
 static void keep(const char *name,unsigned a,unsigned b,unsigned long long extra,unsigned long long tail) {
     std::string key(name);
     AcquireSRWLockExclusive(&keep_lock);
-    bool fresh=kept.size()<kKeepMax && std::find(kept.begin(),kept.end(),key)==kept.end();
-    if(fresh)kept.push_back(key);
+    bool fresh=layout_keep_core::reserve(kept,key);
     ReleaseSRWLockExclusive(&keep_lock);
     if(!fresh)return;
-    if(Obj holder=make_holder())fn<Load>(kLoad)(holder,a,b,nullptr,name,extra,1,tail);   // async: no parent, never shown
+    if(Obj holder=make_holder()) {
+        fn<Load>(kLoad)(holder,a,b,nullptr,name,extra,1,tail);   // async: no parent, never shown
+#ifndef NO_RUNTIME_LOG
+        AcquireSRWLockShared(&keep_lock);const unsigned count=static_cast<unsigned>(kept.size());ReleaseSRWLockShared(&keep_lock);
+        log_event("layout_keep_pin",count,0,0);
+#endif
+    } else {
+        AcquireSRWLockExclusive(&keep_lock);layout_keep_core::cancel(kept,key);ReleaseSRWLockExclusive(&keep_lock);
+        log_event("layout_keep_holder_failed");
+    }
 }
-static Load next_load[3];   // Layout manager: next of each E8 site (original 86C570 unless another mod chained first)
+static Load next_load[4];   // Layout manager: next of each E8 site (original 86C570 unless another mod chained first); [3] = 87049C
 static void timed_call(Load next,Obj self,unsigned a,unsigned b,Obj parent,const char *name,unsigned long long extra,int async,unsigned long long tail) { COST_SCOPE("layout_timed");
     layout_client::note_load(self,name,async);   // P4: layout->name for the Layout built event (the sync load builds inside the original)
     if(!keep_enabled && file==INVALID_HANDLE_VALUE) {next(self,a,b,parent,name,extra,async,tail);return;}   // names only: no timing
@@ -52,7 +65,7 @@ static void timed_call(Load next,Obj self,unsigned a,unsigned b,Obj parent,const
     next(self,a,b,parent,name,extra,async,tail);
     QueryPerformanceCounter(&end);
     const double ms=static_cast<double>(end.QuadPart-begin.QuadPart)*1000.0/static_cast<double>(frequency.QuadPart);
-    if(keep_enabled && !async && name && ms>=5.0)keep(name,a,b,extra,tail);
+    if(layout_keep_core::wanted(keep_enabled,async,name,ms))keep(name,a,b,extra,tail);
     if(ms<2.0 || file==INVALID_HANDLE_VALUE)return;
     char line[256];
     const double at=static_cast<double>(begin.QuadPart-origin.QuadPart)/static_cast<double>(frequency.QuadPart);
@@ -97,6 +110,13 @@ static bool install() {
        !layout_client::call(kSites[2],reinterpret_cast<void *>(&timed<2>),reinterpret_cast<void **>(&next_load[2]))) {
         log_event("layout_wait_register_rejected");return false;
     }
-    tx.done=true;log_event("layout_wait_diagnostic_installed");return true;
+    tx.done=true;log_event("layout_wait_diagnostic_installed");
+    // U35: the wrapper E8 has its own owner and transaction; a refusal or an R1 yield leaves the three sites above as they are.
+    if(keep_enabled || diagnostics) {
+        layout_client::Transaction wrap_tx;
+        if(layout_client::call(kWrapSite,reinterpret_cast<void *>(&timed<3>),reinterpret_cast<void **>(&next_load[3])))wrap_tx.done=true;
+        log_event("layout_keep_wrap_registered",wrap_tx.done?1u:0u,keep_enabled?1u:0u);
+    }
+    return true;
 }
 }

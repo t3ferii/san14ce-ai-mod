@@ -3,11 +3,11 @@
 #ifndef NO_RUNTIME_LOG
 #include "path_count.h"
 namespace path_count {
-static const unsigned entry=GA(GA_183A30),size=0x9A2;
+static const unsigned entry=GA(GA_184D60),size=0x9A2;
 static constexpr unsigned char prologue[]={0x48,0x8B,0xC4,0x44,0x89,0x48,0x20};
 static bool matches(const unsigned char *code) {
     return !memcmp(code,prologue,sizeof(prologue)) &&
-        path_count_core::bytes(path_count_core::basis,code,size)==GH(0x11cbf08ff66c9febull);
+        path_count_core::bytes(path_count_core::basis,code,size)==GH(0x88d3021063886adbull);
 }
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
 static bool guards_match() {return matches(image+entry);}

@@ -15,7 +15,7 @@ try {
     try {
         & cl.exe /nologo /W4 /WX /wd4505 /utf-8 /O2 /MT /std:c++17 /EHsc (Join-Path $taskProject 'tests/path_count_fixture.cpp') /Fepath_count_fixture.exe /link kernel32.lib
         if($LASTEXITCODE -ne 0){throw 'Path count fixture build failed'}
-        $taskResult=& './path_count_fixture.exe' (Join-Path $taskProject 'legacy/FogMod_Source/native_game_analysis/running_code_text.bin')
+        $taskResult=& './path_count_fixture.exe' (Join-Path $taskProject 'build/ui_native_analysis/fixture/1a4a447d_text.bin')
         if($LASTEXITCODE -ne 0){throw 'Path count fixture failed'}
         [IO.File]::WriteAllText((Join-Path $taskProject 'build/path_count_fixture.json'),($taskResult | Select-Object -Last 1),(New-Object Text.UTF8Encoding($false)))
         $taskResult

@@ -33,13 +33,10 @@ def windows_text(path,bom=False):
     return (b'\xef\xbb\xbf' if bom else b'')+text.encode('utf-8')
 assert not manifest.get('assets'), 'Current releases must not carry reference text assets.'
 files={}
-for name in ('AI모드_적용.cmd','AI모드_해제_원본복구.cmd'):
-    files[name]=windows_text(GAME/name)
+# User 2026-11-09: releases ship only the installer EXE as the entry point; no .cmd launchers.
 for name,source in (('관리.ps1','Manage.ps1'),('진단.ps1','Diagnose.ps1'),
                     ('SplitManage.ps1','SplitManage.ps1'),('FeatureSelect.ps1','FeatureSelect.ps1')):
     files['AI_TacticsMod/'+name]=windows_text(PROJECT/'distribution'/source,True)
-for name in ('AI모드_호환성진단.cmd','AI모드_기능선택.cmd'):
-    files['AI_TacticsMod/optional_tools/'+name]=windows_text(PROJECT/'optional_tools'/name)
 for name,digest in manifest['split_modules']['files'].items():
     assert name in ('dinput8.dll','SAN14_CombatAI.dll','SAN14_Convenience.dll','SAN14_CCZ.dll','SAN14_Layout.dll')
     data=(PAYLOAD/name).read_bytes();assert hashlib.sha256(data).hexdigest()==digest
@@ -91,11 +88,9 @@ if manifest.get('gui_installer') and not WITHOUT_GUI:
     gui=(PAYLOAD/manifest['gui_installer']['file']).read_bytes()
     assert hashlib.sha256(gui).hexdigest()==manifest['gui_installer']['sha256']
     files[manifest['gui_installer']['file']]=gui
-ROOT={'AI모드_적용.cmd','AI모드_해제_원본복구.cmd'}|({manifest['gui_installer']['file']} if manifest.get('gui_installer') and not WITHOUT_GUI else set())
-# Extracting the package also keeps the root limited to the current CMDs and installer EXE.
-for launcher in ('AI모드_적용.cmd','AI모드_해제_원본복구.cmd'):
-    files[launcher]=re.sub(rb'Current release: [^\r\n]+',
-        b'Current release: '+manifest['release_version'].encode('ascii'),files[launcher])
+assert manifest.get('gui_installer') and not WITHOUT_GUI,'Releases need the installer EXE (no .cmd launchers since 2026-11-09).'
+ROOT={manifest['gui_installer']['file']}
+# Extracting the package keeps the root limited to the installer EXE.
 files={('AI_TacticsMod/docs/'+name if '/' not in name and name not in
         ROOT else name):data for name,data in files.items()}
 if manifest.get('feature_switches'):
@@ -119,6 +114,7 @@ if target.exists():raise FileExistsError('Existing dist archives are protected: 
 with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as archive:
     for name,data in files.items():archive.writestr(name,data)
 with zipfile.ZipFile(target) as archive:
+    assert not [n for n in archive.namelist() if n.lower().endswith(('.cmd','.bat'))],'No .cmd/.bat in releases (user 2026-11-09).'
     assert set(archive.namelist())==set(files)
     for name,data in files.items():assert archive.read(name)==data
 report={'release_version':manifest['release_version'],'zip':str(target),'zip_sha256':hashlib.sha256(target.read_bytes()).hexdigest(),

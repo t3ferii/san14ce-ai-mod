@@ -19,12 +19,12 @@ except ModuleNotFoundError:
     pass  # Public snapshot: install capstone in the active Python environment.
     from capstone import Cs, CS_ARCH_X86, CS_MODE_64
 
-PLANNERS = (0x48CE0, 0x46B80, 0x4BA50, 0x4ABE0, 0x44A80, 0x1EC890)
+PLANNERS = (0x49900, 0x478A0, 0x4C6A0, 0x4B830, 0x45790, 0x1EDC30)
 
 
 def source_capture_roots(project):
     """Audit every active capture scope and its local helper closure."""
-    names = ('native_sortie.inl', 'native_campaign_routes.inl', 'native_adapter.cpp')
+    names = ('native_sortie.inl', 'native_campaign_routes.inl', 'native_ai_core.inl', 'native_adapter.cpp')
     sources = {name: (project/'src'/name).read_text(encoding='utf-8-sig') for name in names}
     # Mask comments and quoted strings without changing source offsets.
     mask = re.compile(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', re.S)
@@ -72,8 +72,8 @@ def source_capture_roots(project):
             found = body(name)
             if found is not None:
                 helpers.add(name); queue.append(found)
-    expected = {0xA2410, 0x2EAAE0, 0x2EAB40, 0x2EE1E0, 0x26C940,
-                0x32F500, 0x22CC40, 0x22DA10}
+    expected = {0xA3370, 0x2ECEA0, 0x2ECF00, 0x2F05A0, 0x26E260,
+                0x331780, 0x22E690, 0x22F4A0}
     assert roots == expected, ([hex(rva) for rva in sorted(roots)], sorted(helpers))
     return tuple(sorted(set(PLANNERS) | roots)), sorted(helpers)
 
@@ -191,7 +191,7 @@ class NativeGraph:
                 if next_depth > maximum:
                     continue
                 path = paths[node]+[(node, site, target, cost)]
-                if cost and target == self.owner(0x1843E0):
+                if cost and target == self.owner(0x185710):
                     sites[site] = path
                 if next_depth < depth.get(target, maximum+1):
                     depth[target] = next_depth; paths[target] = path
@@ -206,7 +206,7 @@ class NativeGraph:
 def derive(project):
     project = Path(project)
     roots, helpers = source_capture_roots(project)
-    graph = NativeGraph((project/'research/AI_Analysis/native_analysis_only.bin').read_bytes())
+    graph = NativeGraph((project/'build/ui_native_analysis/editor83_b25953386/game.exe.unpacked.exe').read_bytes())
     sites, paths, depths = graph.search_calls(roots)
     return dict(roots=roots, helpers=helpers, sites=sites, paths=paths,
                 depths=depths, functions=len(depths), pdata_entries=len(graph.ranges))

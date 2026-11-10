@@ -34,7 +34,7 @@ static bool call_publish(CallLink &c){if(callsite_publish_fail)return false;c.pu
 static void call_restore(CallLink &c){c.published=false;fixture_callsite_published=false;}
 static bool mod_ini_path(wchar_t *out,const wchar_t *){return wcscpy_s(out,MAX_PATH,ini_path)==0;}
 namespace ccz_module {static void reload_appearance(){++reloads;}}
-namespace lord_change {
+namespace ui_callable {
 struct Callable {void **vtable;void(*callback)(Obj);};
 static unsigned forwarded[6];static Obj received;
 static void *__fastcall copy(void *self,void *out){++forwarded[0];if(out)memcpy(out,self,sizeof(Callable));return out;}
@@ -44,14 +44,14 @@ static void *__fastcall type(void *){++forwarded[3];return nullptr;}
 static void __fastcall erase(void *,bool heap){check(!heap,"inline forwarding never changes heap ownership");++forwarded[4];}
 static void *__fastcall get(void *self){++forwarded[5];return &static_cast<Callable *>(self)->callback;}
 static void record(Obj value){received=value;}
-static void *callable_vtable[]={reinterpret_cast<void *>(&copy),reinterpret_cast<void *>(&move),reinterpret_cast<void *>(&invoke),reinterpret_cast<void *>(&type),reinterpret_cast<void *>(&erase),reinterpret_cast<void *>(&get)};
+static void *vtable[]={reinterpret_cast<void *>(&copy),reinterpret_cast<void *>(&move),reinterpret_cast<void *>(&invoke),reinterpret_cast<void *>(&type),reinterpret_cast<void *>(&erase),reinterpret_cast<void *>(&get)};
 }
 static void *function(unsigned rva);
 template<class T> static T fn(unsigned rva){return reinterpret_cast<T>(function(rva));}
 static bool patch_pointer(unsigned slot,unsigned original,void *replacement){
     ++patches;if(patches==fail_at)return false;
-    if(slot==0x13E4E10)check(pointer(image,0x13E4E18)!=image+0x4F9310 && pointer(image,0x13E4E30)!=image+0x50B800,"publish native initialization only after both lifetime handlers");
-    if(slot==0x13E4E10)check(fixture_callsite_published,"publish initialize only after callsite publication");
+    if(slot==0x13E7EA0)check(pointer(image,0x13E7EA8)!=image+0x4FBB70 && pointer(image,0x13E7EC0)!=image+0x50DEC0,"publish native initialization only after both lifetime handlers");
+    if(slot==0x13E7EA0)check(fixture_callsite_published,"publish initialize only after callsite publication");
     if(pointer(image,slot)!=image+original)return false;point(image,slot,reinterpret_cast<Obj>(replacement));return true;
 }
 static void restore_pointer(unsigned slot,unsigned original,void *replacement){if(pointer(image,slot)==replacement)point(image,slot,image+original);}
@@ -135,31 +135,31 @@ static Obj __fastcall lookup_node(Obj model,int id){
 }
 static void *function(unsigned rva){
     switch(rva){
-    case 0x504670:return reinterpret_cast<void *>(&original_initialize);
-    case 0x4F9310:return reinterpret_cast<void *>(&original_leave);
-    case 0x50B800:return reinterpret_cast<void *>(&original_frame);
-    case 0x3F6BC0:return reinterpret_cast<void *>(&allocate);
-    case 0x864C50:case 0x92AB70:return reinterpret_cast<void *>(&noop);
-    case 0x86E0C0:return reinterpret_cast<void *>(&load);
-    case 0x92E430:return reinterpret_cast<void *>(&create);
-    case 0x92E0B0:return reinterpret_cast<void *>(&insert);
-    case 0x92CEE0:return reinterpret_cast<void *>(&find);
-    case 0x866230:return reinterpret_cast<void *>(&register_pane);
-    case 0x873370:return reinterpret_cast<void *>(&invalidate);
-    case 0x873450:return reinterpret_cast<void *>(&set_alpha);
-    case 0x1A3CB0:return reinterpret_cast<void *>(&bind);
-    case 0xAD1A10:return reinterpret_cast<void *>(&lookup_node);
+    case 0x506ED0:return reinterpret_cast<void *>(&original_initialize);
+    case 0x4FBB70:return reinterpret_cast<void *>(&original_leave);
+    case 0x50DEC0:return reinterpret_cast<void *>(&original_frame);
+    case 0x3F90E0:return reinterpret_cast<void *>(&allocate);
+    case 0x866FA0:case 0x92D020:return reinterpret_cast<void *>(&noop);
+    case 0x870470:return reinterpret_cast<void *>(&load);
+    case 0x9309C0:return reinterpret_cast<void *>(&create);
+    case 0x930640:return reinterpret_cast<void *>(&insert);
+    case 0x92F390:return reinterpret_cast<void *>(&find);
+    case 0x8685C0:return reinterpret_cast<void *>(&register_pane);
+    case 0x875720:return reinterpret_cast<void *>(&invalidate);
+    case 0x875800:return reinterpret_cast<void *>(&set_alpha);
+    case 0x1A4FB0:return reinterpret_cast<void *>(&bind);
+    case 0xAD44E0:return reinterpret_cast<void *>(&lookup_node);
     default:check(false,"unexpected game function");return nullptr;
     }
 }
 static bool title_slots_original(){
-    return pointer(image,ccz_title::kVtable+8)==image+0x504670 && pointer(image,ccz_title::kVtable+16)==image+0x4F9310 && pointer(image,ccz_title::kVtable+40)==image+0x50B800;
+    return pointer(image,ccz_title::kVtable+8)==image+0x506ED0 && pointer(image,ccz_title::kVtable+16)==image+0x4FBB70 && pointer(image,ccz_title::kVtable+40)==image+0x50DEC0;
 }
 int wmain(int argc,wchar_t **argv){
     check(argc==4,"fixture takes running text, isolated ini, preview bitmap");self_module=GetModuleHandleW(nullptr);wcscpy_s(ini_path,argv[2]);
     image=static_cast<Obj>(VirtualAlloc(nullptr,0x2800000,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));check(image!=nullptr,"synthetic image");
     FILE *f=nullptr;_wfopen_s(&f,argv[1],L"rb");check(f!=nullptr,"retained actual running code");fread(image+0x1000,1,0x1300000,f);fclose(f);
-    point(image,ccz_title::kVtable+8,image+0x504670);point(image,ccz_title::kVtable+16,image+0x4F9310);point(image,ccz_title::kVtable+40,image+0x50B800);
+    point(image,ccz_title::kVtable+8,image+0x506ED0);point(image,ccz_title::kVtable+16,image+0x4FBB70);point(image,ccz_title::kVtable+40,image+0x50DEC0);
     check(ccz_title::guards_match(),"all guards match independent retained running code");
     for(auto &g:ccz_title::guards){image[g.rva]^=1;check(!ccz_title::guards_match(),"foreign native code rejected");image[g.rva]^=1;}
     for(unsigned fail:{1u,2u}){fail_at=fail;callsite_prepare_fail=false;callsite_publish_fail=false;patches=0;check(!ccz_title::install(),"injected lifetime publication failure rejected");check(ccz_title::guards_match() && title_slots_original(),"earlier title slots rolled back");}
@@ -217,13 +217,13 @@ int wmain(int argc,wchar_t **argv){
     number(fixture_peer.data(),0x40,0);ccz_title::intro_visibility(fixture_state.data());check(!dword(fixture_peer.data(),0x40),"native hide after menu-in is preserved");
     number(fixture_state.data(),0x470,0x13);number(child.data(),0x40,3);
 #ifndef NO_RUNTIME_LOG
-    lord_change::Callable source{ccz_title::callback_vtable,&lord_change::record},copied{},moved{};
+    ui_callable::Callable source{ccz_title::callback_vtable,&ui_callable::record},copied{},moved{};
     check(ccz_title::callback_copy(&source,&copied)==&copied && copied.vtable==source.vtable && copied.callback==source.callback,"diagnostic copy forwards inline callable unchanged");
     check(ccz_title::callback_move(&source,&moved)==&moved && moved.callback==source.callback,"diagnostic move forwards unchanged");
-    Obj argument=child.data();ccz_title::callback_invoke(&source,&argument);check(lord_change::received==argument,"diagnostic invoke preserves native argument indirection");
+    Obj argument=child.data();ccz_title::callback_invoke(&source,&argument);check(ui_callable::received==argument,"diagnostic invoke preserves native argument indirection");
     check(ccz_title::callback_type(&source)==nullptr,"diagnostic type query preserves original null result");
     ccz_title::callback_delete(&source,false);check(ccz_title::callback_get(&source)==&source.callback,"diagnostic target query preserves original pointer");
-    for(unsigned n:lord_change::forwarded)check(n==1,"each of six callable operations is forwarded exactly once");
+    for(unsigned n:ui_callable::forwarded)check(n==1,"each of six callable operations is forwarded exactly once");
 #endif
     callback(child.data());check(ccz_title::requested,"native button queues editing on title frame");ccz_title::requested=false;
     number(child.data(),0x40,10);callback(child.data());check(!ccz_title::requested,"paused title cannot open another settings dialog");

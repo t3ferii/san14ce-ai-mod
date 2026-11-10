@@ -4,6 +4,7 @@
 #include <dxgi1_2.h>
 #include "terrain_call_profile.h"
 #include "unified_overlay_policy.h"
+#include "core_services.h"   // overlay service: terrain renderer, CCZ sprites/preview and the advisor briefing subscribe to it
 // layout_client (Layout API access, common log sink) lives in native_layout_client.inl, included earlier.
 namespace unified_overlay {
 // perf-begin
@@ -87,16 +88,26 @@ static void show(bool value) {
 }
 static bool take_click(){return InterlockedExchange(&requested,0)!=0;}
 }
-namespace ccz_sprites {   // 조조전 병종 그림 (native_ccz_sprites.inl)
-static bool needs_present();
-static void on_present(ID3D11Device *d,ID3D11DeviceContext *c,ID3D11Texture2D *back,const D3D11_TEXTURE2D_DESC &desc);
-}
-namespace ccz_preview {
-static bool needs_draw();
-static void draw(ID3D11Device *,ID3D11DeviceContext *,ID3D11Texture2D *,const D3D11_TEXTURE2D_DESC &,bool);
-}
 #include "native_advisor_overlay.inl"
 namespace unified_overlay {
+// Overlay service (core_services.h): subscribers draw in services::overlay order; the generated registry joins them.
+static bool overlay_input(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
+    for(unsigned i=0;i<services::overlay.count;++i)
+        if(services::overlay.live(i) && services::overlay.rows[i].fn.input && services::overlay.rows[i].fn.input(hwnd,message,wparam,lparam))return true;
+    return false;
+}
+// Entry gate: probes in gate order (cheapest first, as the former hard-coded chain); stops at the first subscriber with work.
+static bool overlay_gate() {
+    bool used[8]={};
+    for(unsigned n=0;n<services::overlay.count;++n) {
+        int best=-1;
+        for(unsigned i=0;i<services::overlay.count;++i)
+            if(!used[i] && (best<0 || services::overlay.rows[i].fn.gate_order<services::overlay.rows[best].fn.gate_order))best=static_cast<int>(i);
+        used[best]=true;
+        if(services::overlay.live(static_cast<unsigned>(best)) && services::overlay.rows[best].fn.gate && services::overlay.rows[best].fn.gate())return true;
+    }
+    return false;
+}
 #ifdef LAYOUT_OWNS_PRESENT
 static int __cdecl layout_window_proc(void *window_handle,unsigned message,uintptr_t wparam_value,intptr_t lparam_value,void *) { COST_SCOPE("window_proc");
 // perf-begin
@@ -105,7 +116,7 @@ static int __cdecl layout_window_proc(void *window_handle,unsigned message,uintp
 #endif
 // perf-end
     HWND hwnd=static_cast<HWND>(window_handle);WPARAM wparam=static_cast<WPARAM>(wparam_value);LPARAM lparam=static_cast<LPARAM>(lparam_value);
-    if(briefing_overlay::input(hwnd,message,wparam,lparam))return 1;   // 1 = consumed; Layout then returns 0
+    if(overlay_input(hwnd,message,wparam,lparam))return 1;   // 1 = consumed; Layout then returns 0
     bool active=read_flag(&visible) && read_flag(&ready),hit=false;
     if(active && (message==WM_MOUSEMOVE || message==WM_LBUTTONDOWN || message==WM_LBUTTONUP || message==WM_LBUTTONDBLCLK)) {
         RECT client={};GetClientRect(hwnd,&client);
@@ -141,7 +152,7 @@ static LRESULT CALLBACK window_proc(HWND hwnd,UINT message,WPARAM wparam,LPARAM 
     COST_SCOPE("unified_overlay_window_proc");
 #endif
 // perf-end
-    if(briefing_overlay::input(hwnd,message,wparam,lparam))return 0;
+    if(overlay_input(hwnd,message,wparam,lparam))return 0;
     bool active=read_flag(&visible) && read_flag(&ready),hit=false;
     if(active && (message==WM_MOUSEMOVE || message==WM_LBUTTONDOWN || message==WM_LBUTTONUP || message==WM_LBUTTONDBLCLK)) {
         RECT client={};GetClientRect(hwnd,&client);
@@ -225,26 +236,29 @@ static bool draw_locked(IDXGISwapChain *chain) {
         if(context)context->Release();if(device)device->Release();device=current;
         device->GetImmediateContext(&context);
     } else current->Release();
+    for(unsigned i=0;i<services::overlay.count;++i) {   // terrain renderer, world sprites, CCZ preview, then the advisor briefing (kOverlay* order)
+        if(!services::overlay.live(i))continue;
+        const services::OverlaySub &sub=services::overlay.rows[i].fn;
+        if((sub.flags&services::kOverlayContext) && !context)continue;
+        if(sub.needs && !sub.needs())continue;
+        if((sub.flags&services::kOverlayWindow) && !bind(swap.OutputWindow))continue;
+        if(sub.flags&services::kOverlayWindow) {
+            AcquireSRWLockExclusive(&geometry_lock);buffer_width=static_cast<int>(desc.Width);buffer_height=static_cast<int>(desc.Height);ReleaseSRWLockExclusive(&geometry_lock);
+        }
 // perf-begin
 #ifndef NO_RUNTIME_LOG
-    LONGLONG perf_terrain_start=frame_perf::now();
+        LONGLONG perf_start=frame_perf::now();
 #endif
 // perf-end
-    terrain_render::on_device(device);
-    terrain_render::on_present(context);
+        sub.draw(device,context,back,desc,rgba);
 // perf-begin
 #ifndef NO_RUNTIME_LOG
-    InterlockedAdd64(&frame_perf::terrain_us,frame_perf::micros(frame_perf::now()-perf_terrain_start));
+        if(sub.flags&services::kOverlayPerfTerrain)InterlockedAdd64(&frame_perf::terrain_us,frame_perf::micros(frame_perf::now()-perf_start));
 #endif
 // perf-end
-    if(context)ccz_sprites::on_present(device,context,back,desc);   // world sprites before any UI overlay
-    if(context)ccz_preview::draw(device,context,back,desc,rgba);
+    }
     Bounds next=bounds(static_cast<int>(desc.Width),static_cast<int>(desc.Height));
     bool success=false;
-    if(context && briefing_overlay::needs_draw() && bind(swap.OutputWindow)) {
-        AcquireSRWLockExclusive(&geometry_lock);buffer_width=static_cast<int>(desc.Width);buffer_height=static_cast<int>(desc.Height);ReleaseSRWLockExclusive(&geometry_lock);
-        briefing_overlay::draw(device,context,back,desc);
-    }
     if(context && read_flag(&visible) && next.width>0 && next.height>0) {
         if(!texture || texture_width!=static_cast<unsigned>(next.width) || texture_height!=static_cast<unsigned>(next.height) || texture_format!=desc.Format) {
             if(texture){texture->Release();texture=nullptr;}
@@ -268,7 +282,7 @@ static bool draw_locked(IDXGISwapChain *chain) {
     back->Release();return success;
 }
 static void draw(IDXGISwapChain *chain,UINT flags) {
-    if((flags&DXGI_PRESENT_TEST) || (!read_flag(&visible) && !briefing_overlay::needs_draw() && !terrain_render::needs_present() && !ccz_sprites::needs_present() && !ccz_preview::needs_draw()))return;
+    if((flags&DXGI_PRESENT_TEST) || (!read_flag(&visible) && !overlay_gate()))return;
     if(TryAcquireSRWLockExclusive(&draw_lock)) {
         InterlockedExchange(&ready,draw_locked(chain)?1:0);ReleaseSRWLockExclusive(&draw_lock);
     }

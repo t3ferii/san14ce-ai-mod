@@ -109,7 +109,7 @@ static int __fastcall original_membership(Obj state,Obj area) {
 static int __fastcall original_blocked(int key) {require(key==0x3A,"native UI gate key");return blocked?1:0;}
 static int __fastcall original_position(Obj t,uint64_t *out,void *a8,int flag) {
     require(t==tile_data || t==other_tile,"position gets clicked tile");
-    require(out && flag==1 && !memcmp(a8,image+0x1342D30,16),"F560 output, copied 16 bytes and fourth argument");
+    require(out && flag==1 && !memcmp(a8,image+0x1345D30,16),"F560 output, copied 16 bytes and fourth argument");
     require(dword(domestic_state,0x478)==0xA5A5A5A5,"domestic state+478 never changed");
     *out=position_value;return position_success?1:0;
 }
@@ -134,11 +134,11 @@ static void __fastcall original_open(Obj manager,const char *name,HexParams *par
     Obj t=reinterpret_cast<Obj>(params->tile);
     require(t==opening_tile && (t==tile_data || t==other_tile),"TLS opening tile equals params[0]");
     require(params->res18==(position_success?position_value:fallback_value) && params->zero==0,"full 64-bit position and zero params");
-    require(functor->slots[0]==reinterpret_cast<uint64_t>(image+0x13D89C8) &&
+    require(functor->slots[0]==reinterpret_cast<uint64_t>(image+0x13DBA58) &&
         functor->slots[1]==reinterpret_cast<uint64_t>(hex_completion) &&
         functor->slots[7]==reinterpret_cast<uint64_t>(functor),"functor vtable, DLL static dummy and self at +38");
     for(unsigned i=2;i<7;++i)require(!functor->slots[i],"functor unused slots zero");
-    if(immediate_build) {put(hex_state,0x470,t);native_caller=image+0x7248DC;native_count=4;hex_menu_state(hex_state);}
+    if(immediate_build) {put(hex_state,0x470,t);native_caller=image+0x726D5C;native_count=4;hex_menu_state(hex_state);}
     require((functor->slots[1]&15)==0,"completion dummy aligned to 16");
     retained_functor=*functor; // Native clone outlives this stack source.
     // Native consumes the source functor and destroys with its delete flag false.
@@ -146,26 +146,26 @@ static void __fastcall original_open(Obj manager,const char *name,HexParams *par
 }
 static void *fixture_function(unsigned r) {
     switch(r) {
-    case 0x18F10:return reinterpret_cast<void *>(&original_highlight_manager);
-    case 0x230FD0:return reinterpret_cast<void *>(&original_highlight_object);
-    case 0x32F500:return reinterpret_cast<void *>(&original_highlight_predicate);
-    case 0x924FE0:return reinterpret_cast<void *>(&original_highlight_update);
-    case 0x71E180:return reinterpret_cast<void *>(&original_exit);
-    case 0x724660:return reinterpret_cast<void *>(&original_state);
-    case 0x6EB5C0:return reinterpret_cast<void *>(&original_build);
-    case 0x7A7DB0:return reinterpret_cast<void *>(&original_domestic);
-    case 0x7A8060:return reinterpret_cast<void *>(&original_hex_click);
-    case 0x7A92C0:return reinterpret_cast<void *>(&original_hint);
-    case 0x857320:return reinterpret_cast<void *>(&original_hint_set);
-    case 0x3F3B60:return reinterpret_cast<void *>(&original_input);
-    case 0x3F4050:return reinterpret_cast<void *>(&original_suppressed);
-    case 0x70E940:return reinterpret_cast<void *>(&original_membership);
-    case 0x229EA0:return reinterpret_cast<void *>(&original_area);
-    case 0x17A3E0:return reinterpret_cast<void *>(&original_blocked);
-    case 0xF560:return reinterpret_cast<void *>(&original_position);
-    case 0x11290:return reinterpret_cast<void *>(&original_view);
-    case 0x110E0:return reinterpret_cast<void *>(&original_manager);
-    case 0x433020:return reinterpret_cast<void *>(&original_open);
+    case 0x18E70:return reinterpret_cast<void *>(&original_highlight_manager);
+    case 0x232A30:return reinterpret_cast<void *>(&original_highlight_object);
+    case 0x331780:return reinterpret_cast<void *>(&original_highlight_predicate);
+    case 0x927490:return reinterpret_cast<void *>(&original_highlight_update);
+    case 0x720530:return reinterpret_cast<void *>(&original_exit);
+    case 0x726AE0:return reinterpret_cast<void *>(&original_state);
+    case 0x6ED8A0:return reinterpret_cast<void *>(&original_build);
+    case 0x7A9D40:return reinterpret_cast<void *>(&original_domestic);
+    case 0x7A9F40:return reinterpret_cast<void *>(&original_hex_click);
+    case 0x7AB260:return reinterpret_cast<void *>(&original_hint);
+    case 0x859610:return reinterpret_cast<void *>(&original_hint_set);
+    case 0x3F6080:return reinterpret_cast<void *>(&original_input);
+    case 0x3F6570:return reinterpret_cast<void *>(&original_suppressed);
+    case 0x710C50:return reinterpret_cast<void *>(&original_membership);
+    case 0x22B8E0:return reinterpret_cast<void *>(&original_area);
+    case 0x17B390:return reinterpret_cast<void *>(&original_blocked);
+    case 0xF4C0:return reinterpret_cast<void *>(&original_position);
+    case 0x111F0:return reinterpret_cast<void *>(&original_view);
+    case 0x11040:return reinterpret_cast<void *>(&original_manager);
+    case 0x435390:return reinterpret_cast<void *>(&original_open);
     default:return nullptr;
     }
 }
@@ -174,7 +174,7 @@ static void select(int index) {
     require(hex_menu_click(ui_functor,reinterpret_cast<void **>(&p))==0,"expanded picker callback consumed");
 }
 static void open_picker(Obj tile=tile_data) {
-    native_caller=image+0x7248DC;native_count=4;opening_tile=tile;
+    native_caller=image+0x726D5C;native_count=4;opening_tile=tile;
     put(hex_state,0x470,tile);put(ui_functor,8,hex_state);
     require(hex_menu_state(hex_state)==77 && passed_count==26,"recorded tile replaces four native entries");
 }
@@ -274,14 +274,15 @@ int main() {
     image=static_cast<Obj>(VirtualAlloc(nullptr,0x1500000,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));require(image!=nullptr,"image");
     put(domestic_functor,8,domestic_state);put(ui_functor,8,hex_state);put(hex_state,0x470,tile_data);
     *reinterpret_cast<unsigned *>(domestic_state+0x478)=0xA5A5A5A5;
+    *reinterpret_cast<int *>(domestic_state+0x4B8)=0x54454431;   // user 2026-11-08: only the advisor-opened city state enables terrain edit
     for(unsigned char value:hex_completion)require(value==0,"DLL static completion buffer initially zero");
-    memcpy(image+0x456FE0,hex_complete_bytes,sizeof(hex_complete_bytes));
-    DWORD old;require(VirtualProtect(image+0x456FE0,sizeof(hex_complete_bytes),PAGE_EXECUTE_READ,&old)!=0,"fixture completion code protection");
-    require(FlushInstructionCache(GetCurrentProcess(),image+0x456FE0,sizeof(hex_complete_bytes))!=0,"fixture completion instruction cache");
-    memcpy(view_data+0x34,&fallback_value,8);for(unsigned i=0;i<16;++i)image[0x1342D30+i]=static_cast<unsigned char>(i*13);
+    memcpy(image+0x4590A0,hex_complete_bytes,sizeof(hex_complete_bytes));
+    DWORD old;require(VirtualProtect(image+0x4590A0,sizeof(hex_complete_bytes),PAGE_EXECUTE_READ,&old)!=0,"fixture completion code protection");
+    require(FlushInstructionCache(GetCurrentProcess(),image+0x4590A0,sizeof(hex_complete_bytes))!=0,"fixture completion instruction cache");
+    memcpy(view_data+0x34,&fallback_value,8);for(unsigned i=0;i<16;++i)image[0x1345D30+i]=static_cast<unsigned char>(i*13);
     for(int i=0;i<4;++i)original[i]={i,0,L"native",i&1,7,8,9};
     check_world();tile_data[0x10]=1;other_tile[0x10]=2;
-    native_caller=image+0x7248DC;native_count=4;
+    native_caller=image+0x726D5C;native_count=4;
     require(hex_menu_state(hex_state)==77 && passed==original && passed_count==4,"unrecorded native hex menu unchanged");
     open_picker();require(in_scope && !menu_scope && !opening_tile,"scope restored and pending tile consumed");
     require(passed_menu==popup && passed_x==-7 && passed_y==18 && passed_flag==0x123456789ABCDEF0ull,"all six builder arguments retained");check_rows();
@@ -349,15 +350,24 @@ int main() {
         immediate_build=immediate!=0;position_success=pos!=0;tile_data[0x10]=1;
         unsigned before=domestic_calls,opened=open_calls;click_tile(tile_data);
         require(domestic_calls==before && open_calls==opened+1 && tile_data[0x10]==1,"regional click opens picker without edit");
+        *reinterpret_cast<int *>(domestic_state+0x4B8)=0;
+        before=domestic_calls;opened=open_calls;click_tile(tile_data);
+        require(domestic_calls==before+1 && open_calls==opened,"ordinary regional development keeps the original land click (no advisor marker)");
+        terrain_edit::advisor_city_pending=domestic_state;terrain_edit::advisor_city_armed_ms=GetTickCount64();
+        put(domestic_state,0x470,domestic_state);
+        before=domestic_calls;opened=open_calls;click_tile(tile_data);
+        require(domestic_calls==before && open_calls==opened+1 && dword(domestic_state,0x4B8)==0x54454431,"the advisor-armed city gets the marker on its first land click");
+        terrain_edit::advisor_city_pending=nullptr;
+        *reinterpret_cast<int *>(domestic_state+0x4B8)=0x54454431;
         if(!immediate) {
             require(opening_tile==tile_data,"deferred state retains exact tile");
-            put(hex_state,0x470,tile_data);native_caller=image+0x7248DC;native_count=4;hex_menu_state(hex_state);
+            put(hex_state,0x470,tile_data);native_caller=image+0x726D5C;native_count=4;hex_menu_state(hex_state);
         }
         require(!opening_tile && expanded_tile==tile_data,"state consumes pending tile");
     }
     hex_completion[0x477]=0x12;hex_completion[0x47C]=0x34;
     *reinterpret_cast<unsigned *>(hex_completion+0x478)=0xDEADBEEF;
-    reinterpret_cast<void(__fastcall *)(HexFunctor *)>(image+0x456FE0)(&retained_functor);
+    reinterpret_cast<void(__fastcall *)(HexFunctor *)>(image+0x4590A0)(&retained_functor);
     require(dword(hex_completion,0x478)==0 && hex_completion[0x477]==0x12 && hex_completion[0x47C]==0x34,"actual completion only clears static dummy dword");
     require(dword(domestic_state,0x478)==0xA5A5A5A5,"completion leaves regional state untouched");immediate_build=false;
     for(unsigned t=0;t<256;++t) {
@@ -388,7 +398,7 @@ int main() {
         if(condition==3)menu_scope=nullptr;if(condition==6)opening_tile=nullptr;
         if(condition==7)put(hex_state,0x470,other_tile);if(condition==8)put(hex_state,0x470,nullptr);
         MenuEntry *input=condition==9?nullptr:original;int count=condition==5?13:4;
-        menu_build_from(image+(condition==4?0x730B99:0x7248DC),popup,2,3,4,input,count);
+        menu_build_from(image+(condition==4?0x730B99:0x726D5C),popup,2,3,4,input,count);
         require(passed==input && passed_count==count,"only exact pending tile/caller/count/context expands");
         enabled=mod_features.convenience=mod_features.terrain_edit=true;
     }

@@ -1,4 +1,4 @@
-// Battle deaths relay + tables (docs/BATTLE_DEATHS_PLAN.md 3.3, 4-1, step S2, 2026-11-06). No game image, no game memory: the relay built by
+// Battle deaths relay + tables (docs/HISTORY.md 3.3, 4-1, step S2, 2026-11-06). No game image, no game memory: the relay built by
 // bdp::build_branch_relay is copied into an RWX page together with raw-byte harness / pass / reject stubs / predicate, and executed.
 // Covers: ebx!=0 pass without calling the predicate; ebx==0 with predicate true/false; predicate rcx==r13; predicate entry alignment;
 // volatile register + xmm0-5 + callee-saved preservation (the predicate stub clobbers rcx,rdx,r8-r11,xmm0-5 and the flags); ZF restore;
@@ -155,13 +155,11 @@ static void test_relay() {
 
 // ---- tables ----
 struct BuildExpect {unsigned guard_rva[6];unsigned long long guard_hash[6];unsigned site[4],orig[4],span,reject,app,camera;};
-// plan 3.4 / 3.5 values per known build (index 0 = 1fbe6be7 old, 1 = 1a4a447d new)
-static const unsigned long long kRefHash[6]={0x653B3284CA02C85Full,0x661CC422880CE7ACull,0xD2B7AF14F94EA20Eull,0x047913DBCD7D9B49ull,0xD249FFA0B273C4B5ull,0x272A6BD679DA0875ull};
-static const BuildExpect kBuilds[2]={
-    {{0x258EE0,0x27D4B0,0x295AA0,0x368360,0x14CB00,0x14C9F0},{kRefHash[0],kRefHash[1],kRefHash[2],kRefHash[3],kRefHash[4],kRefHash[5]},
-     {0x259682,0x27D976,0x25974B,0x27DA09},{0x368360,0x368360,0x295AA0,0x295AA0},0x295C5F,0x296535,0x14CB00,0x14C9F0},
-    {{0x25A880,0x27F250,0x2979B0,0x36A850,0x14DAE0,0x14D9D0},{0xFD9E9B85A74972A6ull,0xF60E887BFD21C705ull,0x835F477A1B42648Cull,0x92A4E03C15B5DBB9ull,0x8A81202331C2D685ull,0x0E33A03C060DC2C5ull},
-     {0x25B022,0x27F716,0x25B0EB,0x27F7A9},{0x36A850,0x36A850,0x2979B0,0x2979B0},0x297B6F,0x298445,0x14DAE0,0x14D9D0}};
+// plan 3.4 / 3.5 values of the reference build 1a4a447d (the fixture runs with the single-column address table)
+static const unsigned long long kRefHash[6]={0xFD9E9B85A74972A6ull,0xF60E887BFD21C705ull,0x835F477A1B42648Cull,0x92A4E03C15B5DBB9ull,0x8A81202331C2D685ull,0x0E33A03C060DC2C5ull};
+static const BuildExpect kBuild=
+    {{0x25A880,0x27F250,0x2979B0,0x36A850,0x14DAE0,0x14D9D0},{kRefHash[0],kRefHash[1],kRefHash[2],kRefHash[3],kRefHash[4],kRefHash[5]},
+     {0x25B022,0x27F716,0x25B0EB,0x27F7A9},{0x36A850,0x36A850,0x2979B0,0x2979B0},0x297B6F,0x298445,0x14DAE0,0x14D9D0};
 static const unsigned kGuardSizes[6]={0x870,0x55E,0x1C7,0x10E,0x8,0x22};
 static void test_tables() {
     const size_t gn=sizeof(battle_deaths_guards)/sizeof(battle_deaths_guards[0]);
@@ -202,27 +200,25 @@ static void test_tables() {
     ok(battle_deaths_span_rva+8+(unsigned)je==battle_deaths_reject_rva,"span je target == reject rva (static build)");
     ok(kBattleDeathsCutinMaxQueued==4&&kBattleDeathsRequestQueuedOff==0x1E0,"cut-in constants");
     ok(((battle_deaths_span_rva&15)+battle_deaths_span_len)>16,"span crosses a 16-byte boundary (reason for span instead of block)");
-    // per build values through the generated table
-    const int saved=ga::build_index();
-    for(int b=0;b<2;++b) {
-        ga::select_build(b);
+    // values of the reference build through the generated table
+    {
+        const int b=0;
         char m[160];
-        const BuildExpect &x=kBuilds[b];
+        const BuildExpect &x=kBuild;
         bool all=true;
-        const unsigned ids[6]={GA(GA_258EE0),GA(GA_27D4B0),GA(GA_295AA0),GA(GA_368360),GA(GA_14CB00),GA(GA_14C9F0)};
+        const unsigned ids[6]={GA(GA_25A880),GA(GA_27F250),GA(GA_2979B0),GA(GA_36A850),GA(GA_14DAE0),GA(GA_14D9D0)};
         for(unsigned i=0;i<6;++i)if(ids[i]!=x.guard_rva[i])all=false;
         std::snprintf(m,sizeof m,"build %d guard ids",b);ok(all,m);
         all=true;for(unsigned i=0;i<6;++i)if(GH(kRefHash[i])!=x.guard_hash[i])all=false;
         std::snprintf(m,sizeof m,"build %d guard hashes",b);ok(all,m);
-        const unsigned sites[4]={GA(GA_259682),GA(GA_27D976),GA(GA_25974B),GA(GA_27DA09)};
+        const unsigned sites[4]={GA(GA_25B022),GA(GA_27F716),GA(GA_25B0EB),GA(GA_27F7A9)};
         all=true;for(unsigned i=0;i<4;++i)if(sites[i]!=x.site[i])all=false;
         std::snprintf(m,sizeof m,"build %d sites",b);ok(all,m);
-        ok(GA(GA_295C5F)==x.span&&GA(GA_296535)==x.reject,"span / reject ids");
+        ok(GA(GA_297B6F)==x.span&&GA(GA_298445)==x.reject,"span / reject ids");
         ok(x.span+8+0x8CEu==x.reject,"je target == reject (this build)");
-        ok(GA(GA_14CB00)==x.app&&GA(GA_14C9F0)==x.camera,"app / camera ids");
+        ok(GA(GA_14DAE0)==x.app&&GA(GA_14D9D0)==x.camera,"app / camera ids");
         ok(x.site[0]!=x.site[1]&&x.orig[0]==x.guard_rva[3]&&x.orig[2]==x.guard_rva[2],"original callee ids");
     }
-    ga::select_build(saved>=0?saved:0);
 }
 static void test_registry() {
     unsigned rows=0,ok_rows=0;

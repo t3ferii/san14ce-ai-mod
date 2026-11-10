@@ -12,7 +12,7 @@ from pathlib import Path
 import json,re,struct,sys
 P=Path(__file__).resolve().parents[1]
 src=P/'src'
-exe_path=P/'build/ui_native_analysis/editor83_plain/game.exe.unpacked.exe'
+exe_path=P/'build/ui_native_analysis/editor83_b25953386/game.exe.unpacked.exe'
 exe=exe_path.read_bytes()
 pe=struct.unpack_from('<I',exe,0x3c)[0];n=struct.unpack_from('<H',exe,pe+6)[0];so=struct.unpack_from('<H',exe,pe+20)[0]
 S=[struct.unpack_from('<IIII',exe,pe+24+so+i*40+8) for i in range(n)]
@@ -28,7 +28,7 @@ reg=(src/'layout_registry.h').read_text(encoding='utf-8')
 body=reg[reg.index('static const LayoutRow layout_rows[]'):reg.index('static const unsigned layout_row_count')]
 rows=[(m.group(1),m.group(2),int(m.group(3),16),int(m.group(4),16),m.group(5)) for m in
       re.finditer(r'\{"(\w+)",(LR_\w+),\s*0x([0-9A-Fa-f]+),\s*0x([0-9A-Fa-f]+),\s*([\w|]+)\}',body)]
-ok(len(rows)==257,'257 registry rows parsed (got %d)'%len(rows))   # local10 2026-11-06: the traits9_captive row was removed with captive_dialog
+ok(len(rows)==274,'274 registry rows parsed (got %d)'%len(rows))   # User 2026-11-10 U35: +4 face_keep_portrait; local27 +1 layout_keep_wrap; prior rows unchanged.
 # 1. exe
 for owner,kind,rva,orig,flags in rows:
     if kind=='LR_VT':
@@ -38,24 +38,24 @@ for owner,kind,rva,orig,flags in rows:
         ok(b[0]==op and rva+5+struct.unpack_from('<i',b,1)[0]==orig,'%s %s %X -> %X'%(owner,kind,rva,orig))
 mt=re.search(r'layout_mediation_expect\[10\]=\{([^}]*)\}',reg)
 expect=bytes(int(x,16) for x in mt.group(1).split(','))
-ok(rd(0x70E9C1,10)==expect,'70E9C1 expect bytes equal the EXE')
-ok(rd(0x70E9C0,1)==bytes([0x0A]) or True,'70E9C0 context')
+ok(rd(0x710CD1,10)==expect,'70E9C1 expect bytes equal the EXE')
+ok(rd(0x710CD0,1)==bytes([0x0A]) or True,'70E9C0 context')
 # 2a. stat_exp scan
 def call_to(site,target):
     b=rd(site,5);return b[0]==0xE8 and site+5+struct.unpack_from('<i',b,1)[0]==target
 stat=[];chart=[]
-for w in (0x9073F6,0x907F79,0x7F5A8C):
+for w in (0x909896,0x90A419,0x7F7F5C):
     stats=charts=0
     for at in range(w,w+0x110):
         if charts>=5:break
-        if call_to(at,0x22FCE0) and stats==charts:stat.append(at);stats+=1
-        elif call_to(at,0x85C420) and charts+1==stats:chart.append(at);charts+=1
+        if call_to(at,0x231770) and stats==charts:stat.append(at);stats+=1
+        elif call_to(at,0x85E750) and charts+1==stats:chart.append(at);charts+=1
 sites=sorted(stat+chart)
-reg_sites=sorted(rva for owner,kind,rva,orig,flags in rows if owner=='stat_exp' and rva!=0x85C5D7)
+reg_sites=sorted(rva for owner,kind,rva,orig,flags in rows if owner=='stat_exp' and rva!=0x85E907)
 ok(sites==reg_sites,'stat_exp: registry sites equal the module scan (%d vs %d)'%(len(sites),len(reg_sites)))
-ok(call_to(0x85C5D7,0x930D20) and call_to(0x898083,0x930D20),'stat_exp / dispatch_days text calls')
+ok(call_to(0x85E907,0x9332B0) and call_to(0x89A373,0x9332B0),'stat_exp / dispatch_days text calls')
 # 2b. traits9 payload tables
-pay=P/'build/development/loader_split/traits9_payloads.h'
+pay=P/'src/traits9_payloads.h'
 if pay.exists():
     t=ga_expand.expand(pay.read_text(encoding='utf-8'))   # local10: the generated header spells original RVAs as GA(GA_x) too
     core=[(int(a,16),int(b)) for a,b in re.findall(r'\{(0x[0-9A-Fa-f]+),(\d+),\{0x',t[t.index('traits9_core[]'):])]
@@ -67,7 +67,7 @@ if pay.exists():
     ok(sorted(manifests)==sorted(reg_span),'traits9 inline spans equal the payload manifests')
     ok(all(rd(a,1) for a,_ in reg_span),'span sites readable')
 else:
-    ok(False,'traits9_payloads.h missing: run build_split.ps1 first')
+    ok(False,'src/traits9_payloads.h missing')
 # 3. blocked entries
 blocked=[int(x,16) for x in re.findall(r'0x([0-9A-Fa-f]+)',reg[reg.index('layout_blocked_entries[]'):])]
 core_src=(src/'native_layout_core.inl').read_text(encoding='utf-8')
@@ -76,22 +76,23 @@ ok(blocked==core_blocked,'registry blocklist equals the manager blocklist')
 for owner,kind,rva,orig,flags in rows:
     if kind!='LR_VT':ok(not any(rva<=e<rva+5 for e in blocked),'%s %X is not a blocked entry patch'%(owner,rva))
 rvas={r for _,_,r,_,_ in rows}
-ok({0x7F5781,0x7FA1FD,0x5F10F7,0x5F5B27,0x65EAAD}<=rvas,'Q6 call-site replacements registered')
-ok(not ({0x7FA230,0x6566E0,0x86E0C0,0x6D7D90}&rvas),'Q6: no registry row at 7FA230 / 6566E0 / 86E0C0, 6D7D90 handed over')
+ok({0x7F7C51,0x7FC6CD,0x5F3957,0x5F8357,0x6610BD}<=rvas,'Q6 call-site replacements registered')
+ok(not ({0x7FC700,0x658DF0,0x870470,0x6D7D90}&rvas),'Q6: no registry row at 7FA230 / 6566E0 / 86E0C0, 6D7D90 handed over')
 # 4. whitelist rows are hosted by the right DLL (the sources compiled into it)
 wl=[(o,r) for o,k,r,_,f in rows if 'NEED_WHITELIST' in f or f.endswith('W') or 'CW' in f]
 wl_rvas={r for _,r in wl}
-ok(wl_rvas=={0x1473F50,0x139A338,0x139A350,0x139A328,0x13999C8,0x13999E0,0x13999B8,0x13A03D0,0x1413600},'whitelist rows are exactly the contested slots of design 8.1')
+ok(wl_rvas=={0x1476FE0,0x139D378,0x139D390,0x139D368,0x139CA08,0x139CA20,0x139C9F8,0x13A3410,0x1416690},'whitelist rows are exactly the contested slots of design 8.1')
 sprites=(src/'native_ccz_sprites.inl').read_text(encoding='utf-8');ccz=(src/'ccz_module.cpp').read_text(encoding='utf-8')
 ok('layout_client::vt(kSubmitSlot' in sprites and 'native_ccz_sprites.inl' in ccz,'13A03D0 is registered by code compiled into SAN14_CCZ.dll')
-conv=(src/'native_adapter.cpp').read_text(encoding='utf-8')
-for name,rva in (('native_speed_buttons.inl',0x1473F50),('native_region_officers.inl',0x139A338),('native_merit_links.inl',0x1413600)):
+conv=(src/'module_unity_convenience.inl').read_text(encoding='utf-8')   # W5: the convenience root's generated include list (development/module_registry.json unity)
+for name,rva in (('native_speed_buttons.inl',0x1476FE0),('native_region_officers.inl',0x139D378),('native_merit_links.inl',0x1416690)):
     ok('#include "%s"'%name in conv,'%s is compiled into SAN14_Convenience.dll'%name)
 # 5. converted modules do not patch their UI hooks themselves
 direct=re.compile(r'\b(prepare_link|call_prepare|call_publish|publish_link|patch_pointer|restore_pointer|replace_code16|modpack_write)\s*\(')
 for name in ('native_speed_buttons.inl','native_lord_change.inl','native_region_officers.inl','native_ccz_title.inl','native_ccz_sprites.inl',
              'native_layout_wait.inl','native_fast_menu.inl','native_stat_exp.inl','native_dispatch_days.inl','native_damage_preview.inl',
-             'native_mediation_plus.inl','native_trait_hover.inl','native_battle_deaths.inl'):   # battle_deaths (4 CALL rows + 1 span) added 2026-11-06 (docs/BATTLE_DEATHS_PLAN.md 4-3, source arrives with S4); trait_hover (owner of 152 VT + 4 CALL rows) added 2026-11-06 (docs/TRAIT_HOVER_PLAN.md 4.3)
+             'native_mediation_plus.inl','native_trait_hover.inl','native_battle_deaths.inl','native_tactic_priority.inl',
+             'native_modpack.inl','native_traits9.inl'):   # W6-E (F-03): stats200, collab/scenery slots and traits9 go through the manager only;    # battle_deaths (4 CALL rows + 1 span) added 2026-11-06 (docs/HISTORY.md 4-3, source arrives with S4); trait_hover (owner of 152 VT + 4 CALL rows) added 2026-11-06 (docs/HISTORY.md 4.3)
     if not (src/name).exists():ok(False,name+': module source missing (S4 not done yet)');continue
     text=(src/name).read_text(encoding='utf-8')
     ok(not direct.search(text),name+': no direct patching left (Layout manager only)')

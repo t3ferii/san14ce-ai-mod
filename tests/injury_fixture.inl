@@ -19,13 +19,13 @@ static unsigned __fastcall mock_injury_rumor(Obj,GameList *list,int) {
 }
 static Obj __fastcall mock_injury_selection(Obj,Obj,GameList *) {return injury_selected_advisor;}
 static void test_injury() {
-    native_functions[0x22D2A0]=reinterpret_cast<void *>(&mock_injury_capacity);
-    native_functions[0x32E8D0]=reinterpret_cast<void *>(&mock_injury_controlled);
-    native_functions[0x29BF00]=reinterpret_cast<void *>(&mock_injury_clear);
-    native_functions[0x2ED6B0]=reinterpret_cast<void *>(&mock_injury_apply);
-    native_functions[0x6DAF20]=reinterpret_cast<void *>(&mock_injury_rumor);
-    native_functions[0x261B70]=reinterpret_cast<void *>(&mock_injury_selection);
-    native_functions[0x32E910]=reinterpret_cast<void *>(&mock_injury_player);
+    native_functions[0x22ECF0]=reinterpret_cast<void *>(&mock_injury_capacity);
+    native_functions[0x330B50]=reinterpret_cast<void *>(&mock_injury_controlled);
+    native_functions[0x29DE10]=reinterpret_cast<void *>(&mock_injury_clear);
+    native_functions[0x2EFA70]=reinterpret_cast<void *>(&mock_injury_apply);
+    native_functions[0x6DD230]=reinterpret_cast<void *>(&mock_injury_rumor);
+    native_functions[0x263520]=reinterpret_cast<void *>(&mock_injury_selection);
+    native_functions[0x330B90]=reinterpret_cast<void *>(&mock_injury_player);
     Obj force=object(2201),district=object(10),wounded=object(2202),herb=object(2203);
     Obj naval=object(2204),special=object(2205),ordinary=object(2206),city=object(11),node=object(1);
     district[0x10]=8;slot(0xDF30,8,force);slot(0xE0D0,10,district);
@@ -38,7 +38,7 @@ static void test_injury() {
     put32(node,0x38,1);put32(node,0x3C,2);
     for(unsigned state:{3u,2u,1u,0u}) {
         wounded[0x161]=static_cast<unsigned char>(state);
-        for(unsigned rva:{0x52600u,0x52780u,0x534A0u,0x53F40u})native_functions[rva]=reinterpret_cast<void *>(&mock_node);
+        for(unsigned rva:{0x53270u,0x533F0u,0x54110u,0x54BC0u})native_functions[rva]=reinterpret_cast<void *>(&mock_node);
         values={{1,ordinary},{2,wounded}};native_orders=0;
         for(Execute command:{&injury_dual_destruction,&injury_estrange,&injury_hidden_poison,&injury_spy_away}) {
             expect(command(node,node,node)==(state?2u:1u));
@@ -56,7 +56,7 @@ static void test_injury() {
     expect(injury_hidden_poison(node,node,node)==1 && native_orders==1);enabled=1;
     // Every nonzero state blocks creation before native mutates army/troop state.
     Obj army=object(1);put16(army,0x12,2202);list_add(actors,army);
-    values={{1,reinterpret_cast<Obj>(&actors)}};native_functions[0x35A40]=reinterpret_cast<void *>(&mock_node);
+    values={{1,reinterpret_cast<Obj>(&actors)}};native_functions[0x365A0]=reinterpret_cast<void *>(&mock_node);
     for(unsigned state:{1u,2u,3u,255u,0u}) {
         wounded[0x161]=static_cast<unsigned char>(state);native_orders=0;
         expect(injury_departure_create(node,node,node)==(state?2u:1u));
@@ -128,30 +128,30 @@ static void test_injury_bridge() {
     memcpy(page+0xE9,injury_rumor_call,9);
     const unsigned char epilogue[]={0x48,0x83,0xC4,0x70,0x5D,0xC3};memcpy(page+0xF2,epilogue,sizeof(epilogue));
     memcpy(page+512,injury_rumor_call,4);absolute_jump(page+516,reinterpret_cast<void *>(&mock_injury_bridge));
-    Obj saved_image=image;image=page-0x2EC00;CodeLink link;
-    expect(prepare_link(link,0x2ECE9,0xE8,page+512));link.modified[14]=0xEB;link.modified[15]=2;
+    Obj saved_image=image;image=page-0x2F760;CodeLink link;
+    expect(prepare_link(link,0x2F849,0xE8,page+512));link.modified[14]=0xEB;link.modified[15]=2;
     expect(publish_link(link));image=saved_image;
     DWORD old=0;expect(VirtualProtect(page,4096,PAGE_EXECUTE_READ,&old)!=0);FlushInstructionCache(GetCurrentProcess(),page,1024);
     injury_bridge_actor=reinterpret_cast<Obj>(0x12345678);injury_bridge_list=reinterpret_cast<GameList *>(0x34567890);
     expect(reinterpret_cast<unsigned(__fastcall *)(Obj,GameList *,int)>(page+0xC0)(injury_bridge_actor,injury_bridge_list,7)==123);
-    image=page-0x2EC00;restore_link(link);image=saved_image;
+    image=page-0x2F760;restore_link(link);image=saved_image;
     expect(!memcmp(page+0xE9,injury_rumor_call,9));VirtualFree(page,0,MEM_RELEASE);
 }
 static void test_injury_publication() {
     test_injury_bridge();
     for(const auto &l:injury_links) {putptr(image,l.slot,image+l.original);memcpy(image+l.original,l.bytes,16);}
-    memcpy(image+0x53042,injury_government_call,5);memcpy(image+0x2ECE9,injury_rumor_call,9);
-    memcpy(image+0x2ED6B0,injury_policy_apply_entry,16);memcpy(image+0x22D2A0,injury_policy_capacity_entry,16);
-    memcpy(image+0x29BF00,injury_assignment_clear_entry,16);memcpy(image+0x261B70,injury_policy_selection_entry,16);
+    memcpy(image+0x53CB2,injury_government_call,5);memcpy(image+0x2F849,injury_rumor_call,9);
+    memcpy(image+0x2EFA70,injury_policy_apply_entry,16);memcpy(image+0x22ECF0,injury_policy_capacity_entry,16);
+    memcpy(image+0x29DE10,injury_assignment_clear_entry,16);memcpy(image+0x263520,injury_policy_selection_entry,16);
     expect(injury_guards_match());
     for(const auto &l:injury_links) {
         image[l.original]^=1;expect(!injury_guards_match());image[l.original]^=1;
         putptr(image,l.slot,image);expect(!injury_guards_match());putptr(image,l.slot,image+l.original);
     }
-    Obj relay=allocate_near(image+0x53042);expect(relay!=nullptr);InjuryCode code;
+    Obj relay=allocate_near(image+0x53CB2);expect(relay!=nullptr);InjuryCode code;
     expect(prepare_injury(code,relay));expect(publish_injury(code,true,true));
     for(const auto &l:injury_links)expect(pointer(image,l.slot)==reinterpret_cast<Obj>(l.replacement));
-    expect(image[0x53042]==0xE8 && image[0x2ECE9]==0xE8 && image[0x2ECEE]==0xEB);
+    expect(image[0x53CB2]==0xE8 && image[0x2F849]==0xE8 && image[0x2F84E]==0xEB);
     restore_injury(code);expect(injury_guards_match());
     expect(prepare_injury(code,relay));putptr(image,injury_links[2].slot,image);
     expect(!publish_injury(code,true,true));restore_injury(code);
@@ -159,6 +159,6 @@ static void test_injury_publication() {
     putptr(image,injury_links[2].slot,image+injury_links[2].original);
     expect(prepare_injury(code,relay));image[code.rumor.block]^=1;
     expect(!publish_injury(code,true,true));restore_injury(code);
-    expect(!memcmp(image+0x53042,injury_government_call,5));image[code.rumor.block]^=1;
+    expect(!memcmp(image+0x53CB2,injury_government_call,5));image[code.rumor.block]^=1;
     expect(injury_guards_match());VirtualFree(relay,0,MEM_RELEASE);
 }

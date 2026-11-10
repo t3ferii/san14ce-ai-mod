@@ -339,12 +339,12 @@ int main() {
         void *dummy=nullptr;(void)dummy;
         const Bytes expect[9]={0x40,0x55,0x53,0x56,0x57,0x48,0x83,0xEC,0x20};
         Bytes *relay=make_stub(kOurs+0x600,R(rep_a));
-        static const uint32_t entries[]={0x930D20,0x841660,0x6566E0,0x86E0C0,0x86C570,0x86E140,0x7FA230,0x302980,0x304640,0x1F09E0,0x1F0AD0,0x1F0DD0,0x6C43B0,0x6C4670};
+        static const uint32_t entries[]={0x9332B0,0x843B60,0x658DF0,0x870470,0x86E920,0x8704F0,0x7FC700,0x304D70,0x306A30,0x1F1DA0,0x1F1E90,0x1F2190,0x6C6B10,0x6C6DD0};
         bool all=true;
         for(uint32_t e:entries)if(api.hook_block("b",e,expect,9,relay,0)!=-2)all=false;
         check(all && count_events("layout_refused")==14 && last_event("layout_refused")->b==LAYOUT_WHY_BLOCKED_ENTRY,"every entry on the blocklist is refused and logged");
-        check(api.hook_block("b",0x1F09D8,expect,9,relay,0)==-2 && api.hook_block("b",0x1F09E0,expect,5,relay,0)==-2,"a patch range that covers a listed entry is refused");
-        check(api.hook_block("b",0x1F09E0-0x20,expect,9,relay,0)>0,"an unlisted neighbour is accepted");
+        check(api.hook_block("b",0x1F1D98,expect,9,relay,0)==-2 && api.hook_block("b",0x1F1DA0,expect,5,relay,0)==-2,"a patch range that covers a listed entry is refused");
+        check(api.hook_block("b",0x1F1DA0-0x20,expect,9,relay,0)>0,"an unlisted neighbour is accepted");
         memset(image+0x5000,0xBB,16);memcpy(image+0x5000,expect,9);
         int h=api.hook_block("b",0x5000,expect,9,relay,0);
         check(state_of(h)==LAYOUT_STATE_INSTALLED && image[0x5000]==0xE9 && image+0x5005+*reinterpret_cast<int *>(image+0x5001)==relay,"block: E9 to the relay");
@@ -396,6 +396,28 @@ int main() {
         check(!strcmp(order,"123FD"),"appended subscriber runs last");
         api.overlay_subscribe(&draw1,&hits);
         check(count_events("layout_chained")==2,"present is hooked once, not per subscriber");
+    }
+    // ===== external review F-06: transient Present probe failures are retried (bounded), then final =====
+    fresh_published();
+    {
+        void *table[32]={},*table1[32]={};
+        table[8]=make_stub(kDxgi+0x40,reinterpret_cast<void *>(&dxgi_present));
+        present_retries=0;present_retry_at=0;fixture_present_fail=2;fixture_table=table;fixture_table1=nullptr;
+        check(api.overlay_subscribe(&draw1,nullptr)==0 && present_retries==1 && present_attempted==0 && table[8]!=reinterpret_cast<void *>(&present_hook),"F-06: first transient failure re-arms the one-shot");
+        present_retry_at=GetTickCount64()+60000;present_retry_tick();
+        check(present_retries==1 && present_attempted==0,"F-06: no retry before the interval");
+        present_retry_at=0;present_retry_tick();
+        check(present_retries==2 && present_attempted==0,"F-06: retry after the interval fails again (second probe failure)");
+        present_retry_at=0;present_retry_tick();
+        check(present_attempted==1 && table[8]==reinterpret_cast<void *>(&present_hook) && count_events("layout_present_retry")==2,"F-06: the third attempt installs; retries logged");
+        present_retry_at=0;present_retry_tick();
+        check(present_retries==2,"F-06: nothing re-arms after success");
+        // bounded: a probe that keeps failing is given up after kPresentRetries
+        fresh_published();present_retries=0;present_retry_at=0;fixture_present_fail=100;fixture_table=table1;
+        api.overlay_subscribe(&draw1,nullptr);
+        for(int i=0;i<40;++i) {present_retry_at=0;present_retry_tick();}
+        check(present_attempted==1 && present_retries==kPresentRetries+1 && fixture_present_fail==100-(kPresentRetries+1),"F-06: retries are bounded");
+        fixture_present_fail=0;fixture_table=nullptr;
     }
     fresh_published();
     {

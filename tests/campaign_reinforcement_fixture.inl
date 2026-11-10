@@ -2,8 +2,8 @@ static Obj __fastcall reinforcement_goal(Obj,unsigned id) {return id==2?sortie_c
 static Obj __fastcall reinforcement_owner(Obj city) {return city==sortie_city?table(0xDF30,2,51):player;}
 static Obj __fastcall reinforcement_manual(Obj) {return sortie_district;}
 static void campaign_reinforcement_tests() {
-    BIND(0x32C130,reinforcement_goal);BIND(0x22C990,reinforcement_owner);
-    BIND(0x22D740,revision_city_hex);BIND(0x2AA850,revision_distance);
+    BIND(0x32E3B0,reinforcement_goal);BIND(0x22E3E0,reinforcement_owner);
+    BIND(0x22F190,revision_city_hex);BIND(0x2ACB80,revision_distance);
     put16(sortie_city,0x3A,22050);put16(goal,0x3A,22074);
     Obj requester=object(59);army_ids[requester]=59;requester[0x150]=2;requester[0x1A]=100;
     put16(requester,0x12,240);put16(requester,0x16,10000);put16(requester,0x2A,22070);put16(requester,0x58,59);
@@ -34,8 +34,8 @@ static void campaign_reinforcement_tests() {
     check(!campaign_request_reinforcements(requester,*p,6000) && !sortie_issued,"wounded source officers never become reinforcement commanders");
     reset();sortie_district[0x14]=0;
     check(!campaign_request_reinforcements(requester,*p,6000) && !sortie_issued,"reinforcement cannot bypass district command-point cost");
-    reset();BIND(0x32E8D0,reinforcement_manual);
-    check(!campaign_request_reinforcements(requester,*p,6000) && !sortie_issued,"directly controlled source district is excluded");BIND(0x32E8D0,sortie_mock_manual);
+    reset();BIND(0x330B50,reinforcement_manual);
+    check(!campaign_request_reinforcements(requester,*p,6000) && !sortie_issued,"directly controlled source district is excluded");BIND(0x330B50,sortie_mock_manual);
     reset();*reinterpret_cast<unsigned *>(sortie_city+0x3C)=999;
     check(!campaign_request_reinforcements(requester,*p,6000) && !sortie_issued,"under one thousand available stays in city");
     reset();*reinterpret_cast<unsigned *>(sortie_city+0x3C)=7000;
@@ -78,5 +78,5 @@ static void campaign_reinforcement_tests() {
     check(campaign_request_companion(requester,*p,22070) && sortie_issued==1,
           "repeated primary evaluation does not dispatch a duplicate companion");
     reset();slot(0x7E838,59,nullptr);slot(0x7F8D8,59,nullptr);
-    BIND(0x32C130,mock_goal);BIND(0x22C990,mock_goal_force);BIND(0x22D740,mock_goal_hex);BIND(0x2AA850,mock_distance);
+    BIND(0x32E3B0,mock_goal);BIND(0x22E3E0,mock_goal_force);BIND(0x22F190,mock_goal_hex);BIND(0x2ACB80,mock_distance);
 }

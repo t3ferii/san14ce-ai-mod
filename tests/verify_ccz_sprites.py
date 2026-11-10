@@ -6,8 +6,8 @@ Usage: python -B -X utf8 tests/verify_ccz_sprites.py [--print]"""
 from pathlib import Path
 import json, re, struct, sys, hashlib
 P = Path(__file__).resolve().parents[1]
-exe = (P/'build/ui_native_analysis/editor83_plain/game.exe.unpacked.exe').read_bytes()
-text = (P/'legacy/FogMod_Source/native_game_analysis/running_code_text.bin').read_bytes()
+exe = (P/'build/ui_native_analysis/editor83_b25953386/game.exe.unpacked.exe').read_bytes()
+text = (P/'build/ui_native_analysis/fixture/1a4a447d_text.bin').read_bytes()
 pe = struct.unpack_from('<I', exe, 0x3c)[0]; n = struct.unpack_from('<H', exe, pe+6)[0]; so = struct.unpack_from('<H', exe, pe+20)[0]
 S = [struct.unpack_from('<IIII', exe, pe+24+so+i*40+8) for i in range(n)]
 BASE = 0x140000000
@@ -23,7 +23,7 @@ def fnv(b):
     return h
 def rel(site): return site+5+struct.unpack_from('<i', rd(site+1, 4))[0]
 if '--print' in sys.argv:
-    for rva, size in ((0x1C6EC0, 0x60), (0x1C70E0, 0x40)):
+    for rva, size in ((0x1C8240, 0x60), (0x1C70E0, 0x40)):
         print(hex(rva), hex(size), hex(fnv(rd(rva, size))), hex(fnv(run(rva, size))))
     sys.exit(0)
 src = (P/'src/native_ccz_sprites.inl').read_text(encoding='utf-8')
@@ -40,7 +40,7 @@ ok(slot == num('kDisplayVtable')+5*8, 'submit is slot 5 of the army display vtab
 ok(fnv(rd(submit, size)) == h, 'submit exe fingerprint'); ok(fnv(run(submit, size)) == h, 'submit running fingerprint')
 body = rd(submit, size)
 ok(bytes.fromhex('8b8140070000') in body or bytes.fromhex('8b8740070000') in body or b'\x40\x07\x00\x00' in body, 'mode read at display+740')
-ok(q(num('kDisplayVtable')+4*8) == BASE+0x1CA600 and q(num('kDisplayVtable')+6*8) == BASE+0x1CC970, 'neighbouring banner slots 1CA600/1CC970')
+ok(q(num('kDisplayVtable')+4*8) == BASE+0x1CB940 and q(num('kDisplayVtable')+6*8) == BASE+0x1CDB90, 'neighbouring banner slots 1CB940/1CDB90 (same functions as the former 1CA600/1CC970 by masked prologue)')
 ok(q(num('kArmyVtable')) > BASE, 'army vtable present')
 # CCZU asset loaded at runtime
 a = (P/'assets/ccz/ccz_units.bin').read_bytes(); meta = json.loads((P/'assets/ccz/ccz_units.json').read_text(encoding='utf-8'))
@@ -86,38 +86,39 @@ if ekd.exists():
 ok('if(formation<=7){unsigned g=ccz_appearance::personal(config,leader,formation);if(g){r.cell=g;if(r.cls==kNative)r.cls=g/3u;}}' in src and 'if(!own)r.cell=ccz_appearance::cell(r.cls);' in src and 'u.cell=who.cell;' in src and 'for(const auto &g:kGenerals)if(!entries.count(g.cell))return false;' in src,
    'general picture wins over ruler/strategist, soldier formations only, asset must carry it')
 ok('person[0xEC]' in src and 'word(owner,0x10)' in src and 'word(owner,0x52)' in src, '통솔 Person+EC, ruler Force+10, strategist Force+52')
-ok(bytes.fromhex('0fb6411b') in rd(0x22B090, 0x90) or b'\x1b' in rd(0x22B090, 0x90), '22B090 reads Army+1B formation')
+ok(bytes.fromhex('0fb6411b') in rd(0x22CAD0, 0x90) or b'\x1b' in rd(0x22CAD0, 0x90), '22B090 reads Army+1B formation')
 # 막기·회심 (2026-10-31 user: block = full nullify): 169C50 case 6 call 16FDD0 at 169F8B is the only caller
-site = 0x169F8B
-ok(rd(site, 1) == b'\xe8' and rel(site) == 0x16FDD0 and rd(site-11, 11) == bytes.fromhex('4c8d442430488bd3498bcf'), '169F8B calls 16FDD0 with output rsp+30')
+site = 0x16AF3B
+ok(rd(site, 1) == b'\xe8' and rel(site) == 0x170D80 and rd(site-11, 11) == bytes.fromhex('4c8d442430488bd3498bcf'), '169F8B calls 16FDD0 with output rsp+30')
 ok(run(site-11, 16) == rd(site-11, 16), '169F8B running bytes match')
-ok(rd(0x169F9D, 1) == b'\xe8' and rel(0x169F9D) == 0x1749A0, 'next step 7 is 1749A0 (damage at output+20/+22)')
+ok(rd(site+0x12, 1) == b'\xe8' and rel(site+0x12) == 0x175950, 'next step 7 is 175950 (damage at output+20/+22)')
 tx = rd(0x1000, 0x133ea00)
-calls = [i for i in range(len(tx)-5) if tx[i] == 0xE8 and 0x1000+i+5+struct.unpack_from('<i', tx, i+1)[0] == 0x16FDD0]
+calls = [i for i in range(len(tx)-5) if tx[i] == 0xE8 and 0x1000+i+5+struct.unpack_from('<i', tx, i+1)[0] == 0x170D80]
 ok(calls == [site-0x1000], '16FDD0 has one caller')
-ok('kSite=0x169F8B,kFix=0x16FDD0' in bridge and 'kFix=0x16FDD0,kStat=0x22FCE0' in src and 'damage[0]=damage[1]=0;' in src and 'clamp(50+4*(wv-wa),10,100)' in src and ',10,100))) {' in src and 'attacker_guard' not in src and
-   'clamp(50+3*(wa-wv)+2*' in src and 'v>0xFFFF?0xFFFF:v' in src, 'block zeroes damage; percent clamps; crit u16 cap')
+ok('kSite=0x16AF3B,kFix=0x170D80' in bridge and 'kFix=0x170D80,kStat=0x231770' in src and 'damage[0]=damage[1]=0;' in src and 'clamp(23+(iv-ia)+' in src and ',3,30))) {' in src and 'attacker_guard' not in src and
+   'clamp(23+(wa-wv)+' in src and 'v>0xFFFF?0xFFFF:v' in src, 'block zeroes damage; percent clamps; crit u16 cap')
 # force colours: 2AD010 reads Force+49 (<3E) -> 2ACF00 mode 0 -> 32C220 table image+1A26590 (RRGGBBAA)
-ok(rd(0x2AD010, 0x30).find(bytes.fromhex('0fb64149')) >= 0 or b'\x49' in rd(0x2AD010, 0x30), '2AD010 reads Force+49')
-ok(rd(0x32C240, 16).find(bytes.fromhex('458b9483906' + '5a201')) >= 0, '32C220 loads the colour table at +1A26590')
-cols = struct.unpack('<62I', rd(0x1A26590, 62*4))
+ok(rd(0x2AF340, 0x30).find(bytes.fromhex('0fb64149')) >= 0 or b'\x49' in rd(0x2AF340, 0x30), '2AD010 reads Force+49')
+ok(rd(0x32E4C8, 8) == bytes.fromhex('458b9483') + struct.pack('<I', 0x1A29590), 'force colour loader (former 32C220) loads the colour table at +1A29590')
+cols = struct.unpack('<62I', rd(0x1A29590, 62*4))
 ok(cols[0] == 0x2828E8FF and cols[60] == 0xFFFFFFFF and cols[61] == 0 and 'colours[0]==0x2828E8FFu && colours[60]==0xFFFFFFFFu && colours[61]==0' in src, 'force colour table guard')
 ok('kStrategistClass[3]={75,76,77}' in src and 'cs>0.85f && ch_>=0.30f && ch_<=0.43f' in src and 'h=h<=0.62f?0.12f*(0.62f-h)/0.42f:1-0.06f*(h-0.62f)/0.30f' in src, 'mounted strategist; team colour only on the pure-green ramp; option C warm contrast')
 ok('kRows=64' in src and 't.Height=kRows' in src and 'owner[0x49]<kColourCount' in src, '64 palette rows by Force+49')
 hl = (P/'src/ccz_sprites.hlsl').read_text(encoding='utf-8')
 ok('near==0)discard' in hl and 'team&0x200' in hl and 'output[row][0]=lum>0.45f' in src, 'contrasting outline and crit flash')
 ok('kSpecialRow+static_cast<unsigned>(view)*48' in src and 'kSpecialRow+3*48' in src and 'troops<u.troops && now-u.hurt_at>=kHurtCooldownMs)u.hurt_at=now' in src and 'kPixel=9.0f' in src and 'kMinScreen=1.0f/10' in src and 'drawable && InterlockedCompareExchange(&hide_model' in src and 'r.team=kRedHare' in src and 'row==kRedHare' in src and 'kForward' not in src and 'kAttackFrameMs=260' in src and '/150)%4' not in src, 'block / hurt special frames')
-ok('kCharges=5' in src and 'left=trigger?kCharges-1:(left>0?left-1:0);slot->last=day;' in src and 'day<=b.last+1' in src and 'kBuffDays' not in src, '5-charge state, ends after a day without an exchange')
-ok(rd(0x32BA50, 0x1C) == bytes.fromhex('0fbf018d14400fbe41028d14900fbe4103446bc21e83c0e14103c0c3') and '*12+static_cast<signed char>(d[2]))*30+static_cast<signed char>(d[3])-31' in src, '32BA50 day = (year*12+month)*30+day-31')
+ok('kCharges=8' in src and 'left=trigger?kCharges-1:(left>0?left-1:0);slot->last=day;' in src and 'day<=b.last+1' in src and 'kBuffDays' not in src, '8-charge state, ends after a day without an exchange')
+ok(rd(0x32DD00, 0x1C) == bytes.fromhex('0fbf018d14400fbe41028d14900fbe4103446bc21e83c0e14103c0c3') and '*12+static_cast<signed char>(d[2]))*30+static_cast<signed char>(d[3])-31' in src, '32BA50 day = (year*12+month)*30+day-31')
 ok('buff_use(victim,day,true,!guard)' in src and 'buff_use(attacker,day,false,!fury)' in src, 'blocks, guarded attacks and crits each spend a charge')
 # User 2026-11-02: keep five-hit mechanics, display effects only on real hits.
 ok('block && (guard ||' in src and 'critical && (fury ||' in src and 'if(u.guard && now-u.moved>=400)return guard_pose;' not in src and 'effect_visible(u,kind!=0,now)' in src, 'held charges cannot invent an idle block/critical effect')
 ok('uB9C9'+chr(92)+'uAE30!' in src and 'cells[written++]=kLabelCell' in src and 'kQuads=kSlots*3' in src and 'b.ByteWidth=sizeof(Vertex)*6*kQuads' in src, '막기!/회심! labels, vertex room for two per unit')
 ok('v.team&0x400' in hl and 'v.team&0x800' in hl, 'label colours in the shader')
-ok('ccz_combat::install(mod_features.ccz_block,mod_features.ccz_critical)' in (P/'src/native_split_install.inl').read_text(encoding='utf-8'), 'ccz_combat installed in split_activate')
+import registry_text as R
+ok('ccz_combat::install(mod_features.ccz_block,mod_features.ccz_critical)' in R.row('ccz_combat'), 'ccz_combat installed in split_activate')
 # wiring: one owner (convenience), guard code 32, three installer catalogs (SESSION_RULES 2)
-inst = (P/'src/native_split_install.inl').read_text(encoding='utf-8'); adapter = (P/'src/native_adapter.cpp').read_text(encoding='utf-8')
-ok('ccz_sprites_guards_match())split_disable(f.ccz_sprites,32)' in inst and 'ccz_sprites::install(' in inst, 'guard 32 + install in split_activate')
+inst = R.split_install_text(); adapter = R.adapter_text()   # W5: the adapter plus the generated unity include lists
+ok('ccz_sprites_guards_match())split_disable(f.ccz_sprites,32)' in inst and 'ccz_sprites::install(' in R.row('ccz_sprites') and 'split_disable(mod_features.ccz_sprites,32)' in R.row('ccz_sprites'), 'guard 32 + install in split_activate')
 # User 2026-11-03: hide-model and depth are merged into 병종 그림 (ccz_sprites).
 ok('f.ccz_block = on &&' in adapter and 'f.ccz_critical = on &&' in adapter and 'f.ccz_hide_model = f.ccz_sprites;' in adapter and 'f.ccz_depth = f.ccz_sprites;' in adapter and 'L"ccz_hide_model"' not in adapter and 'L"ccz_depth"' not in adapter, 'child keys derive from ccz_sprites (user 2026-11-03: merged into 병종 그림)')
 ok('%x' % submit not in ' '.join('%x' % int(m, 16) for m in re.findall(r'\{0x[0-9A-Fa-f]+,0x([0-9A-Fa-f]+),', inst)), 'submit slot not in split_pointers (single owner)')
@@ -134,9 +135,9 @@ ok('if(!far_keep_enabled || armed<=0' in src and 'else if(far_keep_enabled && !c
    'OFF disables stale-camera refresh and far-distance arming')
 ok('bool ccz_far_keep = false;' in adapter and 'f.ccz_far_keep = false;' in adapter,
    'far keep remains OFF regardless of config (user 2026-11-03)')
-ok('ccz_module_abi=2' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8') and
-   'install_sprites(hide,depth,far_keep)' in bridge and 'ccz_sprites::install(hide,depth,far_keep)' in module,
-   'ABI 2 carries far flag; mismatched module is rejected')
+ok('ccz_module_abi=3' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8') and
+   'install_sprites(hide,depth,far_keep,fallback)' in bridge and 'ccz_sprites::install(hide,depth,far_keep,fallback)' in module,
+   'ABI 3 carries far/fallback flags; mismatched module is rejected')
 ok('ccz_sprites_far_keep' in src and 'ccz_sprites_zoom_recovered' in src and
    'if(submitted)' in src and 'zoom_recovery_pending=false;has_submitted_sprites=true;' in src and
    'submitted_at-last_sprite_submission>=500' in src,
@@ -148,11 +149,10 @@ render_hook=src[src.index('static void STDMETHODCALLTYPE set_targets('):src.inde
 ok('COST_SCOPE("ccz_set_targets");' in render_hook and hashlib.sha256(render_hook.replace(' COST_SCOPE("ccz_set_targets");','').encode('utf-8')).hexdigest()=='da0c30d9793f771077e39ff774d4b5b11ba817c760ed63fb528e9d6326b784fb',
    '2026-11-02: entire local14 normal/rescue render-target hook unchanged')
 # Original damage stage: attacker is a pointer; defender is INLINE at pair+8.
-cache=P/'research/decomp_cache/1fbe6be7466a6646'
-apply=(cache/'001749A0_c.txt').read_text(encoding='utf-8')
+g=(P/'research/ghidra_full/1a4a447d14e68c40/c/0017.c').read_text(encoding='utf-8');apply=g[g.index('undefined8 FUN_140175950('):][:1200]
 ok('puVar2 = (ushort *)*param_2;' in apply and 'puVar1 = (ushort *)(param_2 + 1);' in apply and 'victim=field_army(pair+8)' in src,'native attacker/inline defender ABI retained')
-ok('fn<unsigned char(__fastcall *)(Obj)>(0x22CC40)' in src and 'fn<bool(__fastcall *)(unsigned,unsigned)>(0x2CA280)' in src,'force byte and native hostility bool return ABIs')
-for rva,h in ((0x22CC40,0x777A504FBF698C1C),(0x2CA280,0x7221823C76F2F29F)):
+ok('fn<unsigned char(__fastcall *)(Obj)>(0x22E690)' in src and 'fn<bool(__fastcall *)(unsigned,unsigned)>(0x2CC630)' in src,'force byte and native hostility bool return ABIs')
+for rva,h in ((0x22E690,0x4DEBF7200DE1C67C),(0x2CC630,0xAE2882DA8EB1870E)):
     ok(fnv(rd(rva,0x30))==h and rd(rva,0x30)==run(rva,0x30),'native force/relation guard '+hex(rva))
 ok('native_facing(u,yaw)' in src and 'std::sin(yaw)' in src and 'std::cos(yaw)' in src,'stationary turns use the native radians in both live and opted-in far capture')
 print(json.dumps({'checks': checks, 'failed': fail}, ensure_ascii=False))

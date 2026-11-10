@@ -271,7 +271,7 @@ static void diagnostics_fixture() {
 static void queue_fixture() {
     Storage heap(128);heap.begin();std::array<Node,128> tree{};
     std::array<bool,128> open{};Node *root=nullptr;
-    std::mt19937 random(0x18AE60);
+    std::mt19937 random(0x18C1F0);
     for(unsigned op=0;op<20000;++op) {
         const unsigned id=random()%128;
         if(random()%3==0 && root) {
@@ -291,7 +291,7 @@ static void queue_fixture() {
 int main() {
     diagnostics_fixture();queue_fixture();
     Storage fast;std::vector<Node> slow(cells);
-    std::mt19937 random(0x183A30);
+    std::mt19937 random(0x184D60);
     constexpr unsigned cases=40000;
     for(unsigned test=0;test<cases;++test) {
         Terrain map;map.width=3+random()%10;map.height=3+random()%10;

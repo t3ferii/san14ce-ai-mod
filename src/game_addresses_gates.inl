@@ -4,13 +4,13 @@
 // addr_unresolved(feature code, unresolved ids of the build, 0). The original-byte guards still run afterwards.
 // The file lists are the owners of the ids (tools/game addresses: ga_users, src file -> ids); infrastructure ids are listed
 // explicitly. Codes 41.. are new (no setting): see docs/PATCH_RESILIENCE.md section "Implementation".
-static bool ga_ids_known(std::initializer_list<unsigned> ids) {
+inline bool ga_ids_known(std::initializer_list<unsigned> ids) {
     for(unsigned id:ids)if(!ga::known(id))return false;
     return true;
 }
 // Like ga::files_ok, but ids in `except` are ignored: a feature that does not use them stays on while another feature of the same
 // source file (which does) is switched off through its own ids (B stage 2026-11-05: modpack stat-cap patches).
-static bool ga_files_ok_except(std::initializer_list<unsigned> files,std::initializer_list<unsigned> except) {
+inline bool ga_files_ok_except(std::initializer_list<unsigned> files,std::initializer_list<unsigned> except) {
     for(unsigned id=0;id<GA_COUNT;++id) {
         if(ga::known(id))continue;
         bool skip=false;
@@ -29,13 +29,13 @@ static void ga_gate(bool &flag,unsigned code,bool ok) {
 #ifndef SPLIT_COMBAT
 static void split_address_gates(ModFeatures &f) {
     if(!ga::state().unresolved)return;       // every id resolved (reference build): nothing to gate
-    ga_gate(f.battle_rules,41,ga_ids_known({GA_169F44,GA_2B07C0,GA_2B07C5,GA_2B0B69}) &&
+    ga_gate(f.battle_rules,41,ga_ids_known({GA_16AEF4,GA_2B2A90,GA_2B2A95,GA_2B2E28}) &&
         ga::files_ok({GF_native_expert_links_inl,GF_native_expert_settings_inl,GF_native_adjacency_inl}));
-    ga_gate(f.domestic,42,ga_ids_known({GA_BF7A40}) && ga::files_ok({GF_native_domestic_inl}));
+    ga_gate(f.domestic,42,ga_ids_known({GA_1137FF0}) && ga::files_ok({GF_native_domestic_inl}));
     ga_gate(f.domestic_free,43,f.domestic);
-    ga_gate(f.awards,44,ga_ids_known({GA_BF7A40}) && ga::files_ok({GF_native_awards_inl,GF_native_personnel_inl}));
-    ga_gate(f.injury,45,ga_ids_known({GA_BF7A40}) && ga::files_ok({GF_native_injury_inl,GF_native_injury_links_inl,GF_native_personnel_inl}));
-    ga_gate(f.injury_herbal,46,ga_ids_known({GA_BF7A40}) && ga::files_ok({GF_native_injury_inl,GF_native_injury_links_inl,GF_native_personnel_inl}));
+    ga_gate(f.awards,44,ga_ids_known({GA_1137FF0}) && ga::files_ok({GF_native_awards_inl,GF_native_personnel_inl}));
+    ga_gate(f.injury,45,ga_ids_known({GA_1137FF0}) && ga::files_ok({GF_native_injury_inl,GF_native_injury_links_inl,GF_native_personnel_inl}));
+    ga_gate(f.injury_herbal,46,ga_ids_known({GA_1137FF0}) && ga::files_ok({GF_native_injury_inl,GF_native_injury_links_inl,GF_native_personnel_inl}));
     ga_gate(f.recruit,47,ga::files_ok({GF_native_recruit_ui_inl}));
     ga_gate(f.advisor_briefing,48,ga::files_ok({GF_advisor_briefing_profile_h,GF_native_advisor_briefing_inl}));
     ga_gate(f.damage_preview,49,ga::files_ok({GF_damage_preview_profile_h,GF_native_damage_preview_inl}));
@@ -44,11 +44,11 @@ static void split_address_gates(ModFeatures &f) {
     ga_gate(f.diplomacy_counterturn,52,ga::files_ok({GF_diplomacy_intel_profile_h,GF_native_diplomacy_intel_inl}));
     // The stat-cap byte patches (modpack_bytes rows) belong to stats200/stats200_growth only; tooltip_collab, scenery_skip and
     // battle_deaths never touch them. 230098 (item-0x7b clamp): 1a4a447d uses the relay form (native_modpack.inl modpack_clamp_short, local10).
-    // The 5 battle_deaths ids (GA_259682..GA_295C5F) are also attributed to native_modpack.inl through the pre-rebase backup source
-    // (build/rebase_logs/src_before_rebase, docs/BATTLE_DEATHS_PLAN.md 3.4): they must not switch the stat-cap/collab/scenery features off.
-    const std::initializer_list<unsigned> deaths_ids={GA_259682,GA_27D976,GA_25974B,GA_27DA09,GA_295C5F};
+    // The 5 battle_deaths ids (GA_25B022..GA_297B6F) are also attributed to native_modpack.inl through the pre-rebase backup source
+    // (build/rebase_logs/src_before_rebase, docs/HISTORY.md 3.4): they must not switch the stat-cap/collab/scenery features off.
+    const std::initializer_list<unsigned> deaths_ids={GA_25B022,GA_27F716,GA_25B0EB,GA_27F7A9,GA_297B6F};
     const bool modpack=ga_files_ok_except({GF_modpack_tables_h,GF_native_modpack_inl},deaths_ids);
-    const bool modpack_core=ga_files_ok_except({GF_modpack_tables_h,GF_native_modpack_inl},{GA_2253FA,GA_22544F,GA_2293F6,GA_229469,GA_23AAA8,GA_23AB06,GA_20A425,GA_20ABB2,GA_5DD4B8,GA_142CBE0,GA_5DD323,GA_31FECE,GA_230098,GA_2B9DCA,GA_259682,GA_27D976,GA_25974B,GA_27DA09,GA_295C5F});
+    const bool modpack_core=ga_files_ok_except({GF_modpack_tables_h,GF_native_modpack_inl},{GA_226E2A,GA_226E7F,GA_22AE26,GA_22AE99,GA_23C458,GA_23C4B6,GA_20B7C5,GA_20BFDA,GA_5DFD18,GA_142FC70,GA_5DFB83,GA_321F3E,GA_231AFB,GA_2BC14A,GA_25B022,GA_27F716,GA_25B0EB,GA_27F7A9,GA_297B6F});
     ga_gate(f.stats200,53,modpack);ga_gate(f.stats200_growth,54,modpack);ga_gate(f.tooltip_collab,55,modpack_core);
     ga_gate(f.scenery_skip,56,modpack_core);ga_gate(f.battle_deaths,57,ga::files_ok({GF_native_battle_deaths_inl,GF_battle_deaths_profile_h}));
     ga_gate(f.lord_change,58,ga::files_ok({GF_native_lord_change_inl}));
@@ -67,6 +67,7 @@ static void split_address_gates(ModFeatures &f) {
     ga_gate(f.ccz_critical,71,ga::files_ok({GF_native_ccz_bridge_inl}));
     // 73 (local10): traits9 manifests/core patches use table ids of native_traits9.inl; an unresolved one switches the nine slots off here
     ga_gate(f.traits9,73,ga::files_ok({GF_native_traits9_inl}));
+    ga_gate(f.tactic_priority,74,ga::files_ok({GF_native_tactic_priority_inl,GF_native_tactic_priority_grid_inl}));
     f.stats200_growth=f.stats200 && f.stats200_growth;
 }
 #else
@@ -80,5 +81,18 @@ static void combat_address_gates(ModFeatures &f) {
     ga_gate(f.sortie_formation,80,ok);ga_gate(f.departures,81,ok);ga_gate(f.group_advance,82,ok);
     ga_gate(f.stationary_retreat,83,ok);ga_gate(f.morale,84,ok);ga_gate(f.support,85,ok);ga_gate(f.mission_v2,86,ok);
     ga_gate(f.district_intercept_block,87,ga::files_ok({GF_native_district_intercept_link_inl}));
+    // 76: auto-commands' 자동포상 redirect and the toggle popup read original objects on the UI thread; any unresolved id
+    // switches the installer switch off so neither the hook nor the popup is attempted (PW24a; 자동탐색 = PW24b).
+    ga_gate(f.auto_reward,76,ga_ids_known({GA_17B990,GA_44EDD1,GA_331780,GA_13D9430,GA_2780F60,GA_230270,GA_330B90,
+        GA_22E870,GA_233BE0,GA_234AB0,GA_32E3B0,GA_253F0,GA_18C30,GA_1B5F9E0,GA_1F3C90,GA_9E00,GA_4603F0,GA_11040,GA_30F010,
+        // PW36b main-screen toggles: CGameLayout setup/destroy slots and the two redirected 8685C0 call sites.
+        GA_13D9268,GA_13D90E0,GA_4452B0,GA_43BE70,GA_44616D,GA_445FA6,GA_8685C0}));
+    // 77: 자동탐색 (PW24b/PW36b) — 진행 콜사이트 리다이렉트와 후보 registry, 메인 화면 토글의 CGameLayout 훅.
+    // 하나라도 unresolved면 설치를 시도하지 않으므로 훅도 없다.
+    ga_gate(f.auto_search,77,ga_ids_known({GA_7161D0,GA_6DF1B0,GA_1F3F50,
+        GA_235300,GA_6D5A60,GA_18AC0,GA_186D0,GA_18790,GA_27D4178,GA_27D4130,GA_27D4140,GA_27D4170,GA_27812C8,
+        GA_13466B0,GA_44F281,GA_453310,GA_11040,GA_230270,GA_330B90,
+        // PW36b main-screen toggles: CGameLayout setup/destroy slots and the two redirected 8685C0 call sites.
+        GA_13D9268,GA_13D90E0,GA_4452B0,GA_43BE70,GA_44616D,GA_445FA6,GA_8685C0}));
 }
 #endif

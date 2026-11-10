@@ -40,7 +40,7 @@
   - ScreenLayout 화면 자료(`traits9_layout.bin/.json`)를 바꿀 때는 `--layout <폴더>`(기존 기록을 모두 포함한 새 묶음, 2026-10-23 군주교체 버튼). 이때만 설치 후 `ScreenLayout.rdb` 색인 변경을 허용한다.
   - 버전 이름: `v12.21-<주제>-localN`. 백업·스테이지·manifest·보호된 Apply·검증·실패 시 자동 원복을 스크립트가 한다.
 - 설치 후 `python -X utf8 tools/generate_handoff.py`로 `development/CURRENT.md` 갱신. 배포는 미서명이며 보고에 "미서명"이라고 적는다.
-- 세션 전용 설치 스크립트를 새로 만들지 않는다(기존 `install_damage_preview.py`, `install_building_destruction_local.py`, `install_mission_v2_local.py`는 기록용).
+- 세션 전용 설치 스크립트를 새로 만들지 않는다(옛 세션 전용 설치 스크립트는 W7에서 퇴역·삭제).
 
 ## 6. 동시 작업
 

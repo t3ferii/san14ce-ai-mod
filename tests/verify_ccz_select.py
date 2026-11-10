@@ -10,7 +10,7 @@
 The checks themselves are unchanged: ON -> OFF -> ON, groups/ccz OFF and the speed switch restore the exact original entries,
 Restore returns the full original index, unrelated records and the DLLs stay byte for byte. The only per-build difference is the
 count of applied records: a build whose DLL keeps traits9 off gets no nine-slot records (14/11 become 10/7 and the four nine-slot
-KTIDs must stay original). local10 (2026-11-06, docs/LOCAL10_PORT_PLAN.md 4.1): traits9 is table-id based and ON in both builds, so
+KTIDs must stay original). local10 (2026-11-06, docs/HISTORY.md 4.1): traits9 is table-id based and ON in both builds, so
 0x6AD06F53 now applies the same 14/11 records as 0x6A983C25 (Get-GameBuildLayoutOff returns nothing).
 """
 from pathlib import Path

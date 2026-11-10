@@ -3,13 +3,13 @@
 // keeps the Present hook and the 169F8B CALL publication, and forwards to these entries.
 // The module owns only its army-display vtable slot (13A03D0) and its render-target hook.
 #include <d3d11.h>
-static const unsigned ccz_module_abi=2; // install_sprites now carries the opt-in far_keep flag.
+static const unsigned ccz_module_abi=3; // install_sprites carries the opt-in far_keep and (local17) sprite_fallback flags.
 using CczLog=void (__cdecl *)(const char *,unsigned,unsigned,unsigned);
 struct CczApi {
     unsigned size,abi;
     void (__cdecl *initialize)(unsigned char *image,CczLog log,void (__cdecl *overlay_install)());
     bool (__cdecl *sprites_guards)();
-    bool (__cdecl *install_sprites)(bool hide,bool depth,bool far_keep);
+    bool (__cdecl *install_sprites)(bool hide,bool depth,bool far_keep,bool fallback);
     bool (__cdecl *needs_present)();
     void (__cdecl *on_present)(ID3D11Device *,ID3D11DeviceContext *,ID3D11Texture2D *,const D3D11_TEXTURE2D_DESC &);
     void (__cdecl *configure_combat)(bool block,bool critical);

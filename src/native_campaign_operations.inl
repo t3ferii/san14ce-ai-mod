@@ -14,7 +14,7 @@ struct CampaignOperation {
     bool active,fort_attempted,band_attempted,capturing,force_march;
 };
 static CampaignOperation campaign_operations[501];
-static bool campaign_operation_identity(Obj army,const Progress &p) {
+static bool campaign_operation_identity(Obj army,const Progress &p) { COST_SCOPE("campaign_operations:campaign_operation_identity");
     if(!p.operation_leader || p.operation_leader>500)return false;
     const CampaignOperation &o=campaign_operations[p.operation_leader];
     if(!o.active || o.root!=world() || o.city!=p.operation_city)return false;
@@ -23,20 +23,20 @@ static bool campaign_operation_identity(Obj army,const Progress &p) {
     return false;
 }
 static bool campaign_operation_member(Obj army,const Progress &p) {return campaign_operation_identity(army,p);}
-static unsigned campaign_support_traits(Obj army) {
+static unsigned campaign_support_traits(Obj army) { COST_SCOPE("campaign_operations:campaign_support_traits");
     Obj person=table(0x158,word(army,0x12),6000);if(!valid(person))return 0;
     unsigned count=0;for(unsigned i=0;i<5;++i) {
         unsigned trait=word(person,0x118+i*2);if(trait==23 || trait==94 || trait==96)++count;
     }
     return count;
 }
-static campaign::Role campaign_army_role(Obj army) {
+static campaign::Role campaign_army_role(Obj army) { COST_SCOPE("campaign_operations:campaign_army_role");
     if(campaign_support_traits(army) && word(army,0x16)<5000)return campaign::support;
     if(sortie::siege(army[0x1B]))return campaign::siege;
     if(army[0x1B]==3 || word(army,0x16)<3000)return campaign::middle;
     return campaign::front;
 }
-static bool campaign_available(Obj army,Progress &p,unsigned city) {
+static bool campaign_available(Obj army,Progress &p,unsigned city) { COST_SCOPE("campaign_operations:campaign_available");
     if(p.regional_worker || campaign_group_member(army) || !campaign_controlled(army) || word(army,0x16)<1000 || word(army,0x2A)>=48400 ||
        p.forced_return || p.returning || p.combat_target || p.combat_city || p.home_defense_city || p.companion_parent || p.guard_beneficiary || p.facility || p.credit || p.build_chain || p.morale_recovering ||
        army[0x1A]<=70 || army[0x37]==11 || army[0x37]==12 || army[0x37]==7 || priority_mission(army,p) ||
@@ -45,7 +45,7 @@ static bool campaign_available(Obj army,Progress &p,unsigned city) {
         if(p.city!=city || p.credit || p.build_chain)return false;
         if(p.region_target<48400 && campaign_region_hostile(army,campaign_area_id(p.region_target)))return false;
         Obj goal=campaign_goal(city);
-        return goal && distance(word(army,0x2A),fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(goal))<=8;
+        return goal && distance(word(army,0x2A),fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(goal))<=8;
     }
     // A completed regional capture/idle field unit may join. Active movement
     // without confirmed capture evidence, defensive missions and other city
@@ -56,7 +56,7 @@ static bool campaign_available(Obj army,Progress &p,unsigned city) {
     return targetless(army) || (p.built_once && army[0x37]==1 && army[0x38]==9 &&
         valid(tile) && tile[0x14]==army_force(army));
 }
-static void campaign_operation_detach(CampaignOperation &o,unsigned i,unsigned id) {
+static void campaign_operation_detach(CampaignOperation &o,unsigned i,unsigned id) { COST_SCOPE("campaign_operations:campaign_operation_detach");
     Obj a=o.army[i];if(!valid(a) || word(a,0x12)!=o.commander[i] || army_force(a)!=o.force)return;
     unsigned member_id=army_id(a);if(!member_id)return; Progress &p=progress[member_id];if(p.operation_leader!=id)return;
     p.operation_leader=0;p.operation_city=0;p.siege_city=0;p.operation_retry_day=game_day()+20;
@@ -66,41 +66,41 @@ static void campaign_operation_detach(CampaignOperation &o,unsigned i,unsigned i
     Obj g=table(0x7F8D8,word(a,0x58),500);
     if(p.forced_return || p.returning || p.combat_target || p.combat_city || p.home_defense_city || p.companion_parent || p.guard_beneficiary || p.morale_recovering || p.facility ||
        !valid(g) || g!=o.group[i] || word(g,0x16)!=o.group_goal[i] || word(g,0x14)!=o.group_mode[i])return;
-    fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(a);memcpy(a+0x2C,o.old_order[i],sizeof(o.old_order[i]));
+    fn<void(__fastcall *)(Obj)>(GA(GA_A3370))(a);memcpy(a+0x2C,o.old_order[i],sizeof(o.old_order[i]));
     for(unsigned j=0;j<5;++j)*reinterpret_cast<unsigned short *>(a+0x2C+j*2)=48400;
     *reinterpret_cast<unsigned *>(a+0x1F0)=o.old_flags[i];
-    fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(a);
+    fn<void(__fastcall *)(Obj)>(GA(GA_26E260))(a);
 }
-static void campaign_operation_release(unsigned id,const char *reason) {
+static void campaign_operation_release(unsigned id,const char *reason) { COST_SCOPE("campaign_operations:campaign_operation_release");
     CampaignOperation &o=campaign_operations[id];o.active=false;
     if(o.root==world())for(unsigned i=0;i<o.count;++i)campaign_operation_detach(o,i,id);
     log_event(reason,id,o.city,o.count);
 }
-static void campaign_operation_drop(CampaignOperation &o,unsigned i,unsigned id) {
+static void campaign_operation_drop(CampaignOperation &o,unsigned i,unsigned id) { COST_SCOPE("campaign_operations:campaign_operation_drop");
     campaign_operation_detach(o,i,id);o.army[i]=nullptr;
 }
-static unsigned campaign_operation_facing(unsigned center,unsigned goal) {
+static unsigned campaign_operation_facing(unsigned center,unsigned goal) { COST_SCOPE("campaign_operations:campaign_operation_facing");
     unsigned best=0;int range=48400;
     for(unsigned d=0;d<6;++d) {unsigned h=sortie::neighbor(center,d);if(h<48400 && distance(h,goal)<range) {range=distance(h,goal);best=d;}}
     return best;
 }
-static uint64_t campaign_operation_defenders(Obj army,unsigned city,unsigned center) {
+static uint64_t campaign_operation_defenders(Obj army,unsigned city,unsigned center) { COST_SCOPE("campaign_operations:campaign_operation_defenders");
     Obj goal=campaign_goal(city);uint64_t count=goal?dword(goal,0x3C):0;
     for(unsigned id=1;id<=500;++id) {
         Obj e=table(0x7E838,id,500);if(!valid(e) || word(e,0x2A)>=48400 || e[0x37]==11 || e[0x37]==12 ||
-            !fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(army_force(army),army_force(e)))continue;
+            !fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(army_force(army),army_force(e)))continue;
         int range=distance(word(e,0x2A),center);
         bool incoming=e[0x37]==4 && e[0x38]==5 && word(e,0x3A)==city;
         if(range<=8 || (incoming && range<=15))count+=word(e,0x16);
     }
     return count;
 }
-static unsigned campaign_field_city(Obj army,Progress &p) {
+static unsigned campaign_field_city(Obj army,Progress &p) { COST_SCOPE("campaign_operations:campaign_field_city");
     if(p.campaign && hostile_city(army,p.city))return p.city;
     unsigned best=0;int score=INT32_MAX;
     for(unsigned id=1;id<=51;++id) {
         Obj goal=campaign_goal(id);if(!goal || !hostile_city(army,id) || !campaign_available(army,p,id))continue;
-        unsigned center=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(goal);if(center>=48400)continue;
+        unsigned center=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(goal);if(center>=48400)continue;
         int range=distance(word(army,0x2A),center);if(range>15)continue;
         int value=range*100+static_cast<int>((std::min)(dword(goal,0x3C),100000u)/100);
         if(dword(goal,0x3C)<6000)value-=600;
@@ -111,7 +111,7 @@ static unsigned campaign_field_city(Obj army,Progress &p) {
 static bool campaign_operation_create(Obj army,Progress &p) {
     COST_SCOPE("campaign_operation_create");
     unsigned city=campaign_field_city(army,p);Obj goal=campaign_goal(city);if(!goal || !campaign_available(army,p,city))return false;
-    unsigned center=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(goal);if(center>=48400 || distance(word(army,0x2A),center)>8)return false;
+    unsigned center=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(goal);if(center>=48400 || distance(word(army,0x2A),center)>8)return false;
     std::vector<Obj> candidates;
     for(unsigned id=1;id<=500;++id) {
         Obj a=table(0x7E838,id,500);if(!valid(a) || army_force(a)!=army_force(army) || word(a,0x2A)>=48400 ||
@@ -169,19 +169,20 @@ static bool campaign_operation_create(Obj army,Progress &p) {
     }
     log_event("campaign_field_formed",id,o.count,city);return true;
 }
-static bool campaign_operation_safe(Obj army,unsigned target,unsigned city) {
+static bool campaign_operation_safe(Obj army,unsigned target,unsigned city) { COST_SCOPE("campaign_operations:campaign_operation_safe");
     if(target>=48400)return false;
     Obj goal=campaign_goal(city);if(!goal)return false;
     Obj tile=table(0xE270,target,48399);if(!valid(tile) || word(tile,0x1A))return false;
     for(unsigned id=1;id<=500;++id) {Obj a=table(0x7E838,id,500);if(a!=army && valid(a) && word(a,0x2A)==target)return false;}
     return true;
 }
-static bool campaign_operation_move(Obj army,unsigned target,unsigned city) {
+static bool campaign_operation_move(Obj army,unsigned target,unsigned city) { COST_SCOPE("campaign_operations:campaign_operation_move");
+    if(path_wall_locked(army,1) || path_wall_done(army,1))return false; // path_wall lock
     if(!campaign_operation_safe(army,target,city))return false;
     CampaignRoute route=campaign_safe_route(army,target,true);if(route.cells.empty() || !route.guards.empty())return false;
     return campaign_route_order(army,route);
 }
-static void campaign_operation_positions(CampaignOperation &o,unsigned center) {
+static void campaign_operation_positions(CampaignOperation &o,unsigned center) { COST_SCOPE("campaign_operations:campaign_operation_positions");
     unsigned front=0,middle=0,support=0;
     for(unsigned i=0;i<o.count;++i)if(o.army[i]) {
         Obj a=o.army[i];Progress &p=progress[army_id(a)];if(p.facility || p.morale_recovering || p.combat_target || p.combat_city || p.home_defense_city || p.companion_parent || p.guard_beneficiary)continue;
@@ -202,21 +203,21 @@ static void campaign_operation_positions(CampaignOperation &o,unsigned center) {
             if(!moved && !campaign::assaults(o.role[i],word(a,0x16))) {
                 // A blocked rear route must not leave an old castle assault
                 // command active. Wait safely while the shared plan retries.
-                fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(a);fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(a,13);
-                fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(a,255,0);fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(a);
+                fn<void(__fastcall *)(Obj)>(GA(GA_A3370))(a);fn<void(__fastcall *)(Obj,int)>(GA(GA_2ECEA0))(a,13);
+                fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2ECF00))(a,255,0);fn<void(__fastcall *)(Obj)>(GA(GA_26E260))(a);
             }
         }
     }
 }
-static bool campaign_operation_fort(Obj army) {
+static bool campaign_operation_fort(Obj army) { COST_SCOPE("campaign_operations:campaign_operation_fort");
     for(unsigned id=1;id<=3000;++id) {Obj b=table(0x6DA98,id,3000);
         if(!valid(b) || b[0x13]!=army_force(army) || (b[0x12]!=3 && b[0x12]!=4) ||
             word(b,0x10)>=48400 || distance(word(army,0x2A),word(b,0x10))>3)continue;
-        int maximum=fn<int(__fastcall *)(Obj)>(GA(GA_2AC120))(b);if(maximum>0 && word(b,0x14)>=maximum)return true;
+        int maximum=fn<int(__fastcall *)(Obj)>(GA(GA_2AE450))(b);if(maximum>0 && word(b,0x14)>=maximum)return true;
     }
     return false;
 }
-static bool campaign_operation_prepare(CampaignOperation &o) {
+static bool campaign_operation_prepare(CampaignOperation &o) { COST_SCOPE("campaign_operations:campaign_operation_prepare");
     if(o.builder<o.count && o.army[o.builder]) {
         Obj b=o.army[o.builder];Progress &p=progress[army_id(b)];
         if(continue_build(b,p))return true;
@@ -238,7 +239,7 @@ static bool campaign_operation_prepare(CampaignOperation &o) {
         o.builder=7;o.last_progress=game_day();
     }
     bool protected_front=true;
-    Obj target=campaign_goal(o.city);unsigned target_hex=target?fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(target):48400;
+    Obj target=campaign_goal(o.city);unsigned target_hex=target?fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(target):48400;
     for(unsigned i=0;i<o.count;++i)if(o.army[i] && campaign::required(o.role[i],word(o.army[i],0x16)) && distance(word(o.army[i],0x2A),target_hex)<=5)
         protected_front=protected_front && campaign_operation_fort(o.army[i]);
     if(protected_front) {if(o.buff_day<0)o.buff_day=game_day();return game_day()-o.buff_day<10;}
@@ -259,7 +260,7 @@ static bool campaign_operation_prepare(CampaignOperation &o) {
     }
     return false;
 }
-static bool campaign_operation_capture_work(CampaignOperation &o) {
+static bool campaign_operation_capture_work(CampaignOperation &o) { COST_SCOPE("campaign_operations:campaign_operation_capture_work");
     Obj leader=o.army[o.leader];Progress &lead=progress[army_id(leader)];
     if(o.capturing && o.builder<o.count && o.army[o.builder]) {
         Obj worker=o.army[o.builder];Progress &p=progress[army_id(worker)];
@@ -288,17 +289,17 @@ static bool campaign_operation_capture_work(CampaignOperation &o) {
     }
     o.last_progress=game_day();campaign_operation_positions(o,word(leader,0x2A));return true;
 }
-static bool campaign_operation_group_march(CampaignOperation &o) {
+static bool campaign_operation_group_march(CampaignOperation &o) { COST_SCOPE("campaign_operations:campaign_operation_group_march");
     struct MarchScope {MarchScope(){++campaign_group_march_depth;}~MarchScope(){--campaign_group_march_depth;}} scope;
     Obj leader=o.army[o.leader],goal=campaign_goal(o.city);if(!valid(leader) || !goal)return false;
-    unsigned here=word(leader,0x2A),target=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(goal);
+    unsigned here=word(leader,0x2A),target=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(goal);
     if(here>=48400 || target>=48400)return false;
     if(o.decision_day==game_day() && o.last_hex==here)return true;
     o.decision_day=game_day();o.last_hex=here;o.facing=campaign_operation_facing(here,target);
     CampaignRoute route=campaign_safe_route(leader,target,true,true);
     if(route.cells.size()>1)campaign_operation_positions(o,route.cells[1]);
     if(distance(here,target)<=1)for(unsigned i=0;i<o.count;++i)if(o.army[i] && campaign::assaults(o.role[i],word(o.army[i],0x16))) {
-        offensive_order(o.army[i],o.city,true);fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(o.army[i]);
+        offensive_order(o.army[i],o.city,true);fn<void(__fastcall *)(Obj)>(GA(GA_26E260))(o.army[i]);
     }
     return true;
 }
@@ -324,7 +325,7 @@ static bool campaign_operation_step(unsigned id) {
             campaign_operation_drop(o,i,id);
         }
     }
-    unsigned center=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(goal),here=word(leader,0x2A);
+    unsigned center=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(goal),here=word(leader,0x2A);
     if(center>=48400 || here>=48400) {campaign_operation_release(id,"campaign_field_reassess");return false;}
     unsigned range_to_city=static_cast<unsigned>(distance(here,center));
     if(campaign_operation_capture_work(o))return true;
@@ -356,7 +357,7 @@ static bool campaign_operation_step(unsigned id) {
         unsigned char order[0x34];memcpy(order,a+0x2C,sizeof(order));unsigned flags=dword(a,0x1F0);
         campaign_operation_positions(o,here);
         memcpy(a+0x2C,order,sizeof(order));*reinterpret_cast<unsigned *>(a+0x1F0)=flags;
-        fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(a);return true;
+        fn<void(__fastcall *)(Obj)>(GA(GA_26E260))(a);return true;
     }
     // Native AI alone selects and orders interceptions against field armies.
     unsigned crossing=campaign_path_capture_hex(leader,center);
@@ -387,7 +388,7 @@ static bool campaign_operation_step(unsigned id) {
             for(unsigned i=0;i<o.count;++i)if(o.army[i]) {
                 Obj a=o.army[i];Progress &p=progress[army_id(a)];if(p.facility || p.morale_recovering ||
                     !campaign::assaults(o.role[i],word(a,0x16)) || distance(word(a,0x2A),center)>5)continue;
-                p.siege_city=static_cast<unsigned short>(o.city);offensive_order(a,o.city,true);fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(a);
+                p.siege_city=static_cast<unsigned short>(o.city);offensive_order(a,o.city,true);fn<void(__fastcall *)(Obj)>(GA(GA_26E260))(a);
             }
             return true;
         }
@@ -403,7 +404,7 @@ static bool campaign_operation_step(unsigned id) {
     }
     return true;
 }
-static bool campaign_siege_priority(Obj army,Progress &p) {
+static bool campaign_siege_priority(Obj army,Progress &p) { COST_SCOPE("campaign_operations:campaign_siege_priority");
     if(campaign_operation_identity(army,p))return campaign_operation_step(p.operation_leader);
     p.operation_leader=0;p.operation_city=0;
     if(!campaign_operation_create(army,p))return false;

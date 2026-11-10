@@ -7,7 +7,7 @@
 namespace ccz_module {
 static const CczApi *api;
 static bool tried;
-static void __cdecl log_sink(const char *kind,unsigned a,unsigned b,unsigned c) {log_event(kind,a,b,c);}
+[[maybe_unused]] static void __cdecl log_sink(const char *kind,unsigned a,unsigned b,unsigned c) {log_event(kind,a,b,c);}
 static void __cdecl overlay_install() {unified_overlay::install();}
 static bool load() {
     if(tried)return api!=nullptr;
@@ -43,8 +43,8 @@ static void reload_appearance() {
 namespace ccz_sprites {
 static volatile LONG published;
 static bool guards_match() {return ccz_module::load() && ccz_module::api->sprites_guards();}
-static bool install(bool hide,bool depth,bool far_keep) {
-    if(!ccz_module::load() || !ccz_module::api->install_sprites(hide,depth,far_keep))return false;
+static bool install(bool hide,bool depth,bool far_keep,bool fallback) {
+    if(!ccz_module::load() || !ccz_module::api->install_sprites(hide,depth,far_keep,fallback))return false;
     InterlockedExchange(&published,1);return true;
 }
 static bool needs_present() {return InterlockedCompareExchange(&published,0,0) && ccz_module::api->needs_present();}
@@ -56,13 +56,13 @@ static bool ccz_sprites_guards_match() {return ccz_sprites::guards_match();}
 #endif
 // 조조전식 막기·회심. 일반 공격 처리 169C50의 6단계 CALL 16FDD0(manager,pair,output) at 169F8B (유일한 호출자).
 namespace ccz_combat {
-const unsigned kSite=GA(GA_169F8B),kFix=GA(GA_16FDD0);
+const unsigned kSite=GA(GA_16AF3B),kFix=GA(GA_170D80);
 static CallLink link;
 static bool guards_match() {
     // lea r8,[rsp+30]; mov rdx,rbx; mov rcx,r15; call 16FDD0 (169C50 case 6)
     // User 2026-11-02: original army-force and hostile-relation ABI.
     static const struct {unsigned rva;unsigned long long hash;} relations[]={
-        {GA(GA_22CC40),GH(0x777A504FBF698C1Cull)},{GA(GA_2CA280),GH(0x7221823C76F2F29Full)}};
+        {GA(GA_22E690),GH(0x4DEBF7200DE1C67Cull)},{GA(GA_2CC630),GH(0xAE2882DA8EB1870Eull)}};
     for(const auto &g:relations) {
         unsigned long long h=0xCBF29CE484222325ull;
         for(unsigned i=0;i<0x30;++i)h=(h^image[g.rva+i])*0x100000001B3ull;

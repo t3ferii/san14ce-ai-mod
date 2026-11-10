@@ -111,11 +111,11 @@ static void sortie_tests() {
     check(sum==12000 && allocation[3]==1000 && allocation[0]>allocation[6],"small budget conserves soldiers and protects a lighter rear");
     for(auto &p:facts)p.support=0;
     check(sortie::roster(facts,7,selected) && selected[3]==128,"missing female support still forms a field cohort");
-    BIND(0x32E8D0,sortie_mock_manual);BIND(0x2D7180,sortie_mock_people);BIND(0x2A0780,sortie_mock_filter);
-    BIND(0xD32C0,sortie_mock_filter2);BIND(0x2311A0,sortie_mock_capacity);BIND(0x22FCE0,sortie_mock_ability);
-    BIND(0x232350,sortie_mock_owned);BIND(0x42E70,sortie_mock_defaults);BIND(0xD0090,sortie_mock_skills);
-    BIND(0x282540,sortie_mock_delete);BIND(0x2D9260,sortie_mock_group);BIND(0x9E900,sortie_mock_cancel);
-    BIND(0xB5EC0,sortie_mock_power);
+    BIND(0x330B50,sortie_mock_manual);BIND(0x2D9530,sortie_mock_people);BIND(0x2A26B0,sortie_mock_filter);
+    BIND(0xD4350,sortie_mock_filter2);BIND(0x232C00,sortie_mock_capacity);BIND(0x231770,sortie_mock_ability);
+    BIND(0x233CF0,sortie_mock_owned);BIND(0x43A50,sortie_mock_defaults);BIND(0xD1120,sortie_mock_skills);
+    BIND(0x2842E0,sortie_mock_delete);BIND(0x2DB610,sortie_mock_group);BIND(0x9F860,sortie_mock_cancel);
+    BIND(0xB6F50,sortie_mock_power);
     original_sortie_dispatch=sortie_mock_dispatch;original_sortie_movement=sortie_mock_speed;original_sortie_search=sortie_mock_search;
     {NativePhase dispatch_phase("sortie_dispatch");SortieNativePath path={};unsigned target=48400;
         unsigned calls=sortie_search_calls;
@@ -143,7 +143,7 @@ static void sortie_tests() {
     support[0xA9]=0;check(sortie_support(support)==0,"male traits do not fill the female support seat");support[0xA9]=1;
     campaign_reinforcement_tests();
     campaign_departure_tests();
-    BIND(0x22C990,reinforcement_owner);
+    BIND(0x22E3E0,reinforcement_owner);
     *reinterpret_cast<unsigned *>(sortie_city+0x3C)=4499;
     check(!sortie_departure(node) && sortie_issued==0,"under minimum deployable roster retains native departure");
     *reinterpret_cast<unsigned *>(sortie_city+0x3C)=15000;
@@ -179,9 +179,18 @@ static void sortie_tests() {
     check(sortie_departure(node) && sortie_issued==7,"native creation and group registration for seven eligible officers");
     SortieGroup g=sortie_groups[150];check(g.commander[3]==203 && word(g.group,0x14)==8 && word(g.group,0x16)==1,"female support role and strategic campaign retained");
     check(sortie_member(g.army[6]),"delegated district is eligible even if its force is player owned");
+    {   // local18 delegated_exclude: the same delegated district inside the player force (mock force = army+0x150)
+        const unsigned char saved_force=g.army[6][0x150];g.army[6][0x150]=static_cast<unsigned char>(player_force());
+        check(player_force() && sortie_member(g.army[6]),"off: a player delegated corps keeps the v15.7.1 sortie rules");
+        mod_features.delegated_exclude=true;
+        check(!sortie_member(g.army[6]) && !campaign_controlled(g.army[6]),"on: the player delegated corps leaves the sortie and campaign rules");
+        g.army[6][0x150]=saved_force;
+        check(sortie_member(g.army[6]),"on: a computer force keeps the rules");
+        mod_features.delegated_exclude=false;
+    }check(sortie_member(g.army[6]),"delegated_exclude off = v15.7.1 (delegated corps eligible again)");
     Obj p=table(0x158,word(g.army[6],0x12),6000);unsigned char saved_d=p[0xE0];p[0xE0]=1;slot(0xE0D0,1,district);district[0x14]=20;
     check(!sortie_member(g.army[6]),"direct player district cannot be controlled");p[0xE0]=saved_d;
-    BIND(0x22B090,sortie_mock_formation);
+    BIND(0x22CAD0,sortie_mock_formation);
     float slowest=sortie_mock_speed(g.army[6],nullptr,0,0,nullptr);
     for(Obj a:g.army)if(a && sortie_mock_speed(a,nullptr,0,0,nullptr)<slowest)slowest=sortie_mock_speed(a,nullptr,0,0,nullptr);
     check(sortie_movement(g.army[0],nullptr,0,0,nullptr)==slowest,"movement reduced to actual cohort minimum without boosting slow units");
@@ -232,7 +241,7 @@ static void sortie_tests() {
     for(unsigned i=67;i<80;++i)slot(0x7E838,i,nullptr);
     // Native order generator, geometry and cadence; fail one path after other
     // seats have been planned to verify all-or-nothing order restoration.
-    BIND(0x2AA850,sortie_hex_distance);BIND(0x26C940,sortie_mock_path);
+    BIND(0x2ACB80,sortie_hex_distance);BIND(0x26E260,sortie_mock_path);
     Obj corridor_area=object(10);put16(corridor_area,0x3A,22050);slot(0x6CAF0,10,corridor_area);
     for(unsigned y=96;y<=125;++y)for(unsigned x=44;x<=58;++x) {
         Obj t=object(y*220+x);t[0x14]=2;put16(t,0x12,10);tile_areas[t]=corridor_area;slot(0xE270,y*220+x,t);
@@ -251,7 +260,7 @@ static void sortie_tests() {
     g.army[0][0x37]=13;check(sortie_valid_group(g),"native idle after waypoint arrival does not dissolve the formation");g.army[0][0x37]=1;
     p[0x161]=1;check(sortie_valid_group(g),"already deployed injured commander is not removed from a cohort");p[0x161]=0;
     sortie_district[0x14]=20;
-    BIND(0x22D740,sortie_mock_goal_hex);fixture_day=100;
+    BIND(0x22F190,sortie_mock_goal_hex);fixture_day=100;
     // An outward march uses one full native destination; only the final
     // adjacent base activates the per-hex formation behavior tested below.
     Obj castle_area=object(11);put16(castle_area,0x3A,25350);castle_area[0x34]=1;
@@ -373,7 +382,7 @@ static void sortie_tests() {
     put16(castle_tile,0x12,10);slot(0x6CAF0,16,nullptr);
     g=sortie_groups[150];region_tiles.clear();tile_areas.erase(regional_tile);regional_tile[0x14]=2;put16(regional_tile,0x12,10);
     Obj previous_army=current_army;current_army=g.army[6];unsigned retreats=original_nodes;
-    BIND(0xBF7A40,mock_blackboard);BIND(0xB26470,mock_variable);
+    BIND(0x1137FF0,mock_blackboard);BIND(0xB28D20,mock_variable);
     auto retreat_result=retreat_node(node,node,current_army);
     check(retreat_result==1 && original_nodes==retreats,
         "healthy field army bypasses native retreat and retains active field work");
@@ -415,7 +424,7 @@ static void sortie_tests() {
     std::copy(policy_states.begin(),policy_states.end(),progress);priority_group.active=false;sortie_commit(150,priority_group);
     // Retain one ordinary attacker and release every previously deployed support candidate.
     Obj lead=g.army[6];for(unsigned i=60;i<=65;++i)slot(0x7E838,i,nullptr);
-    BIND(0x22A5A0,sortie_mock_origin);BIND(0x241C90,sortie_mock_join);
+    BIND(0x22BFE0,sortie_mock_origin);BIND(0x243630,sortie_mock_join);
     *reinterpret_cast<unsigned *>(sortie_city+0x3C)=7000;sortie_district[0x14]=20;
     unsigned before_support=sortie_issued;
     unsigned char lead_formation=lead[0x1B];lead[0x1B]=7;
@@ -458,20 +467,20 @@ static void sortie_tests() {
     check(gate_group.army[0][0x37]==5 && gate_group.army[0][0x38]==6 && word(gate_group.army[0],0x3A)==52,
         "gate engagement uses its distinct native attack action and target kind");
     sortie_groups[150]={};memset(sortie_escorts,0,sizeof(sortie_escorts));put16(goal,0x4E,1);
-    BIND(0x22A5A0,mock_origin);BIND(0x22C990,mock_goal_force);BIND(0x22D740,mock_goal_hex);fixture_day=120;legal_facilities=~0u;
+    BIND(0x22BFE0,mock_origin);BIND(0x22E3E0,mock_goal_force);BIND(0x22F190,mock_goal_hex);fixture_day=120;legal_facilities=~0u;
     for(unsigned i=60;i<85;++i)slot(0x7E838,i,nullptr);
     for(unsigned i=100;i<125;++i)slot(0x7F8D8,i,nullptr);slot(0x7F8D8,150,nullptr);
     list_free(sources);list_free(outputs);
-    BIND(0x2AA850,mock_distance);BIND(0x26C940,mock_finalize);BIND(0x22B090,mock_active_formation);
+    BIND(0x2ACB80,mock_distance);BIND(0x26E260,mock_finalize);BIND(0x22CAD0,mock_active_formation);
     // 사용자 결정 2026-10-30: 통합패치·발탁장수 공존을 위해 첫머리 훅을 호출 자리로 이동
     auto dos=reinterpret_cast<IMAGE_DOS_HEADER *>(image);dos->e_lfanew=0x80;
     auto pe=reinterpret_cast<IMAGE_NT_HEADERS64 *>(image+0x80);pe->OptionalHeader.SizeOfImage=0x2800000;
     for(const auto &e:sortie_entries)memcpy(image+e.rva,e.bytes,16);
     auto seed=[](unsigned site,unsigned target) {image[site]=0xE8;int d=static_cast<int>(target-site-5);memcpy(image+site+1,&d,4);};
     for(unsigned i=0;i<5;++i)seed(sortie_plan_sites[i],sortie_entries[i].rva);
-    for(unsigned site:sortie_search_sites)seed(site,0x1843E0);
-    for(unsigned site:sortie_movement_sites)seed(site,0x2B0290);
-    Obj relay=allocate_near(image+0x48CE0,8192);SortieCode code;
+    for(unsigned site:sortie_search_sites)seed(site,0x185710);
+    for(unsigned site:sortie_movement_sites)seed(site,0x2B2550);
+    Obj relay=allocate_near(image+0x49900,8192);SortieCode code;
     check(relay && prepare_sortie(code,relay),"all graph-derived search callers, movement callers and dispatch gate prepared");
     image[sortie_plan_sites[3]]=0xCC;
     check(publish_sortie(code),"changed planner site is skipped without failing other sites");
@@ -487,7 +496,7 @@ static void sortie_abi_tests() {
     const unsigned char planner_tail[]={0x48,0x89,0xC8,0x48,0x31,0xD0,0x4C,0x31,0xC0,0x41,0x5C,0x5D,0xC3};
     const unsigned char dispatch_tail[]={0x48,0x89,0xC8,0x48,0x31,0xD0,0x41,0x5C,0x5F,0x5E,0x5D,0xC3};
     const unsigned char speed_tail[]={0x48,0x89,0x11,0x44,0x89,0x41,0x08,0x44,0x89,0x49,0x0C,
-        0x48,0x8B,0x44,0x24,0x40,0xF3,0x0F,0x10,0x00,0x41,0x5D,0x5E,0x5B,0xC3};
+        0x48,0x8B,0x44,0x24,0x40,0xF3,0x0F,0x10,0x00,0x41,0x5E,0x41,0x5D,0x5F,0xC3};   // pops the three pushes of the first six bytes (push rdi, r13, r14)
     const unsigned char search_tail[]={0x8B,0x44,0x24,0x28,0x03,0x44,0x24,0x30,0x03,0x44,0x24,0x38,0xC3};
     enabled=0;
     for(unsigned i=0;i<8;++i) {

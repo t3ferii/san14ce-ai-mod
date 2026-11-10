@@ -3,18 +3,18 @@
 #include "game_addresses.h"
 struct Guard {unsigned rva,size;unsigned long long hash;};
 static const Guard guards[]={
-    {GA(GA_7FA230),0x533,GH(0xFA0E6E9FA81368AEull)},
-    {GA(GA_7D0460),0x17D,GH(0x27A85A72FD78E104ull)},
-    {GA(GA_7F55D0),0x1C5,GH(0x8999CD3A739DF67Dull)},
-    {GA(GA_16A1D0),0x5B0,GH(0x6258DD38B405FA38ull)},
-    {GA(GA_2B21A0),0x2A0,GH(0x3DAA963C35BDFC51ull)},
-    {GA(GA_2B2440),0x244,GH(0xA61EC6CEBEFA084Aull)},
-    {GA(GA_2A9E50),0x2D3,GH(0x7E749534421219C6ull)},
-    {GA(GA_2AA2E0),0x283,GH(0x28D3F3D39B51787Full)},
-    {GA(GA_18FDA0),0x15D,GH(0x43FA58B396A6750Cull)},
-    {GA(GA_92F810),0x76,GH(0x05424D9381749391ull)},
-    {GA(GA_22C6D0),0x53,GH(0xE8370CA5854F2A1Full)},
-    {GA(GA_191760),0x4C8,GH(0xA71EAF6B3CE0D745ull)},
+    {GA(GA_7FC700),0x533,GH(0x553866FDBFA88EEAull)},
+    {GA(GA_7D2810),0x17D,GH(0xF9449107F862AA21ull)},
+    {GA(GA_7F7AA0),0x1C5,GH(0xBD6415CC11811600ull)},
+    {GA(GA_16B180),0x5B0,GH(0x95F2647C654B973Dull)},
+    {GA(GA_2B4460),0x2A0,GH(0xE22FB9DD8D3431D4ull)},
+    {GA(GA_2B4750),0x244,GH(0x3D36A2090EC06DE7ull)},
+    {GA(GA_2AC0A0),0x2D3,GH(0x7A69ED6C468793F0ull)},
+    {GA(GA_2AC5A0),0x283,GH(0x99563BCBA92BD324ull)},
+    {GA(GA_191130),0x15D,GH(0x980696A7D579BDB6ull)},
+    {GA(GA_931DA0),0x76,GH(0x2914D5583B28ED06ull)},
+    {GA(GA_22E110),0x53,GH(0xDEB53A37DA8F9528ull)},
+    {GA(GA_192AF0),0x4C8,GH(0xECD26F395DA09FECull)},
 };
 // local10 G4 5.1: lives here (not in the .inl) so tests/address_guard_fixture.cpp can run the very same guard against both builds.
 static inline bool guards_match() {

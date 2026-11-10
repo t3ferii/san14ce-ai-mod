@@ -1,4 +1,4 @@
-# battle_deaths: relay + table fixture (docs/BATTLE_DEATHS_PLAN.md 4-1, step S2). Runs bdp::build_branch_relay output in an RWX page with raw-byte
+# battle_deaths: relay + table fixture (docs/HISTORY.md 4-1, step S2). Runs bdp::build_branch_relay output in an RWX page with raw-byte
 # harness stubs; no game image, no game memory. Registry cross-check runs inside the fixture once the layout_registry.h rows exist (step S3).
 $ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot

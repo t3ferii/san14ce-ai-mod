@@ -1,11 +1,11 @@
 #include "game_addresses.h"
 /* Existing AI caller thread and policy_lock only. No morale writes: recovery
  * comes from a real owned music band. Reuse native construction and safe paths. */
-static bool campaign_mountain(unsigned hex) {
+static bool campaign_mountain(unsigned hex) { COST_SCOPE("campaign_support:campaign_mountain");
     Obj tile=table(0xE270,hex,48399);
     return valid(tile) && (tile[0x10]==9 || tile[0x10]==10 || tile[0x10]==19);
 }
-static void campaign_morale_save(Obj army,Progress &p) {
+static void campaign_morale_save(Obj army,Progress &p) { COST_SCOPE("campaign_support:campaign_morale_save");
     if(p.morale_saved)return;
     memcpy(p.morale_order,army+0x2C,sizeof(p.morale_order));p.morale_flags=dword(army,0x1F0);
     Obj group=table(0x7F8D8,word(army,0x58),500);
@@ -13,24 +13,24 @@ static void campaign_morale_save(Obj army,Progress &p) {
     p.morale_group_goal=valid(group)?word(group,0x16):0;
     p.morale_saved=true;
 }
-static void campaign_morale_finish(Obj army,Progress &p) {
+static void campaign_morale_finish(Obj army,Progress &p) { COST_SCOPE("campaign_support:campaign_morale_finish");
     if(p.morale_saved) {
-        fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
+        fn<void(__fastcall *)(Obj)>(GA(GA_A3370))(army);
         memcpy(army+0x2C,p.morale_order,sizeof(p.morale_order));
         // Old waypoints start at the pre-detour hex. Replan from the band's
         // position to the original typed target instead of walking backward.
         for(unsigned i=0;i<5;++i)*reinterpret_cast<unsigned short *>(army+0x2C+i*2)=48400;
         *reinterpret_cast<unsigned *>(army+0x1F0)=p.morale_flags;
-        fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);
+        fn<void(__fastcall *)(Obj)>(GA(GA_26E260))(army);
     }
     p.morale_recovering=false;p.morale_saved=false;p.morale_building=false;
     p.morale_band=0;p.morale_hex=48400;
     log_event(army[0x1A]>=100?"morale_recovered_resume":"morale_detour_cancelled",army_id(army),army[0x1A],p.city);
 }
-static bool campaign_band(Obj army,unsigned id,bool complete=true) {
+static bool campaign_band(Obj army,unsigned id,bool complete=true) { COST_SCOPE("campaign_support:campaign_band");
     Obj b=table(0x6DA98,id,3000);
     if(!valid(b) || b[0x12]!=7 || b[0x13]!=army_force(army) || !word(b,0x14) || word(b,0x10)>=48400)return false;
-    int maximum=fn<int(__fastcall *)(Obj)>(GA(GA_2AC120))(b);
+    int maximum=fn<int(__fastcall *)(Obj)>(GA(GA_2AE450))(b);
     return maximum>0 && (!complete || word(b,0x14)>=maximum);
 }
 static CampaignRoute campaign_band_route(Obj army,unsigned band_hex) {
@@ -49,8 +49,8 @@ static CampaignRoute campaign_band_route(Obj army,unsigned band_hex) {
     }
     return best;
 }
-static unsigned campaign_morale_goal(Obj army,const Progress &p) {
-    if(p.campaign) {Obj c=campaign_goal(p.city);if(c)return fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(c);}
+static unsigned campaign_morale_goal(Obj army,const Progress &p) { COST_SCOPE("campaign_support:campaign_morale_goal");
+    if(p.campaign) {Obj c=campaign_goal(p.city);if(c)return fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(c);}
     if(army[0x38]==9 && word(army,0x3A)<48400)return word(army,0x3A);
     for(unsigned i=0;i<5;++i)if(word(army,0x2C+i*2)<48400)return word(army,0x2C+i*2);
     return word(army,0x2A);
@@ -133,12 +133,12 @@ static bool campaign_morale_priority(Obj army,Progress &p) {
 }
 struct CampaignStrength {uint64_t own=0,enemy=0;};
 static bool campaign_request_reinforcements(Obj army,Progress &p,uint64_t needed,unsigned guard_region=0,unsigned guard_goal=48400);
-static std::vector<unsigned> campaign_enemy_bases(Obj army,unsigned city) {
+static std::vector<unsigned> campaign_enemy_bases(Obj army,unsigned city) { COST_SCOPE("campaign_support:campaign_enemy_bases");
     std::vector<unsigned> result;Obj goal=campaign_goal(city);
-    Obj force=goal?fn<Obj(__fastcall *)(Obj)>(GA(GA_22C990))(goal):nullptr;
+    Obj force=goal?fn<Obj(__fastcall *)(Obj)>(GA(GA_22E3E0))(goal):nullptr;
     if(!valid(force))return result;
     auto id=*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(force,0)+0x60);
-    unsigned owner=id(force),center=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(goal);
+    unsigned owner=id(force),center=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(goal);
     Obj area=table(0x6CAF0,campaign_area_id(center),500);if(!valid(area))return result;
     for(unsigned i=0;i<8;++i) {
         unsigned region=word(area,0x56+i*2);Obj next=table(0x6CAF0,region,500);
@@ -148,13 +148,13 @@ static std::vector<unsigned> campaign_enemy_bases(Obj army,unsigned city) {
     }
     (void)army;return result;
 }
-static CampaignStrength campaign_strength(Obj army,unsigned center) {
+[[maybe_unused]] static CampaignStrength campaign_strength(Obj army,unsigned center) { COST_SCOPE("campaign_support:campaign_strength");
     CampaignStrength result;unsigned own=army_force(army);
     for(unsigned id=1;id<=500;++id) {
         Obj a=table(0x7E838,id,500);if(!valid(a) || word(a,0x2A)>=48400 || distance(word(a,0x2A),center)>15)continue;
         unsigned force=army_force(a);
         if(force==own)result.own+=word(a,0x16);
-        else if(fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(own,force))result.enemy+=word(a,0x16);
+        else if(fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,force))result.enemy+=word(a,0x16);
     }
     unsigned city=progress[army_id(army)].city;Obj goal=campaign_goal(city);
     if(goal && hostile_city(army,city))result.enemy+=dword(goal,0x3C);

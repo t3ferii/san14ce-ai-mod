@@ -22,7 +22,7 @@ static unsigned samples[256];
 static bool active(){return !muted && InterlockedCompareExchange(&enabled,0,0)!=0;}
 static void emit(const char *s,unsigned a,unsigned b=0,unsigned c=0){if(writer)writer(s,a,b,c);}
 static void bits(const char *s,unsigned id,uintptr_t value){emit(s,id,static_cast<unsigned>(value),static_cast<unsigned>(value>>32));}
-static void begin(uintptr_t base,Writer out){writer=out;image_base=base;sequence=0;for(auto &n:samples)n=0;InterlockedExchange(&enabled,1);emit("ccz_ui_trace_start",1,GetCurrentThreadId(),0);bits("ccz_ui_image",0,base);}
+[[maybe_unused]] static void begin(uintptr_t base,Writer out){writer=out;image_base=base;sequence=0;for(auto &n:samples)n=0;InterlockedExchange(&enabled,1);emit("ccz_ui_trace_start",1,GetCurrentThreadId(),0);bits("ccz_ui_image",0,base);}
 static void start(uintptr_t base,Writer out){if(!InterlockedCompareExchange(&enabled,0,0))begin(base,out);}
 static void end(){if(active())emit("ccz_ui_trace_end",static_cast<unsigned>(sequence));InterlockedExchange(&enabled,0);}
 struct Silence {bool value;explicit Silence(bool v):value(v){if(value)++muted;}~Silence(){if(value)--muted;}};
@@ -84,7 +84,7 @@ template<class F>static auto run(unsigned stage,F &&f)->decltype(f()){
     }catch(...){if(s.id)emit("ccz_ui_cpp_throw",s.id,stage,0);throw;}
 }
 #else
-static void begin(uintptr_t,Writer){}static void start(uintptr_t,Writer){}static void end(){}
+[[maybe_unused]] static void begin(uintptr_t,Writer){}static void start(uintptr_t,Writer){}static void end(){}
 struct Silence {explicit Silence(bool){}};
 static bool sample(unsigned,unsigned){return false;}
 static unsigned target(uintptr_t){return 0;}

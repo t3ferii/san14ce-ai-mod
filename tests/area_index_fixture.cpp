@@ -17,7 +17,7 @@ static Obj pointer(Obj p,unsigned o) {return *reinterpret_cast<Obj *>(p+o);}
 static unsigned short word(Obj p,unsigned o) {return *reinterpret_cast<unsigned short *>(p+o);}
 static void put(Obj p,unsigned o,Obj v) {memcpy(p+o,&v,sizeof(v));}
 static void putword(Obj p,unsigned o,unsigned v) {const auto n=static_cast<unsigned short>(v);memcpy(p+o,&n,2);}
-static Obj world() {return pointer(image,0x277DF18);}
+static Obj world() {return pointer(image,0x2780F60);}
 static unsigned rebuilds,mismatches,original_calls,last_rebuild_cells;
 static bool enabled_verify;
 static int mod_setting(const wchar_t *,const wchar_t *,int) {return enabled_verify?1:0;}
@@ -27,6 +27,7 @@ static void log_event(const char *name,unsigned a=0,unsigned=0,unsigned=0) {
     if(!strcmp(name,"area_index_mismatch"))++mismatches;
 }
 #define COST_SCOPE(name) ((void)0)
+#define COST_SCOPE_HOT(name) ((void)0)
 static unsigned valid_calls,building_calls;
 static bool track_order,ordered=true;
 static uintptr_t previous_cell;
@@ -37,7 +38,7 @@ static Obj __fastcall mock_building(Obj c) {
     return pointer(world(),0x6DA98+(id<0xBB9?id:0)*8);
 }
 template<class F> static F fn(unsigned rva) {
-    return reinterpret_cast<F>(rva==0x32F500?reinterpret_cast<void *>(&mock_valid):reinterpret_cast<void *>(&mock_building));
+    return reinterpret_cast<F>(rva==0x331780?reinterpret_cast<void *>(&mock_valid):reinterpret_cast<void *>(&mock_building));
 }
 // Installation primitives are mocked here; real image guards are covered by split_module_fixture.
 struct CodeLink {unsigned char modified[16];};
@@ -80,8 +81,8 @@ static int full_scan(Obj area) {
 static int __fastcall mock_original(Obj area) {return full_scan(area);}
 static int __fastcall wrong_original(Obj) {return 7;}
 static void setup() {
-    image=static_cast<Obj>(VirtualAlloc(nullptr,0x277DF20,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));
-    expect(image!=nullptr,"fake image allocated");put(image,0x277DF18,global_data.data());
+    image=static_cast<Obj>(VirtualAlloc(nullptr,0x2A0B000,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));
+    expect(image!=nullptr,"fake image allocated");put(image,0x2780F60,global_data.data());
     Obj g=world();
     for(unsigned i=0;i<48400;++i)put(g,0xE270+i*8,cells[i].data);
     for(auto &a:areas)a.data[8]=1;
@@ -100,14 +101,14 @@ int main(int argc,char **argv) {
     expect(!area_index_guards_match(),"empty synthetic text does not pass native guards");
     expect(argc==2,"existing captured code supplied only as data");
     FILE *file=nullptr;expect(fopen_s(&file,argv[1],"rb")==0,"captured code data opened");
-    const auto copied=fread(image+0x1000,1,0x277CF20,file);fclose(file);
-    expect(copied>0x7F9634 && area_index_guards_match(),"captured synthetic image passes five function and three caller guards");
+    const auto copied=fread(image+0x1000,1,0x2A0A000,file);fclose(file);
+    expect(copied>0x7FBB04 && area_index_guards_match(),"captured synthetic image passes five function and three caller guards");
     expect(!area_index::install(),"mock allocation failure does not publish a hook");
     Obj relay=static_cast<Obj>(VirtualAlloc(nullptr,4096,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));
     expect(relay && area_index::prepare(relay),"real entry preparation accepts captured native bytes");
-    expect(!memcmp(relay+32,image+0x2C9E30,8),"entry bridge preserves complete original prolog");
+    expect(!memcmp(relay+32,image+0x2CC1E0,8),"entry bridge preserves complete original prolog");
     Obj continuation=nullptr;memcpy(&continuation,relay+42,8);
-    expect(continuation==image+0x2C9E38 && !memcmp(relay+40,"\x49\xBB",2) && !memcmp(relay+50,"\x41\xFF\xE3",3),"bridge continues via volatile R11 after original eight bytes");
+    expect(continuation==image+0x2CC1E8 && !memcmp(relay+40,"\x49\xBB",2) && !memcmp(relay+50,"\x41\xFF\xE3",3),"bridge continues via volatile R11 after original eight bytes");
     alignas(16) DWORD64 stack[32]{};stack[14]=0x12345678;stack[15]=0x98765432;
     CONTEXT context{};context.Rsp=reinterpret_cast<DWORD64>(stack);context.Rip=reinterpret_cast<DWORD64>(relay+40);
     void *handler=nullptr;DWORD64 establisher=0;
@@ -141,7 +142,7 @@ int main(int argc,char **argv) {
     for(unsigned day=0;day<365;++day)area_index::check(areas[1].data);
     expect(rebuilds==1,"date changes do not rebuild fixed map region data");
     // Each identity component changes independently, then remains stable for many calls.
-    auto loaded=global_data;put(image,0x277DF18,loaded.data());
+    auto loaded=global_data;put(image,0x2780F60,loaded.data());
     unsigned want=rebuilds+1;compare_all();expect(rebuilds==want,"changed world rebuilds once");
     std::swap(cells.front(),cells.back()); // pointers stay fixed: region mismatch is handled below
     for(unsigned offset:{0xE270u,0x6CAE8u,0x6CAF0u}) {

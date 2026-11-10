@@ -6,7 +6,7 @@ static Obj phase_manager,phase_subject;
 static unsigned phase_count;
 static void __fastcall phase_mock(Obj manager,Obj subject) {phase_manager=manager;phase_subject=subject;++phase_count;}
 static void *fixture_function(unsigned rva) {
-    if(rva==0xD3D50 || rva==0xD3CE0 || rva==0xD3C70)return reinterpret_cast<void *>(&phase_mock);
+    if(rva==0xD4DE0 || rva==0xD4D70 || rva==0xD4D00)return reinterpret_cast<void *>(&phase_mock);
     abort();
 }
 static unsigned checks;
@@ -72,17 +72,17 @@ int main() {
     image=static_cast<Obj>(VirtualAlloc(nullptr,0x450000,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));check(image!=nullptr);
     Obj relay=static_cast<Obj>(VirtualAlloc(nullptr,4096,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));check(relay!=nullptr);
     Obj baseline=static_cast<Obj>(VirtualAlloc(nullptr,4096,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));check(baseline!=nullptr);
-    memcpy(image+0x2AA850,progress_distance_bytes,sizeof(progress_distance_bytes));
+    memcpy(image+0x2ACB80,progress_distance_bytes,sizeof(progress_distance_bytes));
     memcpy(baseline,progress_distance_bytes,sizeof(progress_distance_bytes));
-    memcpy(image+0x43E030,progress_ai_entry_bytes,sizeof(progress_ai_entry_bytes));
-    memcpy(image+0x43E0A0,progress_force_call_bytes,16);
-    memcpy(image+0x43E120,progress_district_call_bytes,16);
-    memcpy(image+0x43E4C0,progress_army_call_bytes,16);
+    memcpy(image+0x4403E0,progress_ai_entry_bytes,sizeof(progress_ai_entry_bytes));
+    memcpy(image+0x440450,progress_force_call_bytes,16);
+    memcpy(image+0x4404D0,progress_district_call_bytes,16);
+    memcpy(image+0x440870,progress_army_call_bytes,16);
     // Finish the three shadow-space saves from the verified original prolog,
     // increment a scalar fixture context and unwind its actual stack frame.
     const unsigned char ai_tail[]={0x89,0x58,0x10,0x48,0x89,0x70,0x18,0x48,0x89,0x78,0x20,
         0xFF,0x01,0x48,0x81,0xC4,0,1,0,0,0x41,0x5F,0x41,0x5E,0x41,0x5D,0x41,0x5C,0x5D,0xC3};
-    memcpy(image+0x43E050,ai_tail,sizeof(ai_tail));
+    memcpy(image+0x440400,ai_tail,sizeof(ai_tail));
     progress_grid.initialize();check(QueryPerformanceFrequency(&progress_clock_frequency)!=0);
     ProgressNativeCode code;check(progress_native_guards_match());check(prepare_progress_native(code,relay));
     check(code.distance.modified[5]==0x90 && code.distance.modified[7]==0x90 && code.ai.modified[5]==0x90);
@@ -105,19 +105,19 @@ int main() {
     check(context_unwind.R12==stack[0] && context_unwind.Rbp==stack[1] && context_unwind.Rip==stack[2]);
     check(context_unwind.Rsp==reinterpret_cast<DWORD64>(stack+3));
     auto original=reinterpret_cast<ProgressDistance>(baseline);
-    auto patched=reinterpret_cast<ProgressDistance>(image+0x2AA850);
-    auto ai=reinterpret_cast<ProgressAi>(image+0x43E030);
+    auto patched=reinterpret_cast<ProgressDistance>(image+0x2ACB80);
+    auto ai=reinterpret_cast<ProgressAi>(image+0x4403E0);
     unsigned context=0;progress_native_profile=false;ai(reinterpret_cast<Obj>(&context));check(context==1);
     check(original_progress_distance(0,48399)==original(0,48399));
     // Force rejection of the second publication after the first has succeeded.
     progress_native_profile=true;
     code.ai.original[15]^=1;check(!publish_progress_native(code));
-    check(!progress_native_active && !memcmp(image+0x2AA850,progress_distance_bytes,16));
-    check(!memcmp(image+0x43E030,progress_ai_entry_bytes,16));code.ai.original[15]^=1;
+    check(!progress_native_active && !memcmp(image+0x2ACB80,progress_distance_bytes,16));
+    check(!memcmp(image+0x4403E0,progress_ai_entry_bytes,16));code.ai.original[15]^=1;
     for(unsigned phase=0;phase<3;++phase) {
         code.phases[phase].original[15]^=1;check(!publish_progress_native(code));
-        check(!progress_native_active && !memcmp(image+0x2AA850,progress_distance_bytes,16));
-        check(!memcmp(image+0x43E030,progress_ai_entry_bytes,16));
+        check(!progress_native_active && !memcmp(image+0x2ACB80,progress_distance_bytes,16));
+        check(!memcmp(image+0x4403E0,progress_ai_entry_bytes,16));
         for(unsigned j=0;j<3;++j)check(!memcmp(image+code.phases[j].block,code.phases[j].original,15));
         code.phases[phase].original[15]^=1;
     }
@@ -170,20 +170,20 @@ int main() {
         printf("%s{\"mode\":%u,\"original_ms\":%.3f,\"patched_ms\":%.3f,\"ratio\":%.3f}",mode?",":"",mode,before[3],after[3],before[3]/after[3]);
     }
     restore_progress_native(code);check(!progress_native_active);
-    check(!memcmp(image+0x2AA850,progress_distance_bytes,sizeof(progress_distance_bytes)));
-    check(!memcmp(image+0x43E030,progress_ai_entry_bytes,sizeof(progress_ai_entry_bytes)));
+    check(!memcmp(image+0x2ACB80,progress_distance_bytes,sizeof(progress_distance_bytes)));
+    check(!memcmp(image+0x4403E0,progress_ai_entry_bytes,sizeof(progress_ai_entry_bytes)));
     for(unsigned phase=0;phase<3;++phase)check(!memcmp(image+code.phases[phase].block,code.phases[phase].original,16));
     check(patched(101,202)==original(101,202));ai(reinterpret_cast<Obj>(&context));check(context==5);
     progress_native_geometry=false;progress_native_profile=true;check(publish_progress_native(code));
-    check(!memcmp(image+0x2AA850,progress_distance_bytes,sizeof(progress_distance_bytes)));
+    check(!memcmp(image+0x2ACB80,progress_distance_bytes,sizeof(progress_distance_bytes)));
     ai(reinterpret_cast<Obj>(&context));check(context==6);restore_progress_native(code);progress_native_geometry=true;
     progress_native_profile=false;check(publish_progress_native(code));
-    check(!memcmp(image+0x43E030,progress_ai_entry_bytes,sizeof(progress_ai_entry_bytes)));
+    check(!memcmp(image+0x4403E0,progress_ai_entry_bytes,sizeof(progress_ai_entry_bytes)));
     for(unsigned phase=0;phase<3;++phase)check(!memcmp(image+code.phases[phase].block,code.phases[phase].original,16));
     restore_progress_native(code);
     unsigned log_argument=0;log_event("disabled_log_argument",++log_argument);check(log_argument==0);
-    writable(image+0x2AA850,4096);image[0x2AA850+173]^=1;check(!progress_native_guards_match());
-    image[0x2AA850+173]^=1;
+    writable(image+0x2ACB80,4096);image[0x2ACB80+173]^=1;check(!progress_native_guards_match());
+    image[0x2ACB80+173]^=1;
     printf("],\"checks\":%u,\"rollback_and_gates_verified\":true,\"gameplay_verified\":false}\n",checks);
     RtlDeleteFunctionTable(runtime);VirtualFree(relay,0,MEM_RELEASE);VirtualFree(baseline,0,MEM_RELEASE);VirtualFree(image,0,MEM_RELEASE);return 0;
 }

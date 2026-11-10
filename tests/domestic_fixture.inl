@@ -84,10 +84,10 @@ static void domestic_bridge_tests() {
     in_auto_domestic=0;VirtualFree(memory,0,MEM_RELEASE);
 }
 static void domestic_tests() {
-    BIND(0x22E2B0,domestic_commerce);BIND(0x22C760,domestic_agriculture);BIND(0x231170,domestic_barracks);
-    BIND(0xBF7A40,domestic_get_store);BIND(0xB26470,domestic_get_area);BIND(0xB26990,domestic_store_selection);
-    BIND(0x36320,domestic_original_node);BIND(0x32E8D0,domestic_controlled_district);
-    BIND(0x3329B0,domestic_auto_allowed);BIND(0x22CC00,domestic_area_owner);
+    BIND(0x22FD40,domestic_commerce);BIND(0x22E1A0,domestic_agriculture);BIND(0x232BD0,domestic_barracks);
+    BIND(0x1137FF0,domestic_get_store);BIND(0xB28D20,domestic_get_area);BIND(0xB29250,domestic_store_selection);
+    BIND(0x36E80,domestic_original_node);BIND(0x330B50,domestic_controlled_district);
+    BIND(0x3329B0,domestic_auto_allowed);BIND(0x22E650,domestic_area_owner);
     domestic_region=object(499);domestic_officer=object(5999);domestic_store=object(1);
     slot(0x6CAF0,499,domestic_region);slot(0x158,5999,domestic_officer);
     put16(domestic_region,0x36,5999);domestic_region[0x35]=1;domestic_region[0x78]=2;
@@ -112,7 +112,7 @@ static void domestic_tests() {
     put16(domestic_region,0x36,5999);domestic_lookup=false;
     check(domestic_selection_node(node,node,node)==2,"failed area lookup preserves native failure");domestic_lookup=true;
     domestic_write=false;check(domestic_selection_node(node,node,node)==2,"failed storage write preserves native failure");domestic_write=true;
-    *reinterpret_cast<unsigned *>(image+0x1A483DC)=3;domestic_orders=8;
+    *reinterpret_cast<unsigned *>(image+0x1A4B428)=3;domestic_orders=8;
     check(domestic_original_node(node,node,node)==1 && domestic_orders==5,"direct human command retains native cost");
     domestic_orders=0;check(domestic_officer_node(node,node,node)==1 && domestic_orders==0 && in_auto_domestic==0,
                           "automatic assignment succeeds at zero orders without granting orders");

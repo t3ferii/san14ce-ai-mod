@@ -1,8 +1,8 @@
-// AI battle death cut-in and game record (docs/BATTLE_DEATHS_PLAN.md S4, 2026-11-06). Own source re-implementation of the ModPack v1.6
+// AI battle death cut-in and game record (docs/HISTORY.md S4, 2026-11-06). Own source re-implementation of the ModPack v1.6
 // BattleDeaths blob; no blob machine code runs. Registered with the Layout manager as owner "battle_deaths": one span (295C5F, relay)
 // first, then 4 CALL rows (2 x 368360 cut-in visibility, 2 x 295AA0 death record). Everything runs on the game's own UI/AI thread
 // inside those hooks; activation only registers. Pure byte tables and the relay builder come from battle_deaths_profile.h (bdp, fixture-tested).
-// Included by native_modpack.inl (SPLIT_MODPACK), just before native_trait_hover.inl.
+// Included by native_split_install.inl (SPLIT_MODPACK), after native_modpack.inl and before native_trait_hover.inl.
 #include <string.h>
 #include <stdint.h>
 #include "battle_deaths_profile.h"
@@ -23,11 +23,11 @@ static void *next_visible[2],*next_record[2];
 static volatile LONG cutin_seen[2][3],record_seen[2],forced_seen,fault_seen[3];
 static bool take(volatile LONG &counter,LONG cap) {return InterlockedIncrement(&counter)<=cap;}
 #endif
-static unsigned person_id(Obj person) {   // person+0x10 (u16), 0xFFFF when unreadable
+[[maybe_unused]] static unsigned person_id(Obj person) {   // person+0x10 (u16), 0xFFFF when unreadable
     __try {return *reinterpret_cast<const unsigned short *>(person+0x10);}
     __except(EXCEPTION_EXECUTE_HANDLER) {return 0xFFFF;}
 }
-static int queued_of(Obj request) {       // request+0x1E0, -1 when unreadable
+[[maybe_unused]] static int queued_of(Obj request) {       // request+0x1E0, -1 when unreadable
     __try {return request?*reinterpret_cast<const int *>(request+kBattleDeathsRequestQueuedOff):0;}
     __except(EXCEPTION_EXECUTE_HANDLER) {return -1;}
 }
@@ -60,14 +60,14 @@ static void note_fault([[maybe_unused]] unsigned path,[[maybe_unused]] unsigned 
 static unsigned force_visible_seh(Obj request) {
     __try {
         if(request && *reinterpret_cast<const int *>(request+kBattleDeathsRequestQueuedOff)>=static_cast<int>(kBattleDeathsCutinMaxQueued))return 0;
-        Obj app=fn<Obj(__fastcall *)()>(GA(GA_14CB00))();
-        Obj camera=app?fn<Obj(__fastcall *)(Obj)>(GA(GA_14C9F0))(app):nullptr;
+        Obj app=fn<Obj(__fastcall *)()>(GA(GA_14DAE0))();
+        Obj camera=app?fn<Obj(__fastcall *)(Obj)>(GA(GA_14D9D0))(app):nullptr;
         return camera!=nullptr?1u:0u;
     } __except(EXCEPTION_EXECUTE_HANDLER) {note_fault(1,GetExceptionCode());return 0;}
 }
 // Sites 258EE0 / 27D4B0: the original answer wins; only a "not on screen" answer is overridden.
 template<unsigned I> static uint64_t __fastcall visible(Obj request,Obj position) { COST_SCOPE("battle_deaths::visible");
-    const uint64_t result=next_or<Visible>(next_visible[I],GA(GA_368360))(request,position);
+    const uint64_t result=next_or<Visible>(next_visible[I],GA(GA_36A850))(request,position);
     if(result!=0) {note_cutin(I,1,request);return result;}
     if(!active)return result;
     const unsigned forced=force_visible_seh(request);
@@ -82,7 +82,7 @@ struct ScopeRestore {
 };
 template<unsigned I> static uint64_t __fastcall record(Obj person,Obj killer,uint64_t a3,uint64_t a4,uint64_t a5,uint64_t a6,uint64_t a7,uint64_t a8,uint64_t a9) { COST_SCOPE("battle_deaths::record");
     ScopeRestore guard(person,I+1);
-    const uint64_t result=next_or<Record>(next_record[I],GA(GA_295AA0))(person,killer,a3,a4,a5,a6,a7,a8,a9);
+    const uint64_t result=next_or<Record>(next_record[I],GA(GA_2979B0))(person,killer,a3,a4,a5,a6,a7,a8,a9);
     note_record(I,person,result);
     return result;
 }
@@ -133,7 +133,7 @@ static bool guards_ok() {
     if(static_cast<long long>(span)+8+rel!=static_cast<long long>(battle_deaths_reject_rva))return guard_fail(3,1,span);
     // 5: 295AA0 prologue: 7 pushes, lea rbp,[rsp-100h], sub rsp,imm32 with imm % 16 == 0 (the relay relies on a 16-aligned rsp at 295C5F)
     static const unsigned char pushes[12]={0x40,0x55,0x56,0x57,0x41,0x54,0x41,0x55,0x41,0x56,0x41,0x57};
-    const unsigned entry=GA(GA_295AA0);
+    const unsigned entry=GA(GA_2979B0);
     int frame=0;memcpy(&frame,image+entry+0x17,4);
     if(memcmp(image+entry,pushes,sizeof(pushes))!=0 || image[entry+0x14]!=0x48 || image[entry+0x15]!=0x81 || image[entry+0x16]!=0xEC ||
        frame<=0 || (frame&15)!=0)return guard_fail(5,0,entry);

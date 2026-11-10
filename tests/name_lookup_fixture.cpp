@@ -1,6 +1,6 @@
 // Equivalence check: the ORIGINAL E09910 + 102FC20 machine code, read from the
 // DRM-free analysis copy and run in a private buffer, versus name_lookup::find.
-// Usage: name_lookup_fixture <game.exe.unpacked.exe> <running_code_text.bin>
+// Usage: name_lookup_fixture <game.exe.unpacked.exe> <fixture 1a4a447d_text.bin (tools/make_fixture_image.py)>
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
@@ -31,7 +31,7 @@ struct Pe {
     }
     // Printable ASCII runs inside .rdata: real game identifiers/strings.
     std::vector<std::string> strings(size_t limit) const {
-        std::vector<std::string> out;const unsigned char *p=at(0x1340000,0x6DF000);if(!p)return out;
+        std::vector<std::string> out;const unsigned char *p=at(0x1343000,0x6DF000);if(!p)return out;
         std::string cur;
         for(unsigned i=0;i<0x6DF000 && out.size()<limit;++i) {
             unsigned char c=p[i];

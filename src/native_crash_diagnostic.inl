@@ -15,7 +15,7 @@ static volatile LONG crash_records;
 static void crash_text(char *line,unsigned &used,const char *text) {
     for(unsigned i=0;text[i] && used<700;++i)line[used++]=text[i];
 }
-static void crash_hex(char *line,unsigned &used,uintptr_t value) {
+[[maybe_unused]] static void crash_hex(char *line,unsigned &used,uintptr_t value) {
     static const char digits[]="0123456789ABCDEF";
     crash_text(line,used,"0x");
     for(int shift=static_cast<int>(sizeof(value)*8)-4;shift>=0;shift-=4)
@@ -72,7 +72,7 @@ static uintptr_t crash_vtable_rva(uintptr_t object) {
 #ifdef RUNTIME_COST_PROFILE
 struct CrashCczRing {const costprofile::CrumbRing *rings;unsigned size;};
 static CrashCczRing cached_ccz_ring;
-static void crash_cache_ccz(HMODULE module) {
+[[maybe_unused]] static void crash_cache_ccz(HMODULE module) {
     using GetRing=void (__cdecl *)(const costprofile::CrumbRing **,unsigned *);
     auto get=module?reinterpret_cast<GetRing>(GetProcAddress(module,"SAN14CczDiagCrumbs")):nullptr;
     CrashCczRing r={};if(get)get(&r.rings,&r.size);
@@ -210,7 +210,7 @@ static LONG CALLBACK observe_native_exception(EXCEPTION_POINTERS *info) {
 #endif
         }
         uintptr_t game_rva=ip>=base?ip-base:0;
-        if(code==EXCEPTION_ACCESS_VIOLATION && game_rva==GA(GA_19EDEE) && info->ContextRecord) {
+        if(code==EXCEPTION_ACCESS_VIOLATION && game_rva==GA(GA_1A00EE) && info->ContextRecord) {
             const CONTEXT &c=*info->ContextRecord;uintptr_t target=0;unsigned short unit_id=0;uintptr_t display=0;unsigned char readable=0;bool display_readable=false;
             crash_read(reinterpret_cast<const void *>(c.Rdi+0x1F0),&target,sizeof(target));
             crash_read(reinterpret_cast<const void *>(target+0x12),&unit_id,sizeof(unit_id));

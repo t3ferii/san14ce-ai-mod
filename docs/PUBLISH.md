@@ -20,6 +20,17 @@ python -B -X utf8 tools/build_share.py --payload build/public_<버전_밑줄>_pa
 - 문서: `docs/RELEASE_NOTES.md` 맨 위에 새 판(이전 판은 「이전 배포 기록」 아래로), `docs/CHANGES_ALL.md` 표 맨 위 행, 필요하면 `README.md`(배너·다운로드 링크·항목 수). 출처 줄은 `docs/CREDITS.md`·README·`distribution/읽어주세요.txt`가 같아야 build_share가 통과한다.
 - 선택: 임시 게임 폴더(EXE·`0002/ScreenLayout.rdb` 복사)에서 이전 판 → 새 판 → Restore → 이전 판 Apply로 관리.ps1 업데이트·되돌리기 경로를 확인한다.
 
+## 1-1. 배포판에는 진단·측정 코드가 없어야 한다 (사용자 2026-11-07 재확인)
+- 공개 DLL은 반드시 `-RuntimeDiagnostics`/`-RuntimeCosts` **없이** 빌드한다(`check_feature.ps1 -Feature dll-split -Build`의 공개 빌드). 이때 `/DNO_RUNTIME_LOG`가 붙고 `RUNTIME_COST_PROFILE`이 없어서 `log_event` 진단, `COST_SCOPE`/`COST_CRUMB` 측정 래퍼, `#ifndef NO_RUNTIME_LOG` 블록(덤프·probe·perf)이 모두 빠진다.
+- 로컬 진단판(install_local `--diagnostics-on`)의 DLL을 dist·공유 ZIP에 섞지 않는다. `build_share.py`의 진단 문자열(`day=`) 검사가 실패하면 배포를 멈춘다.
+- 새 기능의 진단 코드는 `#ifndef NO_RUNTIME_LOG` 또는 `diagnostic_logging` 아래에만 둔다. 공개 빌드에 남는 로그 호출이 있으면 배포 전에 고친다.
+
+## 1-2. README 스크린샷 (`readme_screenshot/`)
+- 사용자가 새 기능 사진·영상을 `AI_TacticsMod/readme_screenshot/`에 넣는다. 배포 때 저장소 `readme_screenshot/`에 그대로 복사해 커밋한다(파일 이름 유지).
+- README의 해당 기능 절에 `![설명](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/<URL 인코딩한 파일 이름>)` 줄을 넣는다. 공백·괄호·한글은 퍼센트 인코딩한다.
+- 배포 전에 `readme_screenshot/`에서 README에 아직 안 쓰인 파일을 찾아 모두 해당 절에 넣는다. 파일 이름의 안내(예: 「gif나 webp 둘중하나 쓰시오」)는 따른다.
+- 저장소에 올리는 것은 이 폴더의 사진·영상뿐이다. 로컬의 다른 이미지나 개인 경로는 올리지 않는다.
+
 ## 2. main 문서 갱신
 ```
 git clone https://github.com/t3ferii/san14ce-ai-mod.git repo   # 스크래치 폴더에
@@ -27,7 +38,7 @@ git config user.name t3ferii; git config user.email 188655834+t3ferii@users.nore
 ```
 - 저장소 README에는 로컬에 없는 「모더용 소스 공개」 절(3~9행)이 있다. 로컬 README를 통째로 덮지 말고 이 절을 유지한다.
 - `README.md`, `docs/CHANGES_ALL.md`, `docs/CREDITS.md`, `docs/RELEASE_NOTES.md`를 LF로 옮겨 `docs: <버전> — 요약` 커밋 후 `git push origin main`.
-- 소스 스냅샷은 사용자 요청 시에만 갱신한다(마지막: v15, main `d7f1d58`, 2026-11-01).
+- 소스 스냅샷은 사용자 요청 시에만 갱신한다(마지막: v15.6, main `2fc7014`, 2026-11-06).
 
 ## 2-1. 소스 공개 갱신 (요청 시)
 ```
@@ -117,6 +128,7 @@ jobs:
 - 공개 패키지는 DLL 5개다. `SAN14_Layout.dll`(dinput8이 먼저 불러옴)이 빠지면 Layout 관리 기능이 꺼진다. `prepare_public_release.py`의 `expected`와 `build_share.py` 허용 이름에 넣었다. 공유 ZIP에서 DLL 5개·진단 문자열(`day=`) 없음을 확인한다.
 - 릴리스 브랜치에 `release_assets/.gitattributes`(`* -text`)를 넣는다. 없으면 Windows `core.autocrlf`가 `release_features.json`의 CRLF를 바꿔 러너의 해시가 어긋난다.
 - 워크플로는 초안 생성 → 자산 업로드 → size·digest 대조 → 공개(PATCH)를 한 번에 한다(`::notice::`로 결과 확인).
+- 소스 공개 v15.6: `tools/build_public_smoke.ps1`(저장소 전용)에 Layout DLL 빌드를 넣고 삭제된 `officer_query_fixture`를 뺐다. `audit_current_source.py`가 로컬에서 잘려 있어 저장소본으로 복구하고 기준 문구를 v15.6으로 고쳤다. 내보내기 주석 앵커는 `GA()` 주소표 이전 후 문자열로 맞춘다.
 - 공개하지 않은 판(v15.5.1)은 `PUBLISHED`에 넣지 않고 다음 공개판 노트에 "변경 포함"으로 적는다.
 
 ## UI 자료만 수정하는 배포

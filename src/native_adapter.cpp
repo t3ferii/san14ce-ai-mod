@@ -8,11 +8,7 @@
 #include <string.h>
 #include <initializer_list>
 #include <intrin.h>
-#include "tactics_policy.h"
 #include "native_profile.h"
-#include "obstacle_policy.h"
-#include "sortie_policy.h"
-#include "campaign_policy.h"
 #include "native_cost_profile.h"
 #if defined(RUNTIME_COST_PROFILE) && !defined(NO_RUNTIME_LOG)
 #include <new>
@@ -55,9 +51,6 @@ static volatile LONG enabled;
 #ifndef NO_RUNTIME_LOG
 static SRWLOCK log_lock = SRWLOCK_INIT;
 #endif
-static SRWLOCK policy_lock = SRWLOCK_INIT;
-static __declspec(thread) int in_cut;
-static __declspec(thread) int in_policy;
 // Native path searches reuse a node buffer. A callback must not start another
 // mod probe while an original search is still consuming that buffer.
 static __declspec(thread) unsigned native_search_depth;
@@ -85,7 +78,7 @@ static wchar_t log_path[MAX_PATH];
 static diagnostics::AppendFile log_append;
 static volatile LONG reuse_log_handle=1;
 static volatile LONG diagnostic_logging;
-static void load_diagnostic_settings(const wchar_t *config) {
+[[maybe_unused]] static void load_diagnostic_settings(const wchar_t *config) {
     InterlockedExchange(&diagnostic_logging,GetPrivateProfileIntW(L"diagnostics",L"enabled",0,config)!=0?1:0);
 }
 static void initialize_log_settings() {
@@ -131,7 +124,7 @@ template<class T> static T next_pick(T next, unsigned rva) { return next ? next 
 static unsigned short word(Obj p, unsigned off) { return *reinterpret_cast<unsigned short *>(p + off); }
 static unsigned dword(Obj p, unsigned off) { return *reinterpret_cast<unsigned *>(p + off); }
 static Obj pointer(Obj p, unsigned off) { return *reinterpret_cast<Obj *>(p + off); }
-static Obj world() { return pointer(image, GA(GA_277DF18)); }
+static Obj world() { return pointer(image, GA(GA_2780F60)); }
 // User-facing feature switches (AI_TacticsMod\기능설정.ini). Read once before
 // hooks publish; restart applies. Each key is read from its section first, then
 // from the legacy [features] key of the same name, then the default.
@@ -169,6 +162,7 @@ struct ModFeatures {
     bool advisor_briefing = false;                                         // [game_flow], one-cycle adviser inbox
     bool appear_batch = false, area_index = false, path_fast = false, face_keep = false, face_prefetch = false;    // [performance] 2026-10-25
     bool stat_exp = false, dispatch_days = false, mediation_plus = false, drag_learn = false, lord_change = false; // [officer_ui] 2026-10-23
+    bool tactic_priority = false;                                           // [officer_ui] 2026-11-06
     bool distance = true, name_lookup = true, layout_keep = true, timer_1ms = false; // [performance]
     bool ai_wall_block = true;                                              // [combat] (combat module)
     bool ai_catapult_block = false;                                         // [combat] (combat module)
@@ -188,6 +182,19 @@ struct ModFeatures {
     bool attack_recheck_fix = false;
     bool ccz_sprites = false, ccz_hide_model = true, ccz_depth = true, ccz_block = false, ccz_critical = false;     // [ccz] 2026-10-31 user: 조조전 병종 그림, gameplay tab
     bool ccz_far_keep = false;                                              // retired, retained as disabled code path
+    // local17 (user 2026-11-10): the changes kept from local16, each behind its own key. Every key defaults to 0 so a
+    // fresh install equals v15.7.1; the user enables them one by one. Computer-side rules never reach the player force.
+    bool siege_ring10 = false, siege_stall_near = false;                    // [combat] under mission_v2
+    bool attack_eval70 = false, retreat_eval60 = false;                     // [combat] attack review 70%, field retreat recheck 60%
+    bool path_wall = false, siege_guard = false;                            // [combat] path_wall needs obstacle
+    bool delegated_exclude = false;                                         // [combat] local18: player delegated corps leave the campaign rules
+    bool awards_horse = false, awards_v16 = false;                          // [personnel] under awards_ai
+    bool merit_bond16 = false;                                              // [personnel] under merit
+    bool briefing16 = false;                                                // [game_flow] under advisor_briefing
+    bool expert_ingame = false;                                             // [battle_rules] under battle_rules
+    bool drag_learn_multi = false;                                          // [officer_ui] under drag_learn
+    bool auto_search = false, auto_reward = false;                          // [game_flow] main-screen toggles (local17, default off)
+    bool sprite_fallback = false;                                           // [ccz] under ccz_sprites
 };
 static ModFeatures mod_features;
 static bool feature_key(const wchar_t *config, const wchar_t *section, const wchar_t *key, bool fallback)
@@ -228,7 +235,6 @@ static void load_mod_features()
     f.region_officer_traits = f.region_officers && feature_key(config, L"domestic", L"region_officer_traits", true);
     f.battle_rules = on && feature_key(config, L"battle_rules", L"battle_rules", true);
     f.loyalty = on && feature_key(config, L"officer_ui", L"loyalty", true);
-    f.terrain_edit = on && feature_key(config, L"real_estate", L"terrain_edit", false);
     const int terrain_diag = dev_group() ? mod_setting(L"diagnostics", L"terrain_diag_mode", 0) : 0;
     f.terrain_diag_mode = terrain_diag >= 0 && terrain_diag <= 3 ? static_cast<unsigned>(terrain_diag) : 0u;
     f.building_destruction_all = on && feature_key(config, L"stratagem", L"building_destruction_all", false);
@@ -245,7 +251,10 @@ static void load_mod_features()
     f.occupy_fast = on && feature_key(config, L"game_flow", L"occupy_fast", true);
     f.fast_save = on && feature_key(config, L"game_flow", L"fast_save", true);
     f.caravan_stay = on && feature_key(config, L"game_flow", L"caravan_stay", false);
+    f.auto_search = on && feature_key(config, L"game_flow", L"auto_search", false);
+    f.auto_reward = on && feature_key(config, L"game_flow", L"auto_reward", false);
     f.advisor_briefing = on && feature_key(config, L"game_flow", L"advisor_briefing", false);
+    f.terrain_edit = f.advisor_briefing && feature_key(config, L"real_estate", L"terrain_edit", false);
     f.fast_menu = fast && feature_key(config, L"performance", L"fast_menu", false);   // 2026-10-23 user: performance tab
     f.area_index = fast && feature_key(config, L"performance", L"area_index", false);
     f.path_fast = fast && feature_key(config, L"performance", L"path_fast", false);
@@ -257,6 +266,7 @@ static void load_mod_features()
     f.mediation_plus = on && feature_key(config, L"officer_ui", L"mediation_plus", false);
     f.drag_learn = on && feature_key(config, L"officer_ui", L"drag_learn", false);
     f.lord_change = on && feature_key(config, L"officer_ui", L"lord_change", false);
+    f.tactic_priority = on && feature_key(config, L"officer_ui", L"tactic_priority", false);
     const bool ccz = GetPrivateProfileIntW(L"groups", L"ccz", 1, config) != 0;
     f.ccz_sprites = on && ccz && feature_key(config, L"ccz", L"ccz_sprites", false);   // draw 조조전 unit sprites
     f.ccz_hide_model = f.ccz_sprites;
@@ -282,13 +292,25 @@ static void load_mod_features()
     f.builder_ruler_fill = f.mission_v2 && feature_key(config, L"combat", L"builder_ruler_fill", false);
     f.ai_max_aggression = feature_key(config, L"combat", L"ai_max_aggression", false);
     f.attack_recheck_fix = f.mission_v2;   // no own key: part of mission_v2 (installer catalog unchanged)
+    // local17 keys (user 2026-11-10), all default 0.
+    f.siege_ring10 = f.mission_v2 && feature_key(config, L"combat", L"siege_ring10", false);
+    f.siege_stall_near = f.mission_v2 && feature_key(config, L"combat", L"siege_stall_near", false);
+    f.attack_eval70 = feature_key(config, L"combat", L"attack_eval70", false);
+    f.retreat_eval60 = feature_key(config, L"combat", L"retreat_eval60", false);
+    f.path_wall = f.obstacle && feature_key(config, L"combat", L"path_wall", false);
+    f.siege_guard = feature_key(config, L"combat", L"siege_guard", false);
+    f.delegated_exclude = feature_key(config, L"combat", L"delegated_exclude", false);
+    f.awards_v16 = f.awards_ai && feature_key(config, L"personnel", L"awards_v16", false);
+    f.awards_horse = f.awards_ai && feature_key(config, L"personnel", L"awards_horse", false);
+    f.merit_bond16 = f.merit && feature_key(config, L"personnel", L"merit_bond16", false);
+    f.briefing16 = f.advisor_briefing && feature_key(config, L"game_flow", L"briefing16", false);
+    f.expert_ingame = f.battle_rules && feature_key(config, L"battle_rules", L"expert_ingame", false);
+    f.drag_learn_multi = f.drag_learn && feature_key(config, L"officer_ui", L"drag_learn_multi", false);
+    f.sprite_fallback = f.ccz_sprites && feature_key(config, L"ccz", L"sprite_fallback", false);
     // retired 2026-10-28 (mission_v2 conflict); keys no longer read
     f.departures = f.group_advance = f.support = false;
 }
 static int game_day();
-#ifdef SORTIE_FORMATION
-static bool sortie_controlled(Obj army);
-#endif
 #ifdef AWARD_WAREHOUSE
 static void award_ai_city(Obj city);
 static void award_synchronize();
@@ -299,7 +321,7 @@ static void award_synchronize();
 static volatile LONG mod_step_wanted;
 static __declspec(thread) char mod_step_text[160];
 static __declspec(thread) unsigned mod_step_length;
-static bool mod_step(const char *name) {
+[[maybe_unused]] static bool mod_step(const char *name) {
     if(!mod_step_wanted || !name)return true;
     size_t n=strlen(name);
     if(mod_step_length+n+2>=sizeof(mod_step_text))return true;
@@ -350,9 +372,18 @@ static void write_log_event(const char *kind, unsigned army = 0, unsigned value 
 #define log_event(...) do {if constexpr(false)runtime_log_discard(__VA_ARGS__);}while(0)
 #endif
 
+// game-day service (W4-6): the calendar day, read on the calling game thread; it also feeds the log's day= column.
+static int game_day() {
+    Obj context = pointer(world(),0x871E8);
+    int day = fn<int(__fastcall *)(Obj)>(GA(GA_32DD00))(context+0x34);
+#ifndef NO_RUNTIME_LOG
+    InterlockedExchange(&log_day, day);
+#endif
+    return day;
+}
 static bool valid(Obj obj)
 {
-    return obj != nullptr && fn<int(__fastcall *)(Obj)>(GA(GA_32F500))(obj) != 0;
+    return obj != nullptr && fn<int(__fastcall *)(Obj)>(GA(GA_331780))(obj) != 0;
 }
 static Obj table(unsigned offset, unsigned id, unsigned maximum)
 {
@@ -361,30 +392,7 @@ static Obj table(unsigned offset, unsigned id, unsigned maximum)
 }
 static unsigned army_force(Obj army)
 {
-    return fn<unsigned(__fastcall *)(Obj)>(GA(GA_22CC40))(army);
-}
-// Ruler inner trait 건설 (Person+180 s16; UI 1..5 = -20,-10,0,10,20, column getter 344D10/356260).
-// A ruler at 5 (20) makes its armies fill their own regions' facility capacity (2026-10-21),
-// only while builder_ruler_fill is on (user 2026-11-01).
-static bool builder_force(unsigned force)
-{
-    if(!mod_features.builder_ruler_fill)return false;
-    Obj f=force && force<=51?table(0xDF30,force,51):nullptr;
-    Obj ruler=valid(f)?table(0x158,word(f,0x10),6000):nullptr;
-    return valid(ruler) && *reinterpret_cast<short *>(ruler+0x180)>=20;
-}
-static unsigned army_id(Obj army)
-{
-    /* 22DA10 computes (army - root->Army[0]) / 512. Army+10 is
-     * a state field, shared by many active units, never their identity. */
-    unsigned id = fn<unsigned(__fastcall *)(Obj)>(GA(GA_22DA10))(army);
-    return id > 0 && id <= 500 && table(0x7E838, id, 500) == army ? id : 0;
-}
-static bool belongs_to_troops(Obj army, Obj troops)
-{
-    /* Resolve the native Troops ID stored in Army+58 to its object.
-     * Troops+10 is also a state field, so compare object identity. */
-    return troops != nullptr && table(0x7F8D8, word(army, 0x58), 500) == troops;
+    return fn<unsigned(__fastcall *)(Obj)>(GA(GA_22E690))(army);
 }
 static unsigned player_force()
 {
@@ -392,7 +400,7 @@ static unsigned player_force()
     if (!root) return 0;
     Obj game_context = pointer(root, 0x871E8);
     if (!game_context) return 0;
-    Obj force = fn<Obj(__fastcall *)(Obj)>(GA(GA_32E910))(game_context);
+    Obj force = fn<Obj(__fastcall *)(Obj)>(GA(GA_330B90))(game_context);
     if (!valid(force)) return 0;
     auto get_id = *reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(force, 0) + 0x60);
     unsigned id = get_id(force);
@@ -406,984 +414,52 @@ static bool observer_mode()
     Obj context = root ? pointer(root, 0x871E8) : nullptr;
     return context != nullptr && context[0x3A] == 0;
 }
-static bool computer_army(Obj army)
-{
-    if (!valid(army) || army[0x140]) return false;
-    unsigned player = player_force();
-    unsigned force = army_force(army);
-    return force > 0 && force < 52 && force != player && (player != 0 || observer_mode());
-}
-
-static bool campaign_controlled(Obj army) {
-    if(computer_army(army))return true;
-#ifdef SORTIE_FORMATION
-    return sortie_controlled(army);
-#else
-    return false;
-#endif
-}
 
 struct Link { Obj value; Link *next; };
 struct GameList { Obj vtable; unsigned *handle; };
 static void manager_lock()
 {
-    if (dword(image, GA(GA_27D10B0))) EnterCriticalSection(reinterpret_cast<CRITICAL_SECTION *>(image + GA(GA_27D10B8)));
+    if (dword(image, GA(GA_27D4100))) EnterCriticalSection(reinterpret_cast<CRITICAL_SECTION *>(image + GA(GA_27D4108)));
 }
 static void manager_unlock()
 {
-    if (dword(image, GA(GA_27D10B0))) LeaveCriticalSection(reinterpret_cast<CRITICAL_SECTION *>(image + GA(GA_27D10B8)));
+    if (dword(image, GA(GA_27D4100))) LeaveCriticalSection(reinterpret_cast<CRITICAL_SECTION *>(image + GA(GA_27D4108)));
 }
-static void list_init(GameList &list, unsigned vtable = GA(GA_1343670))
+static void list_init(GameList &list, unsigned vtable = GA(GA_1346670))
 {
     list.vtable = image + vtable; list.handle = nullptr;
-    fn<void(__fastcall *)(GameList *)>(GA(GA_21E2B0))(&list);
+    fn<void(__fastcall *)(GameList *)>(GA(GA_1AC60))(&list);
 }
-static void list_free(GameList &list) { fn<void(__fastcall *)(GameList *)>(GA(GA_424D60))(&list); }
+static void list_free(GameList &list) { fn<void(__fastcall *)(GameList *)>(GA(GA_1BFFF0))(&list); }
 static bool list_add(GameList &list, Obj obj)
 {
     if (!list.handle) return false;
     manager_lock();
-    Obj entry = fn<Obj(__fastcall *)(Obj, unsigned, unsigned char)>(GA(GA_18DF0))(image + GA(GA_27D10E0), *list.handle, 1);
+    Obj entry = fn<Obj(__fastcall *)(Obj, unsigned, unsigned char)>(GA(GA_18D50))(image + GA(GA_27D4130), *list.handle, 1);
     if (entry) *reinterpret_cast<Obj *>(entry) = obj;
     manager_unlock();
     return entry != nullptr;
 }
 static Link *list_first(GameList &list)
 {
-    if (!list.handle || !pointer(image, GA(GA_27D10E8)) || *list.handle >= dword(image, GA(GA_27D1120))) return nullptr;
-    Obj heads = pointer(image, GA(GA_27D10F0));
+    if (!list.handle || !pointer(image, GA(GA_27D4138)) || *list.handle >= dword(image, GA(GA_27D4170))) return nullptr;
+    Obj heads = pointer(image, GA(GA_27D4140));
     return heads ? *reinterpret_cast<Link **>(heads + *list.handle * 8) : nullptr;
 }
 
-/* This wrapper is installed at the one CALL inside D06D0. Restricting its
- * candidate list before the native predicate prevents choosing an AI victim
- * and avoids calling the predicate twice after it temporarily changes owners. */
-static int __fastcall cut_player_predicate(unsigned owner, GameList *tiles, GameList *enemies, Obj *target)
-{ COST_SCOPE("cut_player_predicate");
-    auto original = fn<int(__fastcall *)(unsigned, GameList *, GameList *, Obj *)>(GA(GA_C0C80));
-    if (!in_cut) return original(owner, tiles, enemies, target);
-    unsigned player = player_force();
-    if (!player || owner == player) return 0;
-    GameList filtered; list_init(filtered, GA(GA_13423D0));
-    bool have = false;
-    for (Link *item = list_first(*enemies); item; item = item->next) {
-        if (valid(item->value) && army_force(item->value) == player) {
-            have = list_add(filtered, item->value) || have;
-        }
-    }
-    int result = have ? original(owner, tiles, &filtered, target) : 0;
-    list_free(filtered);
-    return result;
-}
-
-static bool campaign_castle_locked(Obj army);
-static bool try_cut(Obj army)
-{
-    if (!mod_features.combat_cut || !computer_army(army) || campaign_castle_locked(army)) return false;
-    unsigned player = player_force();
-    if (!player) return false; // No player logistics target exists in demo.
-    bool have_enemy = false;
-    unsigned own = army_force(army);
-    if (!fn<int(__fastcall *)(unsigned, unsigned)>(GA(GA_2CA280))(player, own)) return false;
-    for (unsigned i = 1; i <= 500; ++i) {
-        Obj enemy = table(0x7E838, i, 500);
-        if (valid(enemy) && army_force(enemy) == player) { have_enemy = true; break; }
-    }
-    if (!have_enemy) return false;
-    GameList route; list_init(route);
-    Obj target = nullptr;
-    ++in_cut;
-    int success = fn<int(__fastcall *)(Obj, GameList *, Obj *)>(GA(GA_D06D0))(army, &route, &target);
-    --in_cut;
-    list_free(route);
-    if (!success || !valid(target) || army_force(target) != player) return false;
-    *reinterpret_cast<unsigned *>(army + 0x1F0) |= 8;
-    *reinterpret_cast<unsigned *>(army + 0x1F4) = fn<unsigned(__fastcall *)(Obj)>(GA(GA_22DA10))(target);
-    log_event("cut_player", army_id(army), army_id(target), word(army, 0x2A));
-    return true;
-}
-
-struct Progress {
-    ObstacleHistory obstacle;
-    Obj army, root;
-    unsigned short commander, previous_center, previous_hex, construction_hex;
-    unsigned char force, previous_owner, facility;
-    bool credit;
-    unsigned short city, region_target, staging_hex;
-    unsigned char region_owner;
-    bool campaign, built_once, finished_build, did_demolition, finished_demolition;
-    int return_deadline_day;
-    unsigned short build_center, destroy_id, destroy_hex, cut_commander;
-    unsigned char destroy_type, destroy_owner;
-    unsigned char destroy_reason;
-    unsigned short destroy_goal;
-    int destroy_progress;
-    unsigned cycle_mask;
-    bool build_chain;
-    int observed_day, progress_day, destroy_day, cut_day;
-    unsigned short cut_target;
-    unsigned short cut_route[5], cut_goal;
-    unsigned char cut_action, cut_kind;
-    unsigned short motion_hex, recovery_hex;
-    int motion_day, region_blocked_day;
-    bool returning;
-    bool forced_return;
-    unsigned short guard_beneficiary, guard_goal, guard_hex;
-    unsigned short combat_target, combat_commander;
-    int combat_day;
-    unsigned short combat_city,companion_target,companion_commander,companion_parent,home_defense_city;
-    int build_audit_day;
-    unsigned build_audit_mask;
-    int build_retry_day;
-    bool morale_recovering, morale_saved, morale_building;
-    bool morale_build_credit,morale_build_chain;
-    unsigned short morale_build_center;
-    unsigned morale_build_cycle;
-    unsigned char morale_order[0x34];
-    unsigned morale_flags;
-    unsigned short morale_band, morale_hex, morale_group_mode, morale_group_goal, siege_city;
-    unsigned short guard_region, guard_city, defensive_hex;
-    bool guard_requested;
-    int guard_day;
-    int fire_policy_turn;
-    bool fire_avoid;
-    unsigned short siege_capture_city, siege_capture_hex;
-    unsigned short operation_leader,operation_city;
-    int operation_retry_day;
-    bool regional_worker;
-    unsigned short work_source,work_reviewed_center,near_capture_hex;
-    unsigned char near_capture_owner;
-    int near_capture_day;
-    unsigned short forced_siege_city;
-    unsigned char forced_siege_reason;
-    // Set only by the paid dispatcher for a fresh departure (see sortie_dispatch).
-    bool dispatched;
-    int dispatch_day;
-    // Consecutive days on which every build site was rejected (see try_build).
-    unsigned char build_rejections;
-    int build_reject_day;
-};
-static Progress progress[501];
-static __declspec(thread) unsigned campaign_group_march_depth;
-static bool campaign_castle_locked(Obj army) {
-    unsigned id=valid(army)?army_id(army):0;if(!id || id>500 || army[0x140])return false;
-    const Progress &p=progress[id];
-    return p.army==army && p.root==world() && p.commander==word(army,0x12) && p.force==army_force(army) &&
-        p.forced_siege_city && (p.forced_siege_reason==1 || (p.forced_siege_reason==3 && !campaign_group_march_depth)) && !p.forced_return && !p.returning;
-}
-static bool campaign_forced_siege_priority(Obj army,Progress &p);
-static bool campaign_operation_member(Obj army,const Progress &p);
-#ifdef SORTIE_FORMATION
-static bool campaign_group_marching(Obj army);
-static bool campaign_group_member(Obj army);
-#else
-static bool campaign_group_marching(Obj) {return false;}
-static bool campaign_group_member(Obj) {return false;}
-#endif
-static Obj army_area(Obj army)
-{
-    Obj tile = table(0xE270, word(army, 0x2A), 48399);
-    return valid(tile) ? fn<Obj(__fastcall *)(Obj)>(GA(GA_229EA0))(tile) : nullptr;
-}
-static int distance(unsigned a, unsigned b) { return fn<int(__fastcall *)(int, int)>(GA(GA_2AA850))(static_cast<int>(a), static_cast<int>(b)); }
-static Progress *observe_capture(Obj army)
-{
-    unsigned id = army_id(army);
-    if (!id || id > 500) return nullptr;
-    Progress &p = progress[id];
-    unsigned owner = army_force(army);
-    Obj root = world();
-    int day=game_day();
-    if (p.army != army || p.root != root || p.commander != word(army, 0x12) || p.force != owner || day<p.observed_day) {
-        memset(&p, 0, sizeof(p)); p.army = army; p.root = root;
-        p.commander = word(army, 0x12); p.force = static_cast<unsigned char>(owner);
-        p.previous_center = 48400; p.construction_hex = 48400;
-        p.region_target = 48400; p.staging_hex = 48400;
-        p.build_center=48400;p.destroy_hex=48400;
-        p.work_reviewed_center=48400;
-        p.near_capture_hex=48400;
-        p.progress_day=day;
-        p.motion_hex=word(army,0x2A);p.motion_day=day;
-        p.recovery_hex=48400;p.region_blocked_day=-1;
-        p.build_audit_day=day-1;
-        p.build_retry_day=day-1;
-        p.cut_day=day-1;
-        p.guard_goal=48400;p.guard_hex=48400;p.combat_day=-1;
-        p.fire_policy_turn=-1;p.defensive_hex=48400;
-        /* Resume saved construction from native fields; capture credit itself
-         * is observed after loading, not guessed from an already-owned region. */
-        if (army[0x37] == 8 || army[0x37] == 9) {
-            p.facility = army[0x46]; p.construction_hex = word(army, 0x42);
-            p.built_once = p.facility!=0;
-            p.build_chain=p.facility!=0;
-        }
-    }
-    // Native group orders can clear action/target before our first callback,
-    // but retain the builder's facility and construction hex. Reconcile those
-    // fields with a nearby, owned, unfinished building before counting readiness.
-    if(army[0x46]>=3 && army[0x46]<=14 && word(army,0x42)<48400) {
-        bool unfinished=army[0x37]==8;
-        Obj site=table(0xE270,word(army,0x42),48399);
-        if(valid(site) && word(site,0x1A)>0 && word(site,0x1A)<=3000) {
-            unsigned building_id=word(site,0x1A);
-            Obj b=table(0x6DA98,building_id,3000);
-            if(valid(b) && b[0x13]==owner && b[0x12]==army[0x46] && word(b,0x10)==word(army,0x42)) {
-                int max=fn<int(__fastcall *)(Obj)>(GA(GA_2AC120))(b);
-                bool assigned=army[0x37]==9 && army[0x38]==11 && word(army,0x3A)==building_id;
-                unfinished=max>0 && word(b,0x14)>0 && word(b,0x14)<max &&
-                           (assigned || distance(word(army,0x2A),word(army,0x42))<=2);
-            }
-        }
-        if(unfinished) {
-            if(army[0x37]!=8 && army[0x37]!=9 && !p.facility)
-                log_event("build_recovered_after_native_reset",id,army[0x46],word(army,0x42));
-            p.facility=army[0x46];p.construction_hex=word(army,0x42);p.built_once=true;
-            p.build_chain=true;p.finished_build=false;
-        }
-    }
-    if (p.previous_center < 48400 && p.previous_owner != owner) {
-        Obj previous = table(0xE270, p.previous_center, 48399);
-        // Build policy v2 (2026-10-21): a captured region no longer obliges a field army to build.
-        if ((p.regional_worker || !mod_features.mission_v2) && valid(previous) && previous[0x14] == owner && distance(p.previous_hex, p.previous_center) < 6) {
-            p.credit = true;
-            p.build_chain=true;p.build_center=p.previous_center;p.cycle_mask=0;p.progress_day=day;
-            log_event("capture_credit", id, owner, p.previous_center);
-        }
-    }
-    // A selected center can be captured between two AI observations without
-    // the previous position having been inside its region. Track that mission
-    // explicitly as well as the original vicinity observation.
-    if((p.regional_worker || (!mod_features.mission_v2 && p.campaign)) && p.region_target<48400 && p.region_owner!=owner) {
-        Obj center=table(0xE270,p.region_target,48399);
-        if(valid(center) && center[0x14]==owner && distance(word(army,0x2A),p.region_target)<6) {
-            if(!p.credit)log_event("capture_credit",id,owner,p.region_target);
-            p.credit=true;p.region_owner=static_cast<unsigned char>(owner);
-            p.build_chain=true;p.build_center=p.region_target;p.cycle_mask=0;p.progress_day=day;
-        }
-    }
-    if(p.near_capture_hex<48400 && p.near_capture_owner!=owner) {
-        Obj center=table(0xE270,p.near_capture_hex,48399);
-        if(valid(center) && center[0x14]==owner && distance(word(army,0x2A),p.near_capture_hex)<6) {
-            p.near_capture_owner=static_cast<unsigned char>(owner);
-            Obj captured=table(0x6CAF0,word(center,0x12),500);
-            if((p.regional_worker || !mod_features.mission_v2) && valid(captured) && !fn<int(__fastcall *)(Obj)>(GA(GA_232680))(captured) && !fn<int(__fastcall *)(Obj)>(GA(GA_232BF0))(captured)) {
-                p.credit=true;p.build_chain=true;p.build_center=p.near_capture_hex;p.cycle_mask=0;p.progress_day=day;
-            }
-        }
-    }
-    Obj area = army_area(army);
-    if (valid(area)) {
-        p.previous_center = word(area, 0x3A);
-        Obj center = table(0xE270, p.previous_center, 48399);
-        p.previous_owner = valid(center) ? center[0x14] : 0;
-        p.previous_hex = word(army, 0x2A);
-        if(p.build_chain && p.build_center>=48400)p.build_center=p.previous_center;
-    }
-    p.observed_day=day;
-    if(p.motion_hex!=word(army,0x2A)) {p.motion_hex=word(army,0x2A);p.motion_day=day;}
-    return &p;
-}
-static bool reserved_hex(unsigned hex, Obj actor)
-{
-    for (unsigned i = 1; i <= 500; ++i) {
-        Obj other = table(0x7E838, i, 500);
-        if (!valid(other)) continue;
-        if (word(other, 0x2A) == hex) return true;
-        if (other != actor && (other[0x37] == 8 || other[0x37] == 9) && word(other, 0x42) == hex) return true;
-    }
-    return false;
-}
-static bool campaign_build_order(Obj army,unsigned facility,unsigned hex);
-static Obj campaign_goal(unsigned city);
-static bool hostile_city(Obj army, unsigned city);
-static bool set_build(Obj army, unsigned facility, unsigned hex)
-{
-    if(campaign_castle_locked(army))return false;
-    if (army[0x140] || !facility || facility >= 31 || hex >= 48400) return false;
-    if (computer_army(army) && (facility == 9 || facility == 10)) return false;
-    return campaign_build_order(army,facility,hex);
-}
-
-static bool continue_build(Obj army, Progress &p)
-{
-    COST_SCOPE("continue_build");
-    if(campaign_castle_locked(army))return false;
-    if (!p.facility || p.construction_hex >= 48400) return false;
-    Obj tile = table(0xE270, p.construction_hex, 48399);
-    if (!valid(tile)) { p.facility = 0; return false; }
-    unsigned building_id = word(tile, 0x1A);
-    if (building_id > 0 && building_id <= 3000) {
-        Obj building = fn<Obj(__fastcall *)(Obj)>(GA(GA_22FB10))(tile);
-        if (!valid(building) || building[0x13] != army_force(army) || building[0x12] != p.facility) {
-            p.facility = 0; return false;
-        }
-        int maximum = fn<int(__fastcall *)(Obj)>(GA(GA_2AC120))(building);
-        if (maximum <= 0) { p.facility = 0; return false; }
-        if (word(building, 0x14) >= maximum) {
-            p.cycle_mask|=1u<<p.facility;
-            if(p.facility>=11 && p.facility<=14)p.cycle_mask|=(15u<<11);
-            p.facility = 0; p.finished_build = true;
-            // Keep the captured base until its native capacity is filled.
-            p.build_chain=true;
-            Obj context=pointer(world(),0x871E8);
-            p.return_deadline_day=fn<int(__fastcall *)(Obj)>(GA(GA_32BA50))(context+0x34)+10;
-            p.progress_day=game_day();
-            log_event("build_finished_resume_campaign", army_id(army), p.city, p.construction_hex);
-            return false;
-        }
-        return set_build(army, p.facility, p.construction_hex);
-    }
-    Obj person = table(0x158, word(army, 0x12), 6000);
-    Obj definition = table(0x73958, p.facility, 30);
-    Obj origin = fn<Obj(__fastcall *)(Obj)>(GA(GA_22A5A0))(army);
-    Obj force = table(0xDF30, army_force(army), 51);
-    if (!valid(person) || !valid(definition) || !valid(origin) || !valid(force)) {
-        p.facility = 0; return false;
-    }
-    auto resource = *reinterpret_cast<int(__fastcall **)(Obj)>(pointer(origin, 0) + 0x90);
-    int cost = fn<int(__fastcall *)(Obj, Obj)>(GA(GA_2AB390))(force, definition);
-    if (cost < 0 || resource(origin) < cost) { p.facility = 0; return false; }
-    GameList people; list_init(people, GA(GA_13436B0)); list_add(people, person);
-    int possible = fn<int(__fastcall *)(GameList *, Obj, Obj)>(GA(GA_278FA0))(&people, tile, definition);
-    list_free(people);
-    if (!possible) { p.facility = 0; return false; }
-    return set_build(army, p.facility, p.construction_hex);
-}
-
-#include "native_layout_client.inl" // SAN14_Layout.dll hook manager client (user exception 2026-11-05); unused statics in the combat build
-#include "native_obstacles.inl"
-#include "native_facilities.inl"
-static void build_skip(Obj army, Progress &p, unsigned facility, const char *reason) {
-    int day=game_day();
-    if(p.build_audit_day!=day) {p.build_audit_day=day;p.build_audit_mask=0;}
-    unsigned bit=1u<<facility;if(p.build_audit_mask&bit)return;
-    p.build_audit_mask|=bit;log_event(reason,army_id(army),facility,word(army,0x2A));
-}
-static bool try_build(Obj army, Progress &p, unsigned cohort_center=48400,unsigned preferred=0)
-{
-    COST_SCOPE("try_build");
-    if(campaign_castle_locked(army))return false;
-    if (continue_build(army, p)) return true;
-    if (!p.credit && !p.build_chain) return false;
-    Obj area = army_area(army);
-    if (!valid(area) || distance(word(army, 0x2A), word(area, 0x3A)) >= 11) return false;
-    if(p.build_center>=48400)p.build_center=word(area,0x3A);
-    if(word(area,0x3A)!=p.build_center)return false;
-    if(area_full(area)) {
-        // Mixed hostile capacity is handled by the existing demolition path.
-        // Do not abandon a captured base just because an enemy occupies a slot.
-        if(!area_hostile_facilities(army,area)) {
-            p.credit=false;p.build_chain=false;p.work_reviewed_center=p.build_center;
-            if(p.regional_worker)p.region_target=48400;
-        }
-        build_skip(army,p,0,"build_skip_area_cap");return false;
-    }
-    if(game_day()<p.build_retry_day && !preferred)return false;
-    Obj person = table(0x158, word(army, 0x12), 6000);
-    Obj troops = table(0x7F8D8, word(army, 0x58), 500);
-    Obj origin = fn<Obj(__fastcall *)(Obj)>(GA(GA_22A5A0))(army);
-    if (!valid(person) || !valid(troops) || !valid(origin)) return false;
-    Obj district = fn<Obj(__fastcall *)(Obj)>(GA(GA_22BAA0))(troops);
-    Obj goal = fn<Obj(__fastcall *)(Obj, unsigned)>(GA(GA_32C130))(world(), p.operation_city?p.operation_city:word(troops, 0x16));
-    Obj goal_force = valid(goal) ? fn<Obj(__fastcall *)(Obj)>(GA(GA_22C990))(goal) : nullptr;
-    // Home capture groups name their own source city, not an enemy force.
-    if(p.regional_worker)goal_force=nullptr;
-    Obj force = table(0xDF30, army_force(army), 51);
-    if (!valid(district) || !valid(force)) return false;
-    auto resource = *reinterpret_cast<int(__fastcall **)(Obj)>(pointer(origin, 0) + 0x90);
-    GameList people; list_init(people, GA(GA_13436B0)); list_add(people, person);
-    static const unsigned order[] = {6, 4, 7, 3, 5, 11, 12, 14, 13};
-    bool applied = false;
-    unsigned seen=p.cycle_mask|local_facilities(army,area);
-    // Each missing type once (user decision 2026-10-21: no filling capacity with repeated types).
-    // A builder ruler (inner 건설 5) also repeats useful types until the region is full.
-    const bool builder=mod_features.mission_v2 && !p.regional_worker && builder_force(army_force(army));
-    // Siege ground (user 2026-11-01): sites stand 3..6 hexes from the hostile goal castle, outside
-    // its attack range. Without such a castle this army builds nothing; the mission/native AI go on.
-    const bool siege_range=mod_features.mission_v2 && !p.regional_worker && !builder;
-    unsigned siege_castle=48400;
-    if(siege_range) {
-        unsigned city=p.campaign && p.city ? p.city : (p.operation_city?p.operation_city:word(troops,0x16));
-        Obj castle=hostile_city(army,city) ? campaign_goal(city) : nullptr;
-        if(castle)siege_castle=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(castle);
-    }
-    bool missing=false;
-    for (unsigned pass=0;pass<(builder?2u:1u) && !applied;++pass) for (unsigned facility : order) {
-        if(preferred && facility!=preferred)continue;
-        if(pass==0 && (seen & (1u<<facility))) {build_skip(army,p,facility,"build_skip_present");continue;}
-        if(pass==1 && (preferred || !(seen & (1u<<facility))))continue;
-        // Siege ground (non-worker): only the siege facilities camp 3, fort 4, catapult 6, band 7.
-        if(mod_features.mission_v2 && !p.regional_worker && !builder && !preferred && facility!=3 && facility!=4 && facility!=6 && facility!=7)continue;
-        missing=true;
-        Obj definition = table(0x73958, facility, 30);
-        if (!valid(definition)) {build_skip(army,p,facility,"build_skip_definition");continue;}
-        int cost = fn<int(__fastcall *)(Obj, Obj)>(GA(GA_2AB390))(force, definition);
-        if (cost < 0 || resource(origin) < cost) {build_skip(army,p,facility,"build_skip_money");continue;}
-        GameList candidates; list_init(candidates);
-        fn<void(__fastcall *)(Obj, Obj, Obj, GameList *, Obj, Obj, Obj)>(GA(GA_B9070))
-            (area, person, definition, &candidates, goal_force, district, nullptr);
-        // Offensive placement can yield no sites in a peaceful home region.
-        // Review local owned land instead; the same native permission, cost,
-        // capacity, occupied-site and actual movement checks still apply.
-        if(!list_first(candidates)) {
-            GameList local;list_init(local);
-            Obj center=table(0xE270,p.build_center,48399);
-            if(valid(center))fn<void(__fastcall *)(Obj,int,GameList *)>(GA(GA_2A7AA0))(center,10,&local);
-            for(Link *item=list_first(local);item;item=item->next)if(valid(item->value) &&
-                item->value[0x14]==army_force(army) && fn<Obj(__fastcall *)(Obj)>(GA(GA_229EA0))(item->value)==area)
-                list_add(candidates,item->value);
-            list_free(local);
-        }
-        bool offered=list_first(candidates)!=nullptr,native_rejected=false,out_of_range=false;
-        for (Link *item = list_first(candidates); item; item = item->next) {
-            Obj tile = item->value;
-            if (!valid(tile) || tile[0x14] != army_force(army)) continue;
-            unsigned hex = fn<unsigned(__fastcall *)(Obj)>(GA(GA_22DDA0))(tile);
-            if (hex >= 48400 || reserved_hex(hex, army)) continue;
-            if(siege_range && (siege_castle>=48400 || distance(siege_castle,hex)<3 || distance(siege_castle,hex)>6)) {out_of_range=true;continue;}
-            if(cohort_center<48400 && distance(cohort_center,hex)>2)continue;
-            if (!fn<int(__fastcall *)(GameList *, Obj, Obj)>(GA(GA_278FA0))(&people, tile, definition)) {native_rejected=true;continue;}
-            if (set_build(army, facility, hex)) {
-                p.facility = static_cast<unsigned char>(facility);
-                p.construction_hex = static_cast<unsigned short>(hex); p.credit = false;
-                p.built_once = true; p.finished_build = false;
-                p.build_chain=true;
-                p.build_retry_day=game_day();p.build_rejections=0;
-                if(mod_features.mission_v2 && !p.regional_worker && !builder)p.build_chain=false; // siege ground: one facility, then the mission
-                log_event("build_started", army_id(army), facility, hex);
-                applied = true;
-            }
-            if (applied) break;
-        }
-        list_free(candidates);
-        if(!applied)build_skip(army,p,facility,!offered?"build_skip_native_candidates":
-                              (native_rejected?"build_skip_native_check":out_of_range?"build_skip_siege_range":"build_skip_no_free_site"));
-        if (applied) break;
-    }
-    list_free(people);
-    if(!applied && !missing && !preferred) {
-        // Every type already stands here: the capture work is done; resume the mission.
-        log_event("build_types_complete",army_id(army),seen,p.build_center);
-        p.credit=false;p.build_chain=false;p.build_rejections=0;p.work_reviewed_center=p.build_center;
-        if(p.regional_worker)p.region_target=48400;
-        return false;
-    }
-    // Native cost/site rejection is often temporary: retry once ten days later. A second
-    // rejection releases the capture obligation; otherwise the hold in apply_priority keeps the
-    // army waiting (대기) over native orders until the 40-day stationary retreat (trace 2026-10-20:
-    // 328 of 576 stationary retreats).
-    if(!applied) {
-        int day=game_day();p.build_retry_day=day+10;
-        if(!preferred && p.build_reject_day!=day) {
-            p.build_reject_day=day;
-            if(++p.build_rejections>=2) {
-                log_event("build_released_after_rejections",army_id(army),p.build_rejections,p.build_center);
-                p.credit=false;p.build_chain=false;p.build_rejections=0;
-                p.work_reviewed_center=p.build_center;
-                if(p.regional_worker)p.region_target=48400;
-            }
-        }
-    }
-    return applied;
-}
-
-/* These nodes do not read their own node object. Each resolves the supplied
- * Army and only reports success when the native alternative was selected. */
-static bool try_other(Obj army, Obj node, Obj context)
-{
-    if (army[0x37] != 4 || army[0x38] != 5) return false;
-    static const unsigned alternatives[] = { GA(GA_1FFE0), GA(GA_1FF60), GA(GA_1F120), GA(GA_1FEA0), GA(GA_1FF00)};
-    for (unsigned rva : alternatives) {
-        if (fn<Execute>(rva)(node, context, army) == 1) {
-            log_event("city_alternative", army_id(army), rva, word(army, 0x2A));
-            return true;
-        }
-    }
-    return false;
-}
-#include "native_campaign.inl"
-#include "native_campaign_support.inl"
-#include "native_campaign_logistics.inl"
-// Shared native eligibility covers both dedicated AI builders and campaign
-// construction. Tile ownership alone cannot identify the acting force.
-using BuildPermission = bool(__fastcall *)(Obj, Obj, Obj, int);
-static BuildPermission original_build_permission = nullptr;
-static volatile LONG wall_log_day[52][2];
-static unsigned blocked_wall_force(Obj force, Obj definition) {
-    if (!definition || (definition != table(0x73958,9,30) && definition != table(0x73958,10,30))) return 0;
-    unsigned player = player_force();
-    if (!player && !observer_mode()) return 0;
-    for (unsigned id = 1; id < 52; ++id)
-        if (force && force == table(0xDF30,id,51) && valid(force)) return id != player ? id : 0;
-    return 0;
-}
-// 2026-10-29: only owned castle/gate regions and their first neighbours.
-// Tile+12 and Area+56/+66 use the existing campaign region graph.
-struct CatapultGroundCache {
-    Obj root=nullptr;
-    int day=0;
-    unsigned player=0;
-    bool ready=false,blocked[501]={};
-};
-static CatapultGroundCache catapult_ground_cache;
-static SRWLOCK catapult_ground_lock=SRWLOCK_INIT;
-static unsigned catapult_tile_area(Obj tile) {
-    if(!valid(tile))return 0;
-    unsigned id=word(tile,0x12);
-    if(!id || id>500)return 0;
-    Obj area=fn<Obj(__fastcall *)(Obj)>(GA(GA_229EA0))(tile);
-    return valid(area) && area==table(0x6CAF0,id,500)?id:0;
-}
-static bool catapult_player_ground(Obj tile) {
-    if(!enabled || !mod_features.ai_catapult_block)return false;
-    unsigned player=player_force();
-    if(!player)return false;
-    unsigned region=catapult_tile_area(tile);
-    if(!region)return false;
-    Obj root=world();int day=game_day();
-    AcquireSRWLockExclusive(&catapult_ground_lock);
-    auto &cache=catapult_ground_cache;
-    if(!cache.ready || cache.root!=root || cache.day!=day || cache.player!=player) {
-        CatapultGroundCache next;next.root=root;next.day=day;next.player=player;next.ready=true;
-        for(unsigned id=1;id<=61;++id) {
-            Obj base=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32C130))(root,id);
-            if(!valid(base) || word(base,0x4E)!=id)continue;
-            Obj owner=fn<Obj(__fastcall *)(Obj)>(GA(GA_22C990))(base);
-            if(!valid(owner))continue;
-            auto get_id=*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(owner,0)+0x60);
-            if(get_id(owner)!=player)continue;
-            unsigned hex=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22D740))(base);
-            unsigned seed=catapult_tile_area(table(0xE270,hex,48399));
-            if(!seed)continue;
-            next.blocked[seed]=true;
-            Obj area=table(0x6CAF0,seed,500);
-            for(unsigned i=0;i<8;++i) {
-                unsigned n=word(area,0x56+i*2);
-                if((area[0x66]&(1u<<i)) && n && n<=500 && valid(table(0x6CAF0,n,500)))
-                    next.blocked[n]=true;
-            }
-        }
-        cache=next;
-    }
-    bool blocked=cache.blocked[region];
-    ReleaseSRWLockExclusive(&catapult_ground_lock);
-    return blocked;
-}
-static unsigned blocked_catapult_force(Obj force,Obj tile,Obj definition) {
-    if(!definition || definition!=table(0x73958,6,30))return 0;
-    unsigned player=player_force();
-    if(!player)return 0; // Observer mode has no player ground to protect.
-    for(unsigned id=1;id<52;++id)
-        if(force && force==table(0xDF30,id,51) && valid(force))
-            return id!=player && catapult_player_ground(tile)?id:0;
-    return 0;
-}
-static volatile LONG catapult_log_day[52];
-static bool __fastcall build_permission(Obj force, Obj tile, Obj definition, int check_policy) { COST_SCOPE("build_permission");
-    unsigned owner = enabled && mod_features.ai_wall_block ? blocked_wall_force(force,definition) : 0;
-    if (owner) {
-        unsigned facility = definition == table(0x73958,9,30) ? 9 : 10;
-        LONG stamp = static_cast<LONG>(game_day()+1);
-        if (InterlockedExchange(&wall_log_day[owner][facility-9],stamp) != stamp)
-            log_event("ai_wall_build_blocked",0,(owner<<8)|facility,
-                      valid(tile) ? fn<unsigned(__fastcall *)(Obj)>(GA(GA_22DDA0))(tile) : 48400);
-        return false;
-    }
-    owner=enabled && mod_features.ai_catapult_block ? blocked_catapult_force(force,tile,definition) : 0;
-    if(owner) {
-        LONG stamp=static_cast<LONG>(game_day()+1);
-        if(InterlockedExchange(&catapult_log_day[owner],stamp)!=stamp)
-            log_event("ai_catapult_build_blocked",0,owner,fn<unsigned(__fastcall *)(Obj)>(GA(GA_22DDA0))(tile));
-        return false;
-    }
-    return original_build_permission(force,tile,definition,check_policy);
-}
-static bool cancel_wall_order(Obj army, Progress &p) {
-    if (!computer_army(army) || (army[0x37] != 8 && army[0x37] != 9) ||
-        (army[0x46] != 9 && army[0x46] != 10)) return false;
-    unsigned facility = army[0x46], hex = word(army,0x42);
-    fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
-    fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(army,13);
-    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(army,255,0);
-    army[0x46]=0;*reinterpret_cast<unsigned short *>(army+0x42)=48400;
-    p.facility=0;p.construction_hex=48400;p.credit=false;p.build_chain=false;
-    p.finished_build=false;
-    fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);
-    log_event("ai_wall_order_cancelled",army_id(army),facility,hex);
-    return true;
-}
-
-static bool cancel_catapult_order(Obj army,Progress &p) {
-    if(!enabled || !mod_features.ai_catapult_block || !computer_army(army) ||
-       (army[0x37]!=8 && army[0x37]!=9) || army[0x46]!=6)return false;
-    unsigned hex=word(army,0x42);
-    if(!blocked_catapult_force(table(0xDF30,army_force(army),51),table(0xE270,hex,48399),table(0x73958,6,30)))return false;
-    fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
-    fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(army,13);
-    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(army,255,0);
-    army[0x46]=0;*reinterpret_cast<unsigned short *>(army+0x42)=48400;
-    p.facility=0;p.construction_hex=48400;p.credit=false;p.build_chain=false;
-    p.finished_build=false;
-    fn<void(__fastcall *)(Obj)>(GA(GA_26C940))(army);
-    log_event("ai_catapult_order_cancelled",army_id(army),6,hex);
-    return true;
-}
-
-#include "native_district_intercept.inl" // corps policy judged at the departure dispatcher
-#ifdef SORTIE_FORMATION
-#include "native_sortie.inl"
-#include "native_campaign_reinforcements.inl"
-#include "native_campaign_departures.inl"
-#endif
-#include "native_campaign_operations.inl"
-#include "native_campaign_assault.inl"
-static bool apply_priority(Obj army, Obj node, Obj context)
-{
-    COST_SCOPE("apply_priority");
-    if(native_search_depth)return false;
-    if (!campaign_controlled(army)) return false;
-    Progress *p = observe_capture(army);
-    if(p) {
-        remember_campaign(army,*p);
-        if(campaign_individual_priority(army,*p)) {
-#ifdef SORTIE_FORMATION
-            SortieGroup g;unsigned id;
-            if((p->forced_return || p->combat_target || p->combat_city || p->home_defense_city || p->guard_beneficiary) && sortie_snapshot(army,g,id)) {
-                g.active=false;sortie_commit(id,g);
-            }
-            if(p->forced_return || p->combat_target || p->combat_city) {
-                AcquireSRWLockExclusive(&sortie_state_lock);sortie_escorts[army_id(army)]={};ReleaseSRWLockExclusive(&sortie_state_lock);
-            }
-#endif
-            mod_step("ap:individual");return true;
-        }
-#ifdef SORTIE_FORMATION
-        // mission_v2: route regions go into the troops work list instead (mission_route_waypoint);
-        // a direct order here was reset by the original 613A0 every turn (232 of 307 in run 3).
-        if(!mod_features.mission_v2 && campaign_near_capture(army,*p))return mod_step("ap:near_capture"),true;
-        if(sortie_support_step(army) || sortie_step(army))return mod_step("ap:group_step"),true;
-#endif
-        if(!p->regional_worker && (p->operation_leader || (!p->credit && !p->build_chain && !p->facility)) && campaign_siege_priority(army,*p))return mod_step("ap:siege_priority"),true;
-        if(p->operation_leader)return mod_step("ap:operation_hold"),true;
-    }
-#ifdef SORTIE_FORMATION
-    if(sortie_support_step(army) || sortie_step(army))return mod_step("ap:group_step"),true;
-#endif
-    if(p && p->forced_return)return false;
-    if (p) {remember_campaign(army, *p);observe_obstacle_motion(army,*p);}
-    if (!(p && p->regional_worker) && try_cut(army)) {
-        if(p)remember_cut(army,*p);
-        mod_step("ap:cut");return true;
-    }
-    if(p && restore_cut(army,*p))return mod_step("ap:restore_cut"),true;
-    bool cancelled = p && cancel_wall_order(army,*p);
-    if(p && cancel_catapult_order(army,*p))cancelled=true;
-    if(p && cancel_unqualified_neutral_order(army,*p))cancelled=true;
-    if(p && !p->regional_worker && recover_idle(army,*p))return mod_step("ap:recover_idle"),true;
-    if(word(army,0x16)<1000)return cancelled && mod_step("ap:cancel_order");
-    if(p && try_destroy(army,*p,true)) {pause_assembly(*p);return mod_step("ap:destroy_priority"),true;}
-    if(p && p->facility && continue_build(army,*p)) {pause_assembly(*p);return mod_step("ap:continue_build"),true;}
-    if(p && try_destroy(army,*p)) {pause_assembly(*p);return mod_step("ap:destroy"),true;}
-    if(p && (p->campaign || p->regional_worker))prepare_local_build(army,*p);
-    if (p && try_build(army, *p)) {pause_assembly(*p);return mod_step("ap:build"),true;}
-    // Build policy v2: a blocked build never parks the army (former "build_hold_wait" stood units
-    // on open ground for weeks); the mission or the original AI continues instead.
-    if(mod_features.mission_v2) {
-        if(p && (p->credit || p->build_chain) && !p->facility) {p->credit=false;p->build_chain=false;}
-    } else if(p && (p->credit || p->build_chain)) {
-        // Former policy: keep the native AI from replacing a temporarily blocked build with retreat.
-        if(army[0x37]!=13)log_event("build_hold_wait",army_id(army),army[0x37],word(army,0x2A));
-        fn<void(__fastcall *)(Obj)>(GA(GA_A2410))(army);
-        fn<void(__fastcall *)(Obj,int)>(GA(GA_2EAAE0))(army,13);
-        fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2EAB40))(army,255,0);
-        mod_step("ap:build_hold_wait");return true;
-    }
-    if(p && p->regional_worker) {if(campaign_regional_step(army,*p))return mod_step("ap:regional_step"),true;return cancelled && mod_step("ap:cancel_order");}
-    if (p && p->campaign && mod_features.mission_v2 && native_on_mission(army)) return mod_step("ap:native_on_mission"),false;
-    if (p && p->campaign && campaign_step(army, *p, node, context)) return mod_step("ap:campaign_step"),true;
-    if(try_other(army, node, context))return mod_step("ap:native_alternative"),true;
-    return cancelled && mod_step("ap:cancel_order");
-}
-
-// [combat] ai_max_aggression. The behaviour-tree condition dispatcher is one function pointer at
-// image+1B95CC0 (registry 1B95CB0 +10), set by AI init C0150 to C2610 (switch on the condition op).
-// Op 0x73 (AI setting stage == arg, 3E9E60 = game AI setting 0..4) answers as stage 4 (궁극).
-// Op 0x74 (corps progress check, A8A00) skips turns when stage < 2 and the force holds under the
-// threshold share of bases; with stage 4 it only fails for an invalid corps, so a failure for a valid
-// corps is turned into success. All other ops go to the original unchanged.
-static bool patch_pointer(unsigned rva, unsigned expected, void *replacement);
-using BtCondition=uint64_t(__fastcall *)(unsigned,unsigned char,Obj,Obj,int *,int);
-static uint64_t __fastcall bt_condition(unsigned op,unsigned char negate,Obj context,Obj entity,int *args,int count)
-{ COST_SCOPE("bt_condition");
-    if(mod_features.ai_max_aggression && op==0x73 && args)return args[0]==4?1u:0u;
-    auto original=fn<BtCondition>(GA(GA_C2610));
-    uint64_t result=original(op,negate,context,entity,args,count);
-    if(!mod_features.ai_max_aggression)return result;
-    if(op==0x74 && !(result&0xFF) && args && context) {
-        Obj corps=nullptr;Obj blackboard=fn<Obj(__fastcall *)(Obj)>(GA(GA_BF7A40))(context);
-        if(blackboard && fn<char(__fastcall *)(Obj,unsigned,Obj *,int)>(GA(GA_B26470))(blackboard,static_cast<unsigned>(args[0]),&corps,0) &&
-           valid(corps))result=(result&~0xFFull)|1u;
-    }
-    return result;
-}
-// [combat] ai_max_aggression: CVariableGetPersonInfoNode (8E7C0, slot 13512A0) reads a person field
-// into a blackboard variable (node+38 person var, +3C item, +40 output var; B26990 stores it).
-// Items 13 (호전 +16A: corps leader's target-strength discount), 32 (야망 +17C: ruler's force policy)
-// read as 20 (UI 5) for computer forces. Item 34 (+17E) is 계략 (stratagem preference with 외교, N2885),
-// so it is left unchanged.
-static uint64_t __fastcall person_info_node(Obj node,Obj context,Obj entity)
-{ COST_SCOPE("person_info_node");
-    uint64_t result=fn<uint64_t(__fastcall *)(Obj,Obj,Obj)>(GA(GA_8E7C0))(node,context,entity);
-    if(!mod_features.ai_max_aggression || result!=1 || !node || !context)return result;
-    unsigned item=dword(node,0x3C);
-    if(item!=0x0D && item!=0x20)return result;   // 34 (+17E) is 계략, not aggression (REA 합본 2장, 2026-10-22)
-    Obj person=nullptr;Obj blackboard=fn<Obj(__fastcall *)(Obj)>(GA(GA_BF7A40))(context);
-    if(!blackboard || !fn<char(__fastcall *)(Obj,unsigned,Obj *,int)>(GA(GA_B26470))(blackboard,dword(node,0x38),&person,0) ||
-       !valid(person))return result;
-    Obj district=table(0xE0D0,person[0xE0],51);
-    if(!valid(district) || fn<int(__fastcall *)(Obj)>(GA(GA_233750))(district))return result; // no corps / player force
-    fn<char(__fastcall *)(Obj,unsigned,int)>(GA(GA_B26990))(blackboard,dword(node,0x40),20);
-    return result;
-}
-// attack_recheck_fix (mission_v2). Tree 1's post-departure recheck of a foothold-attack group (#10050..#10125,
-// REA 합본 16장) sums the friendly power aimed at the target into variable 0x47EAF02B, then inside the
-// corps-base loop #10114 CGetFootholdFightingStrengthNode (7DC00: out var +3C, radius +40) assigns one
-// base's 5-hex power into the SAME variable and #10115 CVariableMinusVariableNode (91030: A=+38 -= B=+3C)
-// subtracts it from the enemy power 0xB57EAF65. The final "enemy x70% > friendly" check then compares
-// against one base instead of the whole attack, sending fresh attacks home. The wrappers keep the
-// original order: the base power still reduces the enemy, and the friendly sum is restored.
-static constexpr unsigned kRecheckFriendly=0x47EAF02Bu,kRecheckEnemy=0xB57EAF65u;
-static thread_local bool recheck_pending;
-static thread_local int recheck_base_power;
-static uint64_t __fastcall foothold_strength_node(Obj node,Obj context,Obj entity)
-{ COST_SCOPE("foothold_strength_node");
-    auto original=fn<uint64_t(__fastcall *)(Obj,Obj,Obj)>(GA(GA_7DC00));
-    if(!mod_features.attack_recheck_fix || !node || !context || dword(node,0x3C)!=kRecheckFriendly || dword(node,0x40)!=5)
-        return original(node,context,entity);
-    recheck_pending=false;
-    Obj blackboard=fn<Obj(__fastcall *)(Obj)>(GA(GA_BF7A40))(context);int sum=0;
-    auto read=fn<char(__fastcall *)(Obj,unsigned,int *,int)>(GA(GA_B26300));
-    bool had=blackboard && read(blackboard,kRecheckFriendly,&sum,0);
-    uint64_t result=original(node,context,entity);
-    int base=0;
-    if(had && read(blackboard,kRecheckFriendly,&base,0)) {
-        fn<char(__fastcall *)(Obj,unsigned,int)>(GA(GA_B26990))(blackboard,kRecheckFriendly,sum);
-        recheck_base_power=base;recheck_pending=true;
-    }
-    return result;
-}
-static uint64_t __fastcall variable_minus_node(Obj node,Obj context,Obj entity)
-{ COST_SCOPE("variable_minus_node");
-    auto original=fn<uint64_t(__fastcall *)(Obj,Obj,Obj)>(GA(GA_91030));
-    if(!recheck_pending || !node || !context || dword(node,0x38)!=kRecheckEnemy || dword(node,0x3C)!=kRecheckFriendly)
-        return original(node,context,entity);
-    recheck_pending=false;
-    Obj blackboard=fn<Obj(__fastcall *)(Obj)>(GA(GA_BF7A40))(context);int sum=0;
-    if(!blackboard || !fn<char(__fastcall *)(Obj,unsigned,int *,int)>(GA(GA_B26300))(blackboard,kRecheckFriendly,&sum,0))
-        return original(node,context,entity);
-    auto write=fn<char(__fastcall *)(Obj,unsigned,int)>(GA(GA_B26990));
-    write(blackboard,kRecheckFriendly,recheck_base_power);   // enemy -= this base's power (original intent)
-    uint64_t result=original(node,context,entity);
-    write(blackboard,kRecheckFriendly,sum);                  // the friendly attack sum survives the loop
-    log_event("attack_recheck_sum_kept",0,static_cast<unsigned>(sum),static_cast<unsigned>(recheck_base_power));
-    return result;
-}
-static volatile LONG bt_condition_state; // 0 pending, 1 installed, 2 unexpected pointer
-static void ensure_bt_condition()
-{
-    if(!mod_features.ai_max_aggression || bt_condition_state)return;
-    void *current=*reinterpret_cast<void **>(image+GA(GA_1B95CC0));
-    if(!current)return; // AI not initialised yet
-    if(patch_pointer(GA(GA_1B95CC0),GA(GA_C2610),reinterpret_cast<void *>(&bt_condition))) {
-        InterlockedExchange(&bt_condition_state,1);log_event("ai_max_aggression_installed",0,0,0);
-    } else if(InterlockedCompareExchange(&bt_condition_state,2,0)==0)
-        log_event("ai_max_aggression_unexpected_pointer",0,static_cast<unsigned>(reinterpret_cast<Obj>(current)-image),0);
-}
-static uint64_t __fastcall first_army_node(Obj node, Obj context, Obj entity)
-{
-    COST_SCOPE("first_army_node");
-    NativePhase phase("army_priority");
-    ensure_bt_condition();
-    auto original = fn<Execute>(GA(GA_201E0));
-    if (!enabled || in_policy || native_search_depth) return original(node, context, entity);
-    Obj army = nullptr;
-    Obj blackboard = fn<Obj(__fastcall *)(Obj)>(GA(GA_BF7A40))(context);
-    fn<void(__fastcall *)(Obj, unsigned, Obj *, int)>(GA(GA_B26470))(blackboard, dword(node, 0x38), &army, 0);
-    ++in_policy;
-    AcquireSRWLockExclusive(&policy_lock);
-    Progress *p=campaign_controlled(army)?observe_capture(army):nullptr;
-#ifdef SORTIE_FORMATION
-    if(p)campaign_proactive_departures(army);
-    if(p)campaign_saturated_departures(army);
-    campaign_frontier_diagnostic();
-#endif
-    bool changed=p && campaign_individual_priority(army,*p);
-    bool urgent=p && (p->forced_return || p->combat_target || p->combat_city || p->home_defense_city || campaign_castle_locked(army));
-    if(!changed && !urgent && p && !p->credit && !p->build_chain && !p->facility && !campaign_group_member(army) && !p->regional_worker && node && context && fn<Execute>(GA(GA_20060))(node,context,army)==1) {
-        log_event("native_supply_restore",army_id(army),0,word(army,0x2A));changed=true;
-    }
-    if(!changed)changed=apply_priority(army,node,context);
-    ReleaseSRWLockExclusive(&policy_lock);
-    --in_policy;
-    mod_step(changed?"army_node:mod":"army_node:native");
-    return changed ? 1 : original(node, context, entity);
-}
-static uint64_t __fastcall cut_node(Obj node, Obj context, Obj army)
-{
-    COST_SCOPE("cut_node");
-    NativePhase phase("army_cut");
-    if (!enabled || in_policy || native_search_depth) return fn<Execute>(GA(GA_1F3A0))(node, context, army);
-    Obj supplied = army;
-    army = fn<Obj(__fastcall *)(Obj, Obj)>(GA(GA_B6070))(context, supplied);
-    if (!campaign_controlled(army)) return fn<Execute>(GA(GA_1F3A0))(node, context, supplied);
-    ++in_policy;
-    AcquireSRWLockExclusive(&policy_lock);
-    Progress *p=observe_capture(army);
-    bool changed=p && campaign_individual_priority(army,*p);
-    bool urgent=p && (p->forced_return || p->combat_target || p->combat_city || p->home_defense_city || campaign_castle_locked(army));
-    if(!urgent && p && !campaign_group_member(army) && !p->regional_worker && node && context && fn<Execute>(GA(GA_20060))(node,context,army)==1)changed=true;
-    if(!changed && p && !campaign_group_member(army) && !p->regional_worker)changed=campaign_siege_priority(army,*p);
-    if(!changed && p && p->operation_leader)changed=true;
-    if(!changed && p && p->regional_worker) {apply_priority(army,node,context);changed=true;}
-#ifdef SORTIE_FORMATION
-    if(!changed && (sortie_member(army) || sortie_escort_member(army)))changed=true;
-#endif
-    if(!changed && !(p && p->forced_return))changed=try_cut(army);
-    if(changed && p && (dword(army,0x1F0)&8))remember_cut(army,*p);
-    ReleaseSRWLockExclusive(&policy_lock);
-    --in_policy;
-    mod_step(changed?"cut_node:mod":"cut_node:native_skip");
-    return changed ? 1 : 2;
-}
-static uint64_t __fastcall city_node(Obj node, Obj context, Obj troops)
-{
-    COST_SCOPE("city_node");
-    NativePhase phase("troops_city");
-    auto original = fn<Execute>(GA(GA_68CE0));
-    if (!enabled || in_policy || native_search_depth || !valid(troops)) return original(node, context, troops);
-    ++in_policy;
-    AcquireSRWLockExclusive(&policy_lock);
-    /* Record any capture/build state before the original clears waypoint lists. */
-    for (unsigned i = 1; i <= 500; ++i) {
-        Obj army = table(0x7E838, i, 500);
-        if (campaign_controlled(army) && belongs_to_troops(army, troops)) {
-            Progress *p=observe_capture(army);
-            if(p) remember_campaign(army,*p);
-        }
-    }
-    unsigned short before_mode=word(troops,0x14),before_goal=word(troops,0x16);
-    if(mod_features.mission_v2)mission_route_waypoint(troops);
-    uint64_t result = original(node, context, troops);
-    unsigned short after_mode=word(troops,0x14);
-    if(before_mode!=after_mode || before_goal!=word(troops,0x16)) {
-        // Native Troops AI re-judges a group every day. A group the mod has
-        // just dispatched must not be recalled before it leaves its city.
-        Obj lead=nullptr;unsigned soldiers=0,fresh=0,members=0;int day=game_day();
-        for(unsigned i=1;i<=500;++i) {
-            Obj army=table(0x7E838,i,500);
-            if(!valid(army) || !belongs_to_troops(army,troops) || !campaign_controlled(army))continue;
-            ++members;soldiers+=word(army,0x16);
-            Progress *p=observe_capture(army);
-            if(p && p->dispatched && day>=p->dispatch_day && day-p->dispatch_day<10 && !p->forced_return)++fresh;
-            if(!lead || word(army,0x16)>word(lead,0x16))lead=army;
-        }
-        log_event("troops_mode_change",members,(static_cast<unsigned>(before_mode)<<16)|after_mode,
-            (static_cast<unsigned>(before_goal)<<16)|word(troops,0x16));
-        if(mod_features.recall_veto && lead && fresh && fresh==members && soldiers>=3000 && attack_mode(before_mode) && !attack_mode(after_mode) &&
-           before_goal && before_goal<=61 && hostile_city(lead,before_goal)) {
-            *reinterpret_cast<unsigned short *>(troops+0x14)=before_mode;
-            *reinterpret_cast<unsigned short *>(troops+0x16)=before_goal;
-            log_event("fresh_troops_recall_vetoed",army_id(lead),soldiers,before_goal);
-        }
-    }
-    mod_step("city_node:native_then_members");
-    for (unsigned i = 1; i <= 500; ++i) {
-        Obj army = table(0x7E838, i, 500);
-        if (valid(army) && belongs_to_troops(army, troops)) {
-            if(campaign_controlled(army))apply_priority(army,node,context);
-        }
-    }
-    ReleaseSRWLockExclusive(&policy_lock);
-    --in_policy;
-    return result;
-}
-static uint64_t __fastcall retreat_node(Obj node, Obj context, Obj entity)
-{
-    COST_SCOPE("retreat_node");
-    NativePhase phase("army_retreat");
-    auto original=fn<Execute>(GA(GA_61120));
-    if(!enabled || in_policy || native_search_depth)return original(node,context,entity);
-    Obj army=nullptr;
-    Obj blackboard=fn<Obj(__fastcall *)(Obj)>(GA(GA_BF7A40))(context);
-    fn<void(__fastcall *)(Obj,unsigned,Obj *,int)>(GA(GA_B26470))(blackboard,dword(node,0x38),&army,0);
-    if(!campaign_controlled(army))return original(node,context,entity);
-    ++in_policy;AcquireSRWLockExclusive(&policy_lock);
-    Progress *p=observe_capture(army);if(p)remember_campaign(army,*p);
-    bool changed=false;
-    // <=3,000 soldiers: the original retreat decision stands (user decision 2026-10-21); the mod only
-    // keeps its own forced return, which also heads home.
-    bool small=word(army,0x16)<=3000;
-    if(p && !small)changed=campaign_individual_priority(army,*p);
-    if(p && p->forced_return && !changed)changed=recovery_return(army,*p);
-#ifdef SORTIE_FORMATION
-    if(!changed && !small && p && !p->forced_return && !p->returning && word(army,0x16)>=1000) {
-        SortieGroup cohort;unsigned cohort_id=0;
-        bool cohort_work=sortie_snapshot(army,cohort,cohort_id,true) && sortie_valid_group(cohort);
-        if(p->regional_worker || cohort_work) {
-            changed=apply_priority(army,node,context);
-            // The native <=3,000 retreat gate must not cancel an active rear or
-            // support seat and turn its entire freshly formed group home.
-            if(!changed && cohort_work && sortie_valid_group(cohort))changed=true;
-        }
-        // A 1,000-soldier support escort is below the native <=3,000 retreat
-        // gate. While its leader and campaign group are valid it keeps its
-        // rear seat instead of turning home on the turn after departure.
-        if(!changed && !p->regional_worker && !cohort_work && sortie_escort_member(army))changed=sortie_support_step(army);
-        // Same gate for other small units the mod dispatched with an explicit
-        // mission: 1,000 protectors, capture companions, guards and female
-        // commanders capped at 1,000. Missionless/depleted units still use the
-        // native retreat below; campaign_individual_priority keeps forced returns.
-        bool mission=(p->campaign && p->city && hostile_city(army,p->city)) || p->companion_parent ||
-            p->guard_beneficiary || p->operation_leader;
-        if(!changed && mission && !p->regional_worker && !cohort_work && word(army,0x16)<=3000) {
-            changed=campaign_individual_priority(army,*p);
-            if(!changed)changed=apply_priority(army,node,context);
-            if(!changed && p->campaign && hostile_city(army,p->city))changed=campaign_step(army,*p,node,context);
-            if(changed)log_event("small_mission_retreat_vetoed",army_id(army),word(army,0x16),word(army,0x2A));
-        }
-    }
-#endif
-    if(!changed && p && word(army,0x16)>3000)changed=campaign_individual_priority(army,*p);
-    if(!changed && p && word(army,0x16)>3000)changed=campaign_siege_priority(army,*p);
-    if(!changed && p && word(army,0x16)>3000 && p->operation_leader)changed=true;
-    if(!changed && p && word(army,0x16)>3000) {
-        if(!p->campaign) {
-            unsigned city=0;int nearest=INT32_MAX;
-            for(unsigned i=1;i<=500;++i) {
-                Obj ally=table(0x7E838,i,500);if(ally==army || !campaign_controlled(ally) || army_force(ally)!=army_force(army))continue;
-                Progress *a=observe_capture(ally);if(!a)continue;remember_campaign(ally,*a);
-                int range=distance(word(army,0x2A),word(ally,0x2A));
-                if(a->campaign && hostile_city(army,a->city) && range<nearest) {nearest=range;city=a->city;}
-            }
-            if(city) {p->city=static_cast<unsigned short>(city);p->campaign=true;}
-        }
-        changed=apply_priority(army,node,context);
-        if(!changed) {
-            unsigned city=campaign_field_city(army,*p);
-            if(city) {p->city=static_cast<unsigned short>(city);p->campaign=true;changed=campaign_step(army,*p,node,context);}
-        }
-        // 모드 일거리·원작 대체 행동이 모두 없으면 원작 퇴각을 허용
-        // (사용자 결정 2026-10-29: 목표 상실 후 40일 제자리 대기 방지).
-        if(!changed)changed=try_other(army,node,context);
-    }
-    if(!changed && p)log_event("native_retreat_allowed",army_id(army),word(army,0x16),word(army,0x2A));
-    mod_step(changed?"retreat_node:mod_veto":"retreat_node:native");
-    ReleaseSRWLockExclusive(&policy_lock);--in_policy;
-    return changed ? 1 : original(node,context,entity);
-}
-
-#include "native_adjacency.inl"
-#include "native_expert_settings.inl"
+#define UNITY_SLOT_AI_SUPPORT
+#include "module_unity.inl"
+#undef UNITY_SLOT_AI_SUPPORT
+#include "core_services.h"   // subscription services (map-tick, domestic-tick, ui-dialogs, overlay)
+#define UNITY_SLOT_CAMPAIGN
+#include "module_unity.inl"
+#undef UNITY_SLOT_CAMPAIGN
+#define UNITY_SLOT_DEPARTURES
+#include "module_unity.inl"
+#undef UNITY_SLOT_DEPARTURES
+#define UNITY_SLOT_EXPERT
+#include "module_unity.inl"
+#undef UNITY_SLOT_EXPERT
 
 // crc32_run continues a running (not yet inverted) CRC state; crc32 is the whole-buffer value.
 static unsigned crc32_run(unsigned crc, const unsigned char *data, unsigned size)
@@ -1395,64 +471,28 @@ static unsigned crc32_run(unsigned crc, const unsigned char *data, unsigned size
     return crc;
 }
 static unsigned crc32(const unsigned char *data, unsigned size) {return ~crc32_run(~0u, data, size);}
-#if defined(PERSONNEL_CANDIDATE) || defined(RECRUITMENT_UI_CANDIDATE)
-#include "personnel_policy.h"
+#define UNITY_SLOT_PERSONNEL_POLICY
+#include "module_unity.inl"
+#undef UNITY_SLOT_PERSONNEL_POLICY
+#if !defined(SPLIT_COMBAT) && (defined(PERSONNEL_CANDIDATE) || defined(RECRUITMENT_UI_CANDIDATE))
 static bool personnel_healthy_actor(Obj node,Obj context,unsigned field);
 static Obj personnel_context_object(Obj node,Obj context,unsigned field);
 #endif
-#include "native_domestic.inl"
-#include "native_population.inl"
-#if defined(PERSONNEL_CANDIDATE) || defined(RECRUITMENT_UI_CANDIDATE)
-#include "native_personnel.inl"
-#include "native_personnel_batch.inl"
-#include "native_recruit_ai.inl"
-#endif
-#ifdef INJURY_PROTECTION
-#include "native_injury.inl"
-#endif
-#ifdef RECRUITMENT_UI_CANDIDATE
-#include "native_ui_common.inl"
-#include "native_recruit_ui.inl"
-#endif
-#ifdef AWARD_WAREHOUSE
-#include "native_awards.inl"
-#endif
-#if defined(PERSONNEL_CANDIDATE) || defined(FRIENDSHIP_CANDIDATE)
-#include "native_friendship.inl"
-#include "native_friendship_save.inl"
-#endif
-#include "native_terrain_foam.inl"
-#if !defined(SPLIT_COMBAT)
-#include "native_terrain_trees.inl"
-#include "native_water_diag.inl"
-#endif
-#if !defined(SPLIT_COMBAT)
-#include "native_terrain_render.inl"
-#endif
-#ifdef MERIT_CANDIDATE
-#if !defined(SPLIT_COMBAT)
-#include "native_terrain_edit.inl"
-#include "native_terrain_edit_ui.inl"
-#include "native_terrain_edit_save.inl"
-#endif
-#include "native_merit.inl"
-#ifdef AWARD_WAREHOUSE
-#include "native_awards_save.inl"
-#endif
-#include "native_merit_save.inl"
-#endif
+#define UNITY_SLOT_DOMESTIC
+#include "module_unity.inl"
+#undef UNITY_SLOT_DOMESTIC
 
 // Text size / CRC of the running build come from the address table (user 2026-11-05 patch resilience); fixtures and
 // unknown builds use the reference build's values. kTextSize/kTextCrc32 (native_profile.h) stay as the reference-build constants.
 static unsigned text_size_now() {int b=ga::build_index();return ga_builds[b<0?0:b].text_size;}
 static unsigned text_crc_now() {int b=ga::build_index();return ga_builds[b<0?0:b].text_crc;}
-static bool code_ready()
+[[maybe_unused]] static bool code_ready()
 {
     __try {
         return crc32(image + 0x1000, text_size_now()) == text_crc_now();
     } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
-// local11 (2026-11-06, docs/INSTALL_LOCAL2_TRIAGE.md section 18): the whole-text CRC with the displaced prefix of every OBSERVED entry
+// local11 (2026-11-06, docs/HISTORY.md section 18): the whole-text CRC with the displaced prefix of every OBSERVED entry
 // (ga::observers: E9 rel32 leaving the image + NOP padding, San14Sim's version.dll) replaced by the original bytes. Without observers it is
 // exactly crc32(text). Decision: the observers are taken out of the comparison (text_exact stays true) instead of weakening text_exact into
 // a second "exact except observers" flag: every dependent (the observer-aware guards of battle_deaths, trait_hover) keeps one meaning,
@@ -1558,20 +598,21 @@ static void restore_pointer(unsigned rva, unsigned original, void *replacement)
     InterlockedCompareExchangePointer(slot, image + original, replacement);
     VirtualProtect(slot, 8, old, &restored);
 }
-static bool other_mod_present(const wchar_t *name) {
+[[maybe_unused]] static bool other_mod_present(const wchar_t *name) {
     if(GetModuleHandleW(name))return true;
     wchar_t path[MAX_PATH],folder[MAX_PATH];if(!GetModuleFileNameW(nullptr,path,MAX_PATH))return false;
     wchar_t *slash=wcsrchr(path,L'\\');if(!slash)return false;*slash=0;
     if(wcscpy_s(folder,MAX_PATH,path) || wcscat_s(folder,MAX_PATH,L"\\") || wcscat_s(folder,MAX_PATH,name))return false;
     DWORD attr=GetFileAttributesW(folder);return attr!=INVALID_FILE_ATTRIBUTES && !(attr&FILE_ATTRIBUTE_DIRECTORY);
 }
+#ifndef SPLIT_COMBAT   // recruitment hook tables: the combat DLL never publishes them (W5-1)
 #ifdef RECRUITMENT_UI_CANDIDATE
 struct RecruitUILink {unsigned slot,original;void *replacement;void **next;};
 static const RecruitUILink recruit_ui_links[]={
-    {GA(GA_1440FE8),GA(GA_6F1D10),reinterpret_cast<void *>(&recruit_layout_init),&next_recruit_layout_init},
-    {GA(GA_1440DF0),GA(GA_733BD0),reinterpret_cast<void *>(&recruit_state_update),&next_recruit_state_update},
-    {GA(GA_13AC770),GA(GA_2C0820),reinterpret_cast<void *>(&recruit_selector_init),&next_recruit_selector_init},
-    {GA(GA_13AC708),GA(GA_6BE8E0),reinterpret_cast<void *>(&recruit_selector_close),&next_recruit_selector_close}
+    {GA(GA_1444070),GA(GA_6F3FF0),reinterpret_cast<void *>(&recruit_layout_init),&next_recruit_layout_init},
+    {GA(GA_1443E78),GA(GA_735F60),reinterpret_cast<void *>(&recruit_state_update),&next_recruit_state_update},
+    {GA(GA_13AF800),GA(GA_2C2BA0),reinterpret_cast<void *>(&recruit_selector_init),&next_recruit_selector_init},
+    {GA(GA_13AF798),GA(GA_6C1040),reinterpret_cast<void *>(&recruit_selector_close),&next_recruit_selector_close}
 };
 static bool recruit_ui_guards_match() {
 #ifndef LAYOUT_ROUTED   // routed: slot ownership is judged by the Layout hook manager
@@ -1596,8 +637,8 @@ struct RecruitAILink {unsigned slot,original;Execute replacement;const unsigned 
 static const unsigned char recruit_ai_target_entry[]={0x40,0x57,0x48,0x83,0xEC,0x40,0x48,0xC7,0x44,0x24,0x28,0xFE,0xFF,0xFF,0xFF,0x48};
 static const unsigned char recruit_ai_command_entry[]={0x48,0x89,0x5C,0x24,0x10,0x57,0x48,0x83,0xEC,0x40,0x48,0x8B,0xF9,0x48,0xC7,0x44};
 static const RecruitAILink recruit_ai_links[]={
-    {GA(GA_134CDF8),GA(GA_7B360),&recruit_ai_targets,recruit_ai_target_entry},
-    {GA(GA_13463B0),GA(GA_2CC50),&recruit_ai_command,recruit_ai_command_entry}
+    {GA(GA_134FE18),GA(GA_7C300),&recruit_ai_targets,recruit_ai_target_entry},
+    {GA(GA_13493D8),GA(GA_2D720),&recruit_ai_command,recruit_ai_command_entry}
 };
 static bool recruit_ai_guards_match() {
     for(const auto &link:recruit_ai_links)
@@ -1614,6 +655,7 @@ static void restore_recruit_ai() {
         restore_pointer(link.slot,link.original,reinterpret_cast<void *>(link.replacement));
 }
 #endif
+#endif   // !SPLIT_COMBAT
 static bool replace_code16(unsigned rva,const unsigned char *expected, const unsigned char *replacement)
 {
     /* CALL crosses an eight-byte boundary: publish the enclosing aligned
@@ -1629,8 +671,8 @@ static bool replace_code16(unsigned rva,const unsigned char *expected, const uns
     FlushInstructionCache(GetCurrentProcess(), image + rva, 16);
     return result;
 }
-static bool replace_call(const unsigned char *expected,const unsigned char *replacement) {
-    return replace_code16(GA(GA_D2480),expected,replacement);
+[[maybe_unused]] static bool replace_call(const unsigned char *expected,const unsigned char *replacement) {
+    return replace_code16(GA(GA_D3510),expected,replacement);
 }
 struct CodeLink {
     unsigned rva,block;
@@ -1658,51 +700,13 @@ static bool prepare_link(CodeLink &link,unsigned rva,unsigned char opcode,Obj re
     memcpy(link.original,image+link.block,16);memcpy(link.modified,link.original,16);
     link.modified[offset]=opcode;memcpy(link.modified+offset+1,&delta,4);return true;
 }
-static bool prepare_bytes(CodeLink &link,unsigned rva,const unsigned char *bytes,unsigned count) {
+[[maybe_unused]] static bool prepare_bytes(CodeLink &link,unsigned rva,const unsigned char *bytes,unsigned count) {
     link={};link.rva=rva;link.block=rva&~15u;
     if(observer_conflict(rva,count))return false;
     unsigned offset=rva-link.block;if(offset+count>16)return false;
     memcpy(link.original,image+link.block,16);memcpy(link.modified,link.original,16);
     memcpy(link.modified+offset,bytes,count);return true;
 }
-static unsigned make_domestic_cost_bridge(Obj at) {
-    // Called mid-function at native 1ED475, where the caller's RSP is aligned.
-    // Preserve all volatile GPRs, XMM0..5 and flags. Only EBX is the new cost.
-    unsigned n=0;
-    const unsigned char push[]={0x9C,0x50,0x51,0x52,0x41,0x50,0x41,0x51,0x41,0x52,0x41,0x53,
-                               0x48,0x81,0xEC,0x88,0,0,0};
-    memcpy(at+n,push,sizeof(push));n+=sizeof(push);
-    for(unsigned xmm=0;xmm<6;++xmm) {
-        unsigned char save[]={0xF3,0x0F,0x7F,static_cast<unsigned char>(0x44+xmm*8),0x24,static_cast<unsigned char>(32+xmm*16)};
-        memcpy(at+n,save,sizeof(save));n+=sizeof(save);
-    }
-    at[n++]=0x48;at[n++]=0xB8;
-    *reinterpret_cast<void **>(at+n)=reinterpret_cast<void *>(&domestic_command_cost);n+=8;
-    at[n++]=0xFF;at[n++]=0xD0;at[n++]=0x89;at[n++]=0xC3; // CALL RAX; MOV EBX,EAX
-    for(unsigned xmm=0;xmm<6;++xmm) {
-        unsigned char load[]={0xF3,0x0F,0x6F,static_cast<unsigned char>(0x44+xmm*8),0x24,static_cast<unsigned char>(32+xmm*16)};
-        memcpy(at+n,load,sizeof(load));n+=sizeof(load);
-    }
-    const unsigned char pop[]={0x48,0x81,0xC4,0x88,0,0,0,0x41,0x5B,0x41,0x5A,0x41,0x59,0x41,0x58,0x5A,0x59,0x58,0x9D,0xC3};
-    memcpy(at+n,pop,sizeof(pop));return n+sizeof(pop);
-}
-#if defined(PERSONNEL_CANDIDATE) || defined(FRIENDSHIP_CANDIDATE)
-[[maybe_unused]] static unsigned make_friendship_archive_bridge(Obj at,bool save) {
-    // Original save site: FF10 + CMP qword [RBX+18],10 (seven bytes).
-    // Original load site: FF5008 + TEST EAX,EAX (five bytes).
-    // Reproduce the displaced comparison AFTER the helper, leaving its
-    // flags intact for the native JC/JZ. Preserve the native return value.
-    const unsigned char begin[]={0x48,0x83,0xEC,0x28,0x48,0xB8};
-    memcpy(at,begin,sizeof(begin));unsigned n=sizeof(begin);
-    *reinterpret_cast<void **>(at+n)=save?reinterpret_cast<void *>(&friendship_file_write):
-                                        reinterpret_cast<void *>(&friendship_file_read);n+=8;
-    const unsigned char end[]={0xFF,0xD0,0x48,0x83,0xC4,0x28};
-    memcpy(at+n,end,sizeof(end));n+=sizeof(end);
-    if(save) {const unsigned char cmp[]={0x48,0x83,0x7B,0x18,0x10};memcpy(at+n,cmp,sizeof(cmp));n+=sizeof(cmp);}
-    else {at[n++]=0x85;at[n++]=0xC0;}
-    at[n++]=0xC3;return n;
-}
-#endif
 // CALL rel32 redirection for any call site. Inside one 16-byte block the swap is the atomic
 // replace_code16; a call whose rel32 crosses a block boundary (site offset > 11) is written once
 // at install, before the patched UI/command path can run, and restored the same way.
@@ -1732,7 +736,7 @@ static bool call_publish(CallLink &c) {
     c.published=c.raw?call_write(c.site,c.original,c.redirected):publish_link(c.link);return c.published;
 }
 static void restore_link(CodeLink &link);
-static void call_restore(CallLink &c) {
+[[maybe_unused]] static void call_restore(CallLink &c) {
     if(!c.published)return;
     if(c.raw)call_write(c.site,c.redirected,c.original);else restore_link(c.link);
     c.published=false;
@@ -1743,12 +747,13 @@ static bool publish_link(CodeLink &link) {
 static void restore_link(CodeLink &link) {
     if(link.published)replace_code16(link.block,link.modified,link.original);
 }
+#ifndef SPLIT_COMBAT   // recruitment hook tables: the combat DLL never publishes them (W5-1)
 #ifdef RECRUITMENT_UI_CANDIDATE
 struct RecruitAlertEntry {unsigned rva;unsigned char block[16];void *replacement;};
 static const RecruitAlertEntry recruit_alert_entries[]={
-    {GA(GA_2DF204),{0xD5,0x48,0x8B,0xCF,0xE8,0x77,0x04,0xF1,0xFF,0x85,0xC0,0x74,0x3B,0x48,0x85,0xF6},reinterpret_cast<void *>(&recruit_alert_candidate)},
-    {GA(GA_2DEFAB),{0x8D,0x45,0x50,0x48,0x8D,0x55,0x48,0x48,0x8D,0x4D,0xE0,0xE8,0x60,0x3F,0xFD,0xFF},reinterpret_cast<void *>(&recruit_alert_search)},
-    {GA(GA_2B3281),{0xBF,0xE8,0xDA,0xE9,0xF7,0xFF,0x49,0x8B,0xF7,0x4C,0x89,0x7D,0x9F,0x8B,0x45,0xBF},reinterpret_cast<void *>(&recruit_alert_location)}
+    {GA(GA_2E1534),{0xD5,0x48,0x8B,0xCF,0xE8,0xF7,0xF4,0xF0,0xFF,0x85,0xC0,0x74,0x3B,0x48,0x85,0xF6},reinterpret_cast<void *>(&recruit_alert_candidate)},
+    {GA(GA_2E12DB),{0x8D,0x45,0x50,0x48,0x8D,0x55,0x48,0x48,0x8D,0x4D,0xE0,0xE8,0xB0,0x3F,0xFD,0xFF},reinterpret_cast<void *>(&recruit_alert_search)},
+    {GA(GA_2B5601),{0xBF,0xE8,0xFA,0xDF,0xF7,0xFF,0x49,0x8B,0xF7,0x4C,0x89,0x7D,0x9F,0x8B,0x45,0xBF},reinterpret_cast<void *>(&recruit_alert_location)}
 };
 struct RecruitAlertCode {CodeLink links[3];};
 static bool recruit_alert_guards_match() {
@@ -1770,98 +775,30 @@ static bool publish_recruit_alert(RecruitAlertCode &code) {
 }
 static void restore_recruit_alert(RecruitAlertCode &code) {for(auto &link:code.links)restore_link(link);}
 #endif
-#ifdef INJURY_PROTECTION
-#include "native_injury_links.inl"
-#endif
-#ifndef SPLIT_COMBAT
-#include "native_district_intercept_link.inl" // entry hook when the combat module is absent
-#endif
-#ifdef MERIT_CANDIDATE
-#include "native_merit_links.inl"
-#endif
-#ifdef AWARD_WAREHOUSE
-#include "native_awards_links.inl"
-#endif
-#ifdef SORTIE_FORMATION
-#include "native_sortie_links.inl"
-#endif
-#if defined(PERSONNEL_CANDIDATE) || defined(FRIENDSHIP_CANDIDATE)
-struct FriendshipEntry {unsigned rva,size;unsigned char bytes[6];void *replacement;};
-static const FriendshipEntry friendship_entries[]={
-    {GA(GA_223780),5,{0x48,0x89,0x5C,0x24,0x08},reinterpret_cast<void *>(&friendship_add)},
-    {GA(GA_232EE0),5,{0x48,0x89,0x5C,0x24,0x08},reinterpret_cast<void *>(&friendship_has)},
-    {GA(GA_2283F0),6,{0x4C,0x8B,0xDC,0x57,0x41,0x54},reinterpret_cast<void *>(&friendship_remove)},
-    {GA(GA_22E310),5,{0x48,0x89,0x5C,0x24,0x08},reinterpret_cast<void *>(&friendship_list)},
-    {GA(GA_21B2E0),5,{0x48,0x8B,0xC4,0x41,0x54},reinterpret_cast<void *>(&friendship_cleanup)},
-    {GA(GA_2E2330),6,{0x48,0x8B,0xC4,0x55,0x41,0x54},reinterpret_cast<void *>(&friendship_normalize)},
-    {GA(GA_227600),5,{0x48,0x89,0x5C,0x24,0x10},reinterpret_cast<void *>(&friendship_reset)}
-};
-struct FriendshipCode {CodeLink links[9];};
-[[maybe_unused]] static bool friendship_guards_match() {
-    for(const auto &entry:friendship_entries)
-        if(ga::mcmp_at(image,entry.rva,entry.bytes,entry.size))return false;
-    const unsigned char save[]={0xFF,0x10,0x48,0x83,0x7B,0x18,0x10},load[]={0xFF,0x50,0x08,0x85,0xC0};
-    return !ga::mcmp(image,GA_3F7E32,0,save,sizeof(save)) && !ga::mcmp(image,GA_3FA5C4,0,load,sizeof(load)) &&
-        pointer(image,GA(GA_13E69A0))==image+GA(GA_50B670) && pointer(image,GA(GA_13E60F8))==image+GA(GA_509580) &&
-        pointer(image,GA(GA_13A6BB0))==image+GA(GA_2390B0);
-}
-[[maybe_unused]] static bool prepare_friendship(FriendshipCode &code,Obj relay) {
-    // Caller reserves [512,1024) of the same near relay page. Code guards
-    // must match before anything is prepared or published.
-    if(!friendship_guards_match())return false;
-    for(unsigned i=0;i<7;++i) {
-        const auto &entry=friendship_entries[i];Obj stub=relay+(i<4?512+i*64:832+(i-4)*64),gate=stub+32;
-        absolute_jump(stub,entry.replacement);memcpy(gate,entry.bytes,entry.size);
-        absolute_jump(gate+entry.size,image+entry.rva+entry.size);
-        if(!prepare_link(code.links[i],entry.rva,0xE9,stub))return false;
-        if(entry.size==6)code.links[i].modified[entry.rva-code.links[i].block+5]=0x90;
-    }
-    original_friend_add=reinterpret_cast<FriendAdd>(relay+544);
-    original_friend_has=reinterpret_cast<FriendHas>(relay+608);
-    original_friend_remove=reinterpret_cast<FriendAdd>(relay+672);
-    original_friend_list=reinterpret_cast<FriendList>(relay+736);
-    original_friend_cleanup=reinterpret_cast<FriendOne>(relay+864);
-    original_friend_normalize=reinterpret_cast<FriendOne>(relay+928);
-    original_friend_reset=reinterpret_cast<FriendOne>(relay+992);
-    make_friendship_archive_bridge(relay+768,true);make_friendship_archive_bridge(relay+800,false);
-    if(!prepare_link(code.links[7],GA(GA_3F7E32),0xE8,relay+768) ||
-       !prepare_link(code.links[8],GA(GA_3FA5C4),0xE8,relay+800))return false;
-    // The CMP's complete five-byte instruction is replayed in the relay.
-    code.links[7].modified[7]=0x90;code.links[7].modified[8]=0x90;return true;
-}
-[[maybe_unused]] static bool publish_friendship(FriendshipCode &code) {
-    for(auto &link:code.links)if(!publish_link(link))return false;
-    return patch_pointer(GA(GA_13E69A0),GA(GA_50B670),reinterpret_cast<void *>(&friendship_save_host)) &&
-           patch_pointer(GA(GA_13E60F8),GA(GA_509580),reinterpret_cast<void *>(&friendship_load_host)) &&
-           patch_pointer(GA(GA_13A6BB0),GA(GA_2390B0),reinterpret_cast<void *>(&friendship_person_read));
-}
-[[maybe_unused]] static void restore_friendship(FriendshipCode &code) {
-    restore_pointer(GA(GA_13E69A0),GA(GA_50B670),reinterpret_cast<void *>(&friendship_save_host));
-    restore_pointer(GA(GA_13E60F8),GA(GA_509580),reinterpret_cast<void *>(&friendship_load_host));
-    restore_pointer(GA(GA_13A6BB0),GA(GA_2390B0),reinterpret_cast<void *>(&friendship_person_read));
-    for(auto &link:code.links)restore_link(link);
-}
-#endif
+#endif   // !SPLIT_COMBAT
+#define UNITY_SLOT_LINKS
+#include "module_unity.inl"
+#undef UNITY_SLOT_LINKS
 #if defined(PERSONNEL_CANDIDATE) || defined(HIDDEN_LOYALTY)
-static bool loyalty_guards_match() {
+[[maybe_unused]] static bool loyalty_guards_match() {
     const unsigned char numeric[]={0x48,0x0F,0x4E,0xC2},text[]={0x0F,0x4F,0xD8};
-    return !ga::mcmp(image,GA_34A8D6,0,numeric,sizeof(numeric)) && !ga::mcmp(image,GA_35CA35,0,text,sizeof(text));
+    return !ga::mcmp(image,GA_34CB96,0,numeric,sizeof(numeric)) && !ga::mcmp(image,GA_35EF25,0,text,sizeof(text));
 }
 #endif
 #ifdef PERSONNEL_CANDIDATE
 struct PersonnelNodeLink {unsigned slot,original;Execute replacement;};
 static const PersonnelNodeLink personnel_links[]={
-    {GA(GA_134CDF8),GA(GA_7B360),&personnel_recruitment_targets},
-    {GA(GA_1347318),GA(GA_39490),&personnel_employ_actors},
-    {GA(GA_1347528),GA(GA_3D170),&personnel_search_actors},
-    {GA(GA_13463B0),GA(GA_2CC50),&personnel_employ_command},
-    {GA(GA_1349560),GA(GA_53E50),&personnel_search_command},
-    {GA(GA_1352AF8),GA(GA_7E550),&personnel_officer_candidates},
-    {GA(GA_1346AF8),GA(GA_34F10),&personnel_departure},
-    {GA(GA_1346BA0),GA(GA_35770),&personnel_transport},
-    {GA(GA_1347A28),GA(GA_3DBF0),&personnel_recruit_officer},
-    {GA(GA_1345790),GA(GA_3E490),&personnel_training_officer},
-    {GA(GA_1347F20),GA(GA_3E100),&personnel_spy_officer}
+    {GA(GA_134FE18),GA(GA_7C300),&personnel_recruitment_targets},
+    {GA(GA_134A340),GA(GA_39FF0),&personnel_employ_actors},
+    {GA(GA_134A550),GA(GA_3DCD0),&personnel_search_actors},
+    {GA(GA_13493D8),GA(GA_2D720),&personnel_employ_command},
+    {GA(GA_134C580),GA(GA_54AD0),&personnel_search_command},
+    {GA(GA_1355B18),GA(GA_7F4F0),&personnel_officer_candidates},
+    {GA(GA_1349B20),GA(GA_35A70),&personnel_departure},
+    {GA(GA_1349BC8),GA(GA_362D0),&personnel_transport},
+    {GA(GA_134AA50),GA(GA_3E750),&personnel_recruit_officer},
+    {GA(GA_13487B8),GA(GA_3EF50),&personnel_training_officer},
+    {GA(GA_134AF48),GA(GA_3EBC0),&personnel_spy_officer}
 };
 static bool personnel_guards_match() {
     if(!loyalty_guards_match())return false;
@@ -1893,43 +830,10 @@ static Obj allocate_near(Obj call,unsigned bytes=0x1000)
     }
     return nullptr;
 }
-#include "native_path_count.inl"
-#if defined(RECRUITMENT_UI_CANDIDATE) || defined(PROGRESS_NATIVE_FIXTURE)
-#include "native_progress.inl"
-#endif
-#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
-#include "native_name_lookup.inl"
-#include "native_speed_buttons.inl"
-#include "native_layout_wait.inl"
-#include "gpu_profile.h"
-#include "native_save_codec.inl"
-#include "native_occupy_fast.inl"
-#include "native_caravan_stay.inl"
-#include "native_stat_exp.inl"
-#include "native_dispatch_days.inl"
-#include "native_fast_menu.inl"
-#include "native_appear_batch.inl"
-#include "native_area_index.inl"
-#include "native_path_fast.inl"
-#include "native_face_keep.inl"
-#include "native_mediation_plus.inl"
-#include "native_drag_learn.inl"
-#include "native_lord_change.inl"
-#include "native_region_officers.inl"
-#include "native_damage_preview.inl"
-#include "native_building_destruction.inl"
-#include "native_diplomacy_intel.inl"
-#ifdef RUNTIME_COST_PROFILE
-#include "native_face_timing.inl" // [diagnostics] cost_profile: army flag face setter timing
-#endif
 #include <array>
-#include "native_ai_trace.inl" // [diagnostics] ai_trace: observation of native AI nodes
-#endif
-#if defined(RECRUITMENT_UI_CANDIDATE) || defined(TARGET_RETREAT_FIXTURE)
-#ifdef TARGET_RETREAT_FIXTURE
-#include "native_target_retreat.inl" // Archived policy fixture only, never installed.
-#endif
-#endif
+#define UNITY_SLOT_MODULES
+#include "module_unity.inl"
+#undef UNITY_SLOT_MODULES
 #if defined(SPLIT_MODULE_FIXTURE) || defined(TACTICS_FIXTURE)
 #include "native_area_index.inl" // guard-only binding for synthetic images
 #include "native_path_fast.inl" // guard-only binding for synthetic images
@@ -1937,273 +841,14 @@ static Obj allocate_near(Obj call,unsigned bytes=0x1000)
 #include "native_advisor_briefing.inl" // guard-only binding for synthetic images
 #endif
 #if defined(SPLIT_BASE) || defined(SPLIT_COMBAT)
-#ifdef SPLIT_BASE
-#include "native_expert_links.inl"
-#include "native_unified_overlay.inl" // shared Present overlay for advisor, terrain and CCZ
-#include "native_ccz_preview.inl" // shared selection preview used by the CCZ title editor
-#include "native_unified_dialogs.inl" // shared native dialog foundation for the CCZ editor
-#include "native_ccz_bridge.inl" // 조조전 탭 -> SAN14_CCZ.dll; keeps the shared Present hook here
-#ifndef SPLIT_MODULE_FIXTURE
-#include "native_ccz_editor.inl"
-#include "native_ccz_title.inl"
-#endif
-#if !defined(SPLIT_MODULE_FIXTURE)
-#include "native_advisor_briefing.inl"
-#endif
-#endif
+#define UNITY_SLOT_UI_HOSTS
+#include "module_unity.inl"
+#undef UNITY_SLOT_UI_HOSTS
 #include "native_split_install.inl"
 #else
-static bool install()
-{
-#ifdef AWARD_WAREHOUSE
-    if(!award_guards_match())return false;
+#include "../tests/native_install_fixture.inl"
 #endif
-#ifdef INJURY_PROTECTION
-    if(!injury_guards_match())return false;
-#endif
-#ifdef RECRUITMENT_UI_CANDIDATE
-    if(!recruit_ui_guards_match() || !recruit_ai_guards_match() || !recruit_alert_guards_match())return false;
-#endif
-#ifdef MERIT_CANDIDATE
-    if(!merit_guards_match())return false;
-#endif
-#ifdef FRIENDSHIP_CANDIDATE
-    if(!friendship_guards_match())return false;
-#endif
-#ifdef PERSONNEL_CANDIDATE
-    if(!personnel_guards_match())return false;
-#endif
-#ifdef HIDDEN_LOYALTY
-    if(!loyalty_guards_match())return false;
-#endif
-#ifdef SORTIE_FORMATION
-    if(!sortie_guards_match())return false; // at least one compatible planner CALL
-#endif
-    Obj call = image + GA(GA_D2486);
-    if (memcmp(call, kCutCallBytes, 5)) return false;
-    if(ga::mcmp(image,GA_169F44,0,kPairCallBytes,5) || ga::mcmp(image,GA_1749A0,0,kDamageEntryBytes,5) || ga::mcmp(image,GA_2B07C0,0,kAdjacencyEntryBytes,5) ||
-       ga::mcmp(image,GA_279190,0,kBuildPermissionEntryBytes,5) ||
-       ga::mcmp(image,GA_295160,0,kDomesticTickEntryBytes,5) ||
-       ga::mcmp(image,GA_36423,0,kDomesticBudgetBranchBytes,6) ||
-       ga::mcmp(image,GA_1ED475,0,kDomesticCostLoadBytes,6) || ga::mcmp(image,GA_302980,0,population_entry,16))return false;
-    for (auto pair : {0x1344518u, 0x1343C98u, 0x134B4F8u, 0x134AF00u}) {
-        unsigned original = pair == GA(GA_1344518) ? GA(GA_201E0) : pair == GA(GA_1343C98) ? GA(GA_1F3A0) : pair == GA(GA_134B4F8) ? GA(GA_68CE0) : GA(GA_61120);
-        if (pointer(image, pair) != image + original) return false;
-    }
-    if(pointer(image,GA(GA_1346E70))!=image+GA(GA_36320) || pointer(image,GA(GA_134C8F8))!=image+GA(GA_7A110))return false;
-    Obj relay = allocate_near(call);
-    if (!relay) return false;
-    Obj combat_relay=allocate_near(image+GA(GA_169F44),0x2000);
-    if(!combat_relay) {VirtualFree(relay,0,MEM_RELEASE);return false;}
-    absolute_jump(combat_relay,reinterpret_cast<void *>(&combat_pair_scores));
-    absolute_jump(combat_relay+1536,reinterpret_cast<void *>(&combat_apply_damage));
-    memcpy(combat_relay+1568,kDamageEntryBytes,5);
-    absolute_jump(combat_relay+1573,image+GA(GA_1749A5));
-    original_damage=reinterpret_cast<ApplyDamage>(combat_relay+1568);
-    absolute_jump(combat_relay+32,reinterpret_cast<void *>(&contextual_adjacency));
-    // All five stolen bytes are complete, position-independent PUSHs. The
-    // trampoline executes those and rejoins before SUB RSP at native +5.
-    memcpy(combat_relay+64,image+GA(GA_2B07C0),5); // displaced PUSHes of the running build (push r15 / push r14), matched by the guard above
-    absolute_jump(combat_relay+69,image+GA(GA_2B07C5));
-    original_adjacency=reinterpret_cast<Adjacency>(combat_relay+64);
-    absolute_jump(combat_relay+96,reinterpret_cast<void *>(&build_permission));
-    memcpy(combat_relay+128,kBuildPermissionEntryBytes,5);
-    absolute_jump(combat_relay+133,image+GA(GA_279195));
-    original_build_permission=reinterpret_cast<BuildPermission>(combat_relay+128);
-    absolute_jump(combat_relay+160,reinterpret_cast<void *>(&domestic_tick));
-    memcpy(combat_relay+192,kDomesticTickEntryBytes,5);
-    absolute_jump(combat_relay+197,image+GA(GA_295165));
-    original_domestic_tick=reinterpret_cast<DomesticTick>(combat_relay+192);
-    unsigned domestic_bridge_size=make_domestic_cost_bridge(combat_relay+224);
-    CodeLink pair_link,damage_link,adj_link,build_link,tick_link,cost_link,budget_link,population_link;
-    absolute_jump(combat_relay+3840,reinterpret_cast<void *>(&population_growth));
-    memcpy(combat_relay+3872,population_entry,5);absolute_jump(combat_relay+3877,image+GA(GA_302985));
-    original_population_growth=reinterpret_cast<PopulationGrowth>(combat_relay+3872);
-    if(!prepare_link(population_link,GA(GA_302980),0xE9,combat_relay+3840)) {
-        VirtualFree(relay,0,MEM_RELEASE);VirtualFree(combat_relay,0,MEM_RELEASE);return false;
-    }
-#ifdef SORTIE_FORMATION
-    SortieCode sortie_code;
-    if(!prepare_sortie(sortie_code,combat_relay)) {
-        VirtualFree(relay,0,MEM_RELEASE);VirtualFree(combat_relay,0,MEM_RELEASE);return false;
-    }
-#endif
-#ifdef RECRUITMENT_UI_CANDIDATE
-    RecruitAlertCode recruit_alert_code;
-    if(!prepare_recruit_alert(recruit_alert_code,combat_relay)) {
-        VirtualFree(relay,0,MEM_RELEASE);VirtualFree(combat_relay,0,MEM_RELEASE);return false;
-    }
-#endif
-#ifdef AWARD_WAREHOUSE
-    AwardCode award_code;
-    if(!prepare_awards(award_code,combat_relay)) {
-        VirtualFree(relay,0,MEM_RELEASE);VirtualFree(combat_relay,0,MEM_RELEASE);return false;
-    }
-#endif
-#ifdef INJURY_PROTECTION
-    InjuryCode injury_code;
-    if(!prepare_injury(injury_code,combat_relay)) {
-        VirtualFree(relay,0,MEM_RELEASE);VirtualFree(combat_relay,0,MEM_RELEASE);return false;
-    }
-#endif
-#ifdef MERIT_CANDIDATE
-    MeritCode merit_code;
-    if(!prepare_merit(merit_code,combat_relay)) {
-        VirtualFree(relay,0,MEM_RELEASE);VirtualFree(combat_relay,0,MEM_RELEASE);return false;
-    }
-#endif
-#ifdef FRIENDSHIP_CANDIDATE
-    FriendshipCode friend_code;
-    if(!prepare_friendship(friend_code,combat_relay)) {
-        VirtualFree(relay,0,MEM_RELEASE);VirtualFree(combat_relay,0,MEM_RELEASE);return false;
-    }
-#endif
-#if defined(PERSONNEL_CANDIDATE) || defined(HIDDEN_LOYALTY)
-    CodeLink loyalty_numeric,loyalty_text;
-    const unsigned char raw_loyalty_pointer[4]={0x48,0x89,0xD0,0x90};
-    const unsigned char no_loyalty_clamp[3]={0x90,0x90,0x90};
-    if(!prepare_bytes(loyalty_numeric,GA(GA_34A8D6),raw_loyalty_pointer,4) ||
-       !prepare_bytes(loyalty_text,GA(GA_35CA35),no_loyalty_clamp,3)) {
-        VirtualFree(relay,0,MEM_RELEASE);VirtualFree(combat_relay,0,MEM_RELEASE);return false;
-    }
-#endif
-    const unsigned char no_budget_check[6]={0x90,0x90,0x90,0x90,0x90,0x90};
-    if(!prepare_link(pair_link,GA(GA_169F44),0xE8,combat_relay) ||
-       !prepare_link(damage_link,GA(GA_1749A0),0xE9,combat_relay+1536) ||
-       !prepare_link(adj_link,GA(GA_2B07C0),0xE9,combat_relay+32) ||
-       !prepare_link(build_link,GA(GA_279190),0xE9,combat_relay+96) ||
-       !prepare_link(tick_link,GA(GA_295160),0xE9,combat_relay+160) ||
-       !prepare_link(cost_link,GA(GA_1ED475),0xE8,combat_relay+224) ||
-       !prepare_bytes(budget_link,GA(GA_36423),no_budget_check,6)) {
-        VirtualFree(relay,0,MEM_RELEASE);VirtualFree(combat_relay,0,MEM_RELEASE);return false;
-    }
-    // Replace the complete six-byte RIP-relative MOV with CALL + NOP.
-    cost_link.modified[GA(GA_1ED475)-cost_link.block+5]=0x90;
-    DWORD combat_old=0;
-    if(!VirtualProtect(combat_relay,0x2000,PAGE_EXECUTE_READ,&combat_old)) {
-        VirtualFree(relay,0,MEM_RELEASE);VirtualFree(combat_relay,0,MEM_RELEASE);return false;
-    }
-    // Population trampoline ends at byte 3891; flush the entire allocated
-    // relay page, including that monthly-only path and future additions.
-    unsigned relay_used=224+domestic_bridge_size;
-    if(relay_used<0x2000)relay_used=0x2000;
-#ifdef RECRUITMENT_UI_CANDIDATE
-    if(relay_used<3040)relay_used=3040;
-#endif
-#ifdef SORTIE_FORMATION
-    if(relay_used<2944)relay_used=2944;
-#endif
-#ifdef AWARD_WAREHOUSE
-    if(relay_used<2432)relay_used=2432;
-#endif
-#ifdef INJURY_PROTECTION
-    if(relay_used<1664)relay_used=1664;
-#endif
-    if(relay_used<1587)relay_used=1587;
-#ifdef MERIT_CANDIDATE
-    if(relay_used<1152)relay_used=1152;
-#endif
-#ifdef FRIENDSHIP_CANDIDATE
-    if(relay_used<1024)relay_used=1024;
-#endif
-    FlushInstructionCache(GetCurrentProcess(),combat_relay,relay_used);
-    /* FF25 [RIP+0] jumps without clobbering argument or return registers. */
-    relay[0] = 0xFF; relay[1] = 0x25; memset(relay + 2, 0, 4);
-    *reinterpret_cast<void **>(relay + 6) = reinterpret_cast<void *>(&cut_player_predicate);
-    DWORD old = 0;
-    if (!VirtualProtect(relay, 0x1000, PAGE_EXECUTE_READ, &old)) {
-        VirtualFree(relay, 0, MEM_RELEASE);VirtualFree(combat_relay,0,MEM_RELEASE); return false;
-    }
-    FlushInstructionCache(GetCurrentProcess(), relay, 14);
-    intptr_t delta = reinterpret_cast<intptr_t>(relay) - reinterpret_cast<intptr_t>(call + 5);
-    if (delta < INT32_MIN || delta > INT32_MAX) { VirtualFree(relay, 0, MEM_RELEASE); return false; }
-    unsigned char original_block[16], modified_block[16];
-    memcpy(original_block, image + GA(GA_D2480), 16); memcpy(modified_block, original_block, 16);
-    modified_block[6] = 0xE8; memcpy(modified_block + 7, &delta, 4);
-    if (!replace_call(original_block, modified_block)) { VirtualFree(relay, 0, MEM_RELEASE); return false; }
-    if (!publish_link(adj_link) || !publish_link(pair_link) || !publish_link(damage_link) || !publish_link(build_link) ||
-        !publish_link(tick_link) || !publish_link(cost_link) || !publish_link(budget_link) || !publish_link(population_link) ||
-        !patch_pointer(GA(GA_1344518), GA(GA_201E0), reinterpret_cast<void *>(&first_army_node)) ||
-        !patch_pointer(GA(GA_1343C98), GA(GA_1F3A0), reinterpret_cast<void *>(&cut_node)) ||
-        !patch_pointer(GA(GA_134B4F8), GA(GA_68CE0), reinterpret_cast<void *>(&city_node)) ||
-        !patch_pointer(GA(GA_134AF00), GA(GA_61120), reinterpret_cast<void *>(&retreat_node)) ||
-        !patch_pointer(GA(GA_1346E70), GA(GA_36320), reinterpret_cast<void *>(&domestic_officer_node)) ||
-        !patch_pointer(GA(GA_134C8F8), GA(GA_7A110), reinterpret_cast<void *>(&domestic_selection_node))
-#ifdef MERIT_CANDIDATE
-        || !publish_merit(merit_code)
-#endif
-#ifdef RECRUITMENT_UI_CANDIDATE
-        || !publish_recruit_ui() || !publish_recruit_ai() || !publish_recruit_alert(recruit_alert_code)
-#endif
-#ifdef INJURY_PROTECTION
-        || !publish_injury(injury_code,true,true)
-#endif
-#ifdef AWARD_WAREHOUSE
-        || !publish_awards(award_code)
-#endif
-#ifdef SORTIE_FORMATION
-        || !publish_sortie(sortie_code)
-#endif
-#if defined(PERSONNEL_CANDIDATE) || defined(HIDDEN_LOYALTY)
-        || !publish_link(loyalty_numeric) || !publish_link(loyalty_text)
-#endif
-#ifdef PERSONNEL_CANDIDATE
-        || !publish_personnel_nodes()
-#endif
-#ifdef FRIENDSHIP_CANDIDATE
-        || !publish_friendship(friend_code)
-#endif
-        ) {
-#ifdef AWARD_WAREHOUSE
-        restore_awards(award_code);
-#endif
-#ifdef SORTIE_FORMATION
-        restore_sortie(sortie_code);
-#endif
-#ifdef INJURY_PROTECTION
-        restore_injury(injury_code);
-#endif
-#ifdef RECRUITMENT_UI_CANDIDATE
-        restore_recruit_alert(recruit_alert_code);
-        restore_recruit_ai();
-        restore_recruit_ui();
-#endif
-#ifdef MERIT_CANDIDATE
-        restore_merit(merit_code);
-#endif
-#ifdef FRIENDSHIP_CANDIDATE
-        restore_friendship(friend_code);
-#endif
-#ifdef PERSONNEL_CANDIDATE
-        restore_personnel_nodes();
-#endif
-#if defined(PERSONNEL_CANDIDATE) || defined(HIDDEN_LOYALTY)
-        restore_link(loyalty_numeric);restore_link(loyalty_text);
-#endif
-        restore_pointer(GA(GA_1344518), GA(GA_201E0), reinterpret_cast<void *>(&first_army_node));
-        restore_pointer(GA(GA_1343C98), GA(GA_1F3A0), reinterpret_cast<void *>(&cut_node));
-        restore_pointer(GA(GA_134B4F8), GA(GA_68CE0), reinterpret_cast<void *>(&city_node));
-        restore_pointer(GA(GA_134AF00), GA(GA_61120), reinterpret_cast<void *>(&retreat_node));
-        restore_pointer(GA(GA_1346E70), GA(GA_36320), reinterpret_cast<void *>(&domestic_officer_node));
-        restore_pointer(GA(GA_134C8F8), GA(GA_7A110), reinterpret_cast<void *>(&domestic_selection_node));
-        replace_call(modified_block, original_block);
-        restore_link(pair_link);restore_link(damage_link);restore_link(adj_link);restore_link(build_link);
-        restore_link(tick_link);restore_link(cost_link);restore_link(budget_link);
-        restore_link(population_link);
-        /* Keep the tiny relay allocated: another thread could already be
-         * returning through it. With policies disabled it invokes native code. */
-        return false;
-    }
-    InterlockedExchange(&enabled, 1);
-#ifdef RECRUITMENT_UI_CANDIDATE
-    // Optional and independently guarded: rejection leaves the original game
-    // functions and the already validated integrated features operational.
-    if(mod_features.distance)install_progress_native();
-    // Native interception/cancellation runs unchanged; no target-retreat patch.
-#endif
-    return true;
-}
-#endif
+
 #ifdef SPLIT_BASE
 static bool install() {
     const SplitCombatApi *api=split_combat_api;
@@ -2289,15 +934,7 @@ static DWORD WINAPI initialize(LPVOID)
     auto module_pe=reinterpret_cast<IMAGE_NT_HEADERS64 *>(module_image+module_dos->e_lfanew);
     crash_module_size=module_pe->OptionalHeader.SizeOfImage;
     for (unsigned attempt = 0; attempt < 1200; ++attempt) {
-#ifdef SPLIT_BASE
         bool ready=code_unpacked_ready(code_readiness);
-#else
-        // Preserve the legacy integrated route for regression comparisons.
-        bool ready=false;
-        __try {ready=!ga::mcmp(image,GA_D2486,0,kCutCallBytes,5);}
-        __except(EXCEPTION_EXECUTE_HANDLER) {ready=false;}
-        ready=ready && code_ready();
-#endif
         if (ready) {
 #ifndef NO_RUNTIME_LOG
             if(diagnostic_logging)crash_prepare_unwind();
@@ -2315,12 +952,6 @@ static DWORD WINAPI initialize(LPVOID)
 #endif
 #ifdef RECRUITMENT_UI_CANDIDATE
             log_event(installed ? "merit_recruitment_ui_candidate_hooks_installed" : "installation_rejected");
-#elif defined(MERIT_CANDIDATE)
-            log_event(installed ? "merit_bond_candidate_hooks_installed" : "installation_rejected");
-#elif defined(FRIENDSHIP_CANDIDATE)
-            log_event(installed ? "friendship_500_candidate_hooks_installed" : "installation_rejected");
-#elif defined(PERSONNEL_CANDIDATE)
-            log_event(installed ? "personnel_partial_candidate_hooks_installed" : "installation_rejected");
 #else
             log_event(installed ? "campaign_v7_domestic_hooks_installed" : "installation_rejected");
 #endif
@@ -2354,8 +985,22 @@ static bool __cdecl split_fixture_prepare(Obj host,const SplitCombatApi *api) {
     return split_prepare();
 #endif
 }
-static unsigned __cdecl split_fixture_scope() {return sortie_auto_departure_scope;}
-static uint64_t __cdecl split_fixture_departure() {return personnel_departure(nullptr,nullptr,nullptr);}
+// Each root exposes only what it compiles (W5): the fixture reads the sortie scope from the combat root and the personnel departure wrapper
+// from the base root; the other root's entry is never called.
+static unsigned __cdecl split_fixture_scope() {
+#ifdef SPLIT_COMBAT
+    return sortie_auto_departure_scope;
+#else
+    return 0;
+#endif
+}
+static uint64_t __cdecl split_fixture_departure() {
+#ifdef SPLIT_BASE
+    return personnel_departure(nullptr,nullptr,nullptr);
+#else
+    return 0;
+#endif
+}
 static void __cdecl split_fixture_failure(unsigned step) {split_fixture_fail_after=step;}
 extern "C" __declspec(dllexport) bool __cdecl SAN14SplitFixtureInstall(Obj host,const SplitCombatApi *api) {
 #ifdef SPLIT_BASE
@@ -2417,10 +1062,6 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID)
                     MoveFileExW(log_path, old_path, MOVEFILE_REPLACE_EXISTING);
             }
         }
-#endif
-#if !defined(SPLIT_COMBAT) && !defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
-        HANDLE worker = CreateThread(nullptr, 0, initialize, nullptr, 0, nullptr);
-        if (worker) CloseHandle(worker);
 #endif
     }
     return TRUE;

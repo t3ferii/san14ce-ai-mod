@@ -1,4 +1,4 @@
-// Trait hover pure logic (docs/TRAIT_HOVER_PLAN.md 4-1, 2026-11-06). Drives src/trait_hover_profile.h only: no game image, no memory
+// Trait hover pure logic (docs/HISTORY.md 4-1, 2026-11-06). Drives src/trait_hover_profile.h only: no game image, no memory
 // access, no Windows UI. Covers header-template decode, duel label index, contains(), tactic text composition, editor text composition,
 // balloon record table, key classification, slot search, path decisions and the guard table itself.
 #include "../src/trait_hover_profile.h"
@@ -39,7 +39,7 @@ static void test_header() {
     ok(decode(make_template(fn,0x164),fn,&id,44,0x300000,0x400000)==HR_ID,"id 0x164 rejected");
     ok(decode(make_template(fn,-1),fn,&id,44,0x300000,0x400000)==HR_ID,"negative id rejected");
     ok(decode(make_template(fn,111,0x212610),fn,&id,44,0x300000,0x400000)==HR_TARGET,"call target 212610 rejected (21 other handlers)");
-    ok(decode(make_template(fn,111,0x232350),fn,&id,44,0x300000,0x400000)==HR_TARGET,"call target 232350 rejected");
+    ok(decode(make_template(fn,111,0x233CF0),fn,&id,44,0x300000,0x400000)==HR_TARGET,"call target 232350 rejected");
     ok(decode(make_template(fn,111,kHas,kCircle+1),fn,&id,44,0x300000,0x400000)==HR_TARGET,"jmp target wrong");
     ok(decode(make_template(fn,111,kHas,kCircle,kEmpty+8),fn,&id,44,0x300000,0x400000)==HR_TARGET,"mov target wrong");
     {   // relative targets depend on the function address: same bytes decoded at another rva must miss
@@ -377,11 +377,11 @@ static void test_guards() {
     ok(!guards_table_ok(big,1),"size 0x41 rejected");
     TraitHoverGuard zero[1]={trait_hover_guards[0]};zero[0].rva=0;
     ok(!guards_table_ok(zero,1),"unresolved id (rva 0) rejected");
-    TraitHoverGuard big7a[1]={{GA(GA_2305D0),0x7A,trait_hover_guards[0].hash}};
+    TraitHoverGuard big7a[1]={{GA(GA_232030),0x7A,trait_hover_guards[0].hash}};
     ok(guards_table_ok(big7a,1),"2305D0 may be 0x7A");
-    TraitHoverGuard big7b[1]={{GA(GA_2305D0),0x7B,trait_hover_guards[0].hash}};
+    TraitHoverGuard big7b[1]={{GA(GA_232030),0x7B,trait_hover_guards[0].hash}};
     ok(!guards_table_ok(big7b,1),"2305D0 0x7B rejected");
-    TraitHoverGuard other7a[1]={{GA(GA_10FC0),0x7A,trait_hover_guards[0].hash}};
+    TraitHoverGuard other7a[1]={{GA(GA_10F20),0x7A,trait_hover_guards[0].hash}};
     ok(!guards_table_ok(other7a,1),"0x7A only allowed for 2305D0");
     ok(trait_hover_empty_tick_rva && trait_hover_slot_getter_rva && trait_hover_duel_target_rva && trait_hover_balloon_ctx_rva && trait_hover_balloon_vtable_rva,"context ids resolve");
     bool duel=true;for(unsigned r:trait_hover_duel_call_rvas)if(!r)duel=false;

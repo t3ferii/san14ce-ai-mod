@@ -8,16 +8,17 @@
 #include <cmath>
 #include <iterator>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "ccz_appearance.h"
 #include "ccz_catalog.h"
 #include "ccz_sprites_vs.h"
 #include "ccz_sprites_ps.h"
 namespace ccz_sprites {
-const unsigned kDisplayVtable=GA(GA_13A03A8),kSubmitSlot=GA(GA_13A03D0),kSubmit=GA(GA_1C6EC0),kSubmitSize=0x60;
+const unsigned kDisplayVtable=GA(GA_13A33E8),kSubmitSlot=GA(GA_13A3410),kSubmit=GA(GA_1C8240),kSubmitSize=0x60;
 const unsigned long long kSubmitHash=GH(0x0BC927F835180669ull);   // FNV-1a of 1C6EC0..+60 (exe = running .text)
-const unsigned kArmyVtable=GA(GA_1342458);                          // Army record, Army+148 = display
-const unsigned kCameraRoot=GA(GA_27D1208),kCameraVtable=GA(GA_16B32C0);
+const unsigned kArmyVtable=GA(GA_1345458);                          // Army record, Army+148 = display
+const unsigned kCameraRoot=GA(GA_27D4258),kCameraVtable=GA(GA_16B62E0);
 // CCZU v2 entry: move 11x48x48 | attack 12x64x64 | special 5x48x48, 8-bit palette index, 0 = clear.
 constexpr unsigned kRawSize=48*48*11+64*64*12+48*48*5;
 constexpr unsigned kAtlasW=64,kAtlasH=11*48+12*64+5*48,kAttackRow=11*48,kSpecialRow=kAttackRow+12*64;
@@ -28,7 +29,7 @@ constexpr unsigned kSlots=512,kTextures=512,kQuads=kSlots*3;   // unit + up to t
 constexpr unsigned kLabelW=64,kLabelH=20,kLabelCell=0xFFFFFFFEu;
 // Palette rows: 0 neutral (original green marks), 1+k = force colour k (Force+49, 62 colours), 63 Red Hare.
 // 2026-10-31 user: force colours, plus a contrasting outline so units do not sink into the ground.
-const unsigned kRows=64,kForceColours=GA(GA_1A26590),kColourCount=62,kRedHare=63;   // 2ACF00 mode 0 -> 32C220 table (RRGGBBAA)
+const unsigned kRows=64,kForceColours=GA(GA_1A29590),kColourCount=62,kRedHare=63;   // 2ACF00 mode 0 -> 32C220 table (RRGGBBAA)
 constexpr ULONGLONG kBlockMs=700,kHurtMs=450,kCritMs=700;
 // 2026-11-01 user: attack / hurt motions changed too often -> slower attack frames, one hurt motion per 1.5 s.
 constexpr ULONGLONG kAttackFrameMs=260,kHurtCooldownMs=1500;
@@ -36,7 +37,7 @@ constexpr ULONGLONG kAttackFrameMs=260,kHurtCooldownMs=1500;
 // 막기 blocks 5 normal attacks, a triggered 회심 covers 5 normal attacks; the triggering hit is the first.
 // 2026-11-01 user: still shown with no enemy around -> the state also ends once the army goes a whole game day
 // without a normal attack exchange (last exchange day + 1 is the last day shown).
-constexpr int kCharges=5;
+constexpr int kCharges=8;
 // Absolute game day, same arithmetic as 32BA50(context+34): (year*12+month)*30+day-31 (pure read).
 static int game_day_read() {
     Obj root=world();Obj context=root?pointer(root,0x871E8):nullptr;if(!context)return -1;
@@ -87,7 +88,7 @@ constexpr unsigned char kRulerClass[3]={0,1,2},kStrategistClass[3]={75,76,77};  
 // {person id (Person+10), cell}, sorted; data/ccz_generals.tsv.
 struct General {unsigned short id,cell;};
 constexpr General kGenerals[]={{16,752},{29,900},{32,922},{34,901},{35,809},{37,899},{92,776},{95,773},{102,740},{105,889},{114,734},{124,725},{144,920},{147,495},{161,843},{162,856},{176,881},{179,522},{183,837},{185,834},{186,894},{189,828},{203,859},{208,865},{215,516},{219,923},{231,839},{247,878},{254,525},{271,510},{281,893},{344,819},{371,838},{373,873},{379,531},{383,862},{393,767},{402,779},{405,845},{412,874},{432,868},{440,534},{442,749},{449,871},{464,892},{511,746},{515,816},{518,731},{521,480},{526,817},{535,891},{551,886},{553,866},{557,486},{586,882},{596,501},{607,540},{617,884},{618,737},{631,875},{640,528},{656,498},{658,844},{663,728},{671,912},{689,770},{703,885},{709,519},{736,913},{765,841},{766,848},{769,504},{787,846},{812,895},{822,888},{827,829},{828,877},{830,818},{842,782},{845,861},{902,803},{904,850},{913,743},{952,483},{958,864},{959,836},{962,764},{968,835},{974,872},{987,492},{988,869},{997,867}};
-static unsigned general_cell(unsigned id) {
+[[maybe_unused]] static unsigned general_cell(unsigned id) {
     const General *p=std::lower_bound(std::begin(kGenerals),std::end(kGenerals),id,[](const General &g,unsigned v){return g.id<v;});
     return p!=std::end(kGenerals) && p->id==id?p->cell:0u;
 }
@@ -130,12 +131,17 @@ static bool native_facing(Unit &u,float yaw) {
 }
 static SRWLOCK lock=SRWLOCK_INIT;
 static Unit units[kSlots];
+static std::unordered_set<unsigned> failed_cells;   // pictures we could not decode/upload; guarded by lock, cleared on a new device
 static float camera[80];static ULONGLONG camera_seen;
 static void reset_appearance_captures() {
     AcquireSRWLockExclusive(&lock);for(auto &u:units)u=Unit{};camera_seen=0;ReleaseSRWLockExclusive(&lock);
     // Combat charges, GPU assets and the local14 render hooks are intentionally independent.
 }
 static volatile LONG installed,hide_model=1,depth_test=1;
+// 2026-11-09 user: the native model must show unless our sprite is actually being drawn (PW6).
+// last_draw_ok = last draw() that really submitted vertices; hide_since = first capture tick of the current hide episode.
+static volatile LONGLONG last_draw_ok,hide_since;
+static bool fallback_enabled;   // local17 [ccz] sprite_fallback (startup-only); off = v15.7.1 hide rule
 static std::vector<unsigned char> asset;
 static std::unordered_map<unsigned,std::pair<unsigned,unsigned>> entries; // cell -> (offset, packed size)
 static unsigned original_palette[kRows][256];
@@ -145,6 +151,24 @@ static volatile LONG captures,replaced,yaw_logged;
 static bool zoom_recovery_pending,has_submitted_sprites;
 static unsigned zoom_recovery_logs;
 static ULONGLONG last_sprite_submission;
+// PW6 health line: one per 10 s while sprites are installed (at most 2000 lines).
+// fallback = captures that would have hidden but showed the native model; low 16 bits total,
+// bits 16-23 rule 1 (no recent successful draw), bits 24-31 rules 2/3 (failed cell, full slots).
+static volatile LONG health_hidden,health_drawn,health_fallback1,health_fallback23,health_lines;
+static ULONGLONG health_next;
+static void health_tick() {
+    ULONGLONG now=GetTickCount64();
+    if(!health_next){health_next=now+10000;return;}
+    if(now<health_next)return;
+    health_next=now+10000;
+    LONG lines=InterlockedIncrement(&health_lines);
+    LONG hidden=InterlockedExchange(&health_hidden,0),drawn=InterlockedExchange(&health_drawn,0);
+    LONG one=InterlockedExchange(&health_fallback1,0),many=InterlockedExchange(&health_fallback23,0);
+    if(lines>2000)return;
+    unsigned a=one>0?static_cast<unsigned>(one):0u,b=many>0?static_cast<unsigned>(many):0u,total=a+b;
+    if(total>65535u)total=65535u;if(a>255u)a=255u;if(b>255u)b=255u;
+    log_event("ccz_sprites_health",static_cast<unsigned>(hidden>0?hidden:0),static_cast<unsigned>(drawn>0?drawn:0),total|(a<<16)|(b<<24));
+}
 #endif
 // ---- game thread: read only ----
 static bool read_camera(float out[80]) {
@@ -198,6 +222,9 @@ static Identity identify(Obj army,unsigned formation) {   // pure reads, no game
     return r;
 }
 static bool capture(Obj display,Obj scene) { COST_SCOPE("ccz_sprites_capture"); COST_CRUMB("ccz_capture_display",display);
+#ifndef NO_RUNTIME_LOG
+    health_tick();   // game thread only, same as every other capture counter
+#endif
     if(dword(display,0x740)!=0 || dword(display,0x748)!=0)return false;   // field mode only, no extra part
     // 2026-10-31 live read: *(image+1B9FB70) held a stack-like value, never main+210==scene, so
     // every army was rejected. The Army back-reference below already identifies field armies.
@@ -207,6 +234,16 @@ static bool capture(Obj display,Obj scene) { COST_SCOPE("ccz_sprites_capture"); 
     unsigned formation=army[0x1B];
     Identity who=identify(army,formation);
     if(who.cls==kNative)return false;   // 충차 / water / 사이 / ships keep native models
+    {   // PW6 rule 2: a picture we could not load keeps the native model instead of vanishing.
+        bool failed=false;
+        if(fallback_enabled) {AcquireSRWLockShared(&lock);failed=failed_cells.find(who.cell)!=failed_cells.end();ReleaseSRWLockShared(&lock);}
+        if(failed) {
+#ifndef NO_RUNTIME_LOG
+            InterlockedIncrement(&health_fallback23);
+#endif
+            return false;
+        }
+    }
     float position[3];memcpy(position,display+0x90,sizeof(position));
     if(!std::isfinite(position[0]) || !std::isfinite(position[1]) || !std::isfinite(position[2]))return false;
     float cam[80];bool fresh=read_camera(cam);
@@ -219,7 +256,23 @@ static bool capture(Obj display,Obj scene) { COST_SCOPE("ccz_sprites_capture"); 
         if(!stale || u.seen<stale->seen)stale=&u;
     }
     bool fresh_slot=!slot;
-    if(!slot){slot=stale;*slot=Unit{};slot->army=army;}
+    if(!slot) {
+        // PW6 rule 3: the slot table is full of live armies -> do not hide the newcomer.
+        if(fallback_enabled && stale && stale->army && now<stale->seen+300) {
+            ReleaseSRWLockExclusive(&lock);
+#ifndef NO_RUNTIME_LOG
+            InterlockedIncrement(&health_fallback23);
+            static ULONGLONG full_next;static LONG full_count;
+            LONG full=InterlockedIncrement(&full_count);
+            if(now>=full_next) {
+                full_next=now+10000;InterlockedExchange(&full_count,0);
+                log_event("ccz_sprites_slots_full",static_cast<unsigned>(full>0?full:0),kSlots,0);
+            }
+#endif
+            return false;
+        }
+        slot=stale;*slot=Unit{};slot->army=army;
+    }
     Unit &u=*slot;
     float dx=position[0]-u.x,dz=position[2]-u.z;
     if(!fresh_slot && dx*dx+dz*dz>1.0f) {
@@ -250,8 +303,23 @@ static bool capture(Obj display,Obj scene) { COST_SCOPE("ccz_sprites_capture"); 
 #endif
     // Hide the native model only while the sprite can be drawn (camera read recently); otherwise the
     // army would vanish completely (2026-11-01: nothing shown after the farthest zoom).
+    // PW6 (2026-11-09 user): also only once our sprite was drawn within 1 s, or during the first 1.5 s
+    // of a hide episode (sprites not drawn yet). After that the native model shows until a draw succeeds.
     bool drawable=fresh || now-camera_seen<500;
-    return drawable && InterlockedCompareExchange(&hide_model,0,0)!=0;
+    bool want=drawable && InterlockedCompareExchange(&hide_model,0,0)!=0;
+    LONGLONG since=InterlockedCompareExchange64(&hide_since,0,0);
+    if(want) {
+        if(!since){InterlockedCompareExchange64(&hide_since,static_cast<LONGLONG>(now),0);since=InterlockedCompareExchange64(&hide_since,0,0);}
+    } else if(since && now-static_cast<ULONGLONG>(since)>2000)InterlockedCompareExchange64(&hide_since,0,since);
+    LONGLONG drawn=InterlockedCompareExchange64(&last_draw_ok,0,0);
+    bool recent=drawn && now-static_cast<ULONGLONG>(drawn)<1000;
+    bool grace=since && now-static_cast<ULONGLONG>(since)<1500;
+    bool hide=want && (!fallback_enabled || recent || grace);
+#ifndef NO_RUNTIME_LOG
+    if(hide)InterlockedIncrement(&health_hidden);
+    else if(want)InterlockedIncrement(&health_fallback1);
+#endif
+    return hide;
 }
 static void __fastcall submit(Obj display,Obj scene,Obj list) { COST_SCOPE("ccz_sprites_submit"); COST_CRUMB("ccz_sprites_display",display); COST_CRUMB("ccz_submit_display",display);
 #if defined(RUNTIME_COST_PROFILE) && !defined(NO_RUNTIME_LOG)
@@ -509,9 +577,23 @@ static void hook_context(ID3D11DeviceContext *c) {
     if(set_table || !InterlockedCompareExchange(&depth_test,0,0))return;
     void **table=*reinterpret_cast<void ***>(c);DWORD prior=0;
     if(!VirtualProtect(table+kSetTargetsSlot,sizeof(void *),PAGE_READWRITE,&prior))return;
-    original_set=reinterpret_cast<SetTargets>(table[kSetTargetsSlot]);   // chains over gpu_profile if it came first
-    InterlockedExchangePointer(table+kSetTargetsSlot,reinterpret_cast<void *>(&set_targets));
-    DWORD ignored=0;VirtualProtect(table+kSetTargetsSlot,sizeof(void *),prior,&ignored);set_table=table;
+    // Review F-05: swap only if the slot still holds the value we chain to (another mod may hook it between the read and the write);
+    // a slot that already holds our hook is never chained to itself. Bounded retry, then give up (the next call tries again).
+    bool published=false,self=false;
+    for(int attempt=0;attempt<3 && !published;++attempt) {
+        void *current=table[kSetTargetsSlot];   // chains over gpu_profile if it came first
+        if(current==reinterpret_cast<void *>(&set_targets)) {self=true;break;}
+        original_set=reinterpret_cast<SetTargets>(current);
+        published=InterlockedCompareExchangePointer(table+kSetTargetsSlot,reinterpret_cast<void *>(&set_targets),current)==current;
+    }
+    DWORD ignored=0;VirtualProtect(table+kSetTargetsSlot,sizeof(void *),prior,&ignored);
+    if(!published) {
+#ifndef NO_RUNTIME_LOG
+        static unsigned failures;if(++failures<=4)log_event("ccz_sprites_context_hook_failed",self?1u:0u,0,0);
+#endif
+        return;
+    }
+    set_table=table;
 #ifndef NO_RUNTIME_LOG
     log_event("ccz_sprites_context_hook",1,0,0);
 #endif
@@ -542,6 +624,7 @@ static bool create_labels(ID3D11Device *d) {   // render thread, once per device
 static bool create_resources(ID3D11Device *d) {
     if(device==d)return !resources_failed;
     release_resources();device=d;device->AddRef();resources_failed=true;
+    AcquireSRWLockExclusive(&lock);failed_cells.clear();ReleaseSRWLockExclusive(&lock);   // new device: retry every failed cell
     D3D11_INPUT_ELEMENT_DESC elements[]={{"POSITION",0,DXGI_FORMAT_R32G32B32A32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0},
         {"TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,16,D3D11_INPUT_PER_VERTEX_DATA,0},{"TEXCOORD",1,DXGI_FORMAT_R32_UINT,0,24,D3D11_INPUT_PER_VERTEX_DATA,0}};
     if(FAILED(d->CreateVertexShader(ccz_sprites_vs,sizeof(ccz_sprites_vs),nullptr,&vs)) || FAILED(d->CreatePixelShader(ccz_sprites_ps,sizeof(ccz_sprites_ps),nullptr,&ps)) ||
@@ -563,15 +646,41 @@ static bool create_resources(ID3D11Device *d) {
     if(FAILED(d->CreateRasterizerState(&rs,&raster)))return false;
     resources_failed=false;return true;
 }
+// PW6 rule 2: remember a cell we could not load; reason 1 decode, 2 texture, 3 view. The set is functional
+// (capture keeps the native model); the log line is diagnostic-only.
+static void note_cell_failed(unsigned cell,unsigned reason,HRESULT hr) {
+    bool first=false;
+    AcquireSRWLockExclusive(&lock);first=failed_cells.insert(cell).second;ReleaseSRWLockExclusive(&lock);
+#ifndef NO_RUNTIME_LOG
+    if(!first)return;
+    log_event("ccz_sprites_cell_failed",cell,static_cast<unsigned>(hr)&65535u,reason);
+    if(device && device->GetDeviceRemovedReason()!=S_OK) {
+        static volatile LONG removed_logged;
+        if(InterlockedExchange(&removed_logged,1)==0)log_event("ccz_sprites_device_removed",static_cast<unsigned>(device->GetDeviceRemovedReason()),0,0);
+    }
+#else
+    (void)first;(void)reason;(void)hr;
+#endif
+}
 static ID3D11ShaderResourceView *cell_view(unsigned cell) {
     CellTexture *slot=nullptr;ULONGLONG now=GetTickCount64();
     for(auto &t:textures){if(t.cell==cell && t.view){t.used=now;return t.view;}if(!slot || t.used<slot->used)slot=&t;}
-    std::vector<unsigned char> atlas;if(!decode(cell,atlas))return nullptr;
+    std::vector<unsigned char> atlas;
+    if(!decode(cell,atlas)) {
+        note_cell_failed(cell,1,0);
+        return nullptr;
+    }
     D3D11_TEXTURE2D_DESC t{};t.Width=kAtlasW;t.Height=kAtlasH;t.MipLevels=t.ArraySize=1;t.Format=DXGI_FORMAT_R8_UINT;t.SampleDesc.Count=1;t.Usage=D3D11_USAGE_IMMUTABLE;t.BindFlags=D3D11_BIND_SHADER_RESOURCE;
     D3D11_SUBRESOURCE_DATA init{atlas.data(),kAtlasW,0};ID3D11Texture2D *texture=nullptr;
-    if(FAILED(device->CreateTexture2D(&t,&init,&texture)))return nullptr;
+    HRESULT made=device->CreateTexture2D(&t,&init,&texture);
+    if(FAILED(made)) {
+        note_cell_failed(cell,2,made);
+        return nullptr;
+    }
     drop(slot->view);slot->cell=~0u;
-    if(SUCCEEDED(device->CreateShaderResourceView(texture,nullptr,&slot->view))){slot->cell=cell;slot->used=now;}
+    made=device->CreateShaderResourceView(texture,nullptr,&slot->view);
+    if(SUCCEEDED(made)){slot->cell=cell;slot->used=now;}
+    else note_cell_failed(cell,3,made);
     texture->Release();return slot->view;
 }
 static void clip(const float *m,float x,float y,float z,Vertex &v) {   // row vector * ViewProj
@@ -787,7 +896,9 @@ static bool draw(ID3D11DeviceContext *c,ID3D11RenderTargetView *rtv,ID3D11DepthS
         InterlockedExchange(&drawing,0);
     }
     stats.units_drawn=submitted?static_cast<LONG>(written):0;
+    if(submitted)InterlockedExchange64(&last_draw_ok,static_cast<LONGLONG>(GetTickCount64()));   // PW6: draws are really happening
 #ifndef NO_RUNTIME_LOG
+    if(submitted)InterlockedExchangeAdd(&health_drawn,static_cast<LONG>(written));
     if(submitted) {
         ULONGLONG submitted_at=GetTickCount64();
         // The shared overlay can skip on_present altogether while no module needs it.
@@ -919,10 +1030,10 @@ static bool guards_match() {
     for(unsigned i=0;i<kSubmitSize;++i)hash=(hash^image[kSubmit+i])*0x100000001B3ull;
     return hash==kSubmitHash;
 }
-static bool install(bool hide,bool depth,bool far_keep) { COST_SCOPE("ccz_install");
+static bool install(bool hide,bool depth,bool far_keep,bool fallback) { COST_SCOPE("ccz_install");
     if(InterlockedCompareExchange(&installed,0,0) || !guards_match())return false;
     InterlockedExchange(&hide_model,hide?1:0);InterlockedExchange(&depth_test,depth?1:0);
-    far_keep_enabled=far_keep;stop_distance=0;
+    far_keep_enabled=far_keep;fallback_enabled=fallback;stop_distance=0;
 #ifndef NO_RUNTIME_LOG
     log_event("ccz_sprites_far_keep",far_keep?1u:0u,static_cast<unsigned>(kFarKeepMs),0);
 #endif
@@ -948,7 +1059,7 @@ static Lifetime lifetime;
 // 7단계 1749A0이 output+20/+22(u16) 합을 병력에서 뺀다(합 0 -> 원작이 1로 처리). 6단계 직후 output만 고친다.
 // 1749A0 진입 훅(전투 DLL)과 겹치지 않는다. pair+0 = 공격 기록 포인터, pair+8 = 피격 기록, 기록+4 27 = 야전 부대.
 namespace ccz_combat {
-const unsigned kFix=GA(GA_16FDD0),kStat=GA(GA_22FCE0);
+const unsigned kFix=GA(GA_170D80),kStat=GA(GA_231770);
 static volatile LONG block_on,critical_on;
 static unsigned roll() {   // per mille; own state, the game's random state is untouched
 #ifdef CCZ_NATIVE_FIXTURE
@@ -969,6 +1080,11 @@ static int war(Obj army) {   // effective 무력 (22FCE0 index 1), -1 without a 
     Obj person=root && id<0x1771?pointer(root,0x158+id*8):nullptr;
     return valid(person)?fn<int(__fastcall *)(Obj,unsigned,unsigned)>(kStat)(person,1,0xFFF):-1;
 }
+static int intel(Obj army) {   // effective 지력 (22FCE0 index 2), -1 without a commander
+    Obj root=world();unsigned id=word(army,0x12);
+    Obj person=root && id<0x1771?pointer(root,0x158+id*8):nullptr;
+    return valid(person)?fn<int(__fastcall *)(Obj,unsigned,unsigned)>(kStat)(person,2,0xFFF):-1;
+}
 static int clamp(int v,int lo,int hi) {return v<lo?lo:v>hi?hi:v;}
 static int __fastcall fix(Obj manager,Obj pair,Obj output) { COST_SCOPE("ccz_combat_fix"); COST_CRUMB("ccz_sprites_manager",manager);
     int next=fn<int(__fastcall *)(Obj,Obj,Obj)>(kFix)(manager,pair,output);
@@ -980,9 +1096,9 @@ static int __fastcall fix(Obj manager,Obj pair,Obj output) { COST_SCOPE("ccz_com
     if(!word(attacker,0x16) || !word(victim,0x16))return next;
     auto *damage=reinterpret_cast<unsigned short *>(output+0x20);
     unsigned before=damage[0]+damage[1];if(!before)return next;
-    unsigned af=fn<unsigned char(__fastcall *)(Obj)>(GA(GA_22CC40))(attacker);
-    unsigned vf=fn<unsigned char(__fastcall *)(Obj)>(GA(GA_22CC40))(victim);
-    if(af>=52 || vf>=52 || af==vf || !fn<bool(__fastcall *)(unsigned,unsigned)>(GA(GA_2CA280))(af,vf)) {
+    unsigned af=fn<unsigned char(__fastcall *)(Obj)>(GA(GA_22E690))(attacker);
+    unsigned vf=fn<unsigned char(__fastcall *)(Obj)>(GA(GA_22E690))(victim);
+    if(af>=52 || vf>=52 || af==vf || !fn<bool(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(af,vf)) {
 #ifndef NO_RUNTIME_LOG
         static volatile LONG rejected;
         if(InterlockedIncrement(&rejected)<=16)log_event("ccz_combat_not_hostile",af,vf,word(victim,0x12));
@@ -990,13 +1106,19 @@ static int __fastcall fix(Obj manager,Obj pair,Obj output) { COST_SCOPE("ccz_com
         return next;
     }
     int wa=war(attacker),wv=war(victim);if(wa<0 || wv<0)return next;
-    // 2026-10-31 user: once triggered, the next normal attacks on a guarding army are blocked and those by a
-    // furious army are critical, 5 times each (ccz_sprites::kCharges).
-    // 2026-11-01 user: a guarding army attacks normally again (the five blocks end the state anyway).
+    int ia=intel(attacker),iv=intel(victim);if(ia<0 || iv<0)return next;
+    // 2026-11-08 user: both states last 8 normal attacks; base probability targets
+    // ~28% special attacks in a 10-day two-army fight (measured 36.7% at 5%/5).
+    // 2026-11-01 user: a guarding army attacks normally again (the blocks end the state).
     int day=ccz_sprites::game_day_read();bool guard=false,fury=false,unused=false;
     ccz_sprites::buff_read(victim,day,guard,unused);ccz_sprites::buff_read(attacker,day,unused,fury);
-    // 막기% = 5 + 0.4 x (피격 무력 - 공격 무력), 1~10% (2026-11-01 user: 15 -> 10). 성공하면 피해 0 (원작이 1명으로 처리).
-    if(block && (guard || static_cast<int>(roll())<clamp(50+4*(wv-wa),10,100))) {
+#ifndef NO_RUNTIME_LOG
+    // 2026-11-08 user: frequency must use the real number of attack/hit events.
+    // Diagnostic only: one row per eligible hostile normal attack; flags bit0=guard state, bit1=fury state.
+    log_event("ccz_attack",word(attacker,0x12),word(victim,0x12),(guard?1u:0u)|(fury?2u:0u));
+#endif
+    // 막기% = 2.3 + 0.1 x (피격 지력 - 공격 지력) + 0.05 x (피격 사기 - 공격 사기), 0.3~3%.
+    if(block && (guard || static_cast<int>(roll())<clamp(23+(iv-ia)+(static_cast<int>(victim[0x1A])-static_cast<int>(attacker[0x1A]))/2,3,30))) {
         damage[0]=damage[1]=0;ccz_sprites::mark(victim,attacker,ccz_sprites::kMarkBlock);
         ccz_sprites::buff_use(victim,day,true,!guard);if(!guard)log_event("ccz_block",word(attacker,0x12),word(victim,0x12),before);
 #ifndef NO_RUNTIME_LOG
@@ -1004,8 +1126,8 @@ static int __fastcall fix(Obj manager,Obj pair,Obj output) { COST_SCOPE("ccz_com
 #endif
         return next;
     }
-    // 회심% = 5 + 0.3 x 무력 차 + 0.2 x 사기 차, 1~10% (2026-11-01 user: 15 -> 10). 피해 1.5배.
-    if(critical && (fury || static_cast<int>(roll())<clamp(50+3*(wa-wv)+2*(static_cast<int>(attacker[0x1A])-static_cast<int>(victim[0x1A])),10,100))) {
+    // 회심% = 2.3 + 0.1 x (공격 무력 - 피격 무력) + 0.05 x (공격 사기 - 피격 사기), 0.3~3%. 피해 1.5배.
+    if(critical && (fury || static_cast<int>(roll())<clamp(23+(wa-wv)+(static_cast<int>(attacker[0x1A])-static_cast<int>(victim[0x1A]))/2,3,30))) {
         for(unsigned i=0;i<2;++i){unsigned v=damage[i]*3u/2u;damage[i]=static_cast<unsigned short>(v>0xFFFF?0xFFFF:v);}
         ccz_sprites::mark(victim,attacker,ccz_sprites::kMarkCrit);
         ccz_sprites::buff_use(attacker,day,false,!fury);if(!fury)log_event("ccz_crit",word(attacker,0x12),word(victim,0x12),damage[0]+damage[1]);

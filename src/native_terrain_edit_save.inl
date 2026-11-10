@@ -1,6 +1,5 @@
-#include "merit_bond.h"
 #include "sidecar_cache.h"
-static bool merit_sidecar_path(const merit::SaveCoordinator::Completed &,wchar_t *,size_t,bool);
+#include "save_host.h"
 namespace terrain_edit {
 static Changes save_snapshot;
 static SidecarCache sidecar_cache;
@@ -8,31 +7,20 @@ static void snapshot() {
     if(!active())return;
     check_world();save_snapshot=changes;
 }
-static bool save_path(const merit::SaveCoordinator::Completed &job,wchar_t *path,bool create) {
-    if(!merit_sidecar_path(job,path,MAX_PATH,create))return false;
-    wchar_t *extension=wcsrchr(path,L'.');if(!extension)return false;
-    return !wcscpy_s(extension,static_cast<size_t>(MAX_PATH-(extension-path)),L".terrain");
+static bool save_path(const save_host::Job &job,wchar_t *path,bool create) {
+    return save_host::path(self_module,save_host::Job{job.name,job.binding},L"terrain",path,MAX_PATH,create);
 }
-static bool write_sidecar(const merit::SaveCoordinator::Completed &job) {
-    if(!active())return true;
-    wchar_t path[MAX_PATH],temporary[MAX_PATH];
-    if(!save_path(job,path,true) || swprintf_s(temporary,L"%s.tmp",path)<0)return false;
-    auto bytes=save_snapshot.encode(job.binding);
-    if(sidecar_cache.matches(path,bytes) && GetFileAttributesW(path)!=INVALID_FILE_ATTRIBUTES)return true;
-    HANDLE file=CreateFileW(temporary,GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
-    if(file==INVALID_HANDLE_VALUE)return false;
-    DWORD written=0;bool ok=WriteFile(file,bytes.data(),static_cast<DWORD>(bytes.size()),&written,nullptr)!=0 &&
-        written==bytes.size() && FlushFileBuffers(file)!=0;
-    CloseHandle(file);
-    if(ok)ok=MoveFileExW(temporary,path,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)!=0;
-    if(!ok)DeleteFileW(temporary);else sidecar_cache.remember(path,bytes);
-    return ok;
+static bool write_sidecar(const save_host::Job &job,save_host::Written *report=nullptr) {
+    if(!active()) {if(report)report->state=save_host::kOff;return true;}   // feature off: nothing written (manifest records OFF)
+    save_host::Written local;
+    return save_host::store(self_module,save_host::Job{job.name,job.binding},L"terrain",save_snapshot.encode(job.binding),
+        sidecar_cache,report?*report:local);
 }
 static void begin_load() {before_world_change();sidecar_cache.clear();save_snapshot.clear();}
-static void restore_sidecar(const merit::SaveCoordinator::Completed *job) {
+static bool restore_sidecar(const save_host::Job *job) {
     reset_ui_context();
-    if(!active())return;
-    changes.clear();changed_world=world();unsigned applied=0,failed=0;
+    if(!active())return false;
+    changes.clear();changed_world=world();unsigned applied=0,failed=0;bool accepted=false;
     if(job) {
         wchar_t path[MAX_PATH];
         if(save_path(*job,path,false)) {
@@ -46,6 +34,7 @@ static void restore_sidecar(const merit::SaveCoordinator::Completed *job) {
                 if(ok)ok=ReadFile(file,bytes.data(),static_cast<DWORD>(length.QuadPart),&got,nullptr)!=0 &&
                     got==length.QuadPart && saved.decode(bytes.data(),got,job->binding);
                 CloseHandle(file);
+                accepted=ok;
                 if(ok)applied=changes.restore(saved,tile_value,failed);
                 if(applied)clear_cost_cache();
             }
@@ -64,5 +53,11 @@ static void restore_sidecar(const merit::SaveCoordinator::Completed *job) {
 #else
     (void)applied;
 #endif
+    return accepted;
 }
+// Sidecar plugin of the terrain edit (.terrain): first in the order.
+static const save_host::SidecarPlugin sidecar_plugin={"terrain",L"terrain",1,nullptr,"terrain_edit_save_failed",nullptr,&snapshot,
+    [](const save_host::Job &job,save_host::Written &out) {return write_sidecar(job,&out);},
+    &begin_load,
+    [](const save_host::Job *job) {return restore_sidecar(job);}};
 }

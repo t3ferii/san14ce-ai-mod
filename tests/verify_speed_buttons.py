@@ -4,8 +4,8 @@ DRM-free analysis EXE and the captured running .text, plus the ScreenLayout patc
 from pathlib import Path
 import base64,json,re,struct,sys
 P=Path(__file__).resolve().parents[1]
-exe=(P/'build/ui_native_analysis/editor83_plain/game.exe.unpacked.exe').read_bytes()
-text=(P/'legacy/FogMod_Source/native_game_analysis/running_code_text.bin').read_bytes()
+exe=(P/'build/ui_native_analysis/editor83_b25953386/game.exe.unpacked.exe').read_bytes()
+text=(P/'build/ui_native_analysis/fixture/1a4a447d_text.bin').read_bytes()
 pe=struct.unpack_from('<I',exe,0x3c)[0];n=struct.unpack_from('<H',exe,pe+6)[0];so=struct.unpack_from('<H',exe,pe+20)[0]
 S=[struct.unpack_from('<IIII',exe,pe+24+so+i*40+8) for i in range(n)]
 def rd(rva,size):
@@ -30,29 +30,29 @@ for fn_,size,h in (('kSetup',0x4C8,'kSetupHash'),('kClick',0xBB,'kClickHash'),('
 # rather than removing the stack frame immediately. Keep its full fingerprint
 # and the queue write/+30 increment path, independently of runtime hook guards.
 for label,read in (('decoded EXE',rd),('captured text',run)):
-    ok(fnv(read(0x12540,0x8A))==0x16F08801B40066F8,label+' pop queue function fingerprint')
-    ok(read(0x125AC,0x18)==bytes.fromhex('488b4f30488b47404803c90f104424300f1104c848ff4730'),
+    ok(fnv(read(0x124A0,0x8A))==0x16F08801B40066F8,label+' pop queue function fingerprint')
+    ok(read(0x1250C,0x18)==bytes.fromhex('488b4f30488b47404803c90f104424300f1104c848ff4730'),
        label+' pop writes queue entry then increments qword manager+30')
     # 110E0 Obj() returns the static state manager 1B620B0; 570840 tracks
     # pending work at +30 and assigns state+50 from a pool of four slots.
-    getter=read(0x110E0,0x90)
+    getter=read(0x11040,0x90)
     ok(any(getter[i:i+3]==bytes.fromhex('488d05') and
-           0x110E0+i+7+struct.unpack_from('<i',getter,i+3)[0]==0x1B620B0
+           0x11040+i+7+struct.unpack_from('<i',getter,i+3)[0]==0x1B65100
            for i in range(len(getter)-6)),label+' 110E0 static manager return')
-    ok(read(0x571CD0,4)==bytes.fromhex('4d8b7730') and
-       read(0x571CDE,4)==bytes.fromhex('488b7850'),label+' 570840 pending snapshot and state coroutine slot')
-    ok(read(0x571D1B,10)==bytes.fromhex('4863900802000083fa04'),label+' coroutine pool used count +208 and capacity four')
+    ok(read(0x5744D0,4)==bytes.fromhex('4d8b7730') and
+       read(0x5744DE,4)==bytes.fromhex('488b7850'),label+' 570840 pending snapshot and state coroutine slot')
+    ok(read(0x57451B,10)==bytes.fromhex('4863900802000083fa04'),label+' coroutine pool used count +208 and capacity four')
 for slot,target in (('kSetupSlot','kSetup'),('kFrameSlot','kFrame'),('kHoverSlot','kHover')):
     ok(struct.unpack_from('<Q',rd(num(slot),8))[0]-0x140000000==num(target),slot)
-ok(rd(0x898950,16)==bytes.fromhex('488b12488b4908e9c48dffffcccccccc'),'functor tail jump bytes')
-ok(0x898957+5+struct.unpack_from('<i',rd(0x898958,4))[0]==num('kClick'),'tail jump target')
+ok(rd(0x89ABF0,16)==bytes.fromhex('488b12488b4908e9148effffcccccccc'),'functor tail jump bytes')
+ok(0x89ABF7+5+struct.unpack_from('<i',rd(0x89ABF8,4))[0]==num('kClick'),'tail jump target')
 ok(struct.unpack_from('<3i',rd(num('kIntervalTable'),12))==(8,2,1),'interval table')
-ok(struct.unpack_from('<Q',rd(num('kFunctorVtable')+0x10,8))[0]-0x140000000==0x898950,'functor _Do_call')
+ok(struct.unpack_from('<Q',rd(num('kFunctorVtable')+0x10,8))[0]-0x140000000==0x89ABF0,'functor _Do_call')
 lw=(P/'src/native_layout_wait.inl').read_text(encoding='utf-8')
-for site in (0x676767,0x86CFA5,0x86DEC9):
-    b=rd(site,5);ok(b[0]==0xE8 and site+5+struct.unpack_from('<i',b,1)[0]==0x86C570,'layout load call %X'%site)
+for site in (0x678E27,0x86F355,0x870279):
+    b=rd(site,5);ok(b[0]==0xE8 and site+5+struct.unpack_from('<i',b,1)[0]==0x86E920,'layout load call %X'%site)
 wb=bytes(int(x,16) for x in re.search(r'kWrapperBytes\[0x33\]=\{([^}]*)\}',lw).group(1).replace('\n','').split(','))
-ok(rd(0x86E0C0,len(wb))==wb and run(0x86E0C0,len(wb))==wb,'86E0C0 wrapper bytes')
+ok(rd(0x870470,len(wb))==wb and run(0x870470,len(wb))==wb,'86E0C0 wrapper bytes')
 patch=json.loads((P/'research/speed_buttons/layout_patch/traits9_layout.json').read_text(encoding='utf-8'))
 patch_bank=(P/'research/speed_buttons/layout_patch/traits9_layout.bin').read_bytes()
 ok(len(patch['records'])==8 and {r['ktid'] for r in patch['records']}>={0x301526D7,0xFEA5F28C,0x40F993CE,0x454A1BCC},'patch records')
@@ -64,13 +64,13 @@ for r in patch['records'][4:]:
     e=base64.b64decode(r['original_entry']);ok(struct.unpack_from('<I',e,36)[0]==r['ktid'],'original index entry %08X'%r['ktid'])
 oc=(P/'src/native_occupy_fast.inl').read_text(encoding='utf-8')
 on=lambda name:int(re.search(name+r'=0x([0-9A-Fa-f]+)',oc).group(1),16)
-for rva,size,h in ((on('kUpdate'),0xE8,'kUpdateHash'),(0x42B310,0x217,'kCameraPhaseHash'),(0x42C190,0xF7,'kEffectPhaseHash'),(0x42BB90,0x38C,'kTilePhaseHash'),(0x426DA0,0x157,'kLastPhaseHash')):
+for rva,size,h in ((on('kUpdate'),0xE8,'kUpdateHash'),(0x42D630,0x217,'kCameraPhaseHash'),(0x42E4A0,0xF7,'kEffectPhaseHash'),(0x42DEA0,0x38C,'kTilePhaseHash'),(0x4290C0,0x157,'kLastPhaseHash')):
     ok(fnv(rd(rva,size))==on(h) and fnv(run(rva,size))==on(h),'occupy %X fingerprint'%rva)
 ok(struct.unpack_from('<Q',rd(on('kUpdateSlot'),8))[0]-0x140000000==on('kUpdate'),'occupy update slot')
 b=rd(on('kCameraCall'),5);ok(b[0]==0xE8 and on('kCameraCall')+5+struct.unpack_from('<i',b,1)[0]==on('kCamera') and on('kCameraCall')%16<=11,'occupy camera call')
-ok(rd(0x42C21C,3)==bytes.fromhex('83f946') and rd(0x42C1C6,3)==bytes.fromhex('83f921'),'occupy effect thresholds 0x46/0x21')
+ok(rd(0x42E52C,3)==bytes.fromhex('83f946') and rd(0x42E4D6,3)==bytes.fromhex('83f921'),'occupy effect thresholds 0x46/0x21')
 # v12.8 counts four per frame: native waits use INC + CMP + JLE (greater-than), so overshoot is safe.
-ok(rd(0x42BC28,15)==bytes.fromhex('ff87c005000083bfc0050000190f8e'),'phase 6 counter > 0x19')
-ok(rd(0x426E08,15)==bytes.fromhex('ff83c005000083bbc00500001e0f8e'),'phase 7 counter > 0x1E')
+ok(rd(0x42DF38,15)==bytes.fromhex('ff87c005000083bfc0050000190f8e'),'phase 6 counter > 0x19')
+ok(rd(0x429128,15)==bytes.fromhex('ff83c005000083bbc00500001e0f8e'),'phase 7 counter > 0x1E')
 print(json.dumps({'status':'speed_buttons_static_verified' if not fail else 'failed','checks':checks,'failures':fail,'gameplay_verified':False}))
 sys.exit(1 if fail else 0)
