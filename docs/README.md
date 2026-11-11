@@ -4,6 +4,8 @@
 
 - [기능 57개와 기본값·종속 관계](FEATURE_SWITCHES.md)
 - [전투 AI의 현재 규칙](COMBAT_AI.md)
+- [원작 출진 판단 흐름 (회로도)](AI_FLOW_ORIGINAL.md)
+- [모드 출진 변경 지점 (회로도)](AI_FLOW_MOD.md)
 - [자동 내정](DOMESTIC.md) · [지역담당관](REGION_OFFICERS.md)
 - [숙련 공방 설정](EXPERT_SETTINGS.md) · [속도·저장](SPEED_AND_SAVE.md)
 - [개성·능력치·연출](EXTENSIONS.md) · [시험 기능: 통합 인사](UNIFIED_PERSONNEL.md)
