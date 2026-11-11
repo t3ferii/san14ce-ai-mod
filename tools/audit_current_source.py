@@ -80,18 +80,18 @@ def main():
     out=P/'development';out.mkdir(exist_ok=True)
     with (out/'FUNCTION_INDEX.csv').open('w',encoding='utf-8-sig',newline='') as f:
         w=csv.DictWriter(f,fieldnames=['file','line','function','topic','scope','body_sha256']);w.writeheader();w.writerows(rows)
-    (out/'source_audit.json').write_text(json.dumps({'basis':'v15.10 public build source (2026-11-10)',
+    (out/'source_audit.json').write_text(json.dumps({'basis':'v15.6 public build source (2026-11-06)',
         'method':'lexical definition candidates; not preprocessed; not full semantic review',
         'files':files},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     lines=['# 현재 소스 조사 범위와 함수 색인','',
-      '기준: v15.10 공개 무로그 빌드 소스 (2026-11-10). split 빌드 정의·Layout 등록표·주소표·기능 게이트·정책 및 기존 함수 기록을 대조했다.',
+      '기준: v15.6 공개 무로그 빌드 소스 (2026-11-06). split 빌드 정의·Layout 등록표·주소표·기능 게이트·정책 및 기존 함수 기록을 대조했다.',
       '일반 설명은 [README](../README.md), 원작 연결 함수와 변경 조건은 [기술 설명](../docs/GITHUB_기능상세.md)에 있다.','',
       '## 근거와 한계','',
       '- `FUNCTION_INDEX.csv`: 파일·행·함수 정의 후보·기능 주제·범위·본문 지문. `source_audit.json`: 모든 src 파일 지문과 정의 후보.',
       '- 정의 후보는 정규식과 괄호 대응으로 수집했다. 조건부 컴파일과 fixture 분기를 포함하며 템플릿·연산자·생성자 등을 완전히 파싱하는 컴파일러 색인이 아니다.',
       '- 핵심 실행 함수와 정책 조건을 수동 대조한 설명과, 위치를 자동 추출한 보조함수 색인을 구분한다. 모든 보조함수의 의미·ABI·도달성을 개별 검증 완료했다는 뜻은 아니다.',
       '- 실제 compile_commands.json이 없어 C++ LSP의 교차 참조 완전성을 주장하지 않는다. 원작 전체 EXE를 새로 역분석하거나 게임을 실행한 검사가 아니다.',
-      '- 개성·전법 툴팁과 AI 전사 연출은 이 모드의 소스(`src/native_trait_hover.inl`, `src/native_battle_deaths.inl`)로 다시 구현했다. v15.10부터 참고 DLL의 기계어를 포함하지 않는다.','',
+      '- 개성·전법 툴팁과 AI 전사 연출은 이 모드의 소스(`src/native_trait_hover.inl`, `src/native_battle_deaths.inl`)로 다시 구현했다. v15.6부터 참고 DLL의 기계어를 포함하지 않는다.','',
       '## 수동 대조한 핵심 경로','',
       '| 경로 | 확인한 판단·변경 |','|---|---|',
       '| first_army_node / cut_node / city_node / retreat_node | 개별 우선순위·병참·원작 군세 재판정·10일 회군 억제·소규모 임무 유지 |',

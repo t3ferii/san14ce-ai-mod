@@ -128,7 +128,7 @@ static bool path_wall_lock_step(Obj army, Progress &p) { COST_SCOPE("facilities:
     Obj b=alive?table(0x6DA98,p.path_wall_lock_id,3000):nullptr;
     bool valid_b=alive && valid(b);
     bool same=valid_b && word(b,0x10)==p.path_wall_lock_hex && b[0x12]==p.destroy_type && !b[0x13];
-    unsigned reason=wall_lock::release_reason(mod_features.path_wall,alive,valid_b,same,
+    unsigned reason=wall_lock::release_reason(mod_features.path_wall && !route_hook_breach,alive,valid_b,same,
         valid_b?static_cast<unsigned>(word(b,0x14)):0);
     if(reason) {path_wall_release(army,p,reason);return true;}
     int day=game_day();
@@ -204,6 +204,7 @@ static bool cancel_unqualified_neutral_order(Obj army,Progress &p) { COST_SCOPE(
     // Old saves can already contain the former cap/idle demolition command.
     // [combat] obstacle=0 leaves native neutral-wall orders untouched.
     if(!mod_features.obstacle || army[0x37]!=6 || army[0x38]!=11)return false;
+    if(route_hook_owns && route_hook_owns(army))return false;   // U39: a route_hook breach order
     unsigned id=word(army,0x3A);Obj b=table(0x6DA98,id,3000);
     if(!id || !valid(b) || b[0x13] || (b[0x12]!=9 && b[0x12]!=10 && b[0x12]!=16))return false;
     bool recorded=p.destroy_id==id && p.destroy_hex==word(b,0x10) && p.destroy_type==b[0x12] &&

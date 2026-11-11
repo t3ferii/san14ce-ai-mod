@@ -168,6 +168,25 @@ static unsigned sortie_support(Obj p) { COST_SCOPE("sortie:sortie_support");
     }
     return (found&1)+((found>>1)&1)+((found>>2)&1);
 }
+// local58 (user 2026-11-11 "범위개성이 친애처럼 출진 목록에 들어가는지 ... 여무장 응원 악주는 1000명 지원부대로 나가겠지만 다른
+// 범위개성은 통솔이 높은경우도 있어서 목록에만 들어가고 군사 배분 제한은 안돼"): ally-area traits in the original five slots
+// (as sortie_support): 효장 10, 용장 11, 강장 12, 독장 13, 구심 21, 악주 23, 명경 45, 독려 46, 94, 응원 96.
+static bool sortie_area_trait(Obj p) {
+    for(unsigned i=0;i<5;++i) {
+        const unsigned t=word(p,0x118+i*2);
+        if(t==10 || t==11 || t==12 || t==13 || t==21 || t==23 || t==45 || t==46 || t==94 || t==96)return true;
+    }
+    return false;
+}
+// 1,000-soldier units (user 2026-11-11 "여무장은 1000명으로 해 통솔 60이하면 그냥 1000명으로 지원나가는게 좋아"): every female
+// officer and every officer with 통솔 60 or less leaves with at most 1,000 soldiers.
+static bool sortie_female_capped(Obj p) {
+    return p[0xA9]==1 || fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(p,0,0xFFF)<=60;
+}
+static bool sortie_likes(Obj a,Obj b) {
+    const auto liked=fn<int(__fastcall *)(Obj,Obj)>(GA(GA_234880));
+    return liked(a,b)!=0 || liked(b,a)!=0;
+}
 static void sortie_command(Obj node,Obj target,Obj person,unsigned formation,unsigned soldiers,unsigned *cmd,bool gate_rear=false) { COST_SCOPE("sortie:sortie_command");
     memset(cmd,0,0x78);
     for(unsigned i=8;i<=12;++i)cmd[i]=48400;
@@ -232,10 +251,11 @@ static Obj __fastcall sortie_dispatch(unsigned *command,int spend) {
         Obj d=table(0xE0D0,person[0xE0],51);
         if(valid(d) && !fn<int(__fastcall *)(Obj)>(GA(GA_2350F0))(d)) {log_event("ai_wall_departure_blocked",copy[0],copy[23],copy[21]);return nullptr;}
     }
-    if(person[0xA9]==1)copy[2]=(std::min)(copy[2],1000u);
+    if(sortie_female_capped(person))copy[2]=(std::min)(copy[2],1000u);
     if(copy[2]<1000 || person[0x161])return nullptr;
     log_event("dispatch_native_command",copy[0],(copy[13]<<16)|copy[14],copy[15]);
     Obj army=original_sortie_dispatch(copy,spend);
+    AI_TRACE_DEPARTURE(copy,army);   // diagnostic build: who ordered this departure and why
     // A fresh departure can reuse the same native object and commander.
     if(valid(army) && army_id(army)>0 && army_id(army)<=500) {
         unsigned fresh=army_id(army);
@@ -269,28 +289,39 @@ static bool sortie_departure_from(Obj node,Obj target,const std::vector<Obj> &so
         fn<void(__fastcall *)(GameList *)>(GA(GA_2A26B0))(&people);
         fn<void(__fastcall *)(GameList *,int,int,int)>(GA(GA_D4350))(&people,0,1,0);
         sortie::Officer facts[128];Obj actors[128];unsigned count=0;
+        int rank[128];bool area[128];
         for(Link *l=list_first(people);l && count<128;l=l->next) {
             Obj p=l->value;if(!sortie_auto_person(p) || p[0x161])continue;
             int capacity=fn<int(__fastcall *)(Obj)>(GA(GA_232C00))(p);
             if(capacity<1000 || capacity>65535)continue;
             int score=fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(p,0,0xFFF);
             unsigned support=sortie_support(p);
+            // Female officers only fill the 1,000 support seat; an ally-area trait holder over 통솔 60 joins the list.
+            const bool ranged=!support && p[0xA9]!=1 && score>60 && sortie_area_trait(p);
             if(p[0xA9]==1) {if(!support)continue;capacity=1000;}
             facts[count]={word(p,0x10),dword(p,0x12C),static_cast<unsigned>(capacity),support,score+static_cast<int>(support*200),word(target,0x4E)>51};
+            // local58: rank = score + 8 for an ally-area trait (list only: capacity and seat rules stay as they are).
+            rank[count]=facts[count].score+(ranged?8:0);area[count]=ranged;
             actors[count++]=p;
         }
         list_free(people);
-        for(unsigned i=0;i<count;++i)for(unsigned j=i+1;j<count;++j)if(facts[j].score>facts[i].score) {
-            auto f=facts[i];facts[i]=facts[j];facts[j]=f;Obj p=actors[i];actors[i]=actors[j];actors[j]=p;
-        }
+        auto swap_at=[&](unsigned i,unsigned j){auto f=facts[i];facts[i]=facts[j];facts[j]=f;Obj p=actors[i];actors[i]=actors[j];actors[j]=p;
+            int r=rank[i];rank[i]=rank[j];rank[j]=r;bool b=area[i];area[i]=area[j];area[j]=b;};
+        auto sort_by_rank=[&](unsigned from){for(unsigned i=from;i<count;++i)for(unsigned j=i+1;j<count;++j)if(rank[j]>rank[i])swap_at(i,j);};
+        sort_by_rank(0);
+        // local58: officers in 친애 with the strongest one (234880 either way, the original 요격 companion rule N1667) +10,
+        // the same weight as officer_rotation's front score; the strongest keeps the first place.
+        [[maybe_unused]] unsigned bonded=0;
+        Obj leader=count?actors[0]:nullptr;
+        for(unsigned k=1;k<count;++k)if(sortie_likes(leader,actors[k])) {rank[k]+=10;++bonded;}
+        sort_by_rank(1);
         // 2026-10-22: officers with leadership (통솔) 70 or less stay out of the siege roster unless they
         // are support seats or the roster cannot be formed without them. score = 통솔 + support*200.
+        // local58: ally-area trait holders join the list like support seats.
         auto leadership=[&](unsigned k){return facts[k].score-static_cast<int>(facts[k].support*200);};
         unsigned strong=0;
-        for(unsigned k=0;k<count;++k)if(leadership(k)>70 || facts[k].support) {
-            if(k!=strong){auto f=facts[k];Obj a=actors[k];
-                for(unsigned m=k;m>strong;--m){facts[m]=facts[m-1];actors[m]=actors[m-1];}
-                facts[strong]=f;actors[strong]=a;}
+        for(unsigned k=0;k<count;++k)if(leadership(k)>70 || facts[k].support || area[k]) {
+            for(unsigned m=k;m>strong;--m)swap_at(m,m-1);
             ++strong;
         }
         unsigned chosen[7],capacities[7]={},soldiers[7],commands[7][30],number=0;
@@ -306,6 +337,11 @@ static bool sortie_departure_from(Obj node,Obj target,const std::vector<Obj> &so
                     log_event("sortie_wedge_seat",facts[k].id,leadership(k),slot);chosen[slot]=k;break;
                 }
             }
+        }
+        // local58 diagnostic: seats taken by an ally-area trait holder (1) or someone in 친애 with the leader (2).
+        for(unsigned i=0;i<7;++i)if(chosen[i]<count) {
+            const unsigned k=chosen[i],why=(area[k]?1u:0u)|(actors[k]!=leader && sortie_likes(leader,actors[k])?2u:0u);
+            if(why)log_event("sortie_roster_bonus",facts[k].id,why|(i<<4),word(leader,0x10));
         }
         Obj district=nullptr;
         for(unsigned i=0;i<7;++i)if(chosen[i]<count) {

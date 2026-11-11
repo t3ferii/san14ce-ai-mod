@@ -20,12 +20,15 @@ struct Snapshot {
     Obj army_ptr[kMax+1],troops_ptr[kMax+1];
     unsigned char army[kMax+1][kArmyHi-kArmyLo];
     unsigned char troops[kMax+1][kTroopsHi-kTroopsLo];
+    unsigned char army_ai[kMax+1][8];   // +1F0 행동 비트(u32), +1F4 병참 단절 목표 부대(u32) (2026-11-10)
 };
+constexpr unsigned kArmyAi=0x1F0;
 static Snapshot *last_state,*scratch;
 static bool have_last;
 static SRWLOCK lock=SRWLOCK_INIT;
 static volatile LONG installed,active;
 static thread_local unsigned depth;
+static thread_local unsigned cur_node=~0u;   // innermost traced node on this thread (fn rows)
 static unsigned last_node=~0u;
 static unsigned long long sequence,written;
 static int current_day=-1;
@@ -33,7 +36,10 @@ static volatile LONG calls[kNodes],changes[kNodes]; // calls also counted for un
 static HANDLE file=INVALID_HANDLE_VALUE;
 static std::string *buffer;
 static wchar_t output_path[MAX_PATH];
-static const unsigned long long kMaxBytes=1ull<<30; // stop writing after 1 GiB
+// No size cap (user 2026-11-10 "로그 용량제한은 걱정하지말고 일단 다 수집"); writing stops only when the
+// drive holding the log has under 5 GiB free, so saves and the game itself never run out of disk.
+static const unsigned long long kMinFree=5ull<<30;
+static bool disk_full;
 using Exec=uint64_t(__fastcall *)(Obj,Obj,Obj);
 static Exec originals[kNodes];
 // Optional SAN14_CombatAI.dll export: the mod decision steps taken during the traced node call on this
@@ -64,7 +70,12 @@ static int trace_day() {
 }
 static void flush() {
     if(!buffer || buffer->empty())return;
-    if(file!=INVALID_HANDLE_VALUE && written<kMaxBytes) {
+    if(file!=INVALID_HANDLE_VALUE && !disk_full) {
+        ULARGE_INTEGER free_bytes{};
+        if(GetDiskFreeSpaceExW(output_path,&free_bytes,nullptr,nullptr) && free_bytes.QuadPart<kMinFree) {
+            disk_full=true;const char stop[]="0,-1,0,meta,start,,,0,meta,0,0,0,0,0,disk_low_stop,0,0,\n";
+            DWORD done=0;WriteFile(file,stop,sizeof(stop)-1,&done,nullptr);buffer->clear();return;
+        }
         DWORD done=0;WriteFile(file,buffer->data(),static_cast<DWORD>(buffer->size()),&done,nullptr);written+=done;
     }
     buffer->clear();
@@ -160,6 +171,7 @@ static void capture(Snapshot &s) {
         Obj a=table(kArmyTable,id,kMax),t=table(kTroopsTable,id,kMax);
         s.army_ptr[id]=a;s.troops_ptr[id]=t;
         if(a)memcpy(s.army[id],a+kArmyLo,sizeof(s.army[id]));else memset(s.army[id],0,sizeof(s.army[id]));
+        if(a)memcpy(s.army_ai[id],a+kArmyAi,sizeof(s.army_ai[id]));else memset(s.army_ai[id],0,sizeof(s.army_ai[id]));
         if(t)memcpy(s.troops[id],t+kTroopsLo,sizeof(s.troops[id]));else memset(s.troops[id],0,sizeof(s.troops[id]));
     }
 }
@@ -189,7 +201,10 @@ static unsigned emit_army(const char *cause,unsigned node,unsigned next,long lon
     // Unknown (unnamed) bytes are compared one by one and reported raw.
     unsigned raw_changed=0;
     for(unsigned off=kArmyLo;off<kArmyHi;++off)if(!named_byte(off) && o[off-kArmyLo]!=n[off-kArmyLo])++raw_changed;
-    if(!any && !raw_changed && !replaced)return 0;
+    const unsigned ai_old=read_field(old_state.army_ai[id],0,0,4),ai_new=read_field(now.army_ai[id],0,0,4);
+    const unsigned ai_target_old=read_field(old_state.army_ai[id],0,4,4),ai_target_new=read_field(now.army_ai[id],0,4,4);
+    const bool ai_changed=ai_old!=ai_new || ai_target_old!=ai_target_new;
+    if(!any && !raw_changed && !replaced && !ai_changed)return 0;
     // A removed army (pointer gone, or its slot cleared to commander 0) keeps its last state in the log.
     Obj army=now.army_ptr[id];const unsigned char *ctx=(gone || !read_field(n,kArmyLo,0x12,2))?o:n;
     unsigned commander=read_field(ctx,kArmyLo,0x12,2),position=read_field(ctx,kArmyLo,0x2A,2),troops=read_field(ctx,kArmyLo,0x58,2);
@@ -212,6 +227,9 @@ static unsigned emit_army(const char *cause,unsigned node,unsigned next,long lon
         unsigned a=read_field(o,kArmyLo,f.offset,f.size),b=read_field(n,kArmyLo,f.offset,f.size);
         if(a!=b && !f.volatile_field)line(f.name,a,b);
     }
+    // 부대 판단표 행동 비트(1 독회피 2 인접거점 4 병참회복 8 병참단절 10 유리위치 80 인접명소) / 병참 단절 목표 부대.
+    if(ai_old!=ai_new)line("ai_bits",ai_old,ai_new);
+    if(ai_target_old!=ai_target_new)line("ai_target_army",ai_target_old,ai_target_new);
     for(unsigned off=kArmyLo;off<kArmyHi;++off) {
         unsigned a=o[off-kArmyLo],b=n[off-kArmyLo];
         if(named_byte(off) || a==b)continue;
@@ -241,12 +259,23 @@ static unsigned emit_troops(const char *cause,unsigned node,unsigned next,long l
         header(cause,node,next,result,"troops",id,0,0,0,id);
         text("u16@");hex(off);text(",");number(a);text(",");number(b);text(",\n");++lines;
     }
+    // 작업 목록 +18 u16[10] (경유 지역 중심 칸, 0xBD10 빈칸) as one readable line: filled counts, old → new.
+    if(old_state.troops_ptr[id]==now.troops_ptr[id] && memcmp(o+0x18-kTroopsLo,n+0x18-kTroopsLo,20)) {
+        auto filled=[](const unsigned char *b){unsigned c=0;for(unsigned i=0;i<10;++i)if(read_field(b,kTroopsLo,0x18+i*2,2)<48400)++c;return c;};
+        auto list=[](const unsigned char *b){bool first=true;
+            for(unsigned i=0;i<10;++i){unsigned h=read_field(b,kTroopsLo,0x18+i*2,2);if(h>=48400)continue;
+                if(!first)text(">");first=false;area_name(hex_area(h));text("(");number(h);text(")");}
+            if(first)text("-");};
+        header(cause,node,next,result,"troops",id,0,0,0,id);text("work_list,");number(filled(o));text(",");number(filled(n));
+        text(",목록 ");list(o);text(" → ");list(n);text("\n");++lines;
+    }
     return lines;
 }
 static unsigned compare(const char *cause,unsigned node,unsigned next,long long result,const Snapshot &old_state,const Snapshot &now) {
     unsigned lines=0;
     for(unsigned id=1;id<=kMax;++id) {
-        if(old_state.army_ptr[id]!=now.army_ptr[id] || memcmp(old_state.army[id],now.army[id],sizeof(now.army[id])))
+        if(old_state.army_ptr[id]!=now.army_ptr[id] || memcmp(old_state.army[id],now.army[id],sizeof(now.army[id])) ||
+           memcmp(old_state.army_ai[id],now.army_ai[id],sizeof(now.army_ai[id])))
             lines+=emit_army(cause,node,next,result,id,old_state,now);
         lines+=emit_troops(cause,node,next,result,id,old_state,now);
     }
@@ -275,6 +304,47 @@ static void cities() {
     }
     cities_seen=true;
 }
+// Once per game day (user 2026-11-10 "야전에 출진중인 부대들 결과를 기록"): every army on the map, one row:
+// field status, old = position yesterday, new = position now, context = 무장|세력|병|사기|위치|명령…
+// |이동 N칸(어제→오늘 칸 거리) |병력변화 |경유 |목표칸 |행동비트 |군세 임무·목표 |목록. Taken before the day's
+// first BT node, so it is the outcome of the previous day's orders and movement.
+static unsigned field_pos[kMax+1],field_men[kMax+1],field_commander[kMax+1];
+static unsigned hex_distance(unsigned a,unsigned b) {   // same formula as combat_v2/hex.h
+    if(a>=48400 || b>=48400)return ~0u;
+    const int ax=static_cast<int>(a%220),bx=static_cast<int>(b%220);
+    const int ay=static_cast<int>(a/220)-(ax+(ax&1))/2,by=static_cast<int>(b/220)-(bx+(bx&1))/2;
+    auto ab=[](int v){return v<0?-v:v;};
+    return static_cast<unsigned>((ab(ax-bx)+ab(ay-by)+ab(ax-bx+ay-by))/2);
+}
+static void field_armies() {
+    for(unsigned id=1;id<=kMax;++id) {
+        Obj a=table(kArmyTable,id,kMax);
+        unsigned commander=a?*reinterpret_cast<unsigned short *>(a+0x12):0;
+        if(!a || !commander){field_pos[id]=field_men[id]=field_commander[id]=0;continue;}
+        const bool same=field_commander[id]==commander;
+        const unsigned pos=*reinterpret_cast<unsigned short *>(a+0x2A),men=*reinterpret_cast<unsigned short *>(a+0x16);
+        const unsigned tid=*reinterpret_cast<unsigned short *>(a+0x58);const unsigned force=army_owner(a);
+        header("field",~0u,~0u,-1,"army",id,commander,force,pos,tid);
+        text("status,");number(same?field_pos[id]:0);text(",");number(pos);
+        unsigned char b[kArmyHi-kArmyLo];memcpy(b,a+kArmyLo,sizeof(b));army_context(b,force);
+        text("|이동 ");if(same){unsigned d=hex_distance(field_pos[id],pos);if(d==~0u)text("-");else number(d);}else text("신규");
+        text("|병력변화 ");if(same)signed_number(static_cast<int>(men)-static_cast<int>(field_men[id]));else text("-");
+        text("|경유");for(unsigned i=0;i<5;++i){unsigned h=*reinterpret_cast<unsigned short *>(a+0x2C+i*2);if(h>=48400)break;
+            text(" ");area_name(hex_area(h));text("(");number(h);text(")");}
+        text("|목표칸 ");number(*reinterpret_cast<unsigned short *>(a+0x42));
+        text("|행동비트 ");hex(*reinterpret_cast<unsigned *>(a+kArmyAi));text(" 대상부대 ");number(*reinterpret_cast<unsigned *>(a+kArmyAi+4));
+        Obj t=tid && tid<=kMax?table(kTroopsTable,tid,kMax):nullptr;
+        if(t) {
+            text("|군세");number(tid);troops_context(t+kTroopsLo);
+            text("|목록");bool any=false;
+            for(unsigned i=0;i<10;++i){unsigned h=*reinterpret_cast<unsigned short *>(t+0x18+i*2);if(h>=48400)continue;
+                text(" ");area_name(hex_area(h));text("(");number(h);text(")");any=true;}
+            if(!any)text(" -");
+        }
+        text("\n");
+        field_pos[id]=pos;field_men[id]=men;field_commander[id]=commander;
+    }
+}
 static void day_check() {
     int day=trace_day();
     if(day==current_day)return;
@@ -287,6 +357,7 @@ static void day_check() {
     }
     current_day=day;
     cities();
+    field_armies();
     flush();
 }
 // Departure target of CCommandFootholdAttackDepatureNode: node+60 final city/gate (+4E id).
@@ -378,7 +449,9 @@ static uint64_t run(unsigned index,Obj node,Obj context,Obj subject) {
     }
     bool top=depth++==0;
     if(top){InterlockedIncrement(&active);before(index);}
+    const unsigned saved_node=cur_node;cur_node=index;   // fn rows name the innermost running node
     uint64_t result=call_original(index,node,context,subject);
+    cur_node=saved_node;
     if(--depth==0){after(index,node,result);InterlockedDecrement(&active);}
     return result;
 }
@@ -432,6 +505,198 @@ static bool open_output(const wchar_t *mode) {
     const char head[]="seq,day,thread,cause,node,next,result,conc,kind,id,commander,force,hex,troops,field,old,new,context\n";
     DWORD done=0;return WriteFile(file,head,sizeof(head)-1,&done,nullptr)!=0;
 }
+#if !defined(NO_RUNTIME_LOG) && !defined(AI_TRACE_FIXTURE)
+// ---- fn_trace (user 2026-11-10 "출진부터 야전지휘까지 관여하는 모든 원작함수에 호출기"): diagnostic builds,
+// ai_trace_original=1 only (no mod hook anywhere). Each listed original function gets a 5-byte JMP at its
+// entry to a wrapper that passes the same eight integer arguments to a trampoline (the displaced prologue
+// instructions + JMP back) and returns its RAX unchanged; nothing in the game is written. The prologue bytes
+// were decoded from the current plain EXE (tools/pelib.py): whole instructions, no RIP-relative or branch
+// operand. A target whose entry bytes differ (another build or hook) is skipped and logged. Rows:
+//   cause fn_in / fn, node = innermost traced BT node on the thread, next = function, field args,
+//   old = caller RVA (return address), new = nesting depth, context = decoded arguments | after-state.
+namespace fn {
+using Fn8=uint64_t(__fastcall *)(uint64_t,uint64_t,uint64_t,uint64_t,uint64_t,uint64_t,uint64_t,uint64_t);
+// args: a army*, t troops*, A area* (+3A centre hex), h hex, i int, p raw pointer, o out army**, r int record (13 ints)
+struct Target {unsigned rva;unsigned char len;unsigned char bytes[9];const char *name;const char *args;bool enter;};
+static const Target targets[]={
+    {GA(GA_2ECEA0),5,{0x48,0x89,0x5C,0x24,0x08},"2ECEA0_set_action","ai",false},
+    {GA(GA_2ECF00),5,{0x48,0x89,0x5C,0x24,0x08},"2ECF00_set_target","aii",false},
+    {GA(GA_2F05A0),5,{0x48,0x89,0x5C,0x24,0x08},"2F05A0_set_relay","aih",false},
+    {GA(GA_CF570),6,{0x40,0x57,0x41,0x56,0x41,0x57},"CF570_prepend_relay","ah",false},
+    {GA(GA_A3370),5,{0x48,0x89,0x5C,0x24,0x08},"A3370_clear_relays","a",false},
+    {GA(GA_2EC570),5,{0x48,0x89,0x5C,0x24,0x18},"2EC570_retreat","aiii",false},
+    {GA(GA_A33B0),7,{0x33,0xC0,0xBA,0x10,0xBD,0x00,0x00},"A33B0_clear_work_list","t",false},
+    {GA(GA_A33E0),9,{0x4C,0x8B,0xC1,0x41,0xB9,0x10,0xBD,0x00,0x00},"A33E0_remove_work_item","ti",false},
+    {GA(GA_CC160),7,{0x48,0x8B,0xC4,0x4C,0x89,0x48,0x20},"CC160_route_members","tpAAp",true},
+    {GA(GA_B7DC0),5,{0x4C,0x89,0x4C,0x24,0x20},"B7DC0_route_to_area","aAppi",true},
+    {GA(GA_D1760),5,{0x4C,0x89,0x44,0x24,0x18},"D1760_plan_cut_logistics","apo",true},
+    {GA(GA_C5AC0),6,{0x40,0x55,0x56,0x57,0x41,0x54},"C5AC0_plan_advantage_move","pa",true},
+    {GA(GA_CD5F0),6,{0x48,0x8B,0xC4,0x57,0x41,0x54},"CD5F0_plan_occupy_neighbour","pappii",true},
+    {GA(GA_CED10),6,{0x40,0x57,0x48,0x83,0xEC,0x20},"CED10_plan_recover_logistics","pa",true},
+    {GA(GA_C0390),5,{0x48,0x89,0x5C,0x24,0x08},"C0390_path_to_list","pip",true},
+    {GA(GA_27D490),7,{0x48,0x8B,0xC4,0x48,0x89,0x48,0x08},"27D490_facility_handoff","ta",true},
+    {GA(GA_43A50),5,{0x48,0x89,0x5C,0x24,0x08},"43A50_make_sortie_order","pppri",true},
+    {GA(GA_1EDC30),6,{0x40,0x55,0x56,0x57,0x41,0x54},"1EDC30_run_sortie_order","ri",true},
+    // Purpose not settled by static analysis (user 2026-11-10 "원인을 모르던 함수들까지 추적해서 기능을 확정"):
+    // 61F10 stage functions (node, troops, ctx, node state), two unnamed army-tree nodes (bits 0x20/0x40),
+    // the 65A60 helpers and the daily 2E6E00 that reads the cut-logistics bit.
+    {GA(GA_720E0),5,{0x4C,0x89,0x4C,0x24,0x20},"720E0_siege_stage","ptps",true},
+    {GA(GA_73E60),7,{0x48,0x8B,0xC4,0x4C,0x89,0x48,0x20},"73E60_siege_stage","ptps",true},
+    {GA(GA_738A0),7,{0x48,0x8B,0xC4,0x4C,0x89,0x48,0x20},"738A0_siege_stage","ptps",true},
+    {GA(GA_72D30),7,{0x48,0x8B,0xC4,0x4C,0x89,0x48,0x20},"72D30_siege_stage","ptps",true},
+    {GA(GA_704A0),6,{0x48,0x8B,0xC4,0x55,0x41,0x54},"704A0_siege_stage","ptps",true},
+    {GA(GA_72960),6,{0x48,0x8B,0xC4,0x55,0x41,0x54},"72960_siege_stage","ptps",true},
+    {GA(GA_1F760),6,{0x40,0x53,0x48,0x83,0xEC,0x20},"1F760_army_node_bit20","npp",true},
+    {GA(GA_1FEE0),6,{0x40,0x53,0x48,0x83,0xEC,0x20},"1FEE0_army_node_bit40","npp",true},
+    {GA(GA_CCDF0),7,{0x48,0x8B,0xC4,0x4C,0x89,0x40,0x18},"CCDF0_area_attack_helper","xxxx",true},
+    {GA(GA_CAA60),7,{0x48,0x8B,0xC4,0x4C,0x89,0x40,0x18},"CAA60_area_attack_helper","xxxx",true},
+    {GA(GA_2E6E00),6,{0x48,0x8B,0xC4,0x55,0x41,0x54},"2E6E00_daily_cut_report","xx",true},
+};
+constexpr unsigned kTargets=sizeof(targets)/sizeof(targets[0]);
+static Fn8 tramp[kTargets];
+static bool hooked[kTargets];
+static thread_local unsigned fdepth;
+static volatile LONG rows;
+static unsigned army_slot(Obj p) {   // 22DA10: (army - Army[1]) / 512 + 1, checked against the table
+    Obj first=table(kArmyTable,1,kMax);
+    if(!p || !first || p<first)return 0;
+    const uintptr_t d=static_cast<uintptr_t>(p-first);
+    const unsigned id=(d%512)?0:static_cast<unsigned>(d/512)+1;
+    return id && id<=kMax && table(kArmyTable,id,kMax)==p?id:0;
+}
+static unsigned troops_slot(Obj p) {
+    if(!p)return 0;
+    for(unsigned id=1;id<=kMax;++id)if(table(kTroopsTable,id,kMax)==p)return id;
+    return 0;
+}
+static void relays(Obj a) {
+    text("|경유");for(unsigned i=0;i<5;++i){unsigned h=*reinterpret_cast<unsigned short *>(a+0x2C+i*2);if(h>=48400)break;text(" ");number(h);}
+    text("|목표칸 ");number(*reinterpret_cast<unsigned short *>(a+0x42));
+    text("|행동비트 ");hex(*reinterpret_cast<unsigned *>(a+kArmyAi));
+}
+static void work_list(Obj t) {
+    text("|목록");bool any=false;
+    for(unsigned i=0;i<10;++i){unsigned h=*reinterpret_cast<unsigned short *>(t+0x18+i*2);if(h>=48400)continue;
+        text(" ");area_name(hex_area(h));text("(");number(h);text(")");any=true;}
+    if(!any)text(" -");
+}
+static void emit(unsigned i,const uint64_t *a,uintptr_t caller,bool enter,uint64_t result) {
+    if(!buffer || !InterlockedCompareExchange(&installed,0,0) || disk_full)return;
+    const Target &t=targets[i];
+    AcquireSRWLockExclusive(&lock);
+    Obj army=nullptr,troops=nullptr;
+    for(unsigned k=0;t.args[k] && k<8;++k) {
+        if(t.args[k]=='a' && !army)army=reinterpret_cast<Obj>(a[k]);
+        if(t.args[k]=='t' && !troops)troops=reinterpret_cast<Obj>(a[k]);
+        if(t.args[k]=='x') {   // unknown argument: an army or troops pointer is recognised by its table slot
+            Obj p=reinterpret_cast<Obj>(a[k]);
+            if(!army && army_slot(p))army=p;else if(!troops && troops_slot(p))troops=p;
+        }
+    }
+    const unsigned aid=army_slot(army),tid=troops?troops_slot(troops):(aid?*reinterpret_cast<unsigned short *>(army+0x58):0);
+    number(++sequence);text(",");signed_number(current_day);text(",");number(GetCurrentThreadId());text(",");
+    text(enter?"fn_in":"fn");text(",");text(cur_node<kNodes?trace_nodes[cur_node].name:"-");text(",");text(t.name);text(",");
+    if(enter)text("");else number(result);text(",");text(active>1?"1":"0");text(",");
+    if(aid) {
+        text("army,");number(aid);text(",");number(*reinterpret_cast<unsigned short *>(army+0x12));text(",");
+        number(army_owner(army));text(",");number(*reinterpret_cast<unsigned short *>(army+0x2A));text(",");number(tid);text(",");
+    } else {text(troops?"troops,":"call,");number(tid);text(",0,0,0,");number(tid);text(",");}
+    text("args,");number(static_cast<unsigned long long>(caller-reinterpret_cast<uintptr_t>(image)));text(",");number(fdepth);text(",");
+    for(unsigned k=0;t.args[k] && k<8;++k) {
+        if(k)text(" ");
+        const uint64_t v=a[k];
+        switch(t.args[k]) {
+        case 'a':{unsigned id=army_slot(reinterpret_cast<Obj>(v));text("부대");number(id);break;}
+        case 't':text("군세");number(troops_slot(reinterpret_cast<Obj>(v)));break;
+        case 'A':if(v){Obj ar=reinterpret_cast<Obj>(v);unsigned h=*reinterpret_cast<unsigned short *>(ar+0x3A);
+                     text("지역 ");area_name(hex_area(h));text("(");number(h);text(")");}else text("지역 -");break;
+        case 'h':{unsigned h=static_cast<unsigned>(v)&0xFFFF;text("칸");number(h);if(h<48400){text("(");area_name(hex_area(h));text(")");}break;}
+        case 'i':signed_number(static_cast<int>(v));break;
+        case 'o':if(!enter && v){Obj target=*reinterpret_cast<Obj *>(v);text("결과부대");number(army_slot(target));}else text("out");break;
+        case 'r':if(v){const int *r=reinterpret_cast<const int *>(v);text("rec[");
+                     for(unsigned j=0;j<13;++j){if(j)text(" ");signed_number(r[j]);}text("]");}else text("rec -");break;
+        case 's':if(v){Obj s=reinterpret_cast<Obj>(v);   // 61F10 node state (B27D70): +08 current / +10 next relay area, stage bytes, +30 hex
+                     auto centre=[&](unsigned off){Obj ar=*reinterpret_cast<Obj *>(s+off);
+                         if(ar){unsigned hh=*reinterpret_cast<unsigned short *>(ar+0x3A);area_name(hex_area(hh));text("(");number(hh);text(")");}else text("-");};
+                     text("상태[현재 ");centre(0x08);text(" 다음 ");centre(0x10);
+                     const unsigned offs[]={0x18,0x1C,0x1D,0x1E,0x1F,0x24,0x28,0x2C};
+                     for(unsigned off:offs){text(" +");hex(off);text("=");number(s[off]);}
+                     text(" +30=");number(*reinterpret_cast<unsigned *>(s+0x30));text("]");}else text("상태 -");break;
+        case 'n':if(v){__try {   // node object: RTTI class name from the vtable's complete-object locator
+                     Obj vt=*reinterpret_cast<Obj *>(v);Obj col=*reinterpret_cast<Obj *>(vt-8);
+                     const char *name=reinterpret_cast<const char *>(image+*reinterpret_cast<unsigned *>(col+12)+0x10);
+                     char buf[96];unsigned n=0;while(n<95 && name[n] && name[n]!=','){buf[n]=name[n];++n;}buf[n]=0;text(buf);
+                 } __except(EXCEPTION_EXECUTE_HANDLER){text("node?");}}else text("node -");break;
+        case 'x':{Obj p=reinterpret_cast<Obj>(v);unsigned id=army_slot(p);
+                     if(id){text("부대");number(id);break;}
+                     id=troops_slot(p);if(id){text("군세");number(id);break;}
+                     hex(static_cast<unsigned>(v));break;}
+        default:hex(static_cast<unsigned>(v));break;
+        }
+    }
+    if(!enter && aid){unsigned char b[kArmyHi-kArmyLo];memcpy(b,army+kArmyLo,sizeof(b));army_context(b,army_owner(army));relays(army);}
+    if(troops){troops_context(troops+kTroopsLo);work_list(troops);}
+    text("\n");
+    InterlockedIncrement(&rows);
+    if(buffer->size()>(1u<<20))flush();
+    ReleaseSRWLockExclusive(&lock);
+}
+template<unsigned I> static uint64_t __fastcall wrap(uint64_t a,uint64_t b,uint64_t c,uint64_t d,uint64_t e,uint64_t f,uint64_t g,uint64_t h) {
+    const uint64_t args[8]={a,b,c,d,e,f,g,h};
+    const uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
+    if(targets[I].enter)emit(I,args,caller,true,0);
+    ++fdepth;const uint64_t result=tramp[I](a,b,c,d,e,f,g,h);--fdepth;
+    emit(I,args,caller,false,result);
+    return result;
+}
+template<unsigned... I> static constexpr std::array<void *,sizeof...(I)> wrap_table(std::integer_sequence<unsigned,I...>) {
+    return {reinterpret_cast<void *>(&wrap<I>)...};
+}
+static const auto wrappers=wrap_table(std::make_integer_sequence<unsigned,kTargets>{});
+static void absolute(Obj at,const void *to) {   // FF 25 00000000 <abs64>
+    at[0]=0xFF;at[1]=0x25;memset(at+2,0,4);memcpy(at+6,&to,8);
+}
+static Obj near_page(unsigned bytes) {
+    const uintptr_t base=reinterpret_cast<uintptr_t>(image);
+    for(uintptr_t step=0x10000;step<0x70000000;step+=0x10000) {
+        for(int dir=-1;dir<=1;dir+=2) {
+            const uintptr_t at=dir<0?((base>step)?base-step:0):base+step;
+            if(!at)continue;
+            if(void *m=VirtualAlloc(reinterpret_cast<void *>(at&~uintptr_t(0xFFFF)),bytes,MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE))return static_cast<Obj>(m);
+        }
+    }
+    return nullptr;
+}
+static void install() {
+    Obj page=near_page(0x1000);
+    if(!page){header("meta",~0u,~0u,-1,"fn_trace",0,0,0,0,0);text("no_page,0,0,\n");return;}
+    for(unsigned i=0;i<kTargets;++i) {
+        const Target &t=targets[i];Obj entry=t.rva?image+t.rva:nullptr;
+        Obj stub=page+i*64,trampoline=stub+16;   // stub: JMP wrapper (14); trampoline: prologue + JMP back
+        const bool match=entry && !memcmp(entry,t.bytes,t.len);
+        header("meta",~0u,~0u,-1,"fn_trace",i,0,0,0,0);text(t.name);text(",");number(t.rva);text(",");text(match?"1":"0");text(",\n");
+        if(!match)continue;
+        absolute(stub,wrappers[i]);
+        memcpy(trampoline,entry,t.len);absolute(trampoline+t.len,entry+t.len);
+        tramp[i]=reinterpret_cast<Fn8>(trampoline);
+        const intptr_t rel=reinterpret_cast<intptr_t>(stub)-reinterpret_cast<intptr_t>(entry+5);
+        if(rel<INT32_MIN || rel>INT32_MAX)continue;
+        unsigned char patch[9];patch[0]=0xE9;const int32_t r32=static_cast<int32_t>(rel);memcpy(patch+1,&r32,4);
+        for(unsigned k=5;k<t.len;++k)patch[k]=0x90;
+        DWORD old=0,restored=0;
+        if(!VirtualProtect(entry,t.len,PAGE_EXECUTE_READWRITE,&old))continue;
+        memcpy(entry,patch,t.len);
+        VirtualProtect(entry,t.len,old,&restored);
+        FlushInstructionCache(GetCurrentProcess(),entry,t.len);
+        hooked[i]=true;
+    }
+    DWORD old=0;VirtualProtect(page,0x1000,PAGE_EXECUTE_READ,&old);FlushInstructionCache(GetCurrentProcess(),page,0x1000);
+    unsigned n=0;for(unsigned i=0;i<kTargets;++i)if(hooked[i])++n;
+    header("meta",~0u,~0u,-1,"fn_trace",n,0,0,0,0);text("hooked,");number(n);text(",");number(kTargets);text(",\n");
+    flush();
+}
+}
+#endif
 // original=true: no mod hook is published (ai_trace_original). Meta lines record the mode and
 // every node whose slot already held a mod hook (chained).
 static bool install(bool original,bool cost=false) {
@@ -470,6 +735,10 @@ static bool install(bool original,bool cost=false) {
     header("meta",~0u,~0u,-1,"mode",0,0,0,0,0);text(original?"original":"mod");text(",0,0,\n");
     for(unsigned i=0;i<kNodes;++i)if(chained[i]){header("meta",i,~0u,-1,"node",0,0,0,0,0);text("chained_mod_hook,0,1,\n");}
     flush();
-    InterlockedExchange(&installed,1);return true;
+    InterlockedExchange(&installed,1);
+#if !defined(NO_RUNTIME_LOG) && !defined(AI_TRACE_FIXTURE)
+    if(original)fn::install();   // pure original AI only: function-level call rows
+#endif
+    return true;
 }
 }

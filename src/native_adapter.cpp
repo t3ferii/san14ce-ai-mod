@@ -184,10 +184,13 @@ struct ModFeatures {
     bool ccz_far_keep = false;                                              // retired, retained as disabled code path
     // local17 (user 2026-11-10): the changes kept from local16, each behind its own key. Every key defaults to 0 so a
     // fresh install equals v15.7.1; the user enables them one by one. Computer-side rules never reach the player force.
-    bool siege_ring10 = false, siege_stall_near = false;                    // [combat] under mission_v2
+    bool siege_ring10 = false, siege_stall_near = false;
+    bool siege_no_catapult = false, siege_no_watchtower = false, siege_no_trap = false;   // [combat] local54, under mission_v2                    // [combat] under mission_v2
     bool attack_eval70 = false, retreat_eval60 = false;                     // [combat] attack review 70%, field retreat recheck 60%
-    bool path_wall = false, siege_guard = false;                            // [combat] path_wall needs obstacle
+    bool path_wall = false, siege_guard = false, supply_relay = false, no_tribe_target = false;                          // [combat] path_wall needs obstacle
     bool delegated_exclude = false;                                         // [combat] local18: player delegated corps leave the campaign rules
+    bool ai_search2 = true, officer_first = true;                           // [personnel] local56 computer corps (native_corps_domestic.inl)
+    bool officer_rotation = true;                                           // [personnel] local57 computer forces (native_officer_rotation.inl)
     bool awards_horse = false, awards_v16 = false;                          // [personnel] under awards_ai
     bool merit_bond16 = false;                                              // [personnel] under merit
     bool briefing16 = false;                                                // [game_flow] under advisor_briefing
@@ -226,6 +229,9 @@ static void load_mod_features()
     f.recruit_ai = on && feature_key(config, L"personnel", L"recruit_ai", f.recruit);
     f.awards_ai = f.awards && feature_key(config, L"personnel", L"awards_ai", true);   // needs the warehouse
     f.injury_herbal = on && feature_key(config, L"personnel", L"injury_herbal", f.injury);
+    f.ai_search2 = on && feature_key(config, L"personnel", L"ai_search2", true);
+    f.officer_first = on && feature_key(config, L"personnel", L"officer_first", true);
+    f.officer_rotation = on && feature_key(config, L"personnel", L"officer_rotation", true);
     f.domestic = on && feature_key(config, L"domestic", L"domestic", true);
     f.population = on && feature_key(config, L"domestic", L"population", true);
     f.population_rate = (std::max)(1u, (std::min)(4u, GetPrivateProfileIntW(L"domestic", L"population_rate", 4, config)));
@@ -294,11 +300,16 @@ static void load_mod_features()
     f.attack_recheck_fix = f.mission_v2;   // no own key: part of mission_v2 (installer catalog unchanged)
     // local17 keys (user 2026-11-10), all default 0.
     f.siege_ring10 = f.mission_v2 && feature_key(config, L"combat", L"siege_ring10", false);
+    f.siege_no_catapult = f.mission_v2 && feature_key(config, L"combat", L"siege_no_catapult", false);   // local54
+    f.siege_no_watchtower = f.mission_v2 && feature_key(config, L"combat", L"siege_no_watchtower", false);   // local54
+    f.siege_no_trap = f.mission_v2 && feature_key(config, L"combat", L"siege_no_trap", false);   // local54
     f.siege_stall_near = f.mission_v2 && feature_key(config, L"combat", L"siege_stall_near", false);
     f.attack_eval70 = feature_key(config, L"combat", L"attack_eval70", false);
     f.retreat_eval60 = feature_key(config, L"combat", L"retreat_eval60", false);
     f.path_wall = f.obstacle && feature_key(config, L"combat", L"path_wall", false);
     f.siege_guard = feature_key(config, L"combat", L"siege_guard", false);
+    f.supply_relay = feature_key(config, L"combat", L"supply_relay", true);
+    f.no_tribe_target = feature_key(config, L"combat", L"no_tribe_target", true);
     f.delegated_exclude = feature_key(config, L"combat", L"delegated_exclude", false);
     f.awards_v16 = f.awards_ai && feature_key(config, L"personnel", L"awards_v16", false);
     f.awards_horse = f.awards_ai && feature_key(config, L"personnel", L"awards_horse", false);

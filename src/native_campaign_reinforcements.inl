@@ -83,7 +83,7 @@ static bool campaign_request_reinforcements(Obj army,Progress &p,uint64_t needed
             unsigned free_armies=0,free_groups=0;
             for(unsigned i=1;i<=500;++i) {if(!valid(table(0x7E838,i,500)))++free_armies;if(!valid(table(0x7F8D8,i,500)))++free_groups;}
             if(!free_armies || !free_groups)break;
-            if(person[0xA9]==1)command[2]=1000;
+            if(sortie_female_capped(person))command[2]=1000;
             Obj reinforcement=person[0x161]?nullptr:sortie_issue(command,1);
             if(!valid(reinforcement))continue;
             Obj group=table(0x7F8D8,word(reinforcement,0x58),500);

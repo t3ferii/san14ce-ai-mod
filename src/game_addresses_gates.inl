@@ -68,6 +68,12 @@ static void split_address_gates(ModFeatures &f) {
     // 73 (local10): traits9 manifests/core patches use table ids of native_traits9.inl; an unresolved one switches the nine slots off here
     ga_gate(f.traits9,73,ga::files_ok({GF_native_traits9_inl}));
     ga_gate(f.tactic_priority,74,ga::files_ok({GF_native_tactic_priority_inl,GF_native_tactic_priority_grid_inl}));
+    // 88/89 (local56 corps_domestic): blackboard reads, the player-force test and the slots / CALL the two switches use.
+    ga_gate(f.ai_search2,88,ga_ids_known({GA_1137FF0,GA_B28BB0,GA_B28D20,GA_2350F0,GA_134C580,GA_54AD0}));
+    // 90 (local57 officer_rotation): the native move command and the corps-edit governor change it reuses.
+    ga_gate(f.officer_rotation,90,ga_ids_known({GA_32E3B0,GA_22E3E0,GA_231770,GA_233BE0,GA_234AB0,GA_22C4B0,GA_22BAB0,GA_22E870,
+        GA_2350F0,GA_13466B0,GA_1AC60,GA_18D50,GA_27D4130,GA_22EF50,GA_1F2630,GA_1BFFF0,GA_1A4B4D0,GA_2435D0,GA_284520,GA_2780F60,GA_2CC630,GA_234880,GA_232030}));
+    ga_gate(f.officer_first,89,ga_ids_known({GA_1137FF0,GA_B28D20,GA_2350F0,GA_1355B18,GA_7F4F0,GA_C4383,GA_A9960,GA_2780F60}));
     f.stats200_growth=f.stats200 && f.stats200_growth;
 }
 #else

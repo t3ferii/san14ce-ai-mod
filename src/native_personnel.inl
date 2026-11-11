@@ -78,6 +78,10 @@ static void personnel_filter_wounded(GameList &list) {
         } else link=link->next;
     }
 }
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+#define CORPS_DOMESTIC_HOOKS 1   // local56: native_corps_domestic.inl (links slot) defines these
+namespace corps_domestic {static bool skip_second_search(Obj context);static void arm(Obj context,bool selected);}
+#endif
 static uint64_t personnel_actor_node(Obj node,Obj context,Obj subject,unsigned original_rva,unsigned output_field=0x38) {
     uint64_t result=fn<Execute>(original_rva)(node,context,subject);
     if(enabled && result==1) {
@@ -93,7 +97,19 @@ static uint64_t __fastcall personnel_search_actors(Obj node,Obj context,Obj subj
     return personnel_actor_node(node,context,subject,GA(GA_3DCD0));
 }
 static uint64_t __fastcall personnel_officer_candidates(Obj node,Obj context,Obj subject) { COST_SCOPE("personnel_officer_candidates");
+#ifdef CORPS_DOMESTIC_HOOKS
+    // local56: the slot is also published without injury protection (officer_first); the wounded filter stays injury's.
+    if(!mod_features.injury) {
+        uint64_t result=fn<Execute>(GA(GA_7F4F0))(node,context,subject);
+        corps_domestic::arm(context,result==1);
+        return result;
+    }
+    uint64_t result=personnel_actor_node(node,context,subject,GA(GA_7F4F0),0x3C);
+    corps_domestic::arm(context,result==1);
+    return result;
+#else
     return personnel_actor_node(node,context,subject,GA(GA_7F4F0),0x3C);
+#endif
 }
 static uint64_t personnel_healthy_command(Obj node,Obj context,Obj subject,unsigned original_rva,unsigned actor_field) {
     if(enabled && !personnel_healthy_actor(node,context,actor_field)) {
@@ -176,7 +192,12 @@ static uint64_t __fastcall personnel_spy_officer(Obj node,Obj context,Obj subjec
     return fn<Execute>(GA(GA_2D720))(node,context,subject);
 }
 static uint64_t __fastcall personnel_search_command(Obj node,Obj context,Obj subject) { COST_SCOPE("personnel_search_command");
+#ifdef CORPS_DOMESTIC_HOOKS
+    if(corps_domestic::skip_second_search(context))return 2;   // local56 ai_search2: computer corps, second pass
+    if(enabled && mod_features.injury) {
+#else
     if(enabled) {
+#endif
         Obj actor=personnel_context_object(node,context,0x3C);
         if(valid(actor) && !personnel::may_auto_work(actor[0x161]))return 2;
     }

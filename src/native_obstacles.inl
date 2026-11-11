@@ -148,13 +148,13 @@ static Progress *path_wall_progress(Obj army) { COST_SCOPE("obstacles:path_wall_
     return &p;
 }
 static bool path_wall_locked(Obj army,unsigned path) { COST_SCOPE("obstacles:path_wall_locked");
-    if(path>=6 || !mod_features.path_wall || !valid(army))return false;
+    if(path>=6 || !mod_features.path_wall || route_hook_breach || !valid(army))return false;
     const Progress *p=path_wall_progress(army);
     return p && p->path_wall_lock_id && p->path_wall_lock_hex<48400;
 }
 static bool path_wall_done(Obj army,unsigned path=0) { COST_SCOPE("obstacles:path_wall_done");
     (void)path;
-    if(!mod_features.path_wall || !valid(army))return false;
+    if(!mod_features.path_wall || route_hook_breach || !valid(army))return false;
     const Progress *p=path_wall_progress(army);
     return p && p->path_wall_done;
 }
@@ -179,6 +179,7 @@ static void path_wall_release(Obj army,Progress &p,unsigned reason) { COST_SCOPE
 static void refresh_path_wall(Obj army,Progress &p) { COST_SCOPE("obstacles:refresh_path_wall");
     // [combat] path_wall (child of obstacle, user 2026-11-09: its own installer item).
     // local17 (user 2026-11-10): computer forces only; player direct armies and delegated corps never take it.
+    // local55: the every-fifth pick runs with route_hook too; its order then goes through route_hook::assign_fifth.
     if(!mod_features.path_wall || !p.campaign || p.returning || !computer_side_army(army))return;
     unsigned aid=army_id(army);
     int day=game_day();
@@ -216,7 +217,7 @@ static void refresh_path_wall(Obj army,Progress &p) { COST_SCOPE("obstacles:refr
     static unsigned cap_count=0;
     if(day!=cap_day) {cap_day=day;cap_count=0;}
     if(cap_count>=8) {skip(5);return;}
-    if(path_wall_done(army,7)) {skip(7);return;}     // PW22: a finished army keeps its count rank
+    if(route_hook_breach ? p.path_wall_done : path_wall_done(army,7)) {skip(7);return;}     // PW22: a finished army keeps its count rank
     ++cap_count;
     unsigned from=word(army,0x2A);
     // PW14: rank first; only every fifth army of an origin picks a waypoint.
@@ -249,6 +250,10 @@ static void refresh_path_wall(Obj army,Progress &p) { COST_SCOPE("obstacles:refr
     if(pick>=0) {
         unsigned hex=wall_hexes[static_cast<unsigned>(pick)];
         p.path_wall_hex=static_cast<unsigned short>(hex);p.path_wall_day=day;
+        if(route_hook_breach) {   // local55: held by route_hook until the wall falls; this army is not picked again
+            p.path_wall_hex=48400;
+            if(route_hook::assign_fifth(army,hex))p.path_wall_done=true;
+        }
         int detour=wall_path::distance(from,hex)+wall_path::distance(hex,goal)-wall_path::distance(from,goal);
         const int max_detour=(1<<20)-1;
         unsigned gain=detour<0?0u:detour>max_detour?static_cast<unsigned>(max_detour):static_cast<unsigned>(detour);
@@ -261,7 +266,7 @@ static void refresh_path_wall(Obj army,Progress &p) { COST_SCOPE("obstacles:refr
     }
 }
 static bool path_wall_fresh(const Progress &p,Obj b) { COST_SCOPE("obstacles:path_wall_fresh");
-    if(!mod_features.path_wall || !p.campaign || !valid(b) || p.returning || !computer_side_army(p.army))return false;
+    if(!mod_features.path_wall || route_hook_breach || !p.campaign || !valid(b) || p.returning || !computer_side_army(p.army))return false;
     // PW22: the locked mission neither expires after 20 days nor follows goal changes.
     if(p.path_wall_lock_id)
         return p.path_wall_lock_hex<48400 && p.path_wall_lock_hex==word(b,0x10);
@@ -272,6 +277,7 @@ static bool path_wall_fresh(const Progress &p,Obj b) { COST_SCOPE("obstacles:pat
 static unsigned neutral_wall_reason(Obj army,const Progress &p,Obj b) { COST_SCOPE("obstacles:neutral_wall_reason");
     if(!mod_features.obstacle)return 0;
     if(b[0x13]!=0 || (b[0x12]!=9 && b[0x12]!=10 && b[0x12]!=16))return 0;
+    if(route_hook_breach)return 0;   // U39: neutral walls are breached only on the blocked shortest way (route_hook)
     if(ranged_wall(army,b))return 2;
     if(!p.returning && p.campaign && obstacle_oscillating(p.obstacle) &&
        obstacle_between(word(army,0x2A),p.obstacle.goal,word(b,0x10))) {

@@ -1,6 +1,6 @@
 # 현재 소스 조사 범위와 함수 색인
 
-기준: v15.10 공개 무로그 빌드 소스 (2026-11-10). split 빌드 정의·Layout 등록표·주소표·기능 게이트·정책 및 기존 함수 기록을 대조했다.
+기준: v15.14 공개 무로그 빌드 소스 (2026-11-11). split 빌드 정의·Layout 등록표·주소표·기능 게이트·정책 및 기존 함수 기록을 대조했다.
 일반 설명은 [README](../README.md), 원작 연결 함수와 변경 조건은 [기술 설명](../docs/GITHUB_기능상세.md)에 있다.
 
 ## 근거와 한계
@@ -9,7 +9,7 @@
 - 정의 후보는 정규식과 괄호 대응으로 수집했다. 조건부 컴파일과 fixture 분기를 포함하며 템플릿·연산자·생성자 등을 완전히 파싱하는 컴파일러 색인이 아니다.
 - 핵심 실행 함수와 정책 조건을 수동 대조한 설명과, 위치를 자동 추출한 보조함수 색인을 구분한다. 모든 보조함수의 의미·ABI·도달성을 개별 검증 완료했다는 뜻은 아니다.
 - 실제 compile_commands.json이 없어 C++ LSP의 교차 참조 완전성을 주장하지 않는다. 원작 전체 EXE를 새로 역분석하거나 게임을 실행한 검사가 아니다.
-- 개성·전법 툴팁과 AI 전사 연출은 이 모드의 소스(`src/native_trait_hover.inl`, `src/native_battle_deaths.inl`)로 다시 구현했다. v15.10부터 참고 DLL의 기계어를 포함하지 않는다.
+- 개성·전법 툴팁과 AI 전사 연출은 이 모드의 소스(`src/native_trait_hover.inl`, `src/native_battle_deaths.inl`)로 다시 구현했다. v15.6부터 참고 DLL의 기계어를 포함하지 않는다.
 
 ## 수동 대조한 핵심 경로
 
@@ -29,7 +29,7 @@
 
 ## 파일별 탐색표
 
-현재 src 191개 파일, 정의 후보 2594개. 이 수는 검증 통과 수가 아니다.
+현재 src 194개 파일, 정의 후보 2723개. 이 수는 검증 통과 수가 아니다.
 
 | 파일 | 정의 후보 | 기능 주제 | 조사 범위 |
 |---|---:|---|---|
@@ -103,19 +103,19 @@
 | [src/native_advisor_briefing.inl](../src/native_advisor_briefing.inl) | 138 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_advisor_overlay.inl](../src/native_advisor_overlay.inl) | 56 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_ai_build.inl](../src/native_ai_build.inl) | 3 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_ai_core.inl](../src/native_ai_core.inl) | 17 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_ai_nodes.inl](../src/native_ai_nodes.inl) | 15 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_ai_trace.inl](../src/native_ai_trace.inl) | 39 | 정책·자료구조·저장 형식·공통 보조 함수 | 진단/조건부 컴파일; 일반 기능과 구분 |
+| [src/native_ai_core.inl](../src/native_ai_core.inl) | 26 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_ai_nodes.inl](../src/native_ai_nodes.inl) | 24 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_ai_trace.inl](../src/native_ai_trace.inl) | 55 | 정책·자료구조·저장 형식·공통 보조 함수 | 진단/조건부 컴파일; 일반 기능과 구분 |
 | [src/native_ai_wall.inl](../src/native_ai_wall.inl) | 8 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_appear_batch.inl](../src/native_appear_batch.inl) | 8 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_area_index.inl](../src/native_area_index.inl) | 14 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_auto_commands.inl](../src/native_auto_commands.inl) | 37 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_awards.inl](../src/native_awards.inl) | 41 | 명품 6슬롯·창고·수여·관직·보조 저장 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_awards.inl](../src/native_awards.inl) | 42 | 명품 6슬롯·창고·수여·관직·보조 저장 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_awards_links.inl](../src/native_awards_links.inl) | 4 | 명품 6슬롯·창고·수여·관직·보조 저장 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_awards_save.inl](../src/native_awards_save.inl) | 4 | 명품 6슬롯·창고·수여·관직·보조 저장 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_battle_deaths.inl](../src/native_battle_deaths.inl) | 17 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_building_destruction.inl](../src/native_building_destruction.inl) | 7 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_campaign.inl](../src/native_campaign.inl) | 30 | 지역 점령·집결·원군 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_campaign.inl](../src/native_campaign.inl) | 31 | 지역 점령·집결·원군 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_campaign_assault.inl](../src/native_campaign_assault.inl) | 5 | 지역 점령·집결·원군 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_campaign_departures.inl](../src/native_campaign_departures.inl) | 6 | 지역 점령·집결·원군 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_campaign_logistics.inl](../src/native_campaign_logistics.inl) | 5 | 지역 점령·집결·원군 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
@@ -130,6 +130,7 @@
 | [src/native_ccz_settings.inl](../src/native_ccz_settings.inl) | 10 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_ccz_sprites.inl](../src/native_ccz_sprites.inl) | 52 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_ccz_title.inl](../src/native_ccz_title.inl) | 24 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_corps_domestic.inl](../src/native_corps_domestic.inl) | 10 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_cost_profile.h](../src/native_cost_profile.h) | 7 | 정책·자료구조·저장 형식·공통 보조 함수 | 진단/조건부 컴파일; 일반 기능과 구분 |
 | [src/native_crash_diagnostic.inl](../src/native_crash_diagnostic.inl) | 14 | 정책·자료구조·저장 형식·공통 보조 함수 | 진단/조건부 컴파일; 일반 기능과 구분 |
 | [src/native_damage_preview.inl](../src/native_damage_preview.inl) | 16 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
@@ -162,6 +163,7 @@
 | [src/native_name_lookup.inl](../src/native_name_lookup.inl) | 4 | 이름 탐색 가속 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_obstacles.inl](../src/native_obstacles.inl) | 18 | 피해 관찰·중립 방벽 자격 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_occupy_fast.inl](../src/native_occupy_fast.inl) | 5 | 자동점령 카메라·효과 대기 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_officer_rotation.inl](../src/native_officer_rotation.inl) | 36 | 시험 무장 목록·검색·스냅샷 | 시험 기능; 설치기 기본 꺼짐 |
 | [src/native_path_count.inl](../src/native_path_count.inl) | 11 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_path_fast.inl](../src/native_path_fast.inl) | 35 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_personnel.inl](../src/native_personnel.inl) | 22 | 인물 관계·건강 검사·자동등용 실행 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
@@ -174,11 +176,12 @@
 | [src/native_recruit_ui.inl](../src/native_recruit_ui.inl) | 22 | 등용 화면·알림·컴퓨터 등용 제한 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_region_officer_traits.inl](../src/native_region_officer_traits.inl) | 9 | 담당관·관련개성 표시·분산 생성 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_region_officers.inl](../src/native_region_officers.inl) | 18 | 담당관·관련개성 표시·분산 생성 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_route_hook.inl](../src/native_route_hook.inl) | 39 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_save_codec.inl](../src/native_save_codec.inl) | 4 | 저장 압축 연결·검증·원작 대체 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_siege_guard.inl](../src/native_siege_guard.inl) | 11 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_sortie.inl](../src/native_sortie.inl) | 52 | 출진 명령·편성·대열·역할·이동속도 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_sortie.inl](../src/native_sortie.inl) | 55 | 출진 명령·편성·대열·역할·이동속도 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_sortie_links.inl](../src/native_sortie_links.inl) | 9 | 출진 명령·편성·대열·역할·이동속도 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_speed_buttons.inl](../src/native_speed_buttons.inl) | 19 | ×4/×8·호버·진행 프레임 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_speed_buttons.inl](../src/native_speed_buttons.inl) | 20 | ×4/×8·호버·진행 프레임 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_split_install.inl](../src/native_split_install.inl) | 33 | DLL별 연결 소유권·검사·게시·복구 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_stat_exp.inl](../src/native_stat_exp.inl) | 9 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_tactic_memory_save.inl](../src/native_tactic_memory_save.inl) | 9 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
@@ -198,7 +201,7 @@
 | [src/native_unified_dialogs.inl](../src/native_unified_dialogs.inl) | 33 | 시험 통합 인사·검색·일괄 작업 | 시험 기능; 설치기 기본 꺼짐 |
 | [src/native_unified_overlay.inl](../src/native_unified_overlay.inl) | 26 | 시험 통합 인사·검색·일괄 작업 | 시험 기능; 설치기 기본 꺼짐 |
 | [src/native_water_diag.inl](../src/native_water_diag.inl) | 26 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/obstacle_policy.h](../src/obstacle_policy.h) | 13 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/obstacle_policy.h](../src/obstacle_policy.h) | 17 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/path_count.h](../src/path_count.h) | 7 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/path_fast.h](../src/path_fast.h) | 18 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/personnel_policy.h](../src/personnel_policy.h) | 8 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |

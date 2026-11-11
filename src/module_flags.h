@@ -78,11 +78,16 @@
     X(ccz_critical) \
     X(ccz_far_keep) \
     X(siege_ring10) \
+    X(siege_no_catapult) \
+    X(siege_no_watchtower) \
+    X(siege_no_trap) \
     X(siege_stall_near) \
     X(attack_eval70) \
     X(retreat_eval60) \
     X(path_wall) \
     X(siege_guard) \
+    X(supply_relay) \
+    X(no_tribe_target) \
     X(awards_horse) \
     X(awards_v16) \
     X(merit_bond16) \
@@ -92,4 +97,7 @@
     X(sprite_fallback) \
     X(auto_search) \
     X(auto_reward) \
-    X(delegated_exclude)
+    X(delegated_exclude) \
+    X(ai_search2) \
+    X(officer_first) \
+    X(officer_rotation)

@@ -1650,11 +1650,18 @@ static void __fastcall log_leave(Obj layout,Obj context) { COST_SCOPE("advisor_b
 // 관우 for art 2 and 제갈량 for art 45. Every pointer is read under SEH and the object must be a d3d11 COM object of that
 // exact shape, so a wrong guess only falls back to the capture path. Returns an AddRef'd texture or null.
 static uintptr_t face_d3d_low,face_d3d_high;
+// local36 diagnostic: why the 512 face was not taken, per probed slot (+0x10, +0x08): 0 no object, 1 not a d3d11 object,
+// 2 no texture interface, else format<<24 | width<<12 | height; 0xFFFFFFFF = slot object missing.
+static unsigned face_last_shape[2];
+static unsigned face_probe_shape;
 static ID3D11Texture2D *face_texture_from(Obj object) {
+    face_probe_shape=0;
     if(!object)return nullptr;
     __try {
         const uintptr_t vt=*reinterpret_cast<uintptr_t *>(object);
+        face_probe_shape=1;
         if(vt<face_d3d_low || vt>=face_d3d_high)return nullptr;
+        face_probe_shape=2;
         IUnknown *unknown=reinterpret_cast<IUnknown *>(object);
         ID3D11Texture2D *texture=nullptr;ID3D11ShaderResourceView *view=nullptr;
         if(SUCCEEDED(unknown->QueryInterface(__uuidof(ID3D11ShaderResourceView),reinterpret_cast<void **>(&view))) && view) {
@@ -1663,6 +1670,7 @@ static ID3D11Texture2D *face_texture_from(Obj object) {
         } else unknown->QueryInterface(__uuidof(ID3D11Texture2D),reinterpret_cast<void **>(&texture));
         if(!texture)return nullptr;
         D3D11_TEXTURE2D_DESC desc;ZeroMemory(&desc,sizeof(desc));texture->GetDesc(&desc);
+        face_probe_shape=(static_cast<unsigned>(desc.Format&0xFF)<<24)|((desc.Width&0xFFF)<<12)|(desc.Height&0xFFF);
         if(desc.Width==512 && desc.Height==512 && desc.Format>=DXGI_FORMAT_BC3_TYPELESS && desc.Format<=DXGI_FORMAT_BC3_UNORM_SRGB)return texture;
         texture->Release();
     } __except(EXCEPTION_EXECUTE_HANDLER) {}
@@ -1682,9 +1690,12 @@ static ID3D11Texture2D *face_texture_for(unsigned art,unsigned &where) { COST_SC
     const int id=fn<int(__fastcall *)(Obj,int,int)>(GA(GA_8AA550))(manager,10,static_cast<int>(art));
     if(id<0){where=2;return nullptr;}
     Obj t=face_slot(manager,0x178);Obj e=t?face_slot(t,static_cast<unsigned>(id)*8):nullptr;if(!e){where=3;return nullptr;}
+    unsigned probe=0;
     for(unsigned offset:{0x10u,0x8u}) {
-        Obj start=face_slot(e,offset);
-        if(ID3D11Texture2D *texture=start?face_texture_from(face_slot(start,0xD8)):nullptr){where=offset;return texture;}
+        Obj start=face_slot(e,offset);face_probe_shape=0;
+        ID3D11Texture2D *texture=start?face_texture_from(face_slot(start,0xD8)):nullptr;
+        face_last_shape[probe++]=start?face_probe_shape:0xFFFFFFFFu;
+        if(texture){where=offset;return texture;}
     }
     where=4;return nullptr;
 }
@@ -1700,15 +1711,23 @@ static void __fastcall advice_frame(Obj layout) { COST_SCOPE("advisor_briefing::
     Obj adviser=pointer(layout,0x448);unsigned art=adviser?word(adviser,0xA6):~0u;
     if(adviser!=last_adviser || art!=last_art){last_adviser=adviser;last_art=art;++portrait_serial;}
     bool needs_portrait=replace_legacy() && adviser && !briefing_overlay::captured(portrait_serial);
-    if(needs_portrait && mod_features.briefing16) {   // U6 (local17 briefing16): try the original face texture (at most every 250 ms); the capture below stays the fallback
-        static ULONGLONG face_tried_at;static int face_offered=-1;
+    // U6 (local17 briefing16): the original face texture replaces the capture fallback. local36 (user 2026-11-10 "초상화가
+    // 예전방식"): the 512 face is often not resident on the first tries, and the old loop stopped as soon as the capture
+    // was accepted, so the capture stayed. Keep retrying until the face is offered for this serial (250 ms for 5 s, then
+    // 1 s); take_face_offer replaces an accepted capture. No per-art cache: the game may reuse a texture for another face.
+    static int face_offered=-1;
+    if(replace_legacy() && adviser && mod_features.briefing16 && face_offered!=portrait_serial) {
+        static ULONGLONG face_tried_at,face_started_at;static int face_started_serial=-1;
         const ULONGLONG now=GetTickCount64();
-        if(face_offered!=portrait_serial && (!face_tried_at || now-face_tried_at>=250)) {
+        if(face_started_serial!=portrait_serial){face_started_serial=portrait_serial;face_started_at=now;face_tried_at=0;}
+        const ULONGLONG gap=now-face_started_at<5000?250:1000;
+        if(!face_tried_at || now-face_tried_at>=gap) {
             face_tried_at=now;unsigned where=0;
             if(ID3D11Texture2D *texture=face_texture_for(art,where)){briefing_overlay::offer_face(texture,portrait_serial);face_offered=portrait_serial;}
 #ifndef NO_RUNTIME_LOG
             static unsigned face_logs;
-            if(face_logs<60){++face_logs;log_event("advisor_face_lookup",static_cast<unsigned>(portrait_serial),art,where);}
+            if(face_logs<80 && (where!=4 || now-face_started_at<5000)){++face_logs;log_event("advisor_face_lookup",static_cast<unsigned>(portrait_serial),art,where);}
+            if(where==4){static unsigned shape_logs;if(shape_logs<20){++shape_logs;log_event("advisor_face_shape",art,face_last_shape[0],face_last_shape[1]);}}
 #endif
         }
     }

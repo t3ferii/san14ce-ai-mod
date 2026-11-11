@@ -39,8 +39,8 @@ static const char *const kModuleNames[]={
     "battle_deaths",
     "trait_hover",
     "face_timing",
-    "ai_trace",
     "auto_commands",
+    "ai_trace",
 };
 // Service subscriptions (service, owner, order, gate order); the fixture proves the call order for every registration order.
 struct ModuleSubscription {const char *service,*owner;unsigned order,gate_order;};
@@ -50,6 +50,7 @@ static const ModuleSubscription kSubscriptions[]={
     {"domestic_tick","awards",10,0},
     {"domestic_tick","injury",20,0},
     {"domestic_tick","domestic",30,0},
+    {"domestic_tick","officer_rotation",40,0},
     {"ui_dialogs","ccz_sprites",10,0},
     {"overlay","terrain_render",10,20},
     {"overlay","ccz_sprites",20,30},
@@ -173,10 +174,10 @@ static const ModuleDesc kModules[]={
     {"face_timing",0,[]{return costprofile::on;},[]{return (face_timing::install(),true);},[]{}},
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
-    {"ai_trace",0,[]{return split_ai_trace_wanted();},[]{return (split_ai_trace_install(),true);},[]{}},
+    {"auto_commands",0,[]{return mod_features.auto_search || mod_features.auto_reward;},[]{return (auto_commands::install(),true);},[]{}},
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
-    {"auto_commands",0,[]{return mod_features.auto_search || mod_features.auto_reward;},[]{return (auto_commands::install(),true);},[]{}},
+    {"ai_trace",0,[]{return split_ai_trace_wanted();},[]{return (split_ai_trace_install(),true);},[]{}},
 #endif
 };
 // Joins every module to the services it uses (prepare time, before any hook is published); see core_services.h.
@@ -194,10 +195,16 @@ static void module_subscribe_all() {
     services::domestic_tick.add("injury",{[](Obj city){injury_synchronize_city(city);},nullptr},[]{return mod_features.injury || mod_features.injury_herbal;},20);
 #endif
     services::domestic_tick.add("domestic",{[](Obj city){synchronize_domestic(city);},[](Obj city){synchronize_domestic(city);}},[]{return mod_features.domestic;},30);
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+    services::domestic_tick.add("officer_rotation",{[](Obj city){officer_rotation::tick(city);},nullptr},[]{return mod_features.officer_rotation;},40);
+#endif
     services::domestic_tick.on_fail(&mod_features.domestic,2);
     services::domestic_tick.on_fail(&mod_features.awards,12);
     services::domestic_tick.on_fail(&mod_features.injury,10);
     services::domestic_tick.on_fail(&mod_features.injury_herbal,11);
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+    services::domestic_tick.on_fail(&mod_features.officer_rotation,44);
+#endif
 #if defined(SPLIT_BASE)
     services::ui_dialogs.add("ccz_sprites",nullptr,[]{return mod_features.ccz_sprites;},10);
 #endif

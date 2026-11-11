@@ -1,5 +1,5 @@
 // [combat] siege_guard (user 2026-11-10, local17). Computer siege-group field armies whose commander has
-// effective intelligence >= 80 intercept player armies (direct or delegated corps) within 5 hexes.
+// effective intelligence >= 80 intercept player armies (direct or delegated corps) within 6 hexes (local43; was 5).
 //
 // Rule "off = original, nothing in the save": the original per-army tick 273AC0 reads the engage option
 // Army+0x40 once at its start and never writes it (2 = engage enemies in range). The two outer callers
@@ -95,6 +95,12 @@ static void __fastcall tick(Obj army) { COST_SCOPE("siege_guard:tick");
     rebuild();
     if (!is_guard(army) || !player_near(army)) { original(army); return; }
     unsigned char old = army[0x40];
+    static int logged_day[501];
+    const unsigned id = army_id(army);
+    if (id && id <= 500 && logged_day[id] != game_day()) {   // once per army and day: the guard engaged with option 2
+        logged_day[id] = game_day();
+        log_event("siege_guard_engage", id, word(army, 0x12), word(army, 0x2A));
+    }
     active_army = army;
     if (old != 2) army[0x40] = 2;
     original(army);

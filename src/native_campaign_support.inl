@@ -58,6 +58,7 @@ static unsigned campaign_morale_goal(Obj army,const Progress &p) { COST_SCOPE("c
 static bool campaign_morale_priority(Obj army,Progress &p) {
     COST_SCOPE("campaign_morale_priority");
     if(!mod_features.morale)return false;   // [combat] morale
+    if(route_hook_morale) {if(p.morale_recovering)campaign_morale_finish(army,p);return false;}   // U39: route_hook owns morale
     if(campaign_castle_locked(army))return false;
     if(p.forced_return || word(army,0x16)<1000 || army[0x140] || army[0x37]==11 || army[0x37]==12)return false;
     unsigned morale=army[0x1A],here=word(army,0x2A);
@@ -65,7 +66,9 @@ static bool campaign_morale_priority(Obj army,Progress &p) {
     for(unsigned i=0;i<5 && !urgent;++i) {
         unsigned h=word(army,0x2C+i*2);if(h<48400 && campaign_mountain(h))urgent=true;
     }
-    if(!p.morale_recovering && (morale>=100 || (!urgent && morale>90)))return false;
+    // Recovery starts at morale <=85 (user 2026-11-10 "사기 회복값을 85이하로"; was 90); urgent <=70 or mountain.
+    constexpr unsigned kMoraleRecoverStart=85;
+    if(!p.morale_recovering && morale>kMoraleRecoverStart)return false;   // local38: a mountain no longer starts recovery above 85
     // A genuinely new group assignment supersedes a saved ordinary mission.
     Obj group=table(0x7F8D8,word(army,0x58),500);
     if(p.morale_saved && valid(group) &&
@@ -111,7 +114,7 @@ static bool campaign_morale_priority(Obj army,Progress &p) {
     }
     // Ordinary missions only visit existing bands. Urgent units build a band
     // before other facilities, through the original cost/site/permission checks.
-    if((urgent || morale<=90) && !p.facility && !p.morale_building) {
+    if((urgent || morale<=kMoraleRecoverStart) && !p.facility && !p.morale_building) {
         Obj area=army_area(army);
         if(valid(area) && !(local_facilities(army,area)&(1u<<7))) {
             campaign_morale_save(army,p);

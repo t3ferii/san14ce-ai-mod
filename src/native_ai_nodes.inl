@@ -1,5 +1,100 @@
 #pragma once
 // Combat AI: behaviour-tree node wrappers (apply_priority, bt_condition, cut/city/retreat nodes), moved verbatim out of native_adapter.cpp (W6-D).
+// army_watch (user 2026-11-10 "장료·전풍이 남피↔북평 왕복", diagnostic build only): armies whose commander is listed in
+// [diagnostics] watch_officers=663,713 log their mission state once per day and around each node wrapper whenever the
+// call changed it (who changed it: the mod branch or the original). Read only; nothing is written to the game.
+#ifndef NO_RUNTIME_LOG
+namespace army_watch {
+static unsigned officers[16],officer_count;static bool loaded;
+static struct {Obj root;int day;unsigned long long state;} last[501];
+static void load() {
+    if(loaded)return;loaded=true;
+    wchar_t path[MAX_PATH],text[256]={};
+    if(!mod_ini_path(path,L"기능설정.ini"))return;
+    GetPrivateProfileStringW(L"diagnostics",L"watch_officers",L"",text,256,path);
+    for(wchar_t *s=text;*s && officer_count<16;) {
+        while(*s && (*s<L'0' || *s>L'9'))++s;
+        unsigned v=0;bool any=false;while(*s>=L'0' && *s<=L'9') {v=v*10+static_cast<unsigned>(*s-L'0');++s;any=true;}
+        if(any && v)officers[officer_count++]=v;
+    }
+    log_event("watch_officers_loaded",officer_count,officer_count?officers[0]:0,officer_count>1?officers[1]:0);
+}
+static bool wanted(Obj army) {
+    load();if(!valid(army))return false;
+    if(AI_TRACE_TRACKED(army))return true;   // ai_trace: build departures are watched too
+    if(!officer_count)return false;
+    const unsigned c=word(army,0x12);
+    for(unsigned i=0;i<officer_count;++i)if(officers[i]==c)return true;
+    return false;
+}
+static unsigned long long state(Obj army) {
+    Obj troops=table(0x7F8D8,word(army,0x58),500);
+    const unsigned goal=valid(troops)?word(troops,0x16):0,mode=valid(troops)?word(troops,0x14):0;
+    return (static_cast<unsigned long long>(army[0x37])<<56)|(static_cast<unsigned long long>(army[0x38])<<48)|
+           (static_cast<unsigned long long>(word(army,0x3A))<<32)|(static_cast<unsigned long long>(word(army,0x2C))<<16)|
+           (static_cast<unsigned long long>(goal&0xFF)<<8)|(mode&0xFF);
+}
+static void emit(const char *kind,Obj army,unsigned long long s) {
+    log_event(kind,army_id(army),static_cast<unsigned>(s>>32),static_cast<unsigned>(s));
+}
+// Node entry: one full line per army per day (commander, troops, hex, mod progress), then the mission state.
+static unsigned long long before(Obj army,Progress *p) {
+    if(!wanted(army))return 0;
+    const unsigned id=army_id(army);if(!id || id>500)return 0;
+    const unsigned long long s=state(army);const int day=game_day();
+    if(last[id].root!=world() || last[id].day!=day) {
+        last[id].root=world();last[id].day=day;
+        log_event("watch_army",id,word(army,0x12),(static_cast<unsigned>(word(army,0x16))<<16)|word(army,0x2A));
+        if(p)log_event("watch_progress",id,p->city,(p->campaign?1u:0)|(p->forced_return?2u:0)|(p->returning?4u:0)|
+            (p->regional_worker?8u:0)|(p->operation_leader?16u:0)|(p->combat_target?32u:0)|(p->combat_city?64u:0)|
+            (p->home_defense_city?128u:0)|(p->facility?256u:0)|(p->credit?512u:0));
+        emit("watch_state",army,s);last[id].state=s;
+    } else if(s!=last[id].state) {emit("watch_state_between",army,s);last[id].state=s;}
+    return s|1ull<<63|1;   // non-zero marker even for an all-zero state
+}
+// Node exit: logs only when this call changed the mission; kind names the node and who decided.
+static void after(Obj army,unsigned long long marker,const char *kind) {
+    if(!marker || !valid(army))return;
+    const unsigned id=army_id(army);if(!id || id>500)return;
+    const unsigned long long s=state(army);
+    if(s!=last[id].state) {emit(kind,army,s);last[id].state=s;}
+}
+// Troops node (local29f): the work list +0x18 u16[10] and every watched member's five waypoints at
+// each step of city_node (pre = before mission_v2, mod = after mission_v2, native = after 69AB0,
+// end = after the mod's member pass), so the line where a capture region appears or swaps is visible.
+static void troops(Obj troops,const char *tag) {
+    load();if(!officer_count || !valid(troops))return;
+    static volatile LONG lines;if(lines>8000)return;
+    Obj members[16];unsigned count=0,tid=0;
+    for(unsigned i=1;i<=500 && count<16;++i) {
+        Obj a=table(0x7E838,i,500);
+        if(!valid(a) || a[0x140] || table(0x7F8D8,word(a,0x58),500)!=troops || !wanted(a))continue;
+        members[count++]=a;tid=word(a,0x58);
+    }
+    if(!count)return;
+    const unsigned short *l=reinterpret_cast<const unsigned short *>(troops+0x18);
+    InterlockedAdd(&lines,static_cast<LONG>(4+2*count));
+    log_event(tag,tid,(static_cast<unsigned>(word(troops,0x14))<<16)|word(troops,0x16),count);
+    log_event("watch_list_a",tid,(static_cast<unsigned>(l[0])<<16)|l[1],(static_cast<unsigned>(l[2])<<16)|l[3]);
+    log_event("watch_list_b",tid,(static_cast<unsigned>(l[4])<<16)|l[5],(static_cast<unsigned>(l[6])<<16)|l[7]);
+    log_event("watch_list_c",tid,(static_cast<unsigned>(l[8])<<16)|l[9],0);
+    for(unsigned m=0;m<count;++m) {
+        Obj a=members[m];
+        log_event("watch_member_a",army_id(a),(static_cast<unsigned>(word(a,0x2C))<<16)|word(a,0x2E),
+            (static_cast<unsigned>(word(a,0x30))<<16)|word(a,0x32));
+        log_event("watch_member_b",army_id(a),(static_cast<unsigned>(word(a,0x34))<<16)|word(a,0x2A),
+            (static_cast<unsigned>(a[0x37])<<24)|(static_cast<unsigned>(a[0x38])<<16)|word(a,0x3A));
+    }
+}
+}
+#define WATCH_BEFORE(army,p) const unsigned long long watch_marker=army_watch::before((army),(p))
+#define WATCH_AFTER(army,kind) army_watch::after((army),watch_marker,(kind))
+#define WATCH_TROOPS(t,tag) army_watch::troops((t),(tag))
+#else
+#define WATCH_BEFORE(army,p) ((void)0)
+#define WATCH_AFTER(army,kind) ((void)0)
+#define WATCH_TROOPS(t,tag) ((void)0)
+#endif
 static bool apply_priority(Obj army, Obj node, Obj context)
 {
     COST_SCOPE("apply_priority");
@@ -20,6 +115,8 @@ static bool apply_priority(Obj army, Obj node, Obj context)
 #endif
             mod_step("ap:individual");return true;
         }
+        // local45: a cut the original planned today wins over the group march and siege priorities below.
+        if(mod_features.combat_cut && computer_side_army(army) && restore_cut(army,*p))return mod_step("ap:restore_cut"),true;
 #ifdef SORTIE_FORMATION
         // mission_v2: route regions go into the troops work list instead (mission_route_waypoint);
         // a direct order here was reset by the original 613A0 every turn (232 of 307 in run 3).
@@ -34,10 +131,7 @@ static bool apply_priority(Obj army, Obj node, Obj context)
 #endif
     if(p && p->forced_return)return false;
     if (p) {remember_campaign(army, *p);observe_obstacle_motion(army,*p);}
-    if (!(p && p->regional_worker) && try_cut(army)) {
-        if(p)remember_cut(army,*p);
-        mod_step("ap:cut");return true;
-    }
+    // U39: the cut is planned only by the original cut node (cut_node below); no second cut writer here.
     if(p && restore_cut(army,*p))return mod_step("ap:restore_cut"),true;
     bool cancelled = p && cancel_wall_order(army,*p);
     if(p && cancel_catapult_order(army,*p))cancelled=true;
@@ -162,14 +256,39 @@ static void foothold_scale(Obj context,unsigned percent,const char *what) { COST
     (void)what;
 #endif
 }
+// no_tribe_target (local47, user 2026-11-11 "이민족 성은 어떤 경우에도 목표로 못 삼게"): the original never lets a
+// non-player force take a tribe castle (285DB0, rules_combat C12), yet a low enemy estimate makes computer corps attack
+// one. When the target of the attack review / retreat recheck (radius-10 strength node, input 새공격목표) is a castle of a
+// tribe force (46..50), the required strength is raised to a value no corps reaches: the review drops the target and a
+// corps already on its way retreats through the original recheck. Computer corps only; off = original value.
+static constexpr int kTribeStrength=0x3FFFFFFF;
+static bool tribe_city(Obj city) { COST_SCOPE("ai_nodes:tribe_city");
+    if(!valid(city))return false;
+    Obj force=fn<Obj(__fastcall *)(Obj)>(GA(GA_22E3E0))(city);
+    if(!valid(force))return false;
+    const unsigned id=(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(force,0)+0x60))(force);
+    return id>=46 && id<=50;
+}
+static bool tribe_target_block(Obj context) { COST_SCOPE("ai_nodes:tribe_target_block");
+    Obj blackboard=fn<Obj(__fastcall *)(Obj)>(GA(GA_1137FF0))(context),city=nullptr;
+    if(!blackboard || !fn<char(__fastcall *)(Obj,unsigned,Obj *,int)>(GA(GA_B28D20))(blackboard,kTargetCityVar,&city,0) || !tribe_city(city))
+        return false;
+    fn<char(__fastcall *)(Obj,unsigned,int)>(GA(GA_B29250))(blackboard,kRecheckEnemy,kTribeStrength);
+#ifndef NO_RUNTIME_LOG
+    static volatile LONG lines;
+    if(InterlockedIncrement(&lines)<=300)log_event("tribe_target_blocked",word(city,0x4E),0,0);
+#endif
+    return true;
+}
 static uint64_t __fastcall foothold_strength_node(Obj node,Obj context,Obj entity)
 { COST_SCOPE("foothold_strength_node");
     auto original=fn<uint64_t(__fastcall *)(Obj,Obj,Obj)>(GA(GA_7EBA0));
-    if(attack_eval_wanted() && node && context && dword(node,0x38)==kTargetCityVar && dword(node,0x3C)==kRecheckEnemy &&
-       dword(node,0x40)==10) {
+    if((attack_eval_wanted() || mod_features.no_tribe_target) && node && context && dword(node,0x38)==kTargetCityVar &&
+       dword(node,0x3C)==kRecheckEnemy && dword(node,0x40)==10) {
         g_foothold_last=node;
         unsigned kind=foothold10_kind(node);
         uint64_t result=original(node,context,entity);
+        if(mod_features.no_tribe_target && foothold_computer_corps(context) && tribe_target_block(context))return result;
         if(kind==1 && mod_features.attack_eval70 && foothold_computer_corps(context))foothold_scale(context,70,"attack_eval70");
         if(kind==2 && mod_features.retreat_eval60 && foothold_computer_corps(context))foothold_scale(context,60,"retreat_eval60");
         return result;
@@ -248,6 +367,7 @@ static uint64_t __fastcall first_army_node(Obj node, Obj context, Obj entity)
     ++in_policy;
     AcquireSRWLockExclusive(&policy_lock);
     Progress *p=campaign_controlled(army)?observe_capture(army):nullptr;
+    WATCH_BEFORE(army,p);
 #ifdef SORTIE_FORMATION
     if(p)campaign_proactive_departures(army);
     if(p)campaign_saturated_departures(army);
@@ -262,7 +382,10 @@ static uint64_t __fastcall first_army_node(Obj node, Obj context, Obj entity)
     ReleaseSRWLockExclusive(&policy_lock);
     --in_policy;
     mod_step(changed?"army_node:mod":"army_node:native");
-    return changed ? 1 : original(node, context, entity);
+    WATCH_AFTER(army,changed?"watch_army_node_mod":"watch_army_node_pre");
+    const uint64_t result=changed ? 1 : original(node, context, entity);
+    if(!changed)WATCH_AFTER(army,"watch_army_node_native");
+    return result;
 }
 static uint64_t __fastcall cut_node(Obj node, Obj context, Obj army)
 {
@@ -275,20 +398,45 @@ static uint64_t __fastcall cut_node(Obj node, Obj context, Obj army)
     ++in_policy;
     AcquireSRWLockExclusive(&policy_lock);
     Progress *p=observe_capture(army);
+    WATCH_BEFORE(army,p);
     bool changed=p && campaign_individual_priority(army,*p);
     bool urgent=p && (p->forced_return || p->combat_target || p->combat_city || p->home_defense_city || campaign_castle_locked(army));
-    if(!urgent && p && !campaign_group_member(army) && !p->regional_worker && node && context && fn<Execute>(GA(GA_20040))(node,context,army)==1)changed=true;
+    // local45 (user 2026-11-10 "모든 컴퓨터 군세가 기본적으로 병참단절을 노려야"): the original cut node used to run only
+    // after every mod priority (group march, siege priority, operation hold, sortie member) had passed, so a computer
+    // group member almost never reached it (no cut_player in the 11-10 logs). It now runs first for a computer-side
+    // army that has no urgent duty; the original decides as before (통솔 or 지력 > 64, troops mode 8 excluded, D1760
+    // route) and the mod still narrows the victims to player armies. No cut found: the mod priorities follow.
+    bool cut_tried=false;
+    if(!changed && !urgent && mod_features.combat_cut && computer_side_army(army)) {
+        cut_tried=true;
+        ++in_cut;
+        changed=fn<Execute>(GA(GA_1F380))(node,context,supplied)==1;
+        --in_cut;
+        if(changed)log_event("cut_player",army_id(army),dword(army,0x1F4),word(army,0x2A));
+    }
+    if(!urgent && p && !(cut_tried && changed) && !campaign_group_member(army) && !p->regional_worker && node && context && fn<Execute>(GA(GA_20040))(node,context,army)==1)changed=true;
     if(!changed && p && !campaign_group_member(army) && !p->regional_worker)changed=campaign_siege_priority(army,*p);
     if(!changed && p && p->operation_leader)changed=true;
     if(!changed && p && p->regional_worker) {apply_priority(army,node,context);changed=true;}
 #ifdef SORTIE_FORMATION
     if(!changed && (sortie_member(army) || sortie_escort_member(army)))changed=true;
 #endif
-    if(!changed && !(p && p->forced_return))changed=try_cut(army);
+    // U39 combat_cut (docs/COMBAT_REDESIGN.md): the original cut node plans and orders (its 64 ability gate, mode 8
+    // exclusion, D1760 route, 26E260). For a computer-side army the mod only narrows D1760's victim list to player
+    // armies (C1D10 wrapper at D3516, active while in_cut). Player direct armies, delegated corps and combat_cut=0
+    // run the node unchanged = original.
+    if(!changed && !cut_tried && !(p && p->forced_return)) {
+        const bool filter=mod_features.combat_cut && computer_side_army(army) && !campaign_castle_locked(army);
+        if(filter)++in_cut;
+        changed=fn<Execute>(GA(GA_1F380))(node,context,supplied)==1;
+        if(filter)--in_cut;
+        if(changed && filter)log_event("cut_player",army_id(army),dword(army,0x1F4),word(army,0x2A));
+    }
     if(changed && p && (dword(army,0x1F0)&8))remember_cut(army,*p);
     ReleaseSRWLockExclusive(&policy_lock);
     --in_policy;
     mod_step(changed?"cut_node:mod":"cut_node:native_skip");
+    WATCH_AFTER(army,changed?"watch_cut_node_mod":"watch_cut_node_skip");
     return changed ? 1 : 2;
 }
 static uint64_t __fastcall city_node(Obj node, Obj context, Obj troops)
@@ -308,8 +456,11 @@ static uint64_t __fastcall city_node(Obj node, Obj context, Obj troops)
         }
     }
     unsigned short before_mode=word(troops,0x14),before_goal=word(troops,0x16);
+    WATCH_TROOPS(troops,"watch_troops_pre");
     if(mod_features.mission_v2)mission_route_waypoint(troops);
+    WATCH_TROOPS(troops,"watch_troops_mod");
     uint64_t result = original(node, context, troops);
+    WATCH_TROOPS(troops,"watch_troops_native");
     unsigned short after_mode=word(troops,0x14);
     if(before_mode!=after_mode || before_goal!=word(troops,0x16)) {
         // Native Troops AI re-judges a group every day. A group the mod has
@@ -330,6 +481,11 @@ static uint64_t __fastcall city_node(Obj node, Obj context, Obj troops)
             *reinterpret_cast<unsigned short *>(troops+0x14)=before_mode;
             *reinterpret_cast<unsigned short *>(troops+0x16)=before_goal;
             log_event("fresh_troops_recall_vetoed",army_id(lead),soldiers,before_goal);
+        } else if(lead && attack_mode(before_mode) && !attack_mode(after_mode)) {
+            // Diagnostics (2026-11-10): an attack group the original turned back and why the veto did not apply.
+            unsigned why=(mod_features.recall_veto?0u:1u)|(fresh?0u:2u)|(fresh==members?0u:4u)|(soldiers>=3000?0u:8u)|
+                         (before_goal && before_goal<=61?0u:16u)|(before_goal && before_goal<=61 && hostile_city(lead,before_goal)?0u:32u);
+            log_event("troops_recall_allowed",army_id(lead),(why<<24)|(fresh<<16)|members,soldiers);
         }
     }
     mod_step("city_node:native_then_members");
@@ -339,6 +495,7 @@ static uint64_t __fastcall city_node(Obj node, Obj context, Obj troops)
             if(campaign_controlled(army))apply_priority(army,node,context);
         }
     }
+    WATCH_TROOPS(troops,"watch_troops_end");
     ReleaseSRWLockExclusive(&policy_lock);
     --in_policy;
     return result;
@@ -355,6 +512,7 @@ static uint64_t __fastcall retreat_node(Obj node, Obj context, Obj entity)
     if(!campaign_controlled(army))return original(node,context,entity);
     ++in_policy;AcquireSRWLockExclusive(&policy_lock);
     Progress *p=observe_capture(army);if(p)remember_campaign(army,*p);
+    WATCH_BEFORE(army,p);
     bool changed=false;
     // <=3,000 soldiers: the original retreat decision stands (user decision 2026-10-21); the mod only
     // keeps its own forced return, which also heads home.
@@ -399,7 +557,7 @@ static uint64_t __fastcall retreat_node(Obj node, Obj context, Obj entity)
                 Obj ally=table(0x7E838,i,500);if(ally==army || !campaign_controlled(ally) || army_force(ally)!=army_force(army))continue;
                 Progress *a=observe_capture(ally);if(!a)continue;remember_campaign(ally,*a);
                 int range=distance(word(army,0x2A),word(ally,0x2A));
-                if(a->campaign && hostile_city(army,a->city) && range<nearest) {nearest=range;city=a->city;}
+                if(a->campaign && hostile_city(army,a->city) && !tribe_goal(a->city) && range<nearest) {nearest=range;city=a->city;}
             }
             if(city) {p->city=static_cast<unsigned short>(city);p->campaign=true;}
         }
@@ -414,7 +572,10 @@ static uint64_t __fastcall retreat_node(Obj node, Obj context, Obj entity)
     }
     if(!changed && p)log_event("native_retreat_allowed",army_id(army),word(army,0x16),word(army,0x2A));
     mod_step(changed?"retreat_node:mod_veto":"retreat_node:native");
+    WATCH_AFTER(army,changed?"watch_retreat_node_mod":"watch_retreat_node_pre");
     ReleaseSRWLockExclusive(&policy_lock);--in_policy;
-    return changed ? 1 : original(node,context,entity);
+    const uint64_t result=changed ? 1 : original(node,context,entity);
+    if(!changed)WATCH_AFTER(army,"watch_retreat_node_native");
+    return result;
 }
 

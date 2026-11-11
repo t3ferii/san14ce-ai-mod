@@ -32,9 +32,20 @@ static double accumulator;                   // day-progress thread only
 using Setup=unsigned long long(__fastcall *)(Obj,unsigned long long,unsigned long long,unsigned long long);
 using Click=void(__fastcall *)(Obj,Obj);
 using Frame=void(__fastcall *)(Obj);
+// 2026-11-10 (user: speed buttons off since the combat group came on): the combat DLL's route_hook redirects the
+// CALL 44E50D -> 2E6E00 inside the day-frame body 44DEE0 (its own relay, the original still runs). The fingerprint
+// hashes that CALL as the original rel32, so only the destination of this one CALL may differ.
+static unsigned char hashed_byte(unsigned at) {
+    const unsigned call=GA(GA_44E50D);
+    if(call && at>call && at<=call+4 && image[call]==0xE8) {
+        const int original=static_cast<int>(GA(GA_2E6E00))-static_cast<int>(call+5);
+        return static_cast<unsigned char>(static_cast<unsigned>(original)>>((at-call-1)*8));
+    }
+    return image[at];
+}
 static unsigned long long fingerprint(unsigned rva,unsigned size) {
     unsigned long long h=0xcbf29ce484222325ull;
-    for(unsigned i=0;i<size;++i)h=(h^image[rva+i])*0x100000001b3ull;
+    for(unsigned i=0;i<size;++i)h=(h^hashed_byte(rva+i))*0x100000001b3ull;
     return h;
 }
 // Layout P3: slot ownership and the E9 at 898957 are judged by the hook manager (chain / yield / refuse); only the

@@ -84,8 +84,15 @@
 #include "native_sortie_links.inl"
 #endif
 #include "native_siege_guard.inl"
+#include "native_route_hook.inl"
 #endif
 #ifdef UNITY_SLOT_MODULES
+#if defined(CORPS_DOMESTIC_HOOKS)
+#include "native_corps_domestic.inl"
+#endif
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+#include "native_officer_rotation.inl"
+#endif
 #include "native_path_count.inl"
 #if defined(RECRUITMENT_UI_CANDIDATE) || defined(PROGRESS_NATIVE_FIXTURE)
 #include "native_progress.inl"

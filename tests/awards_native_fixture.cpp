@@ -103,7 +103,8 @@ static void test_warehouse(Obj ruler,Obj p,Obj q,Obj district) {
     Obj life=add_item(4,word(ruler,0x10),0,0,2),loyal=add_item(5,word(p,0x10),0,0);
     Obj loyal2=add_item(6,word(p,0x10),0,0);
     award_reset();award_synchronize();expect(!award_stored(war3) && award_stored(war2));
-    expect(word(war2,0x4A)==word(ruler,0x10) && award_stored(war4) && award_stored(life));
+    // local37: the ruler wears its strongest item per slot (war4, intel, life); only the excess is stored.
+    expect(word(war2,0x4A)==word(ruler,0x10) && !award_stored(war4) && !award_stored(intel) && !award_stored(life));
     expect(!award_stored(loyal) && !award_stored(loyal2));
     unsigned syncs=award_full_sync_runs;
     for(unsigned i=0;i<1000;++i)award_synchronize();
@@ -145,10 +146,12 @@ static void test_warehouse(Obj ruler,Obj p,Obj q,Obj district) {
     pair[1]=war2;expect(!award_transfer(pair));busy[p]=0;
     expect(award_transfer(pair) && award_stored(war4) && !award_stored(war2));
     pair[0]=ruler;expect(award_transfer(pair) && award_stored(war2));
-    // Award a stored item to the ruler, rather than interpreting it as recall.
-    pair[1]=war4;expect(award_transfer(pair) && !award_stored(war4));
+    // local37: the ruler's empty slot takes the strongest stored item (war4) at the next synchronization.
+    award_synchronize();expect(!award_stored(war4) && word(war4,0x4A)==word(ruler,0x10) && award_stored(war2));
     GameList list;list_init(list);list_add(list,war4);award_warehouse_items(district,&list);
+    // local37: the player's list offers the ruler's worn item (war4) as well as stored items.
     expect(contains(list,war4) && contains(list,war2) && contains(list,intel));list_free(list);
+    expect(!wcscmp(static_cast<const wchar_t *>(award_owner_name(war2)),L"세력창고"));   // stored: warehouse name, no native call
     // Predicate handles both current item and native subsequent iteration.
     unsigned char it[32]={};put32(it,24,word(ruler,0x10));Link second{war4,nullptr},first{war2,&second};
     putptr(it,8,&first);award_filter_iterator(it,false);expect(pointer(it,8)==reinterpret_cast<Obj>(&second));
@@ -157,7 +160,7 @@ static void test_warehouse(Obj ruler,Obj p,Obj q,Obj district) {
     expect(award_storage_predicate(it,&first) && !award_storage_predicate(it,&second));
     // Discovery and seizure native owner changes enter the receiving warehouse.
     put16(intel,0x4A,word(q,0x10));award_synchronize();expect(!award_stored(intel));
-    put16(intel,0x4A,word(ruler,0x10));award_synchronize();expect(award_stored(intel));
+    put16(intel,0x4A,word(ruler,0x10));award_synchronize();expect(!award_stored(intel));   // local37: ruler's only intel item is worn
     pair[0]=p;pair[1]=war3;expect(award_transfer(pair));
     busy[p]=1;award_selected_item=war2;list_init(list);award_recipients(district,&list);
     expect(!contains(list,p) && contains(list,q));list_free(list);award_selected_item=nullptr;busy[p]=0;
@@ -167,22 +170,23 @@ static void test_warehouse(Obj ruler,Obj p,Obj q,Obj district) {
     list_free(list);award_selected_item=nullptr;put16(p,0x15E,0);
     // Full UI scope: temporary no-owner storage permits ruler selection,
     // transfer preserves the newly equipped marker after the callback.
-    unsigned char state[0x500]={},layout[0x200]={};putptr(state,0x478,layout);putptr(layout,0x188,intel);put32(layout,0x180,1);
-    original_award_ui=&a_ui;ui_award_person=ruler;ui_award_item=intel;ui_award_district=district;
-    award_ui(state);expect(!award_stored(intel) && word(intel,0x4A)==word(ruler,0x10) && !award_selected_item);
-    Obj intel2=add_item(7,word(ruler,0x10),3,2);award_synchronize();expect(award_stored(intel2));
-    ui_award_item=intel2;putptr(layout,0x190,ruler);put32(layout,0x180,2);original_award_ui=&a_ui_pick_item;
-    award_ui(state);expect(pointer(layout,0x190)==ruler && award_stored(intel2));
+    unsigned char state[0x500]={},layout[0x200]={};putptr(state,0x478,layout);putptr(layout,0x188,war2);put32(layout,0x180,1);
+    original_award_ui=&a_ui;ui_award_person=ruler;ui_award_item=war2;ui_award_district=district;   // local37: a stored item (the ruler wears war4)
+    award_ui(state);expect(!award_stored(war2) && word(war2,0x4A)==word(ruler,0x10) && !award_selected_item && award_stored(war4));
+    // local37: a stronger ruler item (intel2) becomes the worn one; the weaker intel goes to the warehouse.
+    Obj intel2=add_item(7,word(ruler,0x10),3,2);award_synchronize();expect(!award_stored(intel2) && award_stored(intel));
+    ui_award_item=intel;putptr(layout,0x190,ruler);put32(layout,0x180,2);original_award_ui=&a_ui_pick_item;
+    award_ui(state);expect(pointer(layout,0x190)==ruler && award_stored(intel));
     put32(layout,0x180,3);original_award_ui=&a_ui_confirm;award_ui(state);
-    expect(!award_stored(intel2) && award_stored(intel));
+    expect(!award_stored(intel) && award_stored(intel2));   // the player's explicit pick holds until the next sync
     // Exact-archive-bound extras survive same-world-address reloads.
     merit::SaveCoordinator::Completed job;job.name="awards_private_fixture.s14";job.binding.fill(0xA3);
-    award_snapshot();expect(award_write_sidecar(job));award_put_storage(intel2,1);
-    award_restore_sidecar(&job);expect(!award_stored(intel2) && award_stored(war2));
+    award_snapshot();expect(award_write_sidecar(job));award_put_storage(war4,1);
+    award_restore_sidecar(&job);expect(!award_stored(war4) && award_stored(war2));
     wchar_t path[MAX_PATH];expect(award_save_path(job,path,false));expect(DeleteFileW(path)!=0);
-    award_restore_sidecar(&job);expect(award_stored(intel2));
-    intel2[0x4F]=0;award_synchronize();expect(!award_stored(intel2));
-    intel2[0x4F]=1;award_synchronize();expect(award_stored(intel2));
+    award_restore_sidecar(&job);expect(!award_stored(war4) && award_stored(war2));   // no sidecar: native state, the ruler wears its strongest
+    intel2[0x4F]=0;award_synchronize();expect(!award_stored(intel2) && !award_stored(intel));
+    intel2[0x4F]=1;award_synchronize();expect(!award_stored(intel2) && award_stored(intel));
 }
 static void test_posts(Obj p,Obj q) {
     // Execute the captured DB30 decoding instructions on our private page.
@@ -238,10 +242,15 @@ static void test_ai(Obj ruler,Obj p,Obj q,Obj district) {
     Obj lead=add_item(0,word(ruler,0x10),1,5),war=add_item(1,word(ruler,0x10),2,5);
     Obj intel=add_item(2,word(ruler,0x10),3,4),pol=add_item(3,word(ruler,0x10),4,3);
     Obj horse=add_item(4,word(ruler,0x10),0,0,1),weak=add_item(5,word(ruler,0x10),2,2);
+    // local37: the ruler wears its strongest item per slot (these 9-point items); everything else is in the
+    // warehouse and is distributed automatically.
+    Obj rlead=add_item(9,word(ruler,0x10),1,9),rwar=add_item(10,word(ruler,0x10),2,9),rintel=add_item(11,word(ruler,0x10),3,9);
+    Obj rpol=add_item(12,word(ruler,0x10),4,9),rhorse=add_item(13,word(ruler,0x10),0,0,1);rhorse[0x48]=9;
     abilities[ruler]={50,50,50,50};abilities[p]={95,70,99,60};abilities[q]={70,98,60,99};
     Obj context=object(1);putptr(root,0x871E8,context);Obj city=object(1);batch_district=district;
     void *vt[17]={};vt[16]=reinterpret_cast<void *>(&mock_order_district);putptr(city,0,vt);
     award_reset();transfers=0;award_ai_city(city);
+    for(Obj worn:{rlead,rwar,rintel,rpol,rhorse})expect(word(worn,0x4A)==word(ruler,0x10) && !award_stored(worn));
     expect(word(lead,0x4A)==word(p,0x10) && word(war,0x4A)==word(q,0x10));
     expect(word(intel,0x4A)==word(p,0x10) && word(pol,0x4A)==word(q,0x10));
     expect(word(horse,0x4A)==word(p,0x10) && word(weak,0x4A)==word(p,0x10));

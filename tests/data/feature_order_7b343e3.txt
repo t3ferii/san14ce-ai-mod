@@ -1,3 +1,4 @@
+# User 2026-11-10 domestic_selection fix: diagnostics run after every feature registration.
 # activation order of split_activate at main 7b343e3 (hand-extracted before W4-0, the lossless proof)
 terrain_profile_init
 terrain_render_early
@@ -36,5 +37,5 @@ timer_1ms
 battle_deaths
 trait_hover
 face_timing
-ai_trace
 auto_commands
+ai_trace

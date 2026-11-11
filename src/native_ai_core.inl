@@ -49,6 +49,11 @@ static bool computer_army(Obj army)
     return force > 0 && force < 52 && force != player && (player != 0 || observer_mode());
 }
 static bool computer_side_army(Obj army) { return computer_army(army); }
+// U39 route_hook (native_route_hook.inl) publishes these while its CALLs are live; the older per-army morale and
+// neutral wall code steps aside. route_hook_owns(army) = the army holds at a band or breaches a wall right now.
+static bool route_hook_morale, route_hook_breach;
+namespace route_hook { static bool assign_fifth(Obj a, unsigned wall_hex); }   // local55, native_route_hook.inl
+static bool (*route_hook_owns)(Obj army);
 
 static bool campaign_controlled(Obj army) { COST_SCOPE("ai_core:campaign_controlled");
     if(computer_army(army))return true;
@@ -80,7 +85,8 @@ static int __fastcall cut_player_predicate(unsigned owner, GameList *tiles, Game
 }
 
 static bool campaign_castle_locked(Obj army);
-static bool try_cut(Obj army)
+// Fixture entry for the D1760 victim filter; live cuts come from the original cut node (cut_node).
+[[maybe_unused]] static bool try_cut(Obj army)
 { COST_SCOPE("ai_core:try_cut");
     if (!mod_features.combat_cut || !computer_army(army) || campaign_castle_locked(army)) return false;
     unsigned player = player_force();
@@ -232,7 +238,7 @@ static Progress *observe_capture(Obj army)
     // Native group orders can clear action/target before our first callback,
     // but retain the builder's facility and construction hex. Reconcile those
     // fields with a nearby, owned, unfinished building before counting readiness.
-    if(army[0x46]>=3 && army[0x46]<=14 && word(army,0x42)<48400) {
+    if(army[0x46]>=3 && (army[0x46]<=14 || army[0x46]==17) && word(army,0x42)<48400) {   // 17 rockfall: local53 trap list
         bool unfinished=army[0x37]==8;
         Obj site=table(0xE270,word(army,0x42),48399);
         if(valid(site) && word(site,0x1A)>0 && word(site,0x1A)<=3000) {
@@ -307,6 +313,7 @@ static bool reserved_hex(unsigned hex, Obj actor)
 static bool campaign_build_order(Obj army,unsigned facility,unsigned hex);
 static Obj campaign_goal(unsigned city);
 static bool hostile_city(Obj army, unsigned city);
+static bool tribe_goal(unsigned city);
 static bool set_build(Obj army, unsigned facility, unsigned hex)
 { COST_SCOPE("ai_core:set_build");
     if(campaign_castle_locked(army))return false;
@@ -332,7 +339,7 @@ static bool continue_build(Obj army, Progress &p)
         if (maximum <= 0) { p.facility = 0; return false; }
         if (word(building, 0x14) >= maximum) {
             p.cycle_mask|=1u<<p.facility;
-            if(p.facility>=11 && p.facility<=14)p.cycle_mask|=(15u<<11);
+            if((p.facility>=11 && p.facility<=14) || p.facility==17)p.cycle_mask|=(15u<<11)|(1u<<17);
             p.facility = 0; p.finished_build = true;
             // Keep the captured base until its native capacity is filled.
             p.build_chain=true;
@@ -361,3 +368,122 @@ static bool continue_build(Obj army, Progress &p)
     return set_build(army, p.facility, p.construction_hex);
 }
 
+// ai_trace (user 2026-11-11 "원작 판단 방식을 알고싶어 ... 진단판으로 이걸 다 볼 수 있게", diagnostic build only): follow every
+// computer departure the original orders to build (action 8/9) and every departure or army of a watched commander
+// ([diagnostics] watch_officers) from the dispatch to its disappearance. Logs, all read only:
+//   trace_departure       person, source city << 16 | soldiers, action << 24 | kind << 16 | facility
+//   trace_departure_goal  person, target id (hex / city / facility), formation
+//   trace_departure_call  person, 1st / 2nd game-image return address (RVA) of the dispatch call (which original node)
+//   trace_departure_call2 person, 3rd / 4th return address
+//   trace_departure_army  army, troops id << 16 | mission kind (troops +0x14), troops goal (+0x16)
+//   trace_order           army, action << 24 | kind << 16 | target, hex           (each day it changed)
+//   trace_troops          army, troops id << 16 | mission kind, goal               (each day it changed)
+//   trace_build           army, facility << 24 | durability, max durability       (while building)
+//   trace_gone            army, commander, last hex                                (left the map: home, defeat, merged)
+#ifndef NO_RUNTIME_LOG
+namespace ai_trace {
+struct Track { Obj root = nullptr, army = nullptr; unsigned commander = 0, order = 0, troops = 0, hex = 48400, build = 0; int born = 0; };
+static Track tracks[501];
+static unsigned officers[16], officer_count; static bool loaded;
+static void load() {
+    if (loaded) return; loaded = true;
+    wchar_t path[MAX_PATH], text[256] = {};
+    if (!mod_ini_path(path, L"기능설정.ini")) return;
+    GetPrivateProfileStringW(L"diagnostics", L"watch_officers", L"", text, 256, path);
+    for (wchar_t *s = text; *s && officer_count < 16;) {
+        while (*s && (*s < L'0' || *s > L'9')) ++s;
+        unsigned v = 0; bool any = false; while (*s >= L'0' && *s <= L'9') { v = v * 10 + static_cast<unsigned>(*s - L'0'); ++s; any = true; }
+        if (any && v) officers[officer_count++] = v;
+    }
+}
+static bool officer(unsigned person) { load(); for (unsigned i = 0; i < officer_count; ++i) if (officers[i] == person) return true; return false; }
+static bool tracked(Obj army) {
+    if (!diagnostic_logging || !valid(army)) return false;
+    const unsigned id = army_id(army);
+    if (id && id <= 500 && tracks[id].root == world() && tracks[id].army == army && tracks[id].commander == word(army, 0x12)) return true;
+    return officer(word(army, 0x12));
+}
+static unsigned order_of(Obj a) { return (static_cast<unsigned>(a[0x37]) << 24) | (static_cast<unsigned>(a[0x38]) << 16) | word(a, 0x3A); }
+static unsigned troops_of(Obj a) {
+    Obj t = table(0x7F8D8, word(a, 0x58), 500);
+    return valid(t) ? (static_cast<unsigned>(word(a, 0x58)) << 16) | (word(t, 0x14) & 0xFFFF) : 0xFFFF0000u;
+}
+static unsigned goal_of(Obj a) { Obj t = table(0x7F8D8, word(a, 0x58), 500); return valid(t) ? word(t, 0x16) : 65535u; }
+static size_t image_bytes() {
+    static size_t n;
+    if (!n && image) {
+        const IMAGE_DOS_HEADER *dos = reinterpret_cast<const IMAGE_DOS_HEADER *>(image);
+        n = reinterpret_cast<const IMAGE_NT_HEADERS *>(reinterpret_cast<const unsigned char *>(image) + dos->e_lfanew)->OptionalHeader.SizeOfImage;
+    }
+    return n;
+}
+// Called by sortie_dispatch with the final command and the army the original made (nullptr when refused).
+static void departure(const unsigned *c, Obj army) {
+    if (!diagnostic_logging || !c) return;
+    const bool build = c[13] == 8 || c[13] == 9;
+    if (!build && !officer(c[0])) return;
+    Obj person = table(0x158, c[0], 6000);
+    const unsigned city = valid(person) ? word(person, 0xE2) : 65535u;
+    log_event("trace_departure", c[0], (city << 16) | (c[2] & 0xFFFF), (c[13] << 24) | ((c[14] & 0xFF) << 16) | (c[23] & 0xFFFF));
+    log_event("trace_departure_goal", c[0], c[15], c[3]);
+    void *frames[16] = {}; unsigned rva[4] = {}, found = 0;
+    const USHORT n = RtlCaptureStackBackTrace(1, 16, frames, nullptr);
+    const uintptr_t base = reinterpret_cast<uintptr_t>(image), size = image_bytes();
+    for (USHORT i = 0; i < n && found < 4; ++i) {
+        const uintptr_t at = reinterpret_cast<uintptr_t>(frames[i]);
+        if (base && at >= base && at - base < size) rva[found++] = static_cast<unsigned>(at - base);
+    }
+    log_event("trace_departure_call", c[0], rva[0], rva[1]);
+    log_event("trace_departure_call2", c[0], rva[2], rva[3]);
+    if (!valid(army)) { log_event("trace_departure_army", 0, 0, c[0]); return; }
+    const unsigned id = army_id(army);
+    log_event("trace_departure_army", id, troops_of(army), goal_of(army));
+    if (!id || id > 500) return;
+    Track &t = tracks[id];
+    t = Track{}; t.root = world(); t.army = army; t.commander = word(army, 0x12); t.born = game_day();
+    t.order = order_of(army); t.troops = troops_of(army); t.hex = word(army, 0x2A);
+}
+// Daily (route_hook slot 0): each tracked army's order, troops mission and construction when they changed; the day it leaves.
+static void daily() {
+    if (!diagnostic_logging) return;
+    load();
+    for (unsigned i = 1; i <= 500; ++i) {
+        Track &t = tracks[i];
+        Obj a = table(0x7E838, i, 500);
+        const bool alive = valid(a) && !a[0x140] && word(a, 0x2A) < 48400;
+        if (t.root == world() && t.army) {
+            if (!alive || a != t.army || word(a, 0x12) != t.commander) {
+                log_event("trace_gone", i, t.commander, t.hex); t = Track{};
+                if (!alive) continue;
+            }
+        }
+        if (!alive) continue;
+        if (!(t.root == world() && t.army == a)) {
+            if (!officer(word(a, 0x12))) continue;
+            t = Track{}; t.root = world(); t.army = a; t.commander = word(a, 0x12); t.born = game_day(); t.order = 0xFFFFFFFFu; t.troops = 0xFFFFFFFFu;
+            log_event("trace_watch_start", i, t.commander, word(a, 0x2A));
+        }
+        t.hex = word(a, 0x2A);
+        const unsigned order = order_of(a), troops = troops_of(a);
+        if (order != t.order) { log_event("trace_order", i, order, t.hex); t.order = order; }
+        if (troops != t.troops) { log_event("trace_troops", i, troops, goal_of(a)); t.troops = troops; }
+        if (a[0x37] == 8 || a[0x37] == 9) {
+            Obj tile = table(0xE270, word(a, 0x42), 48399);
+            unsigned b = valid(tile) ? word(tile, 0x1A) : 0, state = 0, maximum = 0;
+            if (b && b <= 3000) {
+                Obj f = table(0x6DA98, b, 3000);
+                if (valid(f)) { state = (static_cast<unsigned>(f[0x12]) << 24) | word(f, 0x14); maximum = static_cast<unsigned>(fn<int(__fastcall *)(Obj)>(GA(GA_2AE450))(f)); }
+            } else state = static_cast<unsigned>(a[0x46]) << 24;
+            if (state != t.build) { log_event("trace_build", i, state, maximum); t.build = state; }
+        }
+    }
+}
+}
+#define AI_TRACE_DEPARTURE(c, army) ai_trace::departure((c), (army))
+#define AI_TRACE_DAILY() ai_trace::daily()
+#define AI_TRACE_TRACKED(army) ai_trace::tracked(army)
+#else
+#define AI_TRACE_DEPARTURE(c, army) ((void)0)
+#define AI_TRACE_DAILY() ((void)0)
+#define AI_TRACE_TRACKED(army) false
+#endif

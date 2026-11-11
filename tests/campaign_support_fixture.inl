@@ -34,20 +34,20 @@ static void campaign_support_tests() {
     }
     Progress &p=progress[1];current_army=a;
     Obj band=object(22063);band[0x12]=7;band[0x13]=2;put16(band,0x14,1000);slot(0x6DA98,1,band);
-    put16(groups[1],0x14,6);p.campaign=false;a[0x1A]=91;
-    check(!campaign_morale_priority(a,p),"ordinary mission at 91 morale does not detour");
-    a[0x1A]=90;put16(a,0x2C,22061);
-    check(campaign_morale_priority(a,p) && p.morale_recovering && p.morale_band==1 && a[0x1A]==90,
-        "90 morale visits an owned completed band within five hexes without changing morale");
+    put16(groups[1],0x14,6);p.campaign=false;a[0x1A]=86;
+    check(!campaign_morale_priority(a,p),"ordinary mission at 86 morale does not detour (recovery starts at 85)");
+    a[0x1A]=85;put16(a,0x2C,22061);
+    check(campaign_morale_priority(a,p) && p.morale_recovering && p.morale_band==1 && a[0x1A]==85,
+        "85 morale visits an owned completed band within five hexes without changing morale");
     check(revision_distance(p.morale_hex,22063)<=1 && p.morale_hex!=22063,"recovery waits on a band-adjacent walkable tile");
     put16(a,0x2A,p.morale_hex);a[0x1A]=99;
     check(campaign_morale_priority(a,p) && p.morale_recovering && a[0x1A]==99,"recovery continues to 100 rather than ending at 99");
     a[0x1A]=100;
     check(campaign_morale_priority(a,p) && !p.morale_recovering && a[0x37]==1 && a[0x38]==9 && word(a,0x3A)==22069 && word(a,0x2C)==48400,
         "full morale resumes the original typed mission and discards stale pre-detour waypoints");
-    put16(a,0x2A,22060);a[0x1A]=90;campaign_morale_priority(a,p);put16(groups[1],0x16,8);a[0x1A]=100;
+    put16(a,0x2A,22060);a[0x1A]=85;campaign_morale_priority(a,p);put16(groups[1],0x16,8);a[0x1A]=100;
     check(!campaign_morale_priority(a,p) && !p.morale_saved,"a new group goal cancels old recovery even at completion");
-    put16(groups[1],0x16,9);mock_action(a,1);mock_target(a,9,22069);a[0x1A]=90;band[0x13]=1;legal_facilities=0;
+    put16(groups[1],0x16,9);mock_action(a,1);mock_target(a,9,22069);a[0x1A]=85;band[0x13]=1;legal_facilities=0;
     check(!campaign_morale_priority(a,p),"enemy music band cannot be used for recovery");band[0x13]=2;put16(band,0x14,999);
     check(!campaign_morale_priority(a,p),"unfinished music band cannot supply a recovery effect");put16(band,0x14,1000);
     put16(band,0x10,22066);
@@ -58,12 +58,14 @@ static void campaign_support_tests() {
     check(campaign_morale_priority(a,p) && !p.morale_recovering,"destroyed or captured recovery band releases the detour");
     money=10000;cap_reached=false;legal_facilities=1u<<7;put16(a,0x2A,22060);a[0x1A]=92;
     table(0xE270,22060,48399)[0x10]=10;
-    check(campaign_morale_priority(a,p) && p.morale_building && p.facility==7 && a[0x1A]==92,
-        "high mountain triggers priority legal music-band construction even above 90 morale");
+    check(!campaign_morale_priority(a,p) && !p.morale_building,"local38: a mountain above 85 morale starts no recovery");
+    a[0x1A]=80;
+    check(campaign_morale_priority(a,p) && p.morale_building && p.facility==7 && a[0x1A]==80,
+        "high mountain at 85 or below triggers priority legal music-band construction");
     check(a[0x37]==8 && a[0x46]==7 && word(a,0x42)==22061,"band construction uses the original native build action and site");
     a[0x1A]=100;
     check(campaign_morale_priority(a,p) && p.morale_building && p.facility==7,"morale reaching 100 during construction does not abandon the unfinished recovery band");
-    a[0x1A]=92;
+    a[0x1A]=80;
     Obj built=object(22061);built[0x12]=7;built[0x13]=2;put16(built,0x14,1000);slot(0x6DA98,2,built);put16(table(0xE270,22061,48399),0x1A,2);
     put16(groups[1],0x14,7);table(0xE270,22060,48399)[0x10]=1;
     check(campaign_morale_priority(a,p) && !p.morale_building && p.morale_band==2 && word(groups[1],0x14)==6,

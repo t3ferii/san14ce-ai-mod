@@ -4,6 +4,14 @@ from pathlib import Path
 import runpy
 
 project = Path(__file__).resolve().parents[1]
+# User 2026-11-10: diagnose/fix domestic_selection refusals with cost_profile.
+# The trace must be the final feature row and flush Layout's deferred hooks first.
+import json
+rows = json.loads((project / 'development/module_registry.json').read_text(encoding='utf-8'))
+assert max(rows['rows'], key=lambda r: r.get('seq', 0))['name'] == 'ai_trace', 'trace must follow all feature registrations'
+source = (project / 'src/native_split_install.inl').read_text(encoding='utf-8')
+trace_install = source.split('static void split_ai_trace_install() {', 1)[1].split('\n}\n', 1)[0]
+assert trace_install.index('publish();') < trace_install.index('ai_trace::install('), 'publish Layout before wrapping AI slots'
 expected = {project / 'research/ai_trace/bt_nodes.json', project / 'src/ai_trace_nodes.h'}
 seen = set()
 original = Path.write_text

@@ -18,7 +18,7 @@ static Obj campaign_paid_single(Obj source,Obj target,unsigned hex,unsigned want
                fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(b,0,0xFFF);
     });
     for(Obj person:candidates) {
-        if(!worker && person[0xA9]==1)continue;
+        if(!worker && sortie_female_capped(person))continue;
         bool deployed=false;for(unsigned i=1;i<=500;++i) {Obj a=table(0x7E838,i,500);
             if(valid(a) && word(a,0x12)==word(person,0x10)) {deployed=true;break;}}
         if(deployed)continue;
@@ -119,7 +119,7 @@ static void campaign_saturated_departures(Obj actor) {
         auto &used=campaign_departure_city[id];if(used.root==world() && day>=used.day && day-used.day<30)continue;
         Obj target=nullptr;int best=INT32_MAX;unsigned source_hex=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(source);
         for(unsigned city=1;city<=51;++city) {
-            Obj g=campaign_goal(city);if(!g || !hostile_city(actor,city))continue;
+            Obj g=campaign_goal(city);if(!g || !hostile_city(actor,city) || tribe_goal(city))continue;
             int range=distance(source_hex,fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(g));
             if(range>60 || !campaign_city_connected(source,g,force))continue;
             uint64_t incoming=0;for(unsigned i=1;i<=500;++i) {
@@ -154,7 +154,7 @@ static void campaign_proactive_departures(Obj actor) {
         }
         Obj target=nullptr;int score=INT32_MAX;unsigned source_hex=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(source);
         for(unsigned city=1;city<=51;++city) {
-            Obj g=campaign_goal(city);if(!g || !hostile_city(actor,city))continue;
+            Obj g=campaign_goal(city);if(!g || !hostile_city(actor,city) || tribe_goal(city))continue;
             unsigned budget=campaign::available(dword(source,0x3C));bool weak=dword(g,0x3C)<10000;
             if(budget<(weak?3000u:20000u))continue;
             if(!weak && !campaign::siege_departure(budget,dword(g,0x3C)))continue;

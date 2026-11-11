@@ -1,5 +1,54 @@
 static unsigned wall_hex(unsigned x,unsigned y) {return y*wall_path::width+x;}
-// PW15: path_wall no longer searches the grid; these tests cover the shared
+// U39 neutral_breach: two-pass Dijkstra (walls closed / a neutral wall crossable at its demolition cost).
+static void neutral_breach_policy_tests() {
+    static unsigned char walk[wall_path::cells];
+    const unsigned from=wall_hex(90,100),to=wall_hex(110,100),cut=wall_hex(100,100);
+    // A corridor whose only way runs through the wall: closed = none, the breach is chosen at the wall.
+    for(auto &c:walk)c=neutral_breach::blocked;
+    for(unsigned x=90;x<=110;++x)walk[wall_hex(x,100)]=neutral_breach::open_cell;
+    walk[cut]=neutral_breach::wall;
+    neutral_breach::Plan p=neutral_breach::plan(walk,from,to,neutral_breach::penalty(500,100));
+    check(p.closed==neutral_breach::none && p.open!=neutral_breach::none,"neutral_breach: a corridor wall blocks every closed way");
+    check(neutral_breach::breach(p) && p.wall_hex==cut,"neutral_breach: the blocking wall is breached");
+    // Open field with one wall cell: the walk around is shorter than the demolition, so no breach.
+    for(auto &c:walk)c=neutral_breach::open_cell;
+    walk[cut]=neutral_breach::wall;
+    p=neutral_breach::plan(walk,from,to,neutral_breach::penalty(500,100));
+    check(p.closed!=neutral_breach::none && !neutral_breach::breach(p),"neutral_breach: a wall with a short way around is left standing");
+    // A wall line across the whole map column: only the breach reaches the goal.
+    for(unsigned y=0;y<wall_path::width;++y)walk[wall_hex(100,y)]=neutral_breach::wall;
+    p=neutral_breach::plan(walk,from,to,neutral_breach::penalty(800,100));
+    check(p.closed==neutral_breach::none && neutral_breach::breach(p) && p.wall_hex%wall_path::width==100,"neutral_breach: a full wall line is breached once");
+    // A long detour (walls with a gap far away) against a cheap wall: breach when it clearly saves steps.
+    for(unsigned y=0;y<wall_path::width;++y)walk[wall_hex(100,y)]=y<200?neutral_breach::wall:neutral_breach::open_cell;
+    p=neutral_breach::plan(walk,from,to,neutral_breach::penalty(350,350));
+    check(p.closed!=neutral_breach::none && neutral_breach::breach(p),"neutral_breach: a 100-hex detour loses to a one-day demolition");
+    // local38: a slow demolition (350 chain, 10 a day) no longer vetoes a long detour.
+    {
+        std::vector<unsigned char> chain(wall_path::cells,neutral_breach::open_cell);
+        for(unsigned y=70;y<=130;++y)chain[wall_hex(100,y)]=neutral_breach::wall;
+        const neutral_breach::Plan c=neutral_breach::plan(chain.data(),from,to,neutral_breach::penalty(350,10));
+        check(c.open>=c.closed && c.closed>=c.free+6 && neutral_breach::breach(c),"neutral_breach: a long detour breaches a slowly demolished chain");
+    }
+    {   // local38b: terrain weights. A short wall whose hex detour is small, but the detour crosses slow ground (999 vs 240).
+        std::vector<unsigned char> chain(wall_path::cells,neutral_breach::open_cell);
+        std::vector<unsigned short> cost(wall_path::cells,240);
+        for(unsigned y=98;y<=102;++y)chain[wall_hex(100,y)]=neutral_breach::wall;
+        for(unsigned y=80;y<=120;++y)for(unsigned x=94;x<=106;++x)if(y!=100)cost[wall_hex(x,y)]=999;
+        const neutral_breach::Plan flat=neutral_breach::plan(chain.data(),from,to,1);
+        const neutral_breach::Plan slow=neutral_breach::plan(chain.data(),from,to,1,cost.data(),240);
+        check(!neutral_breach::breach(flat) && neutral_breach::breach(slow),"neutral_breach: a detour over slow terrain breaches although it is short in hexes");
+    }
+    walk[wall_hex(100,101)]=neutral_breach::open_cell;
+    p=neutral_breach::plan(walk,from,to,neutral_breach::penalty(350,350));
+    check(!neutral_breach::breach(p),"neutral_breach: a gap next to the way removes the breach");
+    check(neutral_breach::penalty(500,100)==22 && neutral_breach::penalty(350,0)>neutral_breach::penalty(350,350),"neutral_breach: penalty follows demolition days");
+    // Unreachable goal (start boxed in by blocked cells): no plan, no breach.
+    for(auto &c:walk)c=neutral_breach::blocked;
+    walk[from]=neutral_breach::open_cell;
+    p=neutral_breach::plan(walk,from,to,1);
+    check(p.closed==neutral_breach::none && p.open==neutral_breach::none && !neutral_breach::breach(p),"neutral_breach: unreachable goal makes no plan");
+}// PW15: path_wall no longer searches the grid; these tests cover the shared
 // serves() mapping, the waypoint choice and the surviving helpers.
 static void wall_path_policy_tests() {
     {
@@ -100,6 +149,7 @@ static void wall_lock_tests() {
 }
 static void obstacle_policy_tests() {
     wall_path_policy_tests();
+    neutral_breach_policy_tests();
     nth_counter_tests();
     wall_lock_tests();
     ObstacleHistory h={};

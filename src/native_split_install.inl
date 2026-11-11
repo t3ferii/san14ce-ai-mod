@@ -151,7 +151,7 @@ static void module_subscribe_all();   // generated (module_table_convenience.inl
 // Stable diagnostic feature IDs (no new settings): 1 battle_rules, 2 domestic,
 // 3 domestic_free, 4 population, 5 reserved: unified removed (2026-11-03), 6 merit, 7 save sidecar, 8 recruit,
 // 9 recruit_ai, 10 injury, 11 herbal, 12 awards, 13 loyalty, 14 stats200,
-// 15 growth, 16 tooltip_collab, 17 scenery, 18 deaths, 19 traits9, 20 (captive dialog, removed local10), 34 hover (internal flag of tooltip_collab;
+// 15 growth, 16 tooltip_collab, 17 scenery, 18 deaths, 19 traits9, 42 ai_search2, 43 officer_first (local56), 44 officer_rotation (local57), 20 (captive dialog, removed local10), 34 hover (internal flag of tooltip_collab;
 // own source native_trait_hover.inl since 2026-11-06: reasons 1 guard, 5 install; owner "trait_hover" rows of the Layout registry).
 static void split_disable(bool &feature,unsigned id) {
     if(feature) {feature=false;log_event("feature_guard_mismatch",id);compat_feature_off(id,6);}
@@ -301,12 +301,16 @@ static void split_rollback() { COST_SCOPE("split_rollback");
     if(!split_install.attempted)return;
 #ifdef SPLIT_COMBAT
     restore_sortie(split_install.sortie);
+    route_hook::restore();
     siege_guard_hook::restore();
 #else
     terrain_edit::reset_ui_context();
     restore_link(split_install.safety);restore_link(split_install.intercept);
     restore_expert(split_install.expert);
     restore_awards(split_install.awards);restore_injury(split_install.injury);
+#ifdef CORPS_DOMESTIC_HOOKS
+    corps_domestic::restore();
+#endif
     restore_recruit_alert(split_install.alert);restore_recruit_ai();restore_recruit_ui();
     restore_merit(split_install.merit);
     for(auto &l:split_install.loyalty)restore_link(l);
@@ -381,6 +385,8 @@ static bool split_prepare() {
        prepare_link(s.core[2],GA(GA_27AAC0),0xE9,r+96) && prepare_sortie(s.sortie,r);
     // local17 siege_guard: optional, its own relay page; a refused CALL switches only this feature off (id 40).
     if(ok) {unsigned why=siege_guard_hook::prepare();if(why) {mod_features.siege_guard=false;log_event("feature_off",40,why);}}
+    // U39 route_hook: morale hold / neutral wall breach after the original route writes (id 41).
+    if(ok) {unsigned why=route_hook::prepare();if(why) {mod_features.morale=false;mod_features.path_wall=false;mod_features.supply_relay=false;log_event("feature_off",41,why);}}
 #else
     // [groups] convenience=0: coordinate the combat module only, publish no own hook.
     const bool trace_only=mod_features.trace_original; // [diagnostics] ai_trace_original: no feature hook
@@ -418,6 +424,9 @@ static bool split_prepare() {
             split_feature_off(m.injury,10,2);split_feature_off(m.injury_herbal,11,2);
         }
         if(m.awards && !prepare_awards(s.awards,r)) {split_feature_off(m.awards,12,2);feature_off_closure(m);}
+#ifdef CORPS_DOMESTIC_HOOKS
+        if(corps_domestic::prepare())split_feature_off(m.officer_first,43,2);   // local56: the condition-116 CALL moved or no relay
+#endif
         if(m.loyalty && !(prepare_bytes(s.loyalty[0],GA(GA_34CB96),numeric,4) && prepare_bytes(s.loyalty[1],GA(GA_35EF25),text,3)))
             split_feature_off(m.loyalty,13,2);
         if(m.battle_rules && !prepare_expert(s.expert))split_feature_off(m.battle_rules,1,2);   // core 0/1 are then skipped at publish
@@ -504,6 +513,7 @@ static bool split_publish() { COST_SCOPE("split_publish");
 #ifdef SPLIT_COMBAT
     bool ok=publish_sortie(s.sortie);
     if(ok && !siege_guard_hook::publish()) {mod_features.siege_guard=false;log_event("feature_off",40,3);}
+    if(ok && !route_hook::publish()) {mod_features.morale=false;mod_features.path_wall=false;mod_features.supply_relay=false;log_event("feature_off",41,3);}
 #else
     // 2026-11-05 local3 (user: a refused optional feature switches only itself off). The shared core links and pointers above
     // are the only steps whose failure rolls the whole module back. Every optional feature below publishes on its own:
@@ -532,6 +542,10 @@ static bool split_publish() { COST_SCOPE("split_publish");
         if((f.injury || f.injury_herbal) && !split_publish_step(7,publish_injury(s.injury,f.injury,f.injury_herbal),0)) {
             restore_injury(s.injury);split_feature_off(f.injury,10,3);split_feature_off(f.injury_herbal,11,3);
         }
+#ifdef CORPS_DOMESTIC_HOOKS
+        // local56: after injury (its links already wrap both nodes when it is on); 42 ai_search2, 43 officer_first.
+        if(!split_publish_step(16,corps_domestic::publish(),0)) {split_feature_off(f.ai_search2,42,3);split_feature_off(f.officer_first,43,3);}
+#endif
         if(f.awards && !split_publish_step(8,publish_awards(s.awards),0)) {
             restore_awards(s.awards);split_feature_off(f.awards,12,3);feature_off_closure(f);
         }
@@ -615,6 +629,16 @@ static bool split_ai_trace_wanted() {
 #endif
 }
 static void split_ai_trace_install() {
+    // 2026-11-10: Layout registrations are deferred until the loader's final publish.
+    // Flush them before diagnostic wrappers snapshot the slots; otherwise cost_profile
+    // takes the domestic slots first and Layout refuses our own wrapper as OtherOwn.
+    // This is the last module row, so all feature registrations are complete. The
+    // loader's later publish is idempotent. Keep the duplicate-owner guard intact.
+    if(HMODULE layout=GetModuleHandleW(L"SAN14_Layout.dll")) {
+        auto publish=reinterpret_cast<PublishLayout>(GetProcAddress(layout,"SAN14LayoutPublish"));
+        if(!publish)return;   // do not trace over an unpublished manager
+        publish();
+    }
 #ifdef RUNTIME_COST_PROFILE
     if(costprofile::on)ai_trace::install(false,true); // [diagnostics] cost_profile: per-node cost of the original tree
     else ai_trace::install(false);

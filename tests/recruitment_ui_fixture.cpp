@@ -410,7 +410,7 @@ static void test_ui() {
         expect(batch_orders.size()==(native_send?3u:2u) && batch_orders[0]==std::make_pair(403u,406u) &&
                batch_orders[1]==std::make_pair(401u,405u));
         expect(recruit_multi.count==0 && ui_district[0x14]==(native_send?9:10) && ui_preview_calls==previews);
-        expect(ui_notice.find(L"명령 2건")!=std::wstring::npos);
+        expect(ui_notice.find(L"인재 2명에게")!=std::wstring::npos);
         if(native_send)expect(batch_orders[2]==std::make_pair(404u,402u));
         else expect(!(word(ui_actor,0x15E)&1));
         if(ui_poison_layout) {
@@ -439,7 +439,7 @@ static void test_ui() {
     batch_orders.clear();put32(ui_layout,0x180,4);recruit_state_update(state);
     expect(batch_orders.size()==3 && batch_orders[0]==std::make_pair(403u,406u) &&
            batch_orders[1]==std::make_pair(404u,402u) && batch_orders[2]==std::make_pair(404u,405u));
-    expect(ui_district[0x14]==0 && !(word(fourth_actor,0x15E)&1) && ui_notice.find(L"제외했습니다")!=std::wstring::npos);
+    expect(ui_district[0x14]==0 && !(word(fourth_actor,0x15E)&1) && ui_notice.find(L"훗날을 기약하기로 했소")!=std::wstring::npos);
     ui_cost=batch_cost=1;envoys.pop_back();owners.erase(fourth_actor);slot(0x158,407,nullptr);free(fourth_actor);
     // Skipped-only results still show their notice before original entry.
     for(Obj actor:envoys)put16(actor,0x15E,0);
@@ -447,7 +447,7 @@ static void test_ui() {
     ui_track_dispatch=true;ui_native_started=false;ui_dispatch_events.clear();
     put32(ui_layout,0x180,4);recruit_state_update(state);ui_track_dispatch=false;
     expect(ui_dispatch_events==std::vector<unsigned>({0x1F1DA0,0x735F60,404,404}));
-    expect(batch_orders.size()==2 && ui_district[0x14]==0 && ui_notice.find(L"내리지 못했습니다")!=std::wstring::npos);
+    expect(batch_orders.size()==2 && ui_district[0x14]==0 && ui_notice.find(L"인재를 부를 때가 아닌 듯하오")!=std::wstring::npos);
     batch_issue_observer=nullptr;
     // User decision 2026-10-25: no recommended screen actor (including an
     // empty actor list) skips native dispatch, reports before reset, and
@@ -476,8 +476,8 @@ static void test_ui() {
         expect(recruit_multi.count==0 && ui_preview_calls==previews);
         expect(batch_orders.size()==(extras?1u:0u) && ui_district[0x14]==(extras?0:1));
         if(extras)expect(batch_orders[0]==std::make_pair(403u,402u)); // Released actor AND last order.
-        expect(ui_notice.find(extras?L"군사가 반대한 대상 1명은 보내지 않았습니다.":
-                                    L"군사가 반대한 대상 3명은 보내지 않았습니다.")!=std::wstring::npos);
+        expect(ui_notice.find(extras?L"군사가 말린 1명에게는 사람을 보내지 않았소.":
+                                    L"군사가 말린 3명에게는 사람을 보내지 않았소.")!=std::wstring::npos);
         if(operation==3) {
             DWORD old=0;expect(VirtualProtect(ui_layout,4096,PAGE_READWRITE,&old)!=0);
         }
@@ -516,18 +516,18 @@ static void test_ui() {
     put16(force,0x52,402);
     PersonnelBatchResult partial;partial.sent=2;partial.no_orders=1;
     recruit_report_automatic(ui_district,partial);
-    expect(ui_speaker==402 && ui_notice.find(L"명령 2건")!=std::wstring::npos);
-    expect(ui_notice.find(L"군사가 등용을 권하는 실행무장만 배정했습니다")!=std::wstring::npos);
-    expect(ui_notice.find(L"제외했습니다")!=std::wstring::npos);
+    expect(ui_speaker==402 && ui_notice.find(L"인재 2명에게")!=std::wstring::npos);
+    expect(ui_notice.find(L"군사의 진언을 받아들여")!=std::wstring::npos && ui_notice.find(L"명령서")==std::wstring::npos);
+    expect(ui_notice.find(L"훗날을 기약하기로 했소")!=std::wstring::npos);
     owners[spouse]=enemy_force;put16(force,0x52,503);recruit_report_automatic(ui_district,partial);
     expect(ui_speaker==word(force,0x10));put16(force,0x52,0);
     partial.no_orders=0;partial.advised_against=1;recruit_report_automatic(ui_district,partial);
-    expect(ui_notice.find(L"제외했습니다")==std::wstring::npos);
-    expect(ui_notice.find(L"군사가 반대한 대상 1명은 보내지 않았습니다.")!=std::wstring::npos);
+    expect(ui_notice.find(L"훗날을 기약하기로 했소")==std::wstring::npos);
+    expect(ui_notice.find(L"군사가 말린 1명에게는 사람을 보내지 않았소.")!=std::wstring::npos);
     partial.sent=0;recruit_report_automatic(ui_district,partial);
-    expect(ui_notice.find(L"내리지 못했습니다")!=std::wstring::npos && ui_notice.find(L"군사 반대 여부")!=std::wstring::npos);
+    expect(ui_notice.find(L"인재를 부를 때가 아닌 듯하오")!=std::wstring::npos && ui_notice.find(L"군사의 뜻")!=std::wstring::npos);
     partial.sent=6000;partial.advised_against=6000;recruit_report_automatic(ui_district,partial);
-    expect(ui_notice.find(L"군사가 반대한 대상 6000명은 보내지 않았습니다.")!=std::wstring::npos);
+    expect(ui_notice.find(L"군사가 말린 6000명에게는 사람을 보내지 않았소.")!=std::wstring::npos);
     expect(ui_notice.size()+1<=0x192/sizeof(wchar_t));
     bool close_registered=false;
     for(const auto &link:recruit_ui_links) {

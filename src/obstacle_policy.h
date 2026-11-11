@@ -188,3 +188,70 @@ inline Status after_release(Status status,unsigned reason) {
 }
 inline bool holds(Status status) {return status==locked || status==done;}
 }
+
+// neutral_breach (user 2026-11-10 "중립건물 존재 x판정으로 계산하고 최단거리 막고 있으면 뚫기", docs/COMBAT_REDESIGN.md 5절).
+// Pure decision on the 220x220 hex grid, no game access. walk[hex]: 0 blocked (terrain or a class 2/3 facility, which the
+// original path search skips whatever its owner), 1 open, 2 neutral wall (토성/석벽/철쇄, owner 0). The goal (a city or gate)
+// is reached on the goal hex or next to it. closed = cost with walls as they are; open = cost when a neutral wall may be
+// crossed for `penalty` extra steps (its demolition time). Breach when the open route is cheaper (or the closed one is
+// impossible); wall_hex = the first neutral wall on the open route, seen from the start.
+namespace neutral_breach {
+constexpr unsigned none=0xFFFFFFFFu;
+enum : unsigned char {blocked=0,open_cell=1,wall=2};
+struct Plan {unsigned closed=none,open=none,wall_hex=none,free=none,unit=1;};
+// weight (local38b): per-cell terrain movement cost (the original BF1B0, about 240 on plain); null = 1 per hex.
+inline unsigned search(const unsigned char *walk,unsigned start,unsigned goal,unsigned penalty,bool through,unsigned *wall_hex,
+                       const unsigned short *weight=nullptr) {
+    using wall_path::cells;
+    if(wall_hex)*wall_hex=none;
+    if(start>=cells || goal>=cells)return none;
+    static thread_local std::vector<unsigned> cost,parent;
+    cost.assign(cells,none);parent.assign(cells,none);
+    using Item=std::pair<unsigned,unsigned>;
+    std::priority_queue<Item,std::vector<Item>,std::greater<Item>> open;
+    cost[start]=0;open.push({0,start});
+    unsigned reached=none;
+    while(!open.empty()) {
+        const Item top=open.top();open.pop();
+        const unsigned c=top.first,h=top.second;
+        if(c!=cost[h])continue;
+        if(h==goal || wall_path::distance(h,goal)<=1) {reached=h;break;}
+        unsigned out[6];const unsigned n=wall_path::neighbours(h,out);
+        for(unsigned i=0;i<n;++i) {
+            const unsigned next=out[i];
+            unsigned step=weight?(weight[next]?weight[next]:1u):1u;
+            if(next!=goal) {
+                if(walk[next]==blocked)continue;
+                if(walk[next]==wall) {if(!through)continue;step+=penalty;}
+            }
+            if(c+step<cost[next]) {cost[next]=c+step;parent[next]=h;open.push({c+step,next});}
+        }
+    }
+    if(reached==none)return none;
+    if(wall_hex)for(unsigned h=reached;h!=none && h!=start;h=parent[h])if(walk[h]==wall)*wall_hex=h;   // last write = nearest the start
+    return cost[reached];
+}
+// unit = the cost of one plain hex in `weight` units (240 with BF1B0 weights, 1 without); penalty is in hexes.
+inline Plan plan(const unsigned char *walk,unsigned start,unsigned goal,unsigned penalty,const unsigned short *weight=nullptr,unsigned unit=1) {
+    Plan p;p.unit=unit?unit:1;
+    p.closed=search(walk,start,goal,penalty*p.unit,false,nullptr,weight);
+    p.open=search(walk,start,goal,penalty*p.unit,true,nullptr,weight);   // with the demolition penalty: logged only
+    p.free=search(walk,start,goal,0,true,&p.wall_hex,weight);            // as if no neutral wall stood
+    return p;
+}
+// local38 (user U39 "중립건물 없다고 친 최단거리를 막을 때만", 2026-11-10 "이동력을 크게 너프하면 부수기"): breach when the
+// wall-free shortest way crosses a neutral wall and the way around it is clearly longer (>= 6 hexes and >= a third
+// more) or impossible. The demolition time no longer vetoes it (a 350 chain cost 54..99 penalty steps).
+inline bool breach(const Plan &p) {
+    if(p.wall_hex==none || p.free==none)return false;
+    if(p.closed==none)return true;
+    // local55 (user 2026-11-11 "그 기준 조금만 낮춰"): 6 hexes and a third -> 5 hexes and a quarter.
+    const unsigned detour=p.free/4>5*p.unit?p.free/4:5*p.unit;
+    return p.closed>=p.free+detour;
+}
+// Demolition days -> extra steps: about three hexes a day, weighted 1.5 so a breach must save clearly more than it costs.
+inline unsigned penalty(unsigned durability,unsigned daily_damage) {
+    const unsigned days=(durability+(daily_damage?daily_damage:1)-1)/(daily_damage?daily_damage:1);
+    return days*3u*3u/2u;
+}
+}

@@ -1418,6 +1418,7 @@
         "src/native_sortie.inl",
         "src/native_sortie_links.inl",
         "src/native_siege_guard.inl",
+        "src/native_route_hook.inl",
         "src/siege_guard_policy.h",
         "src/obstacle_policy.h",
         "src/sortie_policy.h",
@@ -1529,6 +1530,47 @@
         "native",
         "merit",
         "recruitment"
+      ]
+    },
+    "officer-rotation": {
+      "status": "active",
+      "dll": "convenience",
+      "build": "split",
+      "depends": [
+        "personnel"
+      ],
+      "hook_owners": [],
+      "owns": [
+        "src/native_officer_rotation.inl"
+      ],
+      "sources": [
+        "src/native_officer_rotation.inl",
+        "src/native_domestic.inl"
+      ],
+      "tests": [
+        "personnel",
+        "native"
+      ]
+    },
+    "corps-domestic": {
+      "status": "active",
+      "dll": "convenience",
+      "build": "split",
+      "depends": [
+        "personnel"
+      ],
+      "hook_owners": [],
+      "owns": [
+        "src/native_corps_domestic.inl"
+      ],
+      "sources": [
+        "src/native_corps_domestic.inl",
+        "src/native_personnel.inl",
+        "src/native_split_install.inl"
+      ],
+      "tests": [
+        "personnel",
+        "native"
       ]
     },
     "injury": {

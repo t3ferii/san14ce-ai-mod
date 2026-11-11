@@ -190,14 +190,18 @@ function Get-TraitLayoutPlan($State,$Patch,[bool]$Install,$FeatureValues=$null) 
     $taskCczKeys=@([uint32]0x3DA1641D,[uint32]0x757F1A41,[uint32]0x5C046EA3)
     # user 2026-11-03: speed owns atlas/table/popup/HUD, not just native hooks.
     $taskSpeedKeys=@([uint32]0x301526D7,[uint32]0xFEA5F28CL,[uint32]0x40F993CE,[uint32]0x454A1BCC)
-    $taskSpeedOn=$null -eq $FeatureValues -or ($FeatureValues['groups.convenience'] -ne 0 -and (-not $FeatureValues.Contains('game_flow.speed_buttons') -or $FeatureValues['game_flow.speed_buttons'] -ne 0))
+    # user 2026-11-10: [diagnostics] ai_trace + ai_trace_original (with the diagnostics group) publish no convenience hook at
+    # all (native_split_install.inl trace_only), so the convenience-owned screen records follow as off.
+    $taskTraceOnly=$null -ne $FeatureValues
+    foreach($taskKey in 'groups.diagnostics','diagnostics.ai_trace','diagnostics.ai_trace_original') {if(-not $taskTraceOnly){break};$taskTraceOnly=$FeatureValues.Contains($taskKey) -and $FeatureValues[$taskKey] -ne 0}
+    $taskSpeedOn=$null -eq $FeatureValues -or (-not $taskTraceOnly -and $FeatureValues['groups.convenience'] -ne 0 -and (-not $FeatureValues.Contains('game_flow.speed_buttons') -or $FeatureValues['game_flow.speed_buttons'] -ne 0))
     # user 2026-11-09 (PW36b): the two auto-command toggles own the main-screen layout 00_02_00_mein_pk (both KTIDs).
     # local17: the keys default off, so a missing key keeps the records out (rule: off = original screen). No feature values at all
     # (fixtures, Restore) keeps the local16 meaning: every record of the bank.
     $taskAutoKeys=@([uint32]0x24E16FBE,[uint32]0x036BB544)
-    $taskAutoOn=$null -eq $FeatureValues -or ($FeatureValues['groups.convenience'] -ne 0 -and (($FeatureValues.Contains('game_flow.auto_search') -and $FeatureValues['game_flow.auto_search'] -ne 0) -or ($FeatureValues.Contains('game_flow.auto_reward') -and $FeatureValues['game_flow.auto_reward'] -ne 0)))
+    $taskAutoOn=$null -eq $FeatureValues -or (-not $taskTraceOnly -and $FeatureValues['groups.convenience'] -ne 0 -and (($FeatureValues.Contains('game_flow.auto_search') -and $FeatureValues['game_flow.auto_search'] -ne 0) -or ($FeatureValues.Contains('game_flow.auto_reward') -and $FeatureValues['game_flow.auto_reward'] -ne 0)))
     # user 2026-11-03: groups.ccz master also owns the CCZ layout records.
-    $taskCczOn=$null -eq $FeatureValues -or ($FeatureValues['groups.convenience'] -ne 0 -and (-not $FeatureValues.Contains('groups.ccz') -or $FeatureValues['groups.ccz'] -ne 0) -and $FeatureValues['ccz.ccz_sprites'] -ne 0)
+    $taskCczOn=$null -eq $FeatureValues -or (-not $taskTraceOnly -and $FeatureValues['groups.convenience'] -ne 0 -and (-not $FeatureValues.Contains('groups.ccz') -or $FeatureValues['groups.ccz'] -ne 0) -and $FeatureValues['ccz.ccz_sprites'] -ne 0)
     # 2026-11-05 local3: the four nine-slot trait records follow the EXE build only (the ini / group switches keep their earlier
     # behaviour for these records: they stay applied; a follow-up decision, see docs/HISTORY.md section 12).
     $taskTraits9Keys=@([uint32]0x49F89AB3,[uint32]0x7C471B31,[uint32]0x9EA0EB77L,[uint32]0xF1D669AFL)

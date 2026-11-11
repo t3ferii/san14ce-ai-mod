@@ -27,6 +27,16 @@ static bool hostile_city(Obj army, unsigned city) { COST_SCOPE("campaign:hostile
     auto id=*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(force,0)+0x60);
     return fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(army_force(army),id(force))!=0;
 }
+// local47 no_tribe_target: a castle of a tribe force (46..50) is never a mod target either (the original never lets a
+// non-player force take one, 285DB0).
+static bool tribe_goal(unsigned city) { COST_SCOPE("campaign:tribe_goal");
+    if (!mod_features.no_tribe_target) return false;
+    Obj goal=campaign_goal(city);
+    Obj force=goal ? fn<Obj(__fastcall *)(Obj)>(GA(GA_22E3E0))(goal) : nullptr;
+    if (!valid(force)) return false;
+    const unsigned id=(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(force,0)+0x60))(force);
+    return id>=46 && id<=50;
+}
 static bool campaign_transit_region(unsigned id);
 static unsigned campaign_path_capture_hex(Obj army,unsigned destination);
 static unsigned campaign_area_id(unsigned hex);
@@ -36,7 +46,7 @@ static void remember_campaign(Obj army, Progress &p) { COST_SCOPE("campaign:reme
     if(p.operation_city && campaign_operation_member(army,p)) {
         p.city=p.operation_city;p.campaign=true;return;
     }
-    if(p.campaign && !hostile_city(army,p.city)) {
+    if(p.campaign && (!hostile_city(army,p.city) || tribe_goal(p.city))) {
         p.campaign=false;
     }
     if (word(army,0x16)<1000) { p.campaign=false; return; }
@@ -273,7 +283,9 @@ static void prepare_local_build(Obj army, Progress &p) { COST_SCOPE("campaign:pr
     if(mod_features.mission_v2 && !p.regional_worker && !builder_force(army_force(army))) {
         if(!goal || !hostile_city(army,p.city) || !valid(standing) || standing[0x14]!=army_force(army) ||
            castle>=48400 || distance(word(army,0x2A),castle)>10)return; // 8 -> 10 (user 2026-11-01)
-        if(local_facilities(army,area) & ((1u<<3)|(1u<<4)|(1u<<6)|(1u<<7)))return;
+        // local53: no longer stops at the first siege facility; try_build fills the region's three siege slots
+        // (catapult/watchtower, fort/camp, band) and then one trap per army. A full region stops in try_build.
+        if(area_full(area))return;
         if(p.work_reviewed_center==hex)return; // already rejected twice / complete here
         if(p.build_audit_day==game_day() && p.build_audit_mask)return;
         p.build_chain=true;p.build_center=static_cast<unsigned short>(hex);p.cycle_mask=0;
@@ -464,7 +476,7 @@ static bool recover_idle(Obj army, Progress &p) { COST_SCOPE("campaign:recover_i
         Obj group=table(0x7F8D8,word(ally,0x58),500);
         if(!valid(group) || !attack_mode(word(group,0x14)))continue;
         unsigned goal=word(group,0x16);int range=distance(word(army,0x2A),word(ally,0x2A));
-        if(goal<52 && hostile_city(army,goal) && range<best) {best=range;city=goal;}
+        if(goal<52 && hostile_city(army,goal) && !tribe_goal(goal) && range<best) {best=range;city=goal;}
     }
     if(city) {
         *reinterpret_cast<unsigned short *>(troops+0x14)=10;
@@ -526,6 +538,8 @@ static bool campaign_individual_priority(Obj army,Progress &p) { COST_SCOPE("cam
         if(native_fort_assault(army,&fort_hex) &&
            (!stall_near || recent_hit || siege_tile_distance(word(army,0x2A),fort_hex)<=1))p.motion_day=game_day();
     }
+    // A route_hook correction (morale hold / wall breach) is the only mod writer for this army; holding still is intended.
+    if(route_hook_owns && route_hook_owns(army)) {p.motion_day=game_day();return true;}
     if(mod_features.stationary_retreat && !p.forced_return && game_day()-p.motion_day>=campaign_stationary_days) {
         p.forced_return=true;p.guard_beneficiary=0;p.combat_target=0;p.combat_city=0;
         p.facility=0;p.credit=false;p.build_chain=false;

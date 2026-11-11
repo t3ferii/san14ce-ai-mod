@@ -11,13 +11,13 @@ static const FeatureRequire kFeatureRequires[]={
     {"domestic_direct","domestic",&ModFeatures::domestic_direct,&ModFeatures::domestic,15,10},
     {"awards_ai","awards",&ModFeatures::awards_ai,&ModFeatures::awards,8,3},
     {"stats200_growth","stats200",&ModFeatures::stats200_growth,&ModFeatures::stats200,30,27},
-    {"awards_horse","awards_ai",&ModFeatures::awards_horse,&ModFeatures::awards_ai,81,8},
-    {"awards_v16","awards_ai",&ModFeatures::awards_v16,&ModFeatures::awards_ai,82,8},
-    {"merit_bond16","merit",&ModFeatures::merit_bond16,&ModFeatures::merit,83,2},
-    {"briefing16","advisor_briefing",&ModFeatures::briefing16,&ModFeatures::advisor_briefing,84,36},
-    {"expert_ingame","battle_rules",&ModFeatures::expert_ingame,&ModFeatures::battle_rules,85,18},
-    {"drag_learn_multi","drag_learn",&ModFeatures::drag_learn_multi,&ModFeatures::drag_learn,86,45},
-    {"sprite_fallback","ccz_sprites",&ModFeatures::sprite_fallback,&ModFeatures::ccz_sprites,87,69},
+    {"awards_horse","awards_ai",&ModFeatures::awards_horse,&ModFeatures::awards_ai,86,8},
+    {"awards_v16","awards_ai",&ModFeatures::awards_v16,&ModFeatures::awards_ai,87,8},
+    {"merit_bond16","merit",&ModFeatures::merit_bond16,&ModFeatures::merit,88,2},
+    {"briefing16","advisor_briefing",&ModFeatures::briefing16,&ModFeatures::advisor_briefing,89,36},
+    {"expert_ingame","battle_rules",&ModFeatures::expert_ingame,&ModFeatures::battle_rules,90,18},
+    {"drag_learn_multi","drag_learn",&ModFeatures::drag_learn_multi,&ModFeatures::drag_learn,91,45},
+    {"sprite_fallback","ccz_sprites",&ModFeatures::sprite_fallback,&ModFeatures::ccz_sprites,92,69},
 };
 // Transitive; returns the number of flags switched off. feature_off(100+flag index, reason 6 = parent off, 100+parent index) is
 // logged for each (reasons 1-5 are the install-time ones).

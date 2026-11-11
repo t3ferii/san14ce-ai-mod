@@ -6,6 +6,7 @@ static void build_skip(Obj army, Progress &p, unsigned facility, const char *rea
     unsigned bit=1u<<facility;if(p.build_audit_mask&bit)return;
     p.build_audit_mask|=bit;log_event(reason,army_id(army),facility,word(army,0x2A));
 }
+static bool catapult_player_ground(Obj tile);   // native_ai_wall.inl
 static bool try_build(Obj army, Progress &p, unsigned cohort_center=48400,unsigned preferred=0)
 {
     COST_SCOPE("try_build");
@@ -60,12 +61,42 @@ static bool try_build(Obj army, Progress &p, unsigned cohort_center=48400,unsign
         if(castle)siege_castle=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(castle);
     }
     bool missing=false;
-    for (unsigned pass=0;pass<(builder?2u:1u) && !applied;++pass) for (unsigned facility : order) {
+    struct Step {unsigned facility,pass;};
+    Step steps[40];unsigned step_count=0;
+    // local53 siege slots (user 2026-11-11 "투석대 요새 군악대 1개씩 ... 요새를 못지으면 진 ... 투석대를 못지으면 망루 ...
+    // 나머지 부대는 함정건설"): siege ground fills three slots per region, each once: catapult 6 (else watchtower 5),
+    // fort 4 (else camp 3), band 7. Next to a player region (ai_catapult_block) the catapult is skipped as if not
+    // unlocked and the watchtower fills that slot. With every slot filled, each further army builds one trap (11, 12, 14, 13).
+    const bool siege_slots=mod_features.mission_v2 && !p.regional_worker && !builder && !preferred;
+    bool trap_phase=false;
+    if(siege_slots) {
+        const bool catapult_banned=mod_features.ai_catapult_block && computer_army(army) &&
+            catapult_player_ground(table(0xE270,word(area,0x3A),48399));
+        // User 2026-11-11: next to a player region the catapult counts as not unlocked; the watchtower still fills the slot.
+        // local54 [combat] siege_no_catapult / siege_no_watchtower / siege_no_trap (computer side, under mission_v2): an
+        // excluded type is never tried; a slot whose types are all excluded counts as done, so the traps can follow.
+        const bool computer=computer_side_army(army);
+        const bool allow6=!catapult_banned && !(computer && mod_features.siege_no_catapult);
+        const bool allow5=!(computer && mod_features.siege_no_watchtower);
+        const bool allow_trap=!(computer && mod_features.siege_no_trap);
+        const bool siege_open=(allow6 || allow5) && !(seen&((1u<<6)|(1u<<5)));
+        const bool fort_open=!(seen&((1u<<4)|(1u<<3))),band_open=!(seen&(1u<<7));
+        if(siege_open) {if(allow6)steps[step_count++]={6,0};if(allow5)steps[step_count++]={5,0};}
+        if(fort_open) {steps[step_count++]={4,0};steps[step_count++]={3,0};}
+        if(band_open)steps[step_count++]={7,0};
+        if(!siege_open && !fort_open && !band_open && allow_trap) {
+            trap_phase=true;
+            // 17 rockfall (user 2026-11-11 "시정으로 열리는 낙석같은것도"): opened by the 산천시설 policy, mountain sites only;
+            // the original candidate list and permission decide both (unlock and terrain).
+            for(unsigned f:{11u,12u,17u,14u,13u})steps[step_count++]={f,0};
+        }
+    } else
+    for(unsigned pass=0;pass<(builder?2u:1u);++pass)for(unsigned f:order)steps[step_count++]={f,pass};
+    for (unsigned step=0;step<step_count && !applied;++step) {
+        const unsigned facility=steps[step].facility,pass=steps[step].pass;
         if(preferred && facility!=preferred)continue;
-        if(pass==0 && (seen & (1u<<facility))) {build_skip(army,p,facility,"build_skip_present");continue;}
+        if(pass==0 && !trap_phase && (seen & (1u<<facility))) {build_skip(army,p,facility,"build_skip_present");continue;}
         if(pass==1 && (preferred || !(seen & (1u<<facility))))continue;
-        // Siege ground (non-worker): only the siege facilities camp 3, fort 4, catapult 6, band 7.
-        if(mod_features.mission_v2 && !p.regional_worker && !builder && !preferred && facility!=3 && facility!=4 && facility!=6 && facility!=7)continue;
         missing=true;
         Obj definition = table(0x73958, facility, 30);
         if (!valid(definition)) {build_skip(army,p,facility,"build_skip_definition");continue;}
@@ -103,6 +134,7 @@ static bool try_build(Obj army, Progress &p, unsigned cohort_center=48400,unsign
                 p.build_chain=true;
                 p.build_retry_day=game_day();p.build_rejections=0;
                 if(mod_features.mission_v2 && !p.regional_worker && !builder)p.build_chain=false; // siege ground: one facility, then the mission
+                if(trap_phase)p.work_reviewed_center=p.build_center;   // local53: one trap per army per region
                 log_event("build_started", army_id(army), facility, hex);
                 applied = true;
             }

@@ -76,6 +76,7 @@ static void __fastcall sortie_mock_path(Obj army) {
     SortieNativePath out={};int result=sortie_search(&out,nullptr,from,&to,1,1,0);
     put16(army,0x48,result && out.count>1?static_cast<unsigned>(out.data[1]):48400);
 }
+static int __fastcall sortie_mock_likes(Obj,Obj) {return 0;}   // 234880 친애 (local58 roster bonus): nobody by default
 #include "campaign_reinforcement_fixture.inl"
 #include "campaign_departure_fixture.inl"
 static void sortie_tests() {
@@ -115,7 +116,7 @@ static void sortie_tests() {
     BIND(0xD4350,sortie_mock_filter2);BIND(0x232C00,sortie_mock_capacity);BIND(0x231770,sortie_mock_ability);
     BIND(0x233CF0,sortie_mock_owned);BIND(0x43A50,sortie_mock_defaults);BIND(0xD1120,sortie_mock_skills);
     BIND(0x2842E0,sortie_mock_delete);BIND(0x2DB610,sortie_mock_group);BIND(0x9F860,sortie_mock_cancel);
-    BIND(0xB6F50,sortie_mock_power);
+    BIND(0xB6F50,sortie_mock_power);BIND(0x234880,sortie_mock_likes);
     original_sortie_dispatch=sortie_mock_dispatch;original_sortie_movement=sortie_mock_speed;original_sortie_search=sortie_mock_search;
     {NativePhase dispatch_phase("sortie_dispatch");SortieNativePath path={};unsigned target=48400;
         unsigned calls=sortie_search_calls;
@@ -141,6 +142,15 @@ static void sortie_tests() {
     Obj support=sortie_people[3];support[0xA9]=1;put16(support,0x118,23);put16(support,0x11A,94);put16(support,0x11C,96);
     check(sortie_support(support)==3,"three support traits and native female field decoded");
     support[0xA9]=0;check(sortie_support(support)==0,"male traits do not fill the female support seat");support[0xA9]=1;
+    check(sortie_female_capped(support),"female 응원/악주 support seat keeps the 1,000-soldier rule");
+    {   // local58b: every female officer is capped at 1,000, whatever her traits; a male officer over 통솔 60 is not.
+        Obj other=sortie_people[5];other[0xA9]=1;
+        put16(other,0x118,46);
+        check(sortie_area_trait(other) && sortie_female_capped(other),"female ally-area trait holder still leaves with 1,000");
+        put16(other,0x118,0);other[0xA9]=0;
+        check(!sortie_female_capped(other),"male officer over 통솔 60 keeps a full unit");
+        put16(other,0x11A,11);check(sortie_area_trait(other),"male 용장 counts as an ally-area trait");put16(other,0x11A,0);
+    }
     campaign_reinforcement_tests();
     campaign_departure_tests();
     BIND(0x22E3E0,reinforcement_owner);

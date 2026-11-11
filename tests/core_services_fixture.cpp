@@ -1,7 +1,7 @@
 // W4-2..4-6 proof (docs/MODULARIZATION_PLAN.md): the services keep the historical call orders whatever order the modules register in.
 // The expected sequences are frozen from main 7b343e3 (hard-coded calls before W4):
 //   map-tick        fast_menu busy slot: lord_change::map_tick
-//   domestic-tick   native_domestic.inl domestic_tick: pre awards, injury, domestic; post domestic
+//   domestic-tick   native_domestic.inl domestic_tick: pre awards, injury, domestic, officer_rotation (local57, appended last); post domestic
 //   overlay draw    native_unified_overlay.inl draw_locked: terrain_render, ccz_sprites, ccz_preview, then briefing_overlay
 //   overlay gate    draw(): briefing_overlay::needs_draw, terrain_render::needs_present, ccz_sprites::needs_present, ccz_preview::needs_draw
 // The (service, owner, order, gate order) rows come from the generated registry table, so a changed constant fails here.
@@ -59,8 +59,8 @@ int main() {
         on=true;services::run_appear_prefetch(nullptr);check(prefetched==1,"appear-prefetch live predicate: one call per frame");
         services::reset_all();check(services::appear_prefetch.count==0,"reset_all clears appear-prefetch");
     }
-    // domestic-tick: pre order awards, injury, domestic
-    all_permutations("domestic_tick",services::domestic_tick,{"awards","injury","domestic"},
+    // domestic-tick: pre order awards, injury, domestic, officer_rotation
+    all_permutations("domestic_tick",services::domestic_tick,{"awards","injury","domestic","officer_rotation"},
         [](auto &l,const ModuleSubscription &s){return l.add(s.owner,services::DomesticTick{&note_city<1>,nullptr},yes,s.order);},"domestic-tick order");
     // overlay draw order
     all_permutations("overlay",services::overlay,{"terrain_render","ccz_sprites","ccz_preview","advisor_briefing"},

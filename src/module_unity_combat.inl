@@ -28,4 +28,5 @@
 #include "native_sortie_links.inl"
 #endif
 #include "native_siege_guard.inl"
+#include "native_route_hook.inl"
 #endif

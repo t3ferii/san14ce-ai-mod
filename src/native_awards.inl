@@ -32,6 +32,8 @@ static PostPeople original_post_people;
 static PostSelect original_post_select;
 static AwardIterator original_award_iterator;
 static AwardIterator original_award_view;
+using OwnerName=void *(__fastcall *)(Obj);
+static OwnerName original_owner_name;
 static AwardOne original_post_batch,original_award_ui;
 static AwardState original_award_manual;
 static void *award_equipped_vtable[4],*award_storage_vtable[4];
@@ -134,16 +136,21 @@ static void award_full_synchronize(std::vector<Obj> &items) {
         }
         award_initialized=true;
         // Keep the strongest per slot; excess equipment returns to its force.
+        // local37 (user 2026-11-10 "군주도 1개만 적용되는건 자연스러워. 나머지가 세력창고로"): the ruler follows the same
+        // one-per-slot rule. Its strongest item of each slot, worn or in the warehouse, is worn; the rest is stored.
         std::sort(items.begin(),items.end(),[](Obj a,Obj b) {
             int sa=a[0x46]+a[0x48],sb=b[0x46]+b[0x48];
             return sa!=sb?sa>sb:award_item_id(a)<award_item_id(b);
         });
         std::array<unsigned,6001> used={};
         for(Obj item:items) {
-            unsigned owner=word(item,0x4A),mask=award_mask(item);if(!mask || award_stored(item) || owner>6000)continue;
+            unsigned owner=word(item,0x4A),mask=award_mask(item);if(!mask || owner>6000 || item==award_selected_item || !(item[0x4F]&1))continue;
             Obj p=table(0x158,owner,6000);unsigned force=award_force_id(p);
             if(!force || !award_serving(p,force))continue;
-            if(used[owner]&mask)award_put_storage(item,force);else used[owner]|=mask;
+            const bool stored=award_stored(item);
+            if(stored && p!=award_ruler(force))continue;
+            if(used[owner]&mask){if(!stored)award_put_storage(item,force);}
+            else {used[owner]|=mask;if(stored)award_storage[award_item_id(item)]=0;}
         }
 }
 static void award_synchronize() {
@@ -257,7 +264,9 @@ static Obj __fastcall award_iterator(Obj person,Obj out) { COST_SCOPE("awards_aw
     uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-reinterpret_cast<uintptr_t>(image);
     // Only effect/personal views and diplomacy change. Native death, capture,
     // succession and force destruction retain the native ownership iterator.
-    bool storage=caller==GA(GA_6DD83B) || caller==GA(GA_6DD9C5) || caller==GA(GA_6DBDBF);
+    // Diplomacy offers warehouse items only, for every force (user 2026-11-10): the three diplomacy screens and the
+    // computer offer builder B2440 (sums the force's gold/food, then the ruler's treasures, 324320 offer value).
+    bool storage=caller==GA(GA_6DD83B) || caller==GA(GA_6DD9C5) || caller==GA(GA_6DBDBF) || caller==GA(GA_B258C);
     bool equipped=caller==GA(GA_22EEA5) || caller==GA(GA_23184B) || caller==GA(GA_231ACA) ||
         caller==GA(GA_2B7099) || caller==GA(GA_34BDDF) || caller==GA(GA_6E377B);
     Obj result;
@@ -274,10 +283,21 @@ static Obj __fastcall award_personal_view(Obj person,Obj out) { COST_SCOPE("awar
     }
     return result;
 }
+// User 2026-11-10: the owner name of an item (360930, the treasure list and item screens) shows the force warehouse
+// for a stored item instead of the ruler. The native owner stays the ruler (capture, succession and diplomacy rely
+// on it); only the text differs. 360930 returns a wide string (230950 formats L"%s%s").
+static void *__fastcall award_owner_name(Obj item) { COST_SCOPE("awards_award_owner_name");
+    static wchar_t warehouse[]=L"세력창고";
+    if(enabled && item && award_stored(item))return warehouse;
+    return original_owner_name(item);
+}
+// local37 (user 2026-11-10 "플레이어가 직접 배분하는건 군주 명품도 뺄 수 있어야지"): the player's distribution list
+// offers the ruler's worn items again. Only the computer's automatic distribution (award_ai_city) leaves them alone:
+// it gives warehouse items only.
 static unsigned __fastcall award_warehouse_items(Obj district,GameList *out) { COST_SCOPE("awards_award_warehouse_items");
     unsigned count=original_award_items(district,out);if(!enabled || !out || !valid(district))return count;
     award_synchronize();Link *l=list_first(*out);
-    while(l) {if(valid(award_selected_person) && !award_ui_allowed(award_selected_person,l->value)) {personnel_remove(*out,l->value);l=list_first(*out);}else l=l->next;}
+    while(l) {if((valid(award_selected_person) && !award_ui_allowed(award_selected_person,l->value))) {personnel_remove(*out,l->value);l=list_first(*out);}else l=l->next;}
     // The management selector includes equipped items for native recall and
     // redistribution. Diplomacy's separate iterator exposes storage only.
     for(Obj item:award_items())if((item[0x4F]&1) && award_force_id(table(0x158,award_stored(item)?award_storage[award_item_id(item)]:word(item,0x4A),6000))==district[0x10] &&
@@ -483,7 +503,7 @@ static void award_ai_city(Obj city) {
     unsigned force=valid(district)?district[0x10]:0;if(!force || force>51)return;
     // local17 awards_v16 (user 2026-11-09): computer forces receive their awards free (no 명령서), and a player's
     // delegated corps keep the original game's own award behaviour ("플레이어 위임군단은 명품 배분기능을 적용하면 안돼.
-    // 컴퓨터 위임군단만"). awards_v16 off = v15.7.1 (every automated district, paying the cost).
+    // 컴퓨터 위임군단만"). awards_v16 off = v15.7.1 cost path for computer forces (player forces are always excluded, below).
 #ifdef TACTICS_FIXTURE
     // The unit-test shells do not register the player-force getter (GA_330B90),
     // so there they keep the player cost path that the award fixtures exercise.
@@ -491,7 +511,13 @@ static void award_ai_city(Obj city) {
 #else
     bool computer_force=!injury_player_force(table(0xDF30,force,51));
 #endif
+#ifndef TACTICS_FIXTURE
+    // User 2026-11-10: the mod's automatic distribution never runs for a player force (direct 1st corps or delegated
+    // corps), whatever awards_v16 says; the player hands out treasures themselves.
+    if(!computer_force)return;
+#else
     if(mod_features.awards_v16 && !computer_force)return;
+#endif
     bool free_cost=mod_features.awards_v16 && computer_force;
     bool horse_rule=computer_force && mod_features.awards_horse;   // retreat-certain horses: computer forces only
     int day=game_day();if(day<0 || award_ai_days[force]==day)return;

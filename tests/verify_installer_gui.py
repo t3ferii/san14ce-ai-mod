@@ -25,7 +25,8 @@ ids={s+'.'+k for s,k in cs}
 # ??? ?? 2026-11-03: ?? ?? ?? ??? ?? ?? ?? ?? ???? ??.
 # 사용자 결정: 사용 중지 키 읽기 제거 2026-11-03.
 retired={'combat.departures','combat.group_advance','combat.support','diplomacy.diplomacy_overinvest','officer_ui.unified',
-         'ccz.ccz_hide_model','ccz.ccz_depth','ccz.ccz_far_keep','performance.timer_1ms'}
+         'ccz.ccz_hide_model','ccz.ccz_depth','ccz.ccz_far_keep','performance.timer_1ms',
+         'combat.siege_native'}
 retired_body=re.search(r'HashSet<string> Retired = new HashSet<string> \{(.*?)\};',gui,re.S)
 ok(retired_body is not None and set(re.findall(r'"([\w.]+)"',retired_body[1]))==retired,'GUI retired set')
 ps_retired={s+'.'+k for s,k in re.findall(r"Section='(\w+)'; Key='(\w+)';[^\r\n]*Retired=\$true",menu)}
@@ -44,7 +45,7 @@ ok('retired 2026-10-28 (mission_v2 conflict); keys no longer read' in adapter,'D
 ok('f.diplomacy_overinvest = false; // retired 2026-11-03: native cap/marker restored; key no longer read' in adapter and
    not re.search(r'feature_key\(config, L"diplomacy", L"diplomacy_overinvest"',adapter),'retired diplomacy key is not read')
 ok('!f.IsMaster && !Catalog.Retired.Contains(f.Id)' in gui,'tab denominator excludes retired rows')
-ok(menu.count("Retired=$true;")==9 and
+ok(menu.count("Retired=$true;")==10 and
    menu.count("Note='\uc784\ubb34 \uc77c\uad00\uc131 v2\uc640 \ucda9\ub3cc\ud574 \uc0ac\uc6a9\uc774 \uc911\uc9c0\ub41c \uae30\ub2a5\uc785\ub2c8\ub2e4.'")==3 and
    menu.count("Note='\uac1c\ubc1c \uc911\uc9c0\ub85c \uc81c\uac70\ub41c \uae30\ub2a5\uc785\ub2c8\ub2e4.'")==1 and
    '\uac1c\ubc1c \uc911\uc9c0\ub85c \uc81c\uac70\ub41c \uae30\ub2a5' in gui,'user decision 2026-11-03: retirement explanations')
@@ -115,7 +116,7 @@ exe=Path(sys.argv[1]) if len(sys.argv)>1 else None
 # 사용자 결정 2026-10-30: 기능 설명뿐 아니라 출처 탭 전체 목록과 배포 차단을 검증한다.
 credits=[line for line in (P/'docs/CREDITS.md').read_text(encoding='utf-8-sig').splitlines() if line.startswith('- ')]
 credits_body=re.search(r'static class Credits \{.*?string\[\] Lines = \{(.*?)\};',gui,re.S)
-ok(len(credits)==11 and credits_body is not None and re.findall(r'"([^"]+)"',credits_body[1])==credits,'credits tab matches all eleven canonical lines in order')
+ok(len(credits)==12 and credits_body is not None and re.findall(r'"([^"]+)"',credits_body[1])==credits,'credits tab matches all twelve canonical lines in order')
 ok('pages["출처"] = creditsPage;' in gui and 'new[] { "출처", "업데이트", "작업 기록" }' in gui,'credits page registered as a peer tab')
 for key,source in re.findall(r'^\* `(\w+)` = (.+)$',(P/'docs/CREDITS.md').read_text(encoding='utf-8-sig'),re.M):
     ok(any('"'+key+'",' in row and '출처: '+source in row for row in gui.splitlines()),'GUI credit note: '+key)

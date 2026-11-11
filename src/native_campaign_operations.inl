@@ -96,10 +96,10 @@ static uint64_t campaign_operation_defenders(Obj army,unsigned city,unsigned cen
     return count;
 }
 static unsigned campaign_field_city(Obj army,Progress &p) { COST_SCOPE("campaign_operations:campaign_field_city");
-    if(p.campaign && hostile_city(army,p.city))return p.city;
+    if(p.campaign && hostile_city(army,p.city) && !tribe_goal(p.city))return p.city;
     unsigned best=0;int score=INT32_MAX;
     for(unsigned id=1;id<=51;++id) {
-        Obj goal=campaign_goal(id);if(!goal || !hostile_city(army,id) || !campaign_available(army,p,id))continue;
+        Obj goal=campaign_goal(id);if(!goal || !hostile_city(army,id) || tribe_goal(id) || !campaign_available(army,p,id))continue;
         unsigned center=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(goal);if(center>=48400)continue;
         int range=distance(word(army,0x2A),center);if(range>15)continue;
         int value=range*100+static_cast<int>((std::min)(dword(goal,0x3C),100000u)/100);

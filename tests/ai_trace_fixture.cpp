@@ -36,8 +36,8 @@ template<class T>static T fn(unsigned r){return reinterpret_cast<T>(function(r))
 #define AI_TRACE_FIXTURE 1
 #include "../src/native_ai_trace.inl"
 // Fake world: armies and troops tables with real offsets.
-static std::vector<unsigned char> world_bytes(0x88000),armies(501*0x100),troops(501*0x100);
-static Obj army(unsigned id){return armies.data()+id*0x100;}
+static std::vector<unsigned char> world_bytes(0x88000),armies(501*0x200),troops(501*0x100);   // real army stride 0x200 (+1F0 행동 비트 is read)
+static Obj army(unsigned id){return armies.data()+id*0x200;}
 static Obj group(unsigned id){return troops.data()+id*0x100;}
 static void set_army(unsigned id,bool present){*reinterpret_cast<Obj *>(world_bytes.data()+0x7E838+id*8)=present?army(id):nullptr;}
 static void put16(Obj p,unsigned o,unsigned v){*reinterpret_cast<unsigned short *>(p+o)=static_cast<unsigned short>(v);}

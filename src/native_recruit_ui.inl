@@ -251,14 +251,15 @@ static void recruit_report_automatic(Obj district,const PersonnelBatchResult &re
     wchar_t text[256]={},advice_text[64]={};
     if(result.advised_against)
         _snwprintf_s(advice_text,sizeof(advice_text)/sizeof(advice_text[0]),_TRUNCATE,
-            L"\n군사가 반대한 대상 %u명은 보내지 않았습니다.",result.advised_against);
+            L"\n군사가 말린 %u명에게는 사람을 보내지 않았소.",result.advised_against);
+    // Period-drama wording (user 2026-11-11 "명령서 어쩌고보다 삼국지 시대극에 맞게끔").
     if(result.sent) {
         _snwprintf_s(text,sizeof(text)/sizeof(text[0]),_TRUNCATE,
-            L"군사가 등용을 권하는 실행무장만 배정했습니다.\n자동등용 명령 %u건을 내렸습니다.%s%s",
-            result.sent,skipped>result.advised_against?L"\n등용 불가·실행무장 또는 명령서 부족 등의 대상은 제외했습니다.":L"",advice_text);
+            L"군사의 진언을 받아들여\n뜻있는 인재 %u명에게 예를 갖춰 사자를 보냈소.%s%s",
+            result.sent,skipped>result.advised_against?L"\n응할 리 없는 자나 보낼 사람이 마땅치 않은 곳은\n훗날을 기약하기로 했소.":L"",advice_text);
     } else {
         _snwprintf_s(text,sizeof(text)/sizeof(text[0]),_TRUNCATE,
-            L"자동등용 명령을 내리지 못했습니다.\n등용가능성, 군사 반대 여부, 실행무장과 명령서를 확인해 주세요.%s",advice_text);
+            L"아직은 인재를 부를 때가 아닌 듯하오.\n군사의 뜻과 보낼 사람, 우리의 형편을 다시 살펴야겠소.%s",advice_text);
     }
     Obj force=valid(district)?table(0xDF30,district[0x10],51):nullptr;
     if(!valid(force))return;
