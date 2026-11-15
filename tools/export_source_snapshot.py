@@ -15,7 +15,7 @@ PROJECT = Path(__file__).resolve().parents[1]
 # Usage: export_source_snapshot.py [destination] [snapshot label]
 DEST = Path(sys.argv[1]).resolve() / 'AI_TacticsMod' if len(sys.argv) > 1 else PROJECT / 'build/development/source_public_20261026_r3/AI_TacticsMod'
 LABEL = sys.argv[2] if len(sys.argv) > 2 else '2026-10-26 development source; not an exact v13.3 release reproduction'
-TEXT = {'.cpp', '.c', '.h', '.inl', '.asm', '.hlsl', '.py', '.ps1', '.psm1', '.manifest', '.ini', '.txt', '.wprp', '.cmd', '.cs'}
+TEXT = {'.cpp', '.c', '.h', '.inl', '.inc', '.asm', '.hlsl', '.py', '.ps1', '.psm1', '.manifest', '.ini', '.txt', '.wprp', '.cmd', '.cs'}
 EXTRA_TOOLS = '''check_feature.ps1
 install_local.py install_damage_preview.py package_mod.py package_input.py
 generate_handoff.py audit_current_source.py
