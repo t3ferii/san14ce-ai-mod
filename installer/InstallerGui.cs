@@ -802,8 +802,9 @@ sealed class MainForm : Form {
         if (busy) return;
         var installed = InstalledVersion();
         if (latest != null && (installed == null || Updates.Compare(latest.Version, installed) > 0)) StartVersionChange(latest);
-        else CheckUpdates(true);
+        else { hideLastUpdate = true; CheckUpdates(true); }   // already the latest: the last update's colours go away
     }
+    bool hideLastUpdate;
     // 기본 색 표시: 받을 업데이트가 있으면 설치본→최신, 없으면 지난 업데이트(이전→현재)로 바뀐 기능.
     void ApplyDefaultChanges() {
         if (history == null) return;
@@ -811,7 +812,10 @@ sealed class MainForm : Form {
         if (latest != null && installed != null && Updates.Compare(latest.Version, installed) > 0)
             ShowChanges(installed, latest.Version, "업데이트하면 바뀌는 기능");
         else {
-            var previous = PreviousVersion();
+            // v16.3.1 (user 2026-11-15 "배포판 업데이트 버튼 누르면 최신버전이니까 안보여야지"): the colours of the last update show only
+            // in the run that made it (or the one reopened right after it); once the update button finds nothing newer, or the
+            // installer is opened again later, the latest version shows no colours.
+            var previous = (UpdatedTo != null || versionChanged) && !hideLastUpdate ? PreviousVersion() : null;
             ShowChanges(previous, installed, previous != null ? "지난 업데이트로 바뀐 기능" : null);
         }
     }

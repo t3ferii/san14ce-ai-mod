@@ -377,7 +377,7 @@ function Invoke-SplitPackage {
             foreach($taskPath in $taskLayout.Deletes){[IO.File]::Delete($taskPath)}
             $taskLeftModules=@{};foreach($taskName in $taskOwned.Keys){if($taskOptionalModules -notcontains $taskName){$taskLeftModules[$taskName]=$taskOwned[$taskName]}}
             $taskNewState=@{installed=$false;installed_sha256=$taskState.installed_sha256;previous_sha256=$taskState.previous_sha256;exe_unchanged=$true;
-                modules=$taskLeftModules;release_version=$taskState.release_version;install_backup=$taskState.install_backup}
+                modules=$taskLeftModules;release_version=$null;install_backup=$taskState.install_backup}   # v16.3.1: no installed version once removed
             Write-State $taskNewState
         } catch {
             foreach($taskPath in $taskOldFiles.Keys){Write-Atomic $taskPath $taskOldFiles[$taskPath]}
@@ -386,6 +386,11 @@ function Invoke-SplitPackage {
         if($null -ne $taskOriginal){[IO.File]::Delete($taskChain)}
         foreach($taskMessage in $taskLayout.Messages){Write-Host $taskMessage}
         Remove-SeasonData $null
+        # v16.3.1 (user 2026-11-15 "모드 해제 ... 배포판 v15.14 받아서 설치했는데 계속 이게 뜨는데"): the installer's update record
+        # (updates\state.json: installed / previous version) goes with the mod, so after removal an older package installs from
+        # its own files and no "지난 업데이트" colours are left. The settings backups in updates\ stay.
+        $taskUpdateState=Join-Path $taskProject 'updates\state.json'
+        if([IO.File]::Exists($taskUpdateState)){try{[IO.File]::Delete($taskUpdateState)}catch{Write-Host '업데이트 기록(updates\state.json)을 지우지 못했습니다.'}}
         Write-Host '로더·전투 판단·편의·조조전 기능 DLL을 해제하고 설치 전 구성을 복구했습니다.'
         return
     }

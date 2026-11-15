@@ -1,6 +1,6 @@
 {
   "snapshot_date": "2026-11-15",
-  "type": "v16.3 public build source",
+  "type": "v16.3.1 public build source",
   "ai_contract_comments": 19,
   "cpp_files_token_equal": true,
   "assets_not_included": [
@@ -9,7 +9,7 @@
     "assets/ccz/preview_classes.png",
     "data/ (game-derived tables, 4계절 payload)"
   ],
-  "manifest_scope": "Every git-tracked text file of the v16.3 build plus assets/ccz metadata, as staged (LF); excludes this manifest and repository-only files",
+  "manifest_scope": "Every git-tracked text file of the v16.3.1 build plus assets/ccz metadata, as staged (LF); excludes this manifest and repository-only files",
   "files": [
     {
       "path": "AGENTS.md",
@@ -29,11 +29,11 @@
     },
     {
       "path": "README.md",
-      "sha256": "bc52151bb896d505c5e2aec6933eca11ee899107c9e816494d18ef3e0e44155d"
+      "sha256": "e13774d9ec2b661f452d8585022b117d05969645947e6983ca122f385e41ae62"
     },
     {
       "path": "SplitManage.ps1",
-      "sha256": "c26d2df0ecbd3ff11ba2f2a1c71278b0a999d4ec27f2ebd1b79b3293842a772c"
+      "sha256": "7e5e0d5307f914db9d492091b41dfb6d6f4a5a409b94609dce8b73a5afb9d946"
     },
     {
       "path": "assets/ccz/README.md",
@@ -49,7 +49,7 @@
     },
     {
       "path": "development/FUNCTION_AUDIT.md",
-      "sha256": "9c4b5a82b92768811879f90be3bf5383362e9f4a31c9ca056de77484ad7a30fc"
+      "sha256": "88f14a8c80b2869d9ee4693f356a39206ea3f7bad90f13a2d13b13260860cbe1"
     },
     {
       "path": "development/FUNCTION_INDEX.csv",
@@ -473,7 +473,7 @@
     },
     {
       "path": "development/source_audit.json",
-      "sha256": "bb93e2fcc6a508d85cfa581240933af8424cb8e3585cae1528a8495cfcab5c08"
+      "sha256": "8c13bacf606e9245043119660e99c6bea61f9fc5b8b33209ad9b31e6ea392d3c"
     },
     {
       "path": "distribution/Diagnose.ps1",
@@ -501,7 +501,7 @@
     },
     {
       "path": "distribution/SplitManage.ps1",
-      "sha256": "c26d2df0ecbd3ff11ba2f2a1c71278b0a999d4ec27f2ebd1b79b3293842a772c"
+      "sha256": "7e5e0d5307f914db9d492091b41dfb6d6f4a5a409b94609dce8b73a5afb9d946"
     },
     {
       "path": "distribution/diagnostics.ini",
@@ -557,7 +557,7 @@
     },
     {
       "path": "docs/CHANGES_ALL.md",
-      "sha256": "0da61050dab8fbb029a8e5c5cc7dd18537bf378d008c8639a380320931ddbc6f"
+      "sha256": "180018c687b6dc01562adcd099cb75afca9cb77afdd8aef96dd695cd122a83e1"
     },
     {
       "path": "docs/CHECKS.md",
@@ -705,7 +705,7 @@
     },
     {
       "path": "docs/RELEASE_NOTES.md",
-      "sha256": "15d69aecdb85853aca8bd959e205f10c1f3e53453011fe1c78616584fe57344d"
+      "sha256": "3f6ea9c948e7f69705af6eb1c6f8249aaa781d0e2080d6505f25135834375d9d"
     },
     {
       "path": "docs/SESSION_RULES.md",
@@ -813,7 +813,7 @@
     },
     {
       "path": "installer/InstallerGui.cs",
-      "sha256": "37209ed4b93a1e9d1f7e5f49181c945b6d30d7ef26dc5650ec588de55545102c"
+      "sha256": "1488472c52538c0895997fa3cebd2e6da1a854548e18c0eb55747ab49be9c6b7"
     },
     {
       "path": "installer/app.manifest",
@@ -2713,7 +2713,7 @@
     },
     {
       "path": "tools/release_features.py",
-      "sha256": "190c3492679b814b098ac7ff8d4a9b5e6891373792c44e203557060578676d4e"
+      "sha256": "8a0eec1279197a56bdd9113acbe11aebc4ba9f832c9b3c631645e8780e8cb6dc"
     },
     {
       "path": "tools/rollback_progress_native.py",
