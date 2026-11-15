@@ -557,7 +557,7 @@
     },
     {
       "path": "docs/CHANGES_ALL.md",
-      "sha256": "a1d205d18bd88b025e02d5268a0fc918fa963630b4a1c1604aa155811ea3f323"
+      "sha256": "e84a824d0b3d8ad776285486839248c73ec849b186161bdf2d291c66d81c3b91"
     },
     {
       "path": "docs/CHECKS.md",
@@ -685,7 +685,7 @@
     },
     {
       "path": "docs/PUBLISH.md",
-      "sha256": "62df7fb31da4e0a31ed70fea62b33eff1ee17cd240654342ab1e84a6f1c4b00e"
+      "sha256": "dc1505c90fc4e2b485855e170818311b4bb4938add694286e221eb3b00a84a68"
     },
     {
       "path": "docs/README.md",
