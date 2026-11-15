@@ -43,5 +43,6 @@ python -X utf8 AI_TacticsMod/tools/reference_index.py --query "tour_start|sel_be
 | 무술대회 v30 | 읽기용 C 발췌본. 선발·대진·일기토·대사/선택 UI·보상 구현 확인, 단독 빌드 불가 및 현재 주소 불일치 구분 |
 | 11Patch trial / (1) | 현재 주 경로는 이전 (1) 기록과 같은 63.9MB 지문으로 변경. 현재 파일의 관리 코드/내장 패키지 상세는 위 문서 사용; 과거 7MB 파일의 구현과 혼동하지 않음 |
 | 전장의 안개 1.6 | 현 빌드 타임스탬프를 명시한 DLL 패키지. 구현 조사에는 기존 FogMod_Source와 문서의 2.4.5 분석을 구분하여 사용 |
+| SAN14CE 모드 모음 2.4 (github sam123123-code/sam14, `reference_mod/SAN14CE_ModPack_2.4_sam123123`, ZIP sha256 6A3B5C19…C0B3) | 발탁장수 1.9·안개 1.7·미니맵·나이별 모습(Portrait 0.9.5)·육아 1.2·채팅 1.1. 공용 로더 xinput1_3.dll 5판. 2026-11-15 정적 확인(문자열·package.json, REA 미사용): Portrait DLL이 참조하는 클래스는 얼굴편집·시나리오/세력선택·진행·부대정보·일기토/컷인뿐이고 등용 화면·선택창 클래스는 없음. 우리 쪽 「양보 face_keep_portrait 892234/670AF1/670B53」은 `SAN14Mods` 폴더가 있으면 작은 얼굴 상주(성능)만 양보하는 예정된 동작이며 등용과 무관. 2026-11-15 REA 확인(발탁장수·안개 선택창 슬롯 체인 → 공존): [호환성 문서](references/sam123123_modpack_compat.md), 원자료 `research/compat_sam123123_modpack_2_4/` |
 
 **근거 수준:** 소스에서 읽음 / 제공 문서의 주장 / 우리 현재 게임에서 검증됨을 구별한다. 현재 EXE 해시가 같은 에디터도 모든 함수가 검증된 것은 아니다. 이전 빌드 주소, 다른 해시의 설치 DLL, 제공자의 합성 검사를 그대로 현재 게임 근거로 승격하지 않는다.

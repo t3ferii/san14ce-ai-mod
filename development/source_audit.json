@@ -1,5 +1,5 @@
 {
-  "basis": "v16.1 public build source (2026-11-15)",
+  "basis": "v16.2 public build source (2026-11-15)",
   "method": "lexical definition candidates; not preprocessed; not full semantic review",
   "files": [
     {
@@ -1781,7 +1781,7 @@
     },
     {
       "file": "src/intercept_policy.h",
-      "sha256": "06e3ff38dfdef686460b5dbe21ec1f07eba6dd426d4b0895f831db0d12d84a7b",
+      "sha256": "c02e485387655fc5073b8788a460e477acfd5d2bc6881dee9390ff8709911e09",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -1798,8 +1798,12 @@
           "line": 28
         },
         {
+          "name": "ranked",
+          "line": 43
+        },
+        {
           "name": "pick",
-          "line": 35
+          "line": 104
         }
       ]
     },
@@ -3739,7 +3743,7 @@
     },
     {
       "file": "src/native_ai_nodes.inl",
-      "sha256": "33a0d9a50d89f44964ee144a8cf6c4e2616a48cd4280f23ba7f8ecf4f8038d53",
+      "sha256": "fcfb72ea83eb7528b283d984d9939c8b60f65a402bac443bbef7b502521b839c",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -3784,164 +3788,168 @@
           "line": 205
         },
         {
-          "name": "intercept_unit_out",
+          "name": "intercept_units_out",
           "line": 220
         },
         {
           "name": "gate_intercept_tick",
-          "line": 228
+          "line": 226
         },
         {
           "name": "helm_unit_out",
-          "line": 265
+          "line": 270
         },
         {
           "name": "helm_ring_out",
-          "line": 273
+          "line": 278
+        },
+        {
+          "name": "helm_neighbour",
+          "line": 292
         },
         {
           "name": "helm_ring_tick",
-          "line": 284
+          "line": 313
         },
         {
           "name": "helm_intercept_tick",
-          "line": 301
+          "line": 332
         },
         {
           "name": "garrison_recall_tick",
-          "line": 349
+          "line": 383
         },
         {
           "name": "retake_adjacent_tick",
-          "line": 380
+          "line": 414
         },
         {
           "name": "retake_adjacent_tick",
-          "line": 445
-        },
-        {
-          "name": "has_trait",
-          "line": 468
-        },
-        {
-          "name": "stat",
-          "line": 472
-        },
-        {
-          "name": "force_obj",
-          "line": 473
-        },
-        {
-          "name": "city_force",
-          "line": 474
-        },
-        {
-          "name": "computer_force",
-          "line": 478
-        },
-        {
-          "name": "idle_in",
           "line": 479
         },
         {
+          "name": "has_trait",
+          "line": 502
+        },
+        {
+          "name": "stat",
+          "line": 506
+        },
+        {
+          "name": "force_obj",
+          "line": 507
+        },
+        {
+          "name": "city_force",
+          "line": 508
+        },
+        {
+          "name": "computer_force",
+          "line": 512
+        },
+        {
+          "name": "idle_in",
+          "line": 513
+        },
+        {
           "name": "governor",
-          "line": 485
-        },
-        {
-          "name": "trade_officers",
-          "line": 497
-        },
-        {
-          "name": "issue",
           "line": 519
         },
         {
+          "name": "trade_officers",
+          "line": 531
+        },
+        {
+          "name": "issue",
+          "line": 553
+        },
+        {
           "name": "trade_tick",
-          "line": 566
+          "line": 600
         },
         {
           "name": "front_city",
-          "line": 578
+          "line": 612
         },
         {
           "name": "front_trait",
-          "line": 591
+          "line": 625
         },
         {
           "name": "best_hire",
-          "line": 592
+          "line": 626
         },
         {
           "name": "hire_node",
-          "line": 604
+          "line": 638
         },
         {
           "name": "trade_node",
-          "line": 633
+          "line": 667
         },
         {
           "name": "bt_condition",
-          "line": 649
+          "line": 683
         },
         {
           "name": "person_info_node",
-          "line": 668
+          "line": 702
         },
         {
           "name": "attack_eval_wanted",
-          "line": 705
+          "line": 739
         },
         {
           "name": "foothold10_kind",
-          "line": 707
+          "line": 741
         },
         {
           "name": "foothold_computer_corps",
-          "line": 716
+          "line": 750
         },
         {
           "name": "foothold_scale",
-          "line": 722
+          "line": 756
         },
         {
           "name": "tribe_city",
-          "line": 742
+          "line": 776
         },
         {
           "name": "tribe_target_block",
-          "line": 749
+          "line": 783
         },
         {
           "name": "foothold_strength_node",
-          "line": 760
+          "line": 794
         },
         {
           "name": "attack_threshold_node",
-          "line": 789
+          "line": 823
         },
         {
           "name": "variable_minus_node",
-          "line": 807
+          "line": 841
         },
         {
           "name": "ensure_bt_condition",
-          "line": 824
+          "line": 858
         },
         {
           "name": "first_army_node",
-          "line": 835
+          "line": 869
         },
         {
           "name": "cut_node",
-          "line": 873
+          "line": 907
         },
         {
           "name": "city_node",
-          "line": 925
+          "line": 959
         },
         {
           "name": "retreat_node",
-          "line": 986
+          "line": 1020
         }
       ]
     },
@@ -5095,7 +5103,7 @@
     },
     {
       "file": "src/native_campaign.inl",
-      "sha256": "2c86e6609ad68022c135655156cc67effa9a8d89de3b6a6cc98b778128289c67",
+      "sha256": "613c7f0f91155b9261f778da0b4ef723aaaaefa2357eb508aef09ac3a21e8996",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "지역 점령·집결·원군",
       "definitions": [
@@ -5204,168 +5212,176 @@
           "line": 546
         },
         {
-          "name": "intercept_stand",
-          "line": 554
+          "name": "intercept_stands",
+          "line": 555
+        },
+        {
+          "name": "intercept_claims",
+          "line": 579
+        },
+        {
+          "name": "intercept_free_stand",
+          "line": 590
         },
         {
           "name": "intercept_gate_object",
-          "line": 574
+          "line": 602
         },
         {
           "name": "helm_water",
-          "line": 591
+          "line": 619
         },
         {
           "name": "helm_shore",
-          "line": 598
+          "line": 626
         },
         {
           "name": "helm_hostile_tile",
-          "line": 606
+          "line": 634
         },
         {
           "name": "helm_goal_ok",
-          "line": 611
+          "line": 639
         },
         {
           "name": "helm_towers",
-          "line": 616
+          "line": 644
         },
         {
           "name": "helm_tower_hit",
-          "line": 628
+          "line": 656
         },
         {
           "name": "helm_area_object",
-          "line": 629
+          "line": 657
         },
         {
           "name": "helm_pick",
-          "line": 633
+          "line": 661
         },
         {
           "name": "helm_chain_order",
-          "line": 731
+          "line": 759
         },
         {
           "name": "helm_delay_pick",
-          "line": 762
+          "line": 790
         },
         {
           "name": "helm_delay_hostile",
-          "line": 804
+          "line": 832
         },
         {
           "name": "helm_delay_count",
-          "line": 810
+          "line": 838
         },
         {
           "name": "helm_delay_step",
-          "line": 814
+          "line": 842
         },
         {
           "name": "helm_area_water",
-          "line": 857
+          "line": 885
         },
         {
           "name": "helm_watch_area",
-          "line": 876
+          "line": 904
         },
         {
           "name": "helm_area_taken",
-          "line": 882
+          "line": 910
         },
         {
           "name": "helm_next_area",
-          "line": 892
+          "line": 920
         },
         {
           "name": "helm_ring_lost",
-          "line": 925
+          "line": 953
         },
         {
           "name": "helm_ring_castle",
-          "line": 939
-        },
-        {
-          "name": "helm_pad_pick",
-          "line": 945
-        },
-        {
-          "name": "helm_switch_again",
           "line": 967
         },
         {
+          "name": "helm_pad_pick",
+          "line": 973
+        },
+        {
+          "name": "helm_switch_again",
+          "line": 995
+        },
+        {
           "name": "helm_step",
-          "line": 968
+          "line": 996
         },
         {
           "name": "intercept_step",
-          "line": 1120
+          "line": 1148
         },
         {
           "name": "campaign_regional_step",
-          "line": 1154
+          "line": 1190
         },
         {
           "name": "next_region",
-          "line": 1175
+          "line": 1211
         },
         {
           "name": "prepare_local_build",
-          "line": 1199
-        },
-        {
-          "name": "recovery_return",
           "line": 1235
         },
         {
+          "name": "recovery_return",
+          "line": 1271
+        },
+        {
           "name": "native_fort_assault",
-          "line": 1270
+          "line": 1306
         },
         {
           "name": "siege_goal_hex",
-          "line": 1281
+          "line": 1317
         },
         {
           "name": "siege_tile_distance",
-          "line": 1288
+          "line": 1324
         },
         {
           "name": "native_on_mission",
-          "line": 1292
+          "line": 1328
         },
         {
           "name": "mission_corridor_distance",
-          "line": 1315
+          "line": 1351
         },
         {
           "name": "mission_route_corridor",
-          "line": 1329
+          "line": 1365
         },
         {
           "name": "mission_route_waypoint",
-          "line": 1358
+          "line": 1394
         },
         {
           "name": "targetless",
-          "line": 1378
+          "line": 1414
         },
         {
           "name": "recover_idle",
-          "line": 1383
+          "line": 1419
         },
         {
           "name": "pause_assembly",
-          "line": 1423
+          "line": 1459
         },
         {
           "name": "campaign_step",
-          "line": 1424
+          "line": 1460
         },
         {
           "name": "campaign_individual_priority",
-          "line": 1447
+          "line": 1483
         }
       ]
     },
@@ -7903,7 +7919,7 @@
     },
     {
       "file": "src/native_layout_ui.inl",
-      "sha256": "25431f5abc2a743faf4f1baafbb2834fed9e91aa316d6f2ed1e3ba0bad02d47c",
+      "sha256": "7f59fabe61216bcc63600d5afd070433c6e5b9e56427491de43404edd2e444b2",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -8061,203 +8077,203 @@
         },
         {
           "name": "purge_created_for",
-          "line": 433
+          "line": 435
         },
         {
           "name": "on_destroyed",
-          "line": 440
+          "line": 441
         },
         {
           "name": "built_hook",
-          "line": 465
+          "line": 464
         },
         {
           "name": "destroy_hook",
-          "line": 492
+          "line": 491
         },
         {
           "name": "in_event",
-          "line": 511
+          "line": 510
         },
         {
           "name": "track",
-          "line": 512
+          "line": 511
         },
         {
           "name": "kind_of",
-          "line": 521
+          "line": 520
         },
         {
           "name": "raw_destroy",
-          "line": 529
+          "line": 528
         },
         {
           "name": "svc_attach",
-          "line": 559
+          "line": 558
         },
         {
           "name": "svc_set_text",
-          "line": 624
+          "line": 623
         },
         {
           "name": "svc_set_visible",
-          "line": 635
+          "line": 634
         },
         {
           "name": "svc_set_position",
-          "line": 640
+          "line": 639
         },
         {
           "name": "svc_get_position",
-          "line": 645
+          "line": 644
         },
         {
           "name": "click_copy",
-          "line": 651
+          "line": 650
         },
         {
           "name": "click_call",
-          "line": 652
+          "line": 651
         },
         {
           "name": "click_type",
-          "line": 653
+          "line": 652
         },
         {
           "name": "click_delete",
-          "line": 654
+          "line": 653
         },
         {
           "name": "click_get",
-          "line": 655
+          "line": 654
         },
         {
           "name": "svc_bind_click",
-          "line": 658
+          "line": 657
         },
         {
           "name": "svc_destroy",
-          "line": 671
+          "line": 670
         },
         {
           "name": "svc_ui_begin",
-          "line": 697
+          "line": 696
         },
         {
           "name": "svc_ui_end",
-          "line": 704
+          "line": 703
         },
         {
           "name": "svc_ui_activate",
-          "line": 729
+          "line": 728
         },
         {
           "name": "svc_ui_set_node_text",
-          "line": 741
+          "line": 740
         },
         {
           "name": "svc_ui_set_node_visible",
-          "line": 747
+          "line": 746
         },
         {
           "name": "svc_ui_select",
-          "line": 753
+          "line": 752
         },
         {
           "name": "svc_ui_sync_visibility",
-          "line": 764
+          "line": 763
         },
         {
           "name": "svc_ui_enable",
-          "line": 781
+          "line": 780
         },
         {
           "name": "tip_hide",
-          "line": 801
+          "line": 800
         },
         {
           "name": "tip_make",
-          "line": 805
+          "line": 804
         },
         {
           "name": "svc_ui_tooltip",
-          "line": 831
+          "line": 830
         },
         {
           "name": "tip_release",
-          "line": 853
+          "line": 852
         },
         {
           "name": "svc_ui_release",
-          "line": 868
+          "line": 867
         },
         {
           "name": "api_attach",
-          "line": 893
+          "line": 892
         },
         {
           "name": "api_set_text",
-          "line": 896
+          "line": 895
         },
         {
           "name": "api_set_visible",
-          "line": 897
+          "line": 896
         },
         {
           "name": "api_bind_click",
-          "line": 898
+          "line": 897
         },
         {
           "name": "api_destroy",
-          "line": 899
+          "line": 898
         },
         {
           "name": "api_set_position",
-          "line": 900
+          "line": 899
         },
         {
           "name": "api_get_position",
-          "line": 901
+          "line": 900
         },
         {
           "name": "api_ui_begin",
-          "line": 902
+          "line": 901
         },
         {
           "name": "api_ui_end",
-          "line": 903
+          "line": 902
         },
         {
           "name": "api_ui_activate",
-          "line": 905
+          "line": 904
         },
         {
           "name": "api_ui_set_node_text",
-          "line": 907
+          "line": 906
         },
         {
           "name": "api_ui_set_node_visible",
-          "line": 908
+          "line": 907
         },
         {
           "name": "api_ui_select",
-          "line": 909
+          "line": 908
         },
         {
           "name": "api_ui_sync_visibility",
-          "line": 910
+          "line": 909
         },
         {
           "name": "api_ui_release",
-          "line": 911
+          "line": 910
         },
         {
           "name": "api_ui_enable",
-          "line": 912
+          "line": 911
         },
         {
           "name": "api_ui_tooltip",
-          "line": 913
+          "line": 912
         }
       ]
     },
@@ -8671,7 +8687,7 @@
     },
     {
       "file": "src/native_merit_save.inl",
-      "sha256": "83ce644501ae1578d31e95976484d65126399ad6fb9c4dd42798a76aac0adae4",
+      "sha256": "976c35e17b30cfd08ead27d654ccc504f80cdb6fde152f83f867812be7b3a646",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "무공 병력·논공 친애·열전·보조 저장",
       "definitions": [
@@ -8721,7 +8737,7 @@
         },
         {
           "name": "merit_load_host",
-          "line": 153
+          "line": 154
         }
       ]
     },
@@ -9067,7 +9083,7 @@
     },
     {
       "file": "src/native_officer_rotation.inl",
-      "sha256": "bcce05895ba93d5a71f2e9178b9be95fe96d1bdf2c4aac36f5b48a8db5f5c238",
+      "sha256": "f4190bb4135a1203bab86ae75473b6faeb06b1517a5785a1b17b77b5593c67db",
       "scope": "시험 기능; 설치기 기본 꺼짐",
       "topic": "시험 무장 목록·검색·스냅샷",
       "definitions": [
@@ -9201,27 +9217,27 @@
         },
         {
           "name": "helm_trait",
-          "line": 371
-        },
-        {
-          "name": "helm_place",
           "line": 375
         },
         {
+          "name": "helm_place",
+          "line": 379
+        },
+        {
           "name": "rotate_force",
-          "line": 394
+          "line": 409
         },
         {
           "name": "demo_play",
-          "line": 442
+          "line": 457
         },
         {
           "name": "player_force",
-          "line": 443
+          "line": 458
         },
         {
           "name": "tick",
-          "line": 452
+          "line": 467
         }
       ]
     },
@@ -9681,7 +9697,7 @@
     },
     {
       "file": "src/native_recruit_ui.inl",
-      "sha256": "42f5ada6fd9817c74e1707fe45580cb351fd649add89988a3337d2f50eb5e9b0",
+      "sha256": "e8cedfa6a3a181db54c76b4e614ac144e03b59c7245e42960b28aed9e4b2f6e1",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "등용 화면·알림·컴퓨터 등용 제한",
       "definitions": [
@@ -9707,75 +9723,75 @@
         },
         {
           "name": "recruit_district_id",
-          "line": 52
+          "line": 65
         },
         {
           "name": "recruit_bind_context",
-          "line": 60
+          "line": 73
         },
         {
           "name": "recruit_display_district",
-          "line": 66
+          "line": 79
         },
         {
           "name": "RecruitScope",
-          "line": 77
+          "line": 90
         },
         {
           "name": "recruit_family_available",
-          "line": 97
+          "line": 110
         },
         {
           "name": "recruit_reason_text",
-          "line": 112
+          "line": 125
         },
         {
           "name": "recruit_reason_compare",
-          "line": 120
+          "line": 133
         },
         {
           "name": "recruit_prepare_columns",
-          "line": 129
+          "line": 142
         },
         {
           "name": "recruit_person",
-          "line": 172
-        },
-        {
-          "name": "recruit_multi_matches",
-          "line": 175
-        },
-        {
-          "name": "recruit_selector_close",
           "line": 185
         },
         {
+          "name": "recruit_multi_matches",
+          "line": 188
+        },
+        {
+          "name": "recruit_selector_close",
+          "line": 199
+        },
+        {
           "name": "recruit_selector_init",
-          "line": 213
+          "line": 238
         },
         {
           "name": "recruit_layout_init",
-          "line": 247
+          "line": 276
         },
         {
           "name": "recruit_report_automatic",
-          "line": 250
+          "line": 279
         },
         {
           "name": "recruit_actor_count",
-          "line": 277
+          "line": 306
         },
         {
           "name": "recruit_multi_preview",
-          "line": 283
+          "line": 312
         },
         {
           "name": "recruit_multi_align",
-          "line": 308
+          "line": 341
         },
         {
           "name": "recruit_state_update",
-          "line": 316
+          "line": 349
         }
       ]
     },
@@ -10125,7 +10141,7 @@
     },
     {
       "file": "src/native_season_bake.inl",
-      "sha256": "fdd33be7c344df8fb074ec79ca68bdf789439465eef6762aa56be9e73d3034ca",
+      "sha256": "1d317555a5f34d1e9c52525ede4fa1eb19085ef89dc4a9a13621d75ec82e6a53",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -10167,267 +10183,267 @@
         },
         {
           "name": "ground_kind",
-          "line": 173
+          "line": 177
         },
         {
           "name": "shader_mode",
-          "line": 178
+          "line": 182
         },
         {
           "name": "lit_kind",
-          "line": 184
+          "line": 188
         },
         {
           "name": "swap_slot",
-          "line": 189
+          "line": 193
         },
         {
           "name": "mat_on",
-          "line": 201
-        },
-        {
-          "name": "mat_ready",
-          "line": 203
-        },
-        {
-          "name": "rgb565",
-          "line": 204
-        },
-        {
-          "name": "to565",
           "line": 205
         },
         {
-          "name": "hash2",
-          "line": 209
-        },
-        {
-          "name": "vnoise",
+          "name": "mat_ready",
           "line": 210
         },
         {
-          "name": "fbm",
-          "line": 216
+          "name": "rgb565",
+          "line": 212
         },
         {
-          "name": "tfbm",
+          "name": "to565",
+          "line": 213
+        },
+        {
+          "name": "hash2",
+          "line": 217
+        },
+        {
+          "name": "vnoise",
           "line": 218
         },
         {
+          "name": "fbm",
+          "line": 224
+        },
+        {
+          "name": "tfbm",
+          "line": 226
+        },
+        {
           "name": "crack_edge",
-          "line": 223
+          "line": 231
         },
         {
           "name": "palette",
-          "line": 234
+          "line": 242
         },
         {
           "name": "recolor",
-          "line": 258
+          "line": 266
         },
         {
           "name": "mat_class",
-          "line": 276
+          "line": 284
         },
         {
           "name": "mat_match",
-          "line": 288
+          "line": 296
         },
         {
           "name": "mat_extend",
-          "line": 292
+          "line": 300
         },
         {
           "name": "mat_created",
-          "line": 307
+          "line": 315
         },
         {
           "name": "table_ok",
-          "line": 316
+          "line": 324
         },
         {
           "name": "table_patch",
-          "line": 323
+          "line": 331
         },
         {
           "name": "create_buffer",
-          "line": 347
+          "line": 355
         },
         {
           "name": "create_srv",
-          "line": 360
+          "line": 368
         },
         {
           "name": "create_ps",
-          "line": 379
+          "line": 387
         },
         {
           "name": "swap_ps",
-          "line": 415
+          "line": 423
         },
         {
           "name": "install_ps",
-          "line": 421
+          "line": 429
         },
         {
           "name": "restore_ps",
-          "line": 455
+          "line": 468
         },
         {
           "name": "load_gpu",
-          "line": 464
+          "line": 486
         },
         {
           "name": "turn_key",
-          "line": 503
+          "line": 525
         },
         {
           "name": "items_per_map",
-          "line": 510
+          "line": 532
         },
         {
           "name": "set_params",
-          "line": 511
+          "line": 533
         },
         {
           "name": "Saved",
-          "line": 527
+          "line": 549
         },
         {
           "name": "locate",
-          "line": 550
+          "line": 572
         },
         {
           "name": "bake_item",
-          "line": 555
+          "line": 577
         },
         {
           "name": "ready_locked",
-          "line": 590
+          "line": 612
         },
         {
           "name": "wants",
-          "line": 591
+          "line": 613
         },
         {
           "name": "swap_in",
-          "line": 595
+          "line": 617
         },
         {
           "name": "load_fx",
-          "line": 629
+          "line": 651
         },
         {
           "name": "scene_for",
-          "line": 660
+          "line": 682
         },
         {
           "name": "run_rain",
-          "line": 680
+          "line": 702
         },
         {
           "name": "cloud_grab",
-          "line": 744
+          "line": 766
         },
         {
           "name": "cloud_touch",
-          "line": 768
+          "line": 790
         },
         {
           "name": "run_cloud",
-          "line": 772
+          "line": 794
         },
         {
           "name": "lit_end",
-          "line": 815
+          "line": 837
         },
         {
           "name": "after_draw",
-          "line": 822
+          "line": 844
         },
         {
           "name": "table_buffer",
-          "line": 843
+          "line": 865
         },
         {
           "name": "hook_map",
-          "line": 849
+          "line": 871
         },
         {
           "name": "hook_unmap",
-          "line": 856
+          "line": 878
         },
         {
           "name": "hook_update",
-          "line": 864
+          "line": 886
         },
         {
           "name": "hook_pss",
-          "line": 872
+          "line": 894
         },
         {
           "name": "hook_pssrv",
-          "line": 892
+          "line": 914
         },
         {
           "name": "hook_pscb",
-          "line": 897
+          "line": 919
         },
         {
           "name": "hook_omsetrt",
-          "line": 901
+          "line": 923
         },
         {
           "name": "hook_draw",
-          "line": 904
+          "line": 926
         },
         {
           "name": "hook_drawi",
-          "line": 905
+          "line": 927
         },
         {
           "name": "hook_drawii",
-          "line": 906
+          "line": 928
         },
         {
           "name": "hook_drawinst",
-          "line": 907
+          "line": 929
         },
         {
           "name": "hook_drawiii_b",
-          "line": 908
+          "line": 930
         },
         {
           "name": "hook_drawiind_b",
-          "line": 909
+          "line": 931
         },
         {
           "name": "hook_context",
-          "line": 921
+          "line": 943
         },
         {
           "name": "unhook_context",
-          "line": 937
-        },
-        {
-          "name": "rain_diag",
-          "line": 945
-        },
-        {
-          "name": "fx_fetch",
-          "line": 965
-        },
-        {
-          "name": "fx_frame",
           "line": 969
         },
         {
+          "name": "rain_diag",
+          "line": 983
+        },
+        {
+          "name": "fx_fetch",
+          "line": 1003
+        },
+        {
+          "name": "fx_frame",
+          "line": 1007
+        },
+        {
           "name": "frame",
-          "line": 986
+          "line": 1024
         },
         {
           "name": "restore",
-          "line": 1055
+          "line": 1093
         }
       ]
     },
@@ -10537,7 +10553,7 @@
     },
     {
       "file": "src/native_siege_guard.inl",
-      "sha256": "2087c1f059d485ebcd56ef53bbfcd5a64afbf8a8543ca624bdd7b64d0308c104",
+      "sha256": "5603f9d983f061886fcfc2efd8896abee25002403e96bb63fd2af39f03e98963",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -11221,7 +11237,7 @@
     },
     {
       "file": "src/native_tactic_memory_save.inl",
-      "sha256": "392544f60d8d5b8e5b0a476ee6231257b662ff23bc3272cd9fee57de0d6471c7",
+      "sha256": "5430b1cd352bf3494c01d5d5bec9d842eac1c8a162a4203cc6cc757589798345",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -11251,15 +11267,15 @@
         },
         {
           "name": "tactic_memory_path",
-          "line": 59
+          "line": 60
         },
         {
           "name": "tactic_memory_write_sidecar",
-          "line": 62
+          "line": 63
         },
         {
           "name": "tactic_memory_restore_sidecar",
-          "line": 68
+          "line": 69
         }
       ]
     },
@@ -13390,7 +13406,7 @@
     },
     {
       "file": "src/save_host.h",
-      "sha256": "31cd6ecd8fbaca6fce1b167a57cbaef57f3ff3f853d0c1cf032cf7ffa8ab3ad3",
+      "sha256": "dd2c1bdce487ee85c2c7dee24eab7a965dfcd1cab78c2cf8512d42fc232481b2",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -13484,35 +13500,35 @@
         },
         {
           "name": "snapshot_all",
-          "line": 206
+          "line": 210
         },
         {
           "name": "begin_load_all",
-          "line": 209
+          "line": 217
         },
         {
           "name": "ext_label",
-          "line": 212
+          "line": 220
         },
         {
           "name": "fill_entry",
-          "line": 216
+          "line": 224
         },
         {
           "name": "save_all",
-          "line": 222
+          "line": 230
         },
         {
           "name": "count_old_versions",
-          "line": 242
+          "line": 251
         },
         {
           "name": "file_digest",
-          "line": 260
+          "line": 269
         },
         {
           "name": "restore_all",
-          "line": 273
+          "line": 282
         }
       ]
     },
@@ -14090,7 +14106,7 @@
     },
     {
       "file": "src/season/season_engine_v26.inc",
-      "sha256": "ba95054ef31334884812b923cb39b3780b205202f49f93f8e482a01a68408599",
+      "sha256": "a029c84b413f4168f8331ddf5d0aeafe69f058a6a168e7c3861b24300665b0ec",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -14356,139 +14372,139 @@
         },
         {
           "name": "sr_minor_rivers",
-          "line": 610
+          "line": 611
         },
         {
           "name": "minor_runoff",
-          "line": 662
+          "line": 673
         },
         {
           "name": "hydro_day",
-          "line": 670
+          "line": 681
         },
         {
           "name": "ep_final",
-          "line": 687
+          "line": 698
         },
         {
           "name": "ep_end",
-          "line": 695
+          "line": 706
         },
         {
           "name": "stretch_set",
-          "line": 703
+          "line": 714
         },
         {
           "name": "floods_day",
-          "line": 745
+          "line": 756
         },
         {
           "name": "floods_turn",
-          "line": 767
+          "line": 778
         },
         {
           "name": "force_flood",
-          "line": 793
+          "line": 804
         },
         {
           "name": "slides_turn",
-          "line": 801
+          "line": 812
         },
         {
           "name": "drought_turn",
-          "line": 822
+          "line": 833
         },
         {
           "name": "state_build",
-          "line": 859
+          "line": 870
         },
         {
           "name": "grid_params",
-          "line": 882
-        },
-        {
-          "name": "cell_wx",
           "line": 893
         },
         {
+          "name": "cell_wx",
+          "line": 904
+        },
+        {
           "name": "weather_write",
-          "line": 898
+          "line": 909
         },
         {
           "name": "perf_path",
-          "line": 945
+          "line": 956
         },
         {
           "name": "perf_save",
-          "line": 946
+          "line": 957
         },
         {
           "name": "perf_load",
-          "line": 952
+          "line": 963
         },
         {
           "name": "rain_calibrate",
-          "line": 962
+          "line": 973
         },
         {
           "name": "wl_watch",
-          "line": 995
+          "line": 1006
         },
         {
           "name": "pf_set",
-          "line": 1036
+          "line": 1047
         },
         {
           "name": "perf_summary",
-          "line": 1037
+          "line": 1048
         },
         {
           "name": "perf_ab",
-          "line": 1051
+          "line": 1062
         },
         {
           "name": "perf_ab",
-          "line": 1090
+          "line": 1101
         },
         {
           "name": "diag_tick",
-          "line": 1100
+          "line": 1111
         },
         {
           "name": "diag_tick",
-          "line": 1157
+          "line": 1168
         },
         {
           "name": "FireRateHook",
-          "line": 1165
+          "line": 1176
         },
         {
           "name": "install_firerate",
-          "line": 1175
+          "line": 1186
         },
         {
           "name": "game_fires_day",
-          "line": 1193
+          "line": 1204
         },
         {
           "name": "force_rain_at",
-          "line": 1205
+          "line": 1216
         },
         {
           "name": "force_fire_size",
-          "line": 1211
+          "line": 1222
         },
         {
           "name": "flood_rings",
-          "line": 1229
+          "line": 1240
         },
         {
           "name": "engine_load",
-          "line": 1266
+          "line": 1277
         },
         {
           "name": "engine_reset",
-          "line": 1283
+          "line": 1294
         }
       ]
     },

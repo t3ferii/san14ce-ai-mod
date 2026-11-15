@@ -145,7 +145,8 @@ static void *next_start_state;
 static void __fastcall start_state_guard(Obj state,unsigned long long a,unsigned long long b,unsigned long long c) {
     if(state && dword(state,0x470)==3 && !*reinterpret_cast<void **>(image+GA(GA_1BB6D48))) {
         Obj owner=fn<Obj(__fastcall *)()>(GA(GA_14DAE0))();
-        if(owner)fn<void(__fastcall *)(unsigned long long)>(GA(GA_17ED60))(*reinterpret_cast<unsigned long long *>(owner+0x210));
+        const unsigned long long arg=owner?*reinterpret_cast<unsigned long long *>(owner+0x210):0;   // review CR-10: no call on a null argument
+        if(arg)fn<void(__fastcall *)(unsigned long long)>(GA(GA_17ED60))(arg);
         log_event("start_holder_recreated",*reinterpret_cast<void **>(image+GA(GA_1BB6D48))?1u:0u,dword(image,GA(GA_27D5C30)),owner?1u:0u);
     }
     next_or<void(__fastcall *)(Obj,unsigned long long,unsigned long long,unsigned long long)>(next_start_state,GA(GA_50AE80))(state,a,b,c);

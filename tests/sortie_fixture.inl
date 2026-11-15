@@ -110,6 +110,31 @@ static void intercept_tests() {
         const unsigned distant=sortie::neighbor(sortie::neighbor(sortie::neighbor(c,(d+1)%6),(d+1)%6),(d+1)%6);
         const unsigned both[2]={distant,a1};
         check(intercept::pick(c,both,2,ring1.data(),static_cast<unsigned>(ring1.size()))==m1,"the nearest attacker sets the far side");
+        // local179: a lone gate in open ground has one ring of free hexes (one side): no attack stand, pick() order kept
+        unsigned order[8]={},front_count=9;
+        const unsigned listed=intercept::ranked(c,&a1,1,ring1.data(),static_cast<unsigned>(ring1.size()),order,8,&front_count);
+        bool far_ok=listed==3;for(unsigned k=0;k<listed;++k)far_ok=far_ok && intercept::distance(order[k],a1)==2;
+        check(far_ok && front_count==0 && order[0]==m1 && intercept::ranked(c,&a1,1,ring1.data(),6,nullptr,0)==3,
+              "open-ground gate: three far hexes listed, none across a wall, the straight one first");
+        unsigned none_front=9;
+        check(intercept::ranked(c,&a1,1,front.data(),static_cast<unsigned>(front.size()),order,8,&none_front)==0 && none_front==0,
+              "no hex behind the gate: no ranked stand");
+    }
+    // local179 (user 2026-11-15 "동관은 저렇게 3칸이고 양평관, 검각은 1칸"): the free hexes touching the gate tiles
+    // (terrain 17) on the original map, MapExCe.bin; the attacker stands at the gate on the enemy side.
+    struct GateCase {const char *name;unsigned center;std::vector<unsigned> open;unsigned attacker;std::vector<unsigned> stands;};
+    const GateCase gates[]={
+        {"dongguan",16138,{15917,15919,16137,16139,16357,16359,16577,16579},16139,{15917,16137,16357}},
+        {"yangping",19178,{19177,19180,19399,19618,19619},19399,{19177}},
+        {"jiange",24241,{23802,24022,24239,24240,24243,24460},24240,{24022}},
+    };
+    for(const GateCase &g:gates) {
+        unsigned out[16]={},front_n=0;
+        const unsigned n=intercept::ranked(g.center,&g.attacker,1,g.open.data(),static_cast<unsigned>(g.open.size()),out,16,&front_n);
+        std::vector<unsigned> got(out,out+(std::min)(front_n,n));std::sort(got.begin(),got.end());
+        std::vector<unsigned> want=g.stands;std::sort(want.begin(),want.end());
+        check(got==want && intercept::pick(g.center,&g.attacker,1,g.open.data(),static_cast<unsigned>(g.open.size()))<intercept::none,
+              (std::string("gate attack stands across the wall: ")+g.name).c_str());
     }
     check(intercept::mirror(0,1)==intercept::none,"mirror off the left edge is none");
 }

@@ -217,23 +217,25 @@ static bool retake_unit_heading(unsigned own,unsigned hex) {
 // first, that hold kRetakeGarrison. No stand behind the gate (all hexes taken, walled or next to an attacker) = not sent.
 static constexpr unsigned kInterceptSoldiers=2000,kInterceptKeep=2000;
 static constexpr int kInterceptReach=30;
-static bool intercept_unit_out(unsigned own,unsigned gate) {
-    for(unsigned i=1;i<=500;++i) {
-        Obj a=table(0x7E838,i,500);if(!valid(a) || army_force(a)!=own)continue;
-        const Progress &p=progress[i];
-        if(p.army==a && p.root==world() && p.commander==word(a,0x12) && p.intercept && p.intercept_gate==gate && !p.returning)return true;
-    }
-    return false;
+static unsigned intercept_units_out(unsigned own,unsigned gate) {
+    unsigned claims[16];return intercept_claims(own,gate,nullptr,claims,16);
 }
+// local179 (user 2026-11-15): one unit per attack stand (free hex across the gate within 안행 reach of an attacker,
+// intercept::ranked; 동관 3, 양평관 1, 검각 1 on the original map), up to kInterceptUnits; the first unit goes as before,
+// each further one only to a still unheld attack stand.
 static void gate_intercept_tick(unsigned own) { COST_SCOPE("ai_nodes:gate_intercept_tick");
     for(unsigned gid=52;gid<=61;++gid) {
         Obj gate=intercept_gate_object(gid);if(!gate || intercept_base_owner(gate)!=own)continue;
         const unsigned center=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(gate);if(center>=48400)continue;
         unsigned attackers[1];
         if(!intercept_attackers(own,center,kInterceptAlert,attackers,1))continue;
-        if(intercept_unit_out(own,gid))continue;
-        const unsigned stand=intercept_stand(own,center,nullptr);
-        if(stand>=48400) {log_event("intercept_no_stand",gid,attackers[0],center);continue;}
+        unsigned front=0;intercept_stands(own,center,nullptr,nullptr,0,&front);
+        const unsigned wanted=front<1?1u:(std::min)(front,kInterceptUnits);
+      for(unsigned out=intercept_units_out(own,gid);out<wanted;++out) {
+        bool front_free=false;
+        const unsigned stand=intercept_free_stand(own,center,gid,nullptr,&front_free);
+        if(out && (stand>=48400 || !front_free))break;   // extra units only for the equally best stands
+        if(stand>=48400) {log_event("intercept_no_stand",gid,attackers[0],center);break;}
         std::vector<std::pair<int,Obj>> sources;
         if(dword(gate,0x3C)>=kInterceptSoldiers+kInterceptKeep)sources.push_back({-1,gate});
         for(unsigned id=1;id<=51;++id) {
@@ -251,6 +253,9 @@ static void gate_intercept_tick(unsigned own) { COST_SCOPE("ai_nodes:gate_interc
         if(p) {p->intercept_gate=static_cast<unsigned short>(gid);p->intercept_seen_day=game_day();}
         // value = army | source base << 16 (52..61 = the gate itself), hex = stand
         log_event(p?"intercept_departed":"intercept_failed",gid,p?(army_id(army)|(static_cast<unsigned>(word(from,0x4E))<<16)):static_cast<unsigned>(sources.size()),stand);
+        if(!p)break;
+        if(out)log_event("intercept_extra_unit",gid,out+1,front);   // local179: unit number, equally best stands
+      }
     }
 }
 // helm_intercept (native_campaign.inl helm_step): once per force and day. For each of the six river castles (여강 13 since local172, 건업 25,
@@ -260,7 +265,7 @@ static void gate_intercept_tick(unsigned own) { COST_SCOPE("ai_nodes:gate_interc
 // out from the castle to paint that port region back, however far it is (local149, user 2026-11-14 "성 주변 몇칸 적군부대
 // 몇칸 이러면 안돼 ... 소속된 항구의 점령률을 체크하고 있다가 떨어지면 거리 상관없이 출진해서 색칠"), unless one is out for it.
 // local169: 강릉 (35) added (user 2026-11-15 "시상이나 강하 강릉에 있는 장수들도").
-static constexpr unsigned kHelmCities[7]={17,25,28,32,35,36,37};
+static constexpr unsigned kHelmCities[7]={13,25,28,32,35,36,37};   // local184: 여강 13 (17 was 여남)
 static constexpr unsigned kHelmSoldiers=3000;
 static bool helm_unit_out(unsigned own,unsigned area) {
     for(unsigned i=1;i<=500;++i) {
@@ -278,6 +283,30 @@ static bool helm_ring_out(unsigned own,unsigned city_id) {
     }
     return false;
 }
+// local184 (user 2026-11-15 "B안으로 가주고"): when the castle of a port / river region has no idle 조타 officer (why 2), the other
+// river castles of the same force (same garrison and ship checks) sail instead, nearest to the goal first, up to three tries -
+// (local185: for 시상 only, below). from = the castle that sailed; why = the last reason.
+// local185 (user "조타 지원은 시상만 지원을 받을수 있게하자 ... 건업에서 시상 지원하는거지 시상에서 건업은 안가고"): only 시상 (28)
+// receives this support; any other castle's why 2 stays a failure, so 시상 never sails for another castle.
+static constexpr unsigned kHelmSupported=28;
+static Obj helm_neighbour(unsigned own,unsigned skip,unsigned goal,unsigned &why,unsigned &from) {
+    if(skip!=kHelmSupported)return nullptr;
+    std::pair<int,unsigned> cand[7];unsigned n=0;
+    for(unsigned id:kHelmCities) {
+        if(id==skip)continue;
+        Obj city=campaign_goal(id);if(!city || intercept_base_owner(city)!=own || dword(city,0x3C)<kRetakeGarrison)continue;
+        const unsigned castle=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(city);if(castle>=48400)continue;
+        cand[n++]={distance(castle,goal),id};
+    }
+    std::sort(cand,cand+n);
+    for(unsigned i=0;i<n && i<3;++i) {
+        Obj city=campaign_goal(cand[i].second);unsigned w=0;
+        Obj army=campaign_paid_single(city,city,goal,kHelmSoldiers,true,false,0,true,true,&w);
+        if(valid(army)) {from=cand[i].second;return army;}
+        why=w;
+    }
+    return nullptr;
+}
 // local169: the river ring (helm_ring_of: 대하·격류 within max(15, nearest + 10) hexes of the castle); when the force holds
 // fewer of its hexes than the day before and some are lost to a hostile force, one 조타 ship sails out for the region with
 // the most lost ring hexes and keeps painting ring regions until none is lost (helm_step).
@@ -291,7 +320,9 @@ static void helm_ring_tick(unsigned own,unsigned id,Obj city,unsigned castle,int
     if(!fell || !lost || !ring_area || helm_ring_out(own,id))return;
     const unsigned goal=helm_pick(own,ring_area,castle,nullptr);
     if(goal>=48400) {log_event("helm_ring_no_target",id,lost,ring_area);return;}
-    unsigned why=0;Obj army=campaign_paid_single(city,city,goal,kHelmSoldiers,true,false,0,true,true,&why);
+    unsigned why=0,from=id;Obj army=campaign_paid_single(city,city,goal,kHelmSoldiers,true,false,0,true,true,&why);
+    if(!valid(army) && why==2 && (army=helm_neighbour(own,id,goal,why,from))!=nullptr)
+        log_event("helm_neighbour",ring_area,from|(id<<8)|(1u<<16),goal);   // value = castle that sailed | owner castle << 8 | ring << 16
     Progress *p=valid(army)?observe_capture(army):nullptr;
     if(p) {p->helm=true;p->helm_area=static_cast<unsigned short>(ring_area);p->helm_ring=static_cast<unsigned char>(id);p->helm_stuck=0;
            p->intercept_gate=0;p->intercept_seen_day=day;p->helm_pick_day=-1;}
@@ -331,10 +362,13 @@ static void helm_intercept_tick(unsigned own) { COST_SCOPE("ai_nodes:helm_interc
                 log_event("helm_goal_retry",n,goal,next);
                 goal=next;tried[ntried++]=next;
             }
+            unsigned from=id;
+            if(!valid(army) && why==2 && (army=helm_neighbour(own,id,goal,why,from))!=nullptr)
+                log_event("helm_neighbour",n,from|(id<<8),goal);   // value = castle that sailed | owner castle << 8
             Progress *p=valid(army)?observe_capture(army):nullptr;
             if(p) {p->helm=true;p->helm_area=static_cast<unsigned short>(n);p->intercept_gate=0;p->intercept_seen_day=day;p->helm_pick_day=-1;}
             // departed: value = army | castle << 16; failed: value = castle | reason << 8 | goals tried << 16; hex = goal
-            log_event(p?"helm_departed":"helm_failed",n,p?(army_id(army)|(id<<16)):(id|(why<<8)|(ntried<<16)),goal);
+            log_event(p?"helm_departed":"helm_failed",n,p?(army_id(army)|(from<<16)):(id|(why<<8)|(ntried<<16)),goal);
         }
     }
 }

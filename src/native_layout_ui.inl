@@ -430,8 +430,9 @@ static void on_built(Obj layout) {
 #endif
     dispatch(false,info);
 }
+// Review CR-02 (2026-11-15): layout builds also arrive from a second thread (layout_p4_state other_thread in the thousands per run),
+// so created_count / live_count are read only under ui_lock - no unlocked "empty" shortcut.
 static void purge_created_for(const void *owner) {   // the owner's table frees the controls made inside it
-    if(!created_count)return;
     AcquireSRWLockExclusive(&ui_lock);
     for(unsigned i=created_count;i>0;--i)
         if(created[i-1].owner==owner && created[i-1].kind!=CK_PANE) {created[i-1]=created[created_count-1];--created_count;}
@@ -439,18 +440,16 @@ static void purge_created_for(const void *owner) {   // the owner's table frees 
 }
 static void on_destroyed(Obj layout) {
     if(!layout)return;
-    if(created_count)purge_created_for(layout);
+    purge_created_for(layout);
     if(InterlockedCompareExchange(&pending_count,0,0)>0) {   // a load note for an object that is dying unbuilt (failed async load) must not name a later object
         AcquireSRWLockExclusive(&ui_lock);
         for(unsigned i=0;i<kPendingMax;++i)if(pending[i].obj==layout) {pending[i].obj=nullptr;InterlockedDecrement(&pending_count);}
         ReleaseSRWLockExclusive(&ui_lock);
     }
     Live info={};bool found=false;
-    if(live_count) {
-        AcquireSRWLockExclusive(&ui_lock);
-        found=live_erase_locked(layout,&info);
-        ReleaseSRWLockExclusive(&ui_lock);
-    }
+    AcquireSRWLockExclusive(&ui_lock);
+    found=live_erase_locked(layout,&info);
+    ReleaseSRWLockExclusive(&ui_lock);
 #ifndef NO_RUNTIME_LOG
     if(probe_enabled()) {
         probe_forget_screen(layout);

@@ -125,7 +125,11 @@ static ID3D11ShaderResourceView *load_dds(ID3D11Device *dev,const wchar_t *name)
     else if(four==827611204u)f=DXGI_FORMAT_BC1_UNORM;
     else if(u32(88)==32)f=u32(92)==255u?DXGI_FORMAT_R8G8B8A8_UNORM:DXGI_FORMAT_B8G8R8A8_UNORM;
     else return nullptr;
+    // Review CR-08: D3D11 texture limits checked before any size arithmetic (16384 texels, full mip chain 15, 2048 layers).
+    if(!width || !height || width>16384 || height>16384 || mips>15 || !array || array>2048)return nullptr;
     unsigned bb=0;const bool block=block_bytes(f,bb);
+    if(!block && f!=DXGI_FORMAT_R8G8B8A8_UNORM && f!=DXGI_FORMAT_B8G8R8A8_UNORM && f!=DXGI_FORMAT_R16G16B16A16_FLOAT &&
+       f!=DXGI_FORMAT_R8G8B8A8_UNORM_SRGB && f!=DXGI_FORMAT_B8G8R8A8_UNORM_SRGB && f!=DXGI_FORMAT_R32_FLOAT && f!=DXGI_FORMAT_R32_UINT)return nullptr;
     const unsigned texel=f==DXGI_FORMAT_R16G16B16A16_FLOAT?8u:4u;
     std::vector<D3D11_SUBRESOURCE_DATA> init;
     for(UINT a=0;a<array;++a)for(UINT m=0;m<mips;++m) {
@@ -200,7 +204,11 @@ static bool swap_slot(void **table,unsigned slot,void *expected,void *replacemen
 static constexpr unsigned kMatLayers=19,kMatNew=5,kMatFirst=240,kTableBytes=1027u*16u;   // local133: 244 river ice
 static bool mat_on() {return on() && mod_features.season_tiles;}
 static volatile LONG mat_streak,mat_color,mat_table;   // extensions in a row, the colour array extended, the table patched
-static bool mat_ready() {return InterlockedCompareExchange(&mat_streak,0,0)>=3 && InterlockedCompareExchange(&mat_color,0,0) && InterlockedCompareExchange(&mat_table,0,0);}
+// Review CR-03/04 (2026-11-15): the painter may use the new materials only while the whole path is in place - both device hooks
+// (CreateBuffer + CreateShaderResourceView: table entries and the widened view) and, once tried, all 13 context hooks.
+static volatile LONG mat_dev_ok,ctx_refused;
+static bool mat_ready() {return InterlockedCompareExchange(&mat_streak,0,0)>=3 && InterlockedCompareExchange(&mat_color,0,0) && InterlockedCompareExchange(&mat_table,0,0) &&
+    InterlockedCompareExchange(&mat_dev_ok,0,0) && !InterlockedCompareExchange(&ctx_refused,0,0);}
 static void rgb565(unsigned v,float c[3]) {c[0]=((v>>11)&31)/31.0f;c[1]=((v>>5)&63)/63.0f;c[2]=(v&31)/31.0f;}
 static unsigned to565(float r,float g,float b) {
     auto q=[](float v,int m){v=v<0?0:v>1?1:v;return static_cast<unsigned>(v*m+0.5f);};
@@ -342,7 +350,7 @@ static void table_patch(unsigned char *p,unsigned path) {
 using CreateBufferFn=HRESULT(STDMETHODCALLTYPE *)(ID3D11Device *,const D3D11_BUFFER_DESC *,const D3D11_SUBRESOURCE_DATA *,ID3D11Buffer **);
 using CreateSrvFn=HRESULT(STDMETHODCALLTYPE *)(ID3D11Device *,ID3D11Resource *,const D3D11_SHADER_RESOURCE_VIEW_DESC *,ID3D11ShaderResourceView **);
 static constexpr unsigned kSlotCreateBuffer=3,kSlotCreateSrv=7;
-struct DevSlot {void **table;CreateBufferFn buffer;CreateSrvFn srv;bool published;};
+struct DevSlot {void **table;CreateBufferFn buffer;CreateSrvFn srv;bool published,buf_on,srv_on;};   // published = buf_on || srv_on
 static DevSlot dev_slots[MaxPsTables];
 static HRESULT STDMETHODCALLTYPE create_buffer(ID3D11Device *dev,const D3D11_BUFFER_DESC *d,const D3D11_SUBRESOURCE_DATA *init,ID3D11Buffer **out) {
     CreateBufferFn original=nullptr;auto table=*reinterpret_cast<void ***>(dev);
@@ -439,10 +447,15 @@ template<class Site> static void install_ps(ID3D11Device *dev,Site site) {
         DevSlot *ds=nullptr;for(auto &s:dev_slots)if(!s.table){ds=&s;break;}
         auto buffer=reinterpret_cast<CreateBufferFn>(table[kSlotCreateBuffer]);auto srv=reinterpret_cast<CreateSrvFn>(table[kSlotCreateSrv]);
         if(ds && buffer!=&create_buffer && srv!=&create_srv && site(table,reinterpret_cast<void *>(buffer)) && site(table,reinterpret_cast<void *>(srv))) {
-            *ds={table,buffer,srv,false};
-            const bool swap_buf=swap_slot(table,kSlotCreateBuffer,reinterpret_cast<void *>(buffer),reinterpret_cast<void *>(&create_buffer));
-            const bool swap_srv=swap_slot(table,kSlotCreateSrv,reinterpret_cast<void *>(srv),reinterpret_cast<void *>(&create_srv));
-            ds->published=swap_buf || swap_srv;mat=swap_buf && swap_srv;
+            *ds={table,buffer,srv,false,false,false};
+            // CR-03: the pair or nothing. A half pair is put back (a failed put-back keeps that hook: it forwards, the materials stay off).
+            ds->buf_on=swap_slot(table,kSlotCreateBuffer,reinterpret_cast<void *>(buffer),reinterpret_cast<void *>(&create_buffer));
+            ds->srv_on=ds->buf_on && swap_slot(table,kSlotCreateSrv,reinterpret_cast<void *>(srv),reinterpret_cast<void *>(&create_srv));
+            mat=ds->buf_on && ds->srv_on;
+            if(ds->buf_on && !ds->srv_on &&
+               swap_slot(table,kSlotCreateBuffer,reinterpret_cast<void *>(&create_buffer),reinterpret_cast<void *>(buffer)))ds->buf_on=false;
+            ds->published=ds->buf_on || ds->srv_on;
+            if(mat)InterlockedExchange(&mat_dev_ok,1);
         }
     }
     ReleaseSRWLockExclusive(&ps_lock);
@@ -453,13 +466,22 @@ template<class Site> static void install_ps(ID3D11Device *dev,Site site) {
 #endif
 }
 static void restore_ps() {
+    // CR-05: a slot whose put-back fails (another hook now sits above ours and calls us) stays marked; our wrapper keeps forwarding.
     AcquireSRWLockExclusive(&ps_lock);
+    InterlockedExchange(&mat_dev_ok,0);
+    unsigned restored=0,kept=0;
     for(auto &s:dev_slots)if(s.published) {
-        swap_slot(s.table,kSlotCreateBuffer,reinterpret_cast<void *>(&create_buffer),reinterpret_cast<void *>(s.buffer));
-        swap_slot(s.table,kSlotCreateSrv,reinterpret_cast<void *>(&create_srv),reinterpret_cast<void *>(s.srv));s.published=false;
+        if(s.buf_on) {if(swap_slot(s.table,kSlotCreateBuffer,reinterpret_cast<void *>(&create_buffer),reinterpret_cast<void *>(s.buffer))){s.buf_on=false;++restored;}else ++kept;}
+        if(s.srv_on) {if(swap_slot(s.table,kSlotCreateSrv,reinterpret_cast<void *>(&create_srv),reinterpret_cast<void *>(s.srv))){s.srv_on=false;++restored;}else ++kept;}
+        s.published=s.buf_on || s.srv_on;
     }
-    for(auto &s:ps_slots)if(s.published){swap_ps(s.table,reinterpret_cast<void *>(&create_ps),reinterpret_cast<void *>(s.original));s.published=false;}
+    for(auto &s:ps_slots)if(s.published) {
+        if(swap_ps(s.table,reinterpret_cast<void *>(&create_ps),reinterpret_cast<void *>(s.original))){s.published=false;++restored;}else ++kept;
+    }
     ReleaseSRWLockExclusive(&ps_lock);   // originals stay saved for any wrapper already entered
+#ifndef NO_RUNTIME_LOG
+    if(restored || kept)log_event("season_device_restore",restored,kept,0);
+#endif
 }
 static bool load_gpu(ID3D11Device *dev) {
     Inside guard;
@@ -863,7 +885,7 @@ static void STDMETHODCALLTYPE hook_unmap(ID3D11DeviceContext *c,ID3D11Resource *
 }
 static void STDMETHODCALLTYPE hook_update(ID3D11DeviceContext *c,ID3D11Resource *r,UINT sub,const D3D11_BOX *box,const void *src,UINT rp,UINT dp) {
     if(c==fx_ctx && !box && src && !in_fx && mat_on() && table_buffer(r) && table_ok(static_cast<const unsigned char *>(src))) {
-        static unsigned char copy[kTableBytes];memcpy(copy,src,kTableBytes);table_patch(copy,3);
+        static thread_local unsigned char copy[kTableBytes];memcpy(copy,src,kTableBytes);table_patch(copy,3);   // review CR-09: per thread
         orig_update(c,r,sub,box,copy,rp,dp);return;
     }
     orig_update(c,r,sub,box,src,rp,dp);
@@ -927,19 +949,35 @@ static void hook_context(ID3D11DeviceContext *c) {   // render thread, once; slo
     orig_unmap=reinterpret_cast<UnmapFn>(ctx_orig[6]);orig_update=reinterpret_cast<UpdateFn>(ctx_orig[7]);orig_omsetrt=reinterpret_cast<OMSetRTFn>(ctx_orig[8]);
     orig_pssrv=reinterpret_cast<PSSetSrvFn>(ctx_orig[9]);orig_pscb=reinterpret_cast<PSSetCbFn>(ctx_orig[10]);
     orig_drawiii=reinterpret_cast<DrawIndirectFn>(ctx_orig[11]);orig_drawiind=reinterpret_cast<DrawIndirectFn>(ctx_orig[12]);
-    fx_ctx=c;ctx_table=table;
-    for(unsigned i=0;i<sizeof(ctx_hooks)/sizeof(*ctx_hooks);++i)
+    ctx_table=table;
+    constexpr unsigned n=sizeof(ctx_hooks)/sizeof(*ctx_hooks),all=(1u<<n)-1;
+    for(unsigned i=0;i<n;++i)
         if(swap_slot(table,ctx_hooks[i].slot,*ctx_hooks[i].orig,ctx_hooks[i].hook))ctx_published|=1u<<i;
+    // CR-04: the draw / shader / map hooks only work together. Unless all 13 are in, the installed ones are put back and the rain,
+    // cloud and material-table work stays off (fx_ctx stays null: every hook body checks it and only forwards). A hook whose put-back
+    // fails keeps its bit and forwards.
+    if(ctx_published==all)fx_ctx=c;
+    else {
+        for(unsigned i=0;i<n;++i)
+            if((ctx_published&(1u<<i)) && swap_slot(table,ctx_hooks[i].slot,ctx_hooks[i].hook,*ctx_hooks[i].orig))ctx_published&=~(1u<<i);
+        InterlockedExchange(&ctx_refused,1);
+    }
 #ifndef NO_RUNTIME_LOG
-    log_event("season_rain_hook",ctx_published,sizeof(ctx_hooks)/sizeof(*ctx_hooks),0);
+    log_event("season_rain_hook",ctx_published,n,fx_ctx?1u:0u);
 #endif
 }
 static void unhook_context() {
     if(!ctx_table)return;
     InterlockedExchange(&fx_level,0);
+    fx_ctx=nullptr;   // CR-05: any hook still reachable (put-back failed under a later hook) only forwards from here on
+    unsigned restored=0,kept=0;
     for(unsigned i=0;i<sizeof(ctx_hooks)/sizeof(*ctx_hooks);++i)
-        if(ctx_published&(1u<<i))swap_slot(ctx_table,ctx_hooks[i].slot,ctx_hooks[i].hook,*ctx_hooks[i].orig);
-    ctx_published=0;
+        if(ctx_published&(1u<<i)) {
+            if(swap_slot(ctx_table,ctx_hooks[i].slot,ctx_hooks[i].hook,*ctx_hooks[i].orig)){ctx_published&=~(1u<<i);++restored;}else ++kept;
+        }
+#ifndef NO_RUNTIME_LOG
+    if(restored || kept)log_event("season_context_restore",restored,kept,ctx_published);
+#endif
     // the originals stay saved: a call already inside a hook still forwards
 }
 static void rain_diag() {

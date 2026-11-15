@@ -42,12 +42,25 @@ static Obj __fastcall recruit_alert_search(GameList *areas,int *people,int *item
 static __declspec(thread) Obj recruit_district;
 static __declspec(thread) bool recruit_target_pick;
 static __declspec(thread) Obj recruit_pick_layout;
+// local178 (logs 2026-11-15 15:27/15:42): every second target pick in one
+// screen had no selector init (recruit_multi_cycle 0) and no pick. Current
+// 74FDD0 (case 2) reuses the cached selector through 45E090 -> vt+200 without
+// vt+1F8 init, and its close runs on the dialog thread while 74FDD0 waits in
+// 574750. Publish the pending target pick process-wide for that close hook.
+// (local177 assumed an init on another thread; the 15:42 log disproved it.)
+static Obj volatile recruit_pending_pick_layout,recruit_pending_pick_district;
+static volatile unsigned recruit_selector_init_calls;
 struct RecruitTargetScope {
-    bool previous_pick;Obj previous_layout;
-    RecruitTargetScope(Obj layout,bool pick):previous_pick(recruit_target_pick),previous_layout(recruit_pick_layout) {
+    bool previous_pick;Obj previous_layout;Obj previous_pending_layout,previous_pending_district;
+    RecruitTargetScope(Obj layout,bool pick):previous_pick(recruit_target_pick),previous_layout(recruit_pick_layout),
+        previous_pending_layout(recruit_pending_pick_layout),previous_pending_district(recruit_pending_pick_district) {
         recruit_target_pick=pick;recruit_pick_layout=pick?layout:nullptr;
+        if(pick) {recruit_pending_pick_layout=layout;recruit_pending_pick_district=recruit_district;}
     }
-    ~RecruitTargetScope() {recruit_target_pick=previous_pick;recruit_pick_layout=previous_layout;}
+    ~RecruitTargetScope() {
+        recruit_target_pick=previous_pick;recruit_pick_layout=previous_layout;
+        recruit_pending_pick_district=previous_pending_district;recruit_pending_pick_layout=previous_pending_layout;
+    }
 };
 static unsigned recruit_district_id(Obj district) {
     if(world() && valid(district))for(unsigned i=1;i<=51;++i)
@@ -181,10 +194,22 @@ static bool recruit_multi_matches(Obj layout,Obj district) {
 // 2E2FB0/2E22B0 and 8F19C0 fill the output before closing via vt+190.
 // The ordinary decision event in 8F19C0 bypasses the config functor.
 static Obj recruit_pick_dialog,recruit_pick_dialog_layout,recruit_pick_dialog_district,recruit_pick_dialog_world;
+static Obj volatile recruit_cached_dialog; // local178: last target selector built by our init (vt+1F8)
 static unsigned recruit_pick_dialog_district_id;
 static void __fastcall recruit_selector_close(Obj dialog,unsigned code) { COST_SCOPE("recruit_ui_recruit_selector_close");
+    // local178: 74FDD0 (case 2) keeps the selector in 1427D6CF0. The next pick
+    // reuses it through 45E090 -> vt+200 (2F0A80, rows only; mode/limit stay
+    // from our init) without vt+1F8 init, so arm the capture here while
+    // RecruitTargetScope publishes that target pick.
+    Obj pending_layout=recruit_pending_pick_layout,pending_district=recruit_pending_pick_district;
+    if(!recruit_pick_dialog && dialog && dialog==recruit_cached_dialog && pending_layout && valid(pending_district)) {
+        recruit_pick_dialog=dialog;recruit_pick_dialog_layout=pending_layout;recruit_pick_dialog_district=pending_district;
+        recruit_pick_dialog_world=world();recruit_pick_dialog_district_id=recruit_district_id(pending_district);
+        log_event("recruit_multi_reuse",code,recruit_multi.count,recruit_pick_dialog_district_id);
+    }
     if(dialog==recruit_pick_dialog) {
         recruit_pick_dialog=nullptr;
+        if(code!=0x7FFFFFFD && code!=0x7FFFFFFE)log_event("recruit_multi_close_other",code,recruit_multi.count,0);
         if(code==0x7FFFFFFD || code==0x7FFFFFFE) {
             auto out=reinterpret_cast<GameList *>(pointer(pointer(dialog,0x1A8),0x80));
             RecruitMultiSnapshot next={};
@@ -212,6 +237,9 @@ static void __fastcall recruit_selector_close(Obj dialog,unsigned code) { COST_S
 }
 static uint64_t __fastcall recruit_selector_init(Obj dialog,Obj config) { COST_SCOPE("recruit_ui_recruit_selector_init");
     auto original=next_or<uint64_t(__fastcall *)(Obj,Obj)>(next_recruit_selector_init,GA(GA_2C2BA0));
+    ++recruit_selector_init_calls;
+    // A new selector at a reused address is no longer the cached target picker.
+    if(dialog==recruit_cached_dialog)recruit_cached_dialog=nullptr;
     if(!enabled || !config || !valid(recruit_district) || pointer(config,8)!=image+GA(GA_1A34310) ||
        pointer(config,16)!=image+GA(GA_1A2E830) || !recruit_prepare_columns()) {
         recruit_bind_context(nullptr);return original(dialog,config);
@@ -226,7 +254,7 @@ static uint64_t __fastcall recruit_selector_init(Obj dialog,Obj config) { COST_S
         unsigned limit=cost>0?orders/static_cast<unsigned>(cost):orders;
         if(!limit)limit=1;
         // Record even a one-order pick: its confirmation clears old snapshots.
-        recruit_pick_dialog=dialog;recruit_pick_dialog_layout=recruit_pick_layout;
+        recruit_pick_dialog=dialog;recruit_cached_dialog=dialog;recruit_pick_dialog_layout=recruit_pick_layout;
         recruit_pick_dialog_district=recruit_district;recruit_pick_dialog_world=world();
         recruit_pick_dialog_district_id=recruit_district_id(recruit_district);
         if(limit>1) {
@@ -234,6 +262,7 @@ static uint64_t __fastcall recruit_selector_init(Obj dialog,Obj config) { COST_S
             *reinterpret_cast<unsigned *>(config+0x18)=2;*reinterpret_cast<unsigned *>(config+0x1C)=limit;
         }
     }
+    log_event("recruit_multi_init",multi?1u:0u,recruit_target_pick?1u:0u,recruit_multi.count);
     *reinterpret_cast<Obj *>(config+8)=reinterpret_cast<Obj>(recruit_tabs);
     *reinterpret_cast<Obj *>(config+16)=reinterpret_cast<Obj>(recruit_columns);
     uint64_t result=original(dialog,config);
@@ -291,6 +320,7 @@ static void recruit_multi_preview(Obj layout,Obj district) {
     auto text=fn<void(__fastcall *)(Obj,unsigned,const wchar_t *,int)>(GA(GA_9332B0));
     text(layout+0x130,0xAB,remaining,1);text(layout+0x130,0xAC,deduction,1);
     Obj widget=pointer(layout,0x1A8);
+    log_event("recruit_multi_preview",recruit_multi.count,static_cast<unsigned>(total),widget?1u:0u);
     if(widget) {
         unsigned node=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_92F390))(widget+0x130,2)?2:7;
         const wchar_t *name=fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_230950))(recruit_multi.people[0]);
@@ -300,17 +330,20 @@ static void recruit_multi_preview(Obj layout,Obj district) {
     }
 }
 // local175 (user 2026-11-15 "다중선택 상태에서 무장들 또 다시 고르면 외 N명도 안뜨고
-// 마지막 한명만"): on a second multi-pick the native picker reopens with the
-// current target pre-checked, and the target it keeps at +0x188 need not be the
-// swapped first output. Follow the native choice inside the fresh snapshot so
-// the preview, 「외 N명」 and the batch still match; a target outside the
-// snapshot leaves it unmatched (native single recruitment).
-static void recruit_multi_align(Obj layout,Obj district) {
-    if(recruit_multi.count<2 || recruit_multi.layout!=layout || recruit_multi.district!=district)return;
+// 마지막 한명만"): candidate fix, cause unconfirmed. If the native keeps a
+// target at +0x188 other than the swapped first output on a re-pick, follow it
+// inside the fresh snapshot so the preview, 「외 N명」 and the batch still
+// match; a target outside the snapshot leaves it unmatched (native single).
+// The 733BD0 case-2 decompile (research/v8) stores the first output element
+// into a fresh list, so this may be a no-op; the events below decide it.
+// local176: logged after every target pick (value = index of +0x188 in the
+// snapshot, +10000 no fresh snapshot, +20000 other screen).
+static void recruit_multi_align(Obj layout,Obj district,bool fresh) {
     Obj target=pointer(layout,0x188);unsigned at=recruit_multi.count;
+    const bool same=recruit_multi.layout==layout && recruit_multi.district==district;
     for(unsigned i=0;i<recruit_multi.count;++i)if(recruit_multi.people[i]==target) {at=i;break;}
-    log_event("recruit_multi_align",recruit_multi.count,at,valid(target)?word(target,0x10):65535u);
-    if(at==0 || at==recruit_multi.count)return;
+    log_event("recruit_multi_align",recruit_multi.count,at+(fresh?0u:10000u)+(same?0u:20000u),valid(target)?word(target,0x10):65535u);
+    if(!fresh || recruit_multi.count<2 || !same || at==0 || at==recruit_multi.count)return;
     Obj person=recruit_multi.people[0];recruit_multi.people[0]=recruit_multi.people[at];recruit_multi.people[at]=person;
 }
 static void __fastcall recruit_state_update(Obj state) { COST_SCOPE("recruit_ui_recruit_state_update");
@@ -361,12 +394,16 @@ static void __fastcall recruit_state_update(Obj state) { COST_SCOPE("recruit_ui_
             return; // Case 3 may have destroyed layout; case 4 keeps it reset.
         }
     }
+    const unsigned init_calls=recruit_selector_init_calls;
     {
         RecruitTargetScope target_scope(layout,operation==2);
         original(state);
     }
     if(operation==3)return; // Never read a potentially closed layout.
-    if(operation==2 && recruit_multi_revision!=revision)recruit_multi_align(layout,district);
+    // local177: selector inits seen during this target pick (0 = opened without our init hook).
+    if(operation==2)log_event("recruit_multi_cycle",recruit_selector_init_calls-init_calls,
+        recruit_multi_revision!=revision?1u:0u,GetCurrentThreadId());
+    if(operation==2)recruit_multi_align(layout,district,recruit_multi_revision!=revision);
     if((operation!=0 || recruit_multi_revision!=revision) && recruit_multi_matches(layout,district))
         recruit_multi_preview(layout,district);
 }

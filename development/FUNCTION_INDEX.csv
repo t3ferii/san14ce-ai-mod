@@ -350,7 +350,8 @@ src/input_proxy.cpp,43,proxy_DirectInput8Create,원래 입력 DLL 전달,현재 
 src/intercept_policy.h,10,distance,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4846d1c32b0d3c88d897e865760039e936fa257479a9e1545fd75bab5d10b643
 src/intercept_policy.h,17,mirror,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,206b91e1cae64c1b435275ee28f47604dae84ab3c016a17b1f2053db7b34a4ad
 src/intercept_policy.h,28,behind,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f1dd4d477920516e4ed5f68ec44e440f17f7d3f9f1f218195de17da711f0fc5b
-src/intercept_policy.h,35,pick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,56ae3f4edf3dfa2c0327c082137a97a34e671b27ed6c32dae9a49130d1d8b483
+src/intercept_policy.h,43,ranked,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7800a5fc952abe0b82167ff2473594fbbce77766a972bcc74574c657fa274f04
+src/intercept_policy.h,104,pick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,56ae3f4edf3dfa2c0327c082137a97a34e671b27ed6c32dae9a49130d1d8b483
 src/layout_keep_policy.h,9,wanted,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,51ca05cbce4061eff30141beee4fdda310c08c816ed2b8d1d1cb969064afbe3f
 src/layout_keep_policy.h,12,reserve,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f2952056c550711bac846b86ba624e1fe521a1d60257716add884e24cab16641
 src/layout_keep_policy.h,16,cancel,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,ee0b053f4869583f662a95ae50d8657ddf98fe237b0c8a741ca46d6bad6e43e1
@@ -795,46 +796,47 @@ src/native_ai_nodes.inl,65,troops,정책·자료구조·저장 형식·공통 �
 src/native_ai_nodes.inl,98,apply_priority,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1192be17ecbaef657bb7ed498475c2229e622216564b2330d7c91b4a53225578
 src/native_ai_nodes.inl,197,retake_first_ring_lost,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4508552ca1f7f8cb449278a2709263dd5472715ceae04ab97edd1de9dbd21b17
 src/native_ai_nodes.inl,205,retake_unit_heading,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b2addc6742d201d76346fa27720e016ae9fe26b9cccb64e09f25ca2fbaf71f55
-src/native_ai_nodes.inl,220,intercept_unit_out,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9b49cd121186b7736f0ed37ba53498709311cb205d4be700e0422a433c5e4062
-src/native_ai_nodes.inl,228,gate_intercept_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,41efb37e6e27f84e28483393e26609fd3048e4dc6e846c5eb5d8faed101211ab
-src/native_ai_nodes.inl,265,helm_unit_out,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,182101c4de2143ea9ba2f9d3e3bd67f6af1ca3984124c4147b85e1ad047127cb
-src/native_ai_nodes.inl,273,helm_ring_out,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,729813ec87398c12963a5e65ab0fea563069bc4f95826801e0e9ef7011e7feaa
-src/native_ai_nodes.inl,284,helm_ring_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,bb8187ea77f68e79dadc081c9f639fa0f557ad3ab379b312a8eb2e9608343186
-src/native_ai_nodes.inl,301,helm_intercept_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2d4ec4d43e8b47c2af2a59f11c1ccf63b4ad6ecb7c769ec6b5e722258877fe73
-src/native_ai_nodes.inl,349,garrison_recall_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,cddd5d63550c0a47fdc850f467c2ead098a9db3c142bcbb43a94376ffe5b3336
-src/native_ai_nodes.inl,380,retake_adjacent_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3d95d5d1920f6f3878206887a8d6efd5ed839d316d06618cc1cec005747ed46d
-src/native_ai_nodes.inl,445,retake_adjacent_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3527ef1a18fb03031e537e7b7c89988fae247482191a9fdb385e51b6bbe8397c
-src/native_ai_nodes.inl,468,has_trait,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,912fc4d1c9287a776b07d4458ef5b7dac81691b550e42d57ffef573a0e2f58e1
-src/native_ai_nodes.inl,472,stat,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9e7d497d8775a91f30804fd2c976967c58d0a8d3e3b076499021ee52b8c782ac
-src/native_ai_nodes.inl,473,force_obj,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,969effd476d2ce4edaa0e2a0e74d630405640b0fb37fa45e5d47436f896b090d
-src/native_ai_nodes.inl,474,city_force,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9d7a68afdf502383a0643a7b2b316315f963207621b8fe573eef75e7c1c1f45b
-src/native_ai_nodes.inl,478,computer_force,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,6b5f3d83784a0b6eef2e59239e09e7815474f15adeb2e7f7b52cea2fdf8d5c19
-src/native_ai_nodes.inl,479,idle_in,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,12ff029f7102fcfd0c7cdb4cd3cedc75a2f358ba43201c9ce768df9c27344757
-src/native_ai_nodes.inl,485,governor,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2d6226d1c2512db20f2e2a9df801225a83204829e266d6336fe1689e1fdb3e30
-src/native_ai_nodes.inl,497,trade_officers,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,cf122df8b245f9279cdf94c86e5319ab20482f4206b00400799e967155ec71af
-src/native_ai_nodes.inl,519,issue,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,0b2aef6a5e47a5f573751adafb5c4c7a87e242408fae9e78f8837737a97321af
-src/native_ai_nodes.inl,566,trade_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,35cc7f218f58e85328576de76bbd1084614f681066cc02a73a63f8f346cc0716
-src/native_ai_nodes.inl,578,front_city,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4482b4800c9fb99e001b4ccdccd7b1b88c73b33b5748a886aaa58d044f3e7b45
-src/native_ai_nodes.inl,591,front_trait,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9b8e8eac89a1e045022d767d5c5e343ede638ba7b10eaf096f981c5e82bddc90
-src/native_ai_nodes.inl,592,best_hire,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,18df7a7e31395f94abb1479d52c8f65ac6eeab22337b237a6d4efc46d9ef17de
-src/native_ai_nodes.inl,604,hire_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9e9be38ae30cdcfffe33362630ddbc9cfea40b744f9c5c73b374668d6edc148d
-src/native_ai_nodes.inl,633,trade_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5c57fb44dbf126d07e5aa39d7f34a91f64819c785808f19b8c2827a50b96fd98
-src/native_ai_nodes.inl,649,bt_condition,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9122e127b1d17a2cb8c22dba3a9e99205b7f81af75affa5e512b69d1e43e2a9d
-src/native_ai_nodes.inl,668,person_info_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4c4bc78dd0af7ebf63969e3b52782c4d7979a77751d97b6541e18bed8f0095b3
-src/native_ai_nodes.inl,705,attack_eval_wanted,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,eaddf1657522fb6fba337e64e4cd2b59bd1284fe911e82bfdf146ea22fbd38fa
-src/native_ai_nodes.inl,707,foothold10_kind,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,44407b38f1b7ff2d2a41d3f48a35e4c70b3ff9bb363c8bdec4df026060770bd0
-src/native_ai_nodes.inl,716,foothold_computer_corps,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,cda638c04ae07f4abd736dfaf72ca02c2a0778391bd3ecdcf95f9603693d78c6
-src/native_ai_nodes.inl,722,foothold_scale,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8dc240a6a16af860a62547495001170fd2f8042211b92c60162d5fb8bb164870
-src/native_ai_nodes.inl,742,tribe_city,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,af2a3fa6520cbca20ff4bf97b3dd231eff0b7da98223697c14214f9349b83dfe
-src/native_ai_nodes.inl,749,tribe_target_block,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,89d7229f8c55fecee51b2f68ebe45f6e3128ea72216e7ddbe130a93d888a6f08
-src/native_ai_nodes.inl,760,foothold_strength_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4619d36f8bb74604b1dfee3fb8278abbd8ef8849be8312d95fd9e3bb857716da
-src/native_ai_nodes.inl,789,attack_threshold_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,964c07b6e7518b69ab08d2c4c4f1bad7c59c5995c25e85d69379193760ea688a
-src/native_ai_nodes.inl,807,variable_minus_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,ff4271b97133248189bdff8cabf1e5224f731604bbff72d6d5d6de0e5b428b98
-src/native_ai_nodes.inl,824,ensure_bt_condition,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e264930a3a2e0338999c1d4f510f14dc70dca2affb3b348320b9f35d4e4f850f
-src/native_ai_nodes.inl,835,first_army_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,125a56b4b3c35289fe1c44aabf885f1b3ea7b8b367fdca05ca34d08ae26f0e6c
-src/native_ai_nodes.inl,873,cut_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5afd51375cce30e62de21ad39ba2012eb3e4730e1a3f6476fc7e13e6537379ca
-src/native_ai_nodes.inl,925,city_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,50a76c2148ab19d02b86fd4e6b2cd32298803226581749aeadc1a683bbc65465
-src/native_ai_nodes.inl,986,retreat_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5eeaf409807b366f57d5ce9628db5d51f29ed98e686138d04eecab06dc2e83f5
+src/native_ai_nodes.inl,220,intercept_units_out,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,00a0eb6c5e954e0e6c1a79809c573daf26aac025a676557e2ea59d5887d94bbb
+src/native_ai_nodes.inl,226,gate_intercept_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,02599bcc63cd2abce543ae29166f2312c8514b8d122d93292bc981459847285c
+src/native_ai_nodes.inl,270,helm_unit_out,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,182101c4de2143ea9ba2f9d3e3bd67f6af1ca3984124c4147b85e1ad047127cb
+src/native_ai_nodes.inl,278,helm_ring_out,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,729813ec87398c12963a5e65ab0fea563069bc4f95826801e0e9ef7011e7feaa
+src/native_ai_nodes.inl,292,helm_neighbour,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,75db7a9667d1cbb688025f620d1ce91aaaad35208845696f21445f3a856f36e4
+src/native_ai_nodes.inl,313,helm_ring_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5bb3b677e94223ee7e9f6d8ded952b8f54354cb8f6e30b2d7245c4d5db139b14
+src/native_ai_nodes.inl,332,helm_intercept_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,96a1b30af38bafd3c8a9093449a28f93f3ca7129e7265a5e4f7cc4b5c154351e
+src/native_ai_nodes.inl,383,garrison_recall_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,cddd5d63550c0a47fdc850f467c2ead098a9db3c142bcbb43a94376ffe5b3336
+src/native_ai_nodes.inl,414,retake_adjacent_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3d95d5d1920f6f3878206887a8d6efd5ed839d316d06618cc1cec005747ed46d
+src/native_ai_nodes.inl,479,retake_adjacent_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3527ef1a18fb03031e537e7b7c89988fae247482191a9fdb385e51b6bbe8397c
+src/native_ai_nodes.inl,502,has_trait,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,912fc4d1c9287a776b07d4458ef5b7dac81691b550e42d57ffef573a0e2f58e1
+src/native_ai_nodes.inl,506,stat,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9e7d497d8775a91f30804fd2c976967c58d0a8d3e3b076499021ee52b8c782ac
+src/native_ai_nodes.inl,507,force_obj,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,969effd476d2ce4edaa0e2a0e74d630405640b0fb37fa45e5d47436f896b090d
+src/native_ai_nodes.inl,508,city_force,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9d7a68afdf502383a0643a7b2b316315f963207621b8fe573eef75e7c1c1f45b
+src/native_ai_nodes.inl,512,computer_force,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,6b5f3d83784a0b6eef2e59239e09e7815474f15adeb2e7f7b52cea2fdf8d5c19
+src/native_ai_nodes.inl,513,idle_in,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,12ff029f7102fcfd0c7cdb4cd3cedc75a2f358ba43201c9ce768df9c27344757
+src/native_ai_nodes.inl,519,governor,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2d6226d1c2512db20f2e2a9df801225a83204829e266d6336fe1689e1fdb3e30
+src/native_ai_nodes.inl,531,trade_officers,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,779cd18a744b5853fea3d0b263015276235e5015de4f5a4113daed5537306b47
+src/native_ai_nodes.inl,553,issue,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,0b2aef6a5e47a5f573751adafb5c4c7a87e242408fae9e78f8837737a97321af
+src/native_ai_nodes.inl,600,trade_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,35cc7f218f58e85328576de76bbd1084614f681066cc02a73a63f8f346cc0716
+src/native_ai_nodes.inl,612,front_city,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4482b4800c9fb99e001b4ccdccd7b1b88c73b33b5748a886aaa58d044f3e7b45
+src/native_ai_nodes.inl,625,front_trait,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9b8e8eac89a1e045022d767d5c5e343ede638ba7b10eaf096f981c5e82bddc90
+src/native_ai_nodes.inl,626,best_hire,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,18df7a7e31395f94abb1479d52c8f65ac6eeab22337b237a6d4efc46d9ef17de
+src/native_ai_nodes.inl,638,hire_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9e9be38ae30cdcfffe33362630ddbc9cfea40b744f9c5c73b374668d6edc148d
+src/native_ai_nodes.inl,667,trade_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5c57fb44dbf126d07e5aa39d7f34a91f64819c785808f19b8c2827a50b96fd98
+src/native_ai_nodes.inl,683,bt_condition,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9122e127b1d17a2cb8c22dba3a9e99205b7f81af75affa5e512b69d1e43e2a9d
+src/native_ai_nodes.inl,702,person_info_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4c4bc78dd0af7ebf63969e3b52782c4d7979a77751d97b6541e18bed8f0095b3
+src/native_ai_nodes.inl,739,attack_eval_wanted,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,eaddf1657522fb6fba337e64e4cd2b59bd1284fe911e82bfdf146ea22fbd38fa
+src/native_ai_nodes.inl,741,foothold10_kind,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,44407b38f1b7ff2d2a41d3f48a35e4c70b3ff9bb363c8bdec4df026060770bd0
+src/native_ai_nodes.inl,750,foothold_computer_corps,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,cda638c04ae07f4abd736dfaf72ca02c2a0778391bd3ecdcf95f9603693d78c6
+src/native_ai_nodes.inl,756,foothold_scale,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8dc240a6a16af860a62547495001170fd2f8042211b92c60162d5fb8bb164870
+src/native_ai_nodes.inl,776,tribe_city,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,af2a3fa6520cbca20ff4bf97b3dd231eff0b7da98223697c14214f9349b83dfe
+src/native_ai_nodes.inl,783,tribe_target_block,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,89d7229f8c55fecee51b2f68ebe45f6e3128ea72216e7ddbe130a93d888a6f08
+src/native_ai_nodes.inl,794,foothold_strength_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4619d36f8bb74604b1dfee3fb8278abbd8ef8849be8312d95fd9e3bb857716da
+src/native_ai_nodes.inl,823,attack_threshold_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,964c07b6e7518b69ab08d2c4c4f1bad7c59c5995c25e85d69379193760ea688a
+src/native_ai_nodes.inl,841,variable_minus_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,ff4271b97133248189bdff8cabf1e5224f731604bbff72d6d5d6de0e5b428b98
+src/native_ai_nodes.inl,858,ensure_bt_condition,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e264930a3a2e0338999c1d4f510f14dc70dca2affb3b348320b9f35d4e4f850f
+src/native_ai_nodes.inl,869,first_army_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,125a56b4b3c35289fe1c44aabf885f1b3ea7b8b367fdca05ca34d08ae26f0e6c
+src/native_ai_nodes.inl,907,cut_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5afd51375cce30e62de21ad39ba2012eb3e4730e1a3f6476fc7e13e6537379ca
+src/native_ai_nodes.inl,959,city_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,50a76c2148ab19d02b86fd4e6b2cd32298803226581749aeadc1a683bbc65465
+src/native_ai_nodes.inl,1020,retreat_node,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5eeaf409807b366f57d5ce9628db5d51f29ed98e686138d04eecab06dc2e83f5
 src/native_ai_trace.inl,67,trace_day,정책·자료구조·저장 형식·공통 보조 함수,진단/조건부 컴파일; 일반 기능과 구분,346247a1ae87340c0929998925bcdcf95ca74bd2cf57369bd6b6636e522f729a
 src/native_ai_trace.inl,71,flush,정책·자료구조·저장 형식·공통 보조 함수,진단/조건부 컴파일; 일반 기능과 구분,531e6cbe936f9858ae76f4797993410fae694e7a907ea6f1d66a53b3c662f76d
 src/native_ai_trace.inl,83,text,정책·자료구조·저장 형식·공통 보조 함수,진단/조건부 컴파일; 일반 기능과 구분,28129725345063e9ce692b64d3d8c18900d7400b68b595dff3b12d513ccabc06
@@ -1124,47 +1126,49 @@ src/native_campaign.inl,488,retake_step,지역 점령·집결·원군,현재 소
 src/native_campaign.inl,528,intercept_base_owner,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c993726d638514782cf8fae01618fd86d55f41e1b1fae6b9678fc4c3f296aff2
 src/native_campaign.inl,536,intercept_attackers,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4422f16828ae31c755d8b5a50f3a997fa11bf5bac00c9b6c33babfbcd3c7603c
 src/native_campaign.inl,546,intercept_open,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2817afd3b37065d79697378c8ce66899b37996229228cab3ec0fb2762bb9fe11
-src/native_campaign.inl,554,intercept_stand,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,33f6fa9807c47ae8006eb64b89583ae465618994f85b0f30dac5922058d46875
-src/native_campaign.inl,574,intercept_gate_object,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d1ad5ea292dd39b980fff703614a2d2fc5a2ead3864b0b5a8b640619c5f2f828
-src/native_campaign.inl,591,helm_water,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1dcdef4ded46a5262f134439a666750a69c18dbe13de713afbb362a8ef0789ad
-src/native_campaign.inl,598,helm_shore,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,970aa458bf650384ff2b4950d91f0874933487e01b854945232fefeac42fc9a0
-src/native_campaign.inl,606,helm_hostile_tile,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7ee33deef090a6450cd3cb95b5c815ab0b96bc90fd74d51b7c75a3a0852f6f47
-src/native_campaign.inl,611,helm_goal_ok,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,916b509dd349734ecc34930e7bcb97eb40910cf7f3d402f17ac5e9a618bd812a
-src/native_campaign.inl,616,helm_towers,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8f4f3c4b2132fccb09bd84dc0e5d2d8c3f426c9b213fd6656186e1be1c9a9271
-src/native_campaign.inl,628,helm_tower_hit,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2f8025e78b167e70476cf0e15e4186b06fe4d00aa061bfe6308d3bc50883bcf8
-src/native_campaign.inl,629,helm_area_object,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e443b72392fdd422c6930131c13a85fa28b7a29cd750252a352a3d7b7c30f2a4
-src/native_campaign.inl,633,helm_pick,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b125ad50cb9ae5513cf099b08f27336a89fff511d352b8fe5ba5b6647603d436
-src/native_campaign.inl,731,helm_chain_order,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1e0f5c3889bafd853863de4d51f7fd51a88b850a99904f1c6b858ad1da9130e5
-src/native_campaign.inl,762,helm_delay_pick,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,26faf2e83f5013806ac8151b1538e513b04dfbd2c683662ee12a30ba5ccd709b
-src/native_campaign.inl,804,helm_delay_hostile,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,68cc9f0a877be4e5814b3d519cd5ae9321e4ef4557cf75e80eb129d956e607e3
-src/native_campaign.inl,810,helm_delay_count,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e1dede8c55863448080588157fa3a8dd8cace051ddd0814f470c79bc08f79988
-src/native_campaign.inl,814,helm_delay_step,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b48b9f2977fd322e5989d2be4fb625aedc1e9a82c97ca47c2e6876252260f76e
-src/native_campaign.inl,857,helm_area_water,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,990243a70a2a5cc47e656e651adef91a34ac38e0a0ce36a767a1a4efebed6e31
-src/native_campaign.inl,876,helm_watch_area,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,45fbb9f4de34330788096ffc0c1493cb98b7f165f8b24e0a6897fb104aeb7944
-src/native_campaign.inl,882,helm_area_taken,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,12468edbb7d62c4510b71307ccd6dd9eca0a3401e41d39edad96328612df521d
-src/native_campaign.inl,892,helm_next_area,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,53ed18dbe1918f477d6a569899dbdd1764a87d94ffe60eb2fe26b7e5ed4000d7
-src/native_campaign.inl,925,helm_ring_lost,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d40863f4bafbaaa098ee2b5fecb1c8656c889b2125d19312a5a68ef6bc0dea9c
-src/native_campaign.inl,939,helm_ring_castle,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d9e51631669e9893f8529307d7983cb74c0bccd3df693e499e5402268f2bc25c
-src/native_campaign.inl,945,helm_pad_pick,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,a662afa5d5dd37984ee981c658ce2caef1d7499d6fb94d358423465ea8215393
-src/native_campaign.inl,967,helm_switch_again,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3610bd3cef9ff8a4c06fe8b135fc2144680802792467936ad6cd14024dc3c534
-src/native_campaign.inl,968,helm_step,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,fa2e13f3f43ff3951d9001621065bc1380974cc1673dad0ecf3b9b50f28c71b5
-src/native_campaign.inl,1120,intercept_step,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f7b6ec5d69f32b07555f5a8a06aea606007b2882ba83c948c0ad060d77b54327
-src/native_campaign.inl,1154,campaign_regional_step,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d4ed797964d69945175dd0499351fed4e5158a10b7717d68ac34b4f07440406d
-src/native_campaign.inl,1175,next_region,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,fc465dff5ded2560f085b2533e5e57a65ce96bec1d0e4dbf9ca4af66c86ff4a3
-src/native_campaign.inl,1199,prepare_local_build,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5bc6dd643519cac5d3efcb33fffafd212eab697190e7602f057b474c8e6eda66
-src/native_campaign.inl,1235,recovery_return,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c36a5fa4c7ffaebabc12560b45e7e31d6e8955610b59f923a50c9447561b6c01
-src/native_campaign.inl,1270,native_fort_assault,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5912e12e538483602d91eaa80140f531b72da03e6b8e087dd8f2618d39855930
-src/native_campaign.inl,1281,siege_goal_hex,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,6a80b324b6cede5b843c8f27b189a0f605c6f292570d47b20acfb081fa24d716
-src/native_campaign.inl,1288,siege_tile_distance,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,db2eef3fd4069f4852d0ef162dec60ce8e43c2ba18c532c31f0bc544e6ebfbcc
-src/native_campaign.inl,1292,native_on_mission,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,311562a5ca85593c65e22307c5acb8ee3a76b7f442660dc96112fb81ae26e88f
-src/native_campaign.inl,1315,mission_corridor_distance,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3421631e651190ff5ef7305b874221a47cbbd9ee6adf94c3959707611a541105
-src/native_campaign.inl,1329,mission_route_corridor,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,6da9b16438a12d877738bd19fc2e1fd75cbebf165baa601a1df4861a1b6b676d
-src/native_campaign.inl,1358,mission_route_waypoint,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,fa1c60e49f3f5990495fcc7551cd266a425d0487ec616dcbb77c785ac27f8931
-src/native_campaign.inl,1378,targetless,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2da16e1229beb125b015f6284253d081bf1d27381ffc769339c3a38470aa2067
-src/native_campaign.inl,1383,recover_idle,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,cd0a6be2ba3f8ad29f0f8028a76a0c9f298c44e3fa3d8aa7a66361a5c03f4412
-src/native_campaign.inl,1423,pause_assembly,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,12ea4a61d79258810ae1437a0d2c8811c7b8be56880d7a460cf8ecfff9aeabf4
-src/native_campaign.inl,1424,campaign_step,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5501b177c7ff4153b8100ffb14872d8c9ca4a37ba8fbf66ad739982a0d1e90dd
-src/native_campaign.inl,1447,campaign_individual_priority,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2d1f7d75a0577a8fec893072d8bc7f36dc332a4ecd74dbbdfc8846a53ee915dc
+src/native_campaign.inl,555,intercept_stands,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8ad0ba5c81c22b27de1d2409c0b22cb0848bd5b4d78ba8e99a54a0491c7f3850
+src/native_campaign.inl,579,intercept_claims,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8527fdf5d315c93dafefcf200c3e31366bad25b8db261acf84d1404bac4628fe
+src/native_campaign.inl,590,intercept_free_stand,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2f65ac3e5c4575e9f0341e27eb54805ea2ca802a3bd0f718db675213738d342b
+src/native_campaign.inl,602,intercept_gate_object,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d1ad5ea292dd39b980fff703614a2d2fc5a2ead3864b0b5a8b640619c5f2f828
+src/native_campaign.inl,619,helm_water,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1dcdef4ded46a5262f134439a666750a69c18dbe13de713afbb362a8ef0789ad
+src/native_campaign.inl,626,helm_shore,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,970aa458bf650384ff2b4950d91f0874933487e01b854945232fefeac42fc9a0
+src/native_campaign.inl,634,helm_hostile_tile,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7ee33deef090a6450cd3cb95b5c815ab0b96bc90fd74d51b7c75a3a0852f6f47
+src/native_campaign.inl,639,helm_goal_ok,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,916b509dd349734ecc34930e7bcb97eb40910cf7f3d402f17ac5e9a618bd812a
+src/native_campaign.inl,644,helm_towers,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8f4f3c4b2132fccb09bd84dc0e5d2d8c3f426c9b213fd6656186e1be1c9a9271
+src/native_campaign.inl,656,helm_tower_hit,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2f8025e78b167e70476cf0e15e4186b06fe4d00aa061bfe6308d3bc50883bcf8
+src/native_campaign.inl,657,helm_area_object,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e443b72392fdd422c6930131c13a85fa28b7a29cd750252a352a3d7b7c30f2a4
+src/native_campaign.inl,661,helm_pick,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b125ad50cb9ae5513cf099b08f27336a89fff511d352b8fe5ba5b6647603d436
+src/native_campaign.inl,759,helm_chain_order,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1e0f5c3889bafd853863de4d51f7fd51a88b850a99904f1c6b858ad1da9130e5
+src/native_campaign.inl,790,helm_delay_pick,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,26faf2e83f5013806ac8151b1538e513b04dfbd2c683662ee12a30ba5ccd709b
+src/native_campaign.inl,832,helm_delay_hostile,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,68cc9f0a877be4e5814b3d519cd5ae9321e4ef4557cf75e80eb129d956e607e3
+src/native_campaign.inl,838,helm_delay_count,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e1dede8c55863448080588157fa3a8dd8cace051ddd0814f470c79bc08f79988
+src/native_campaign.inl,842,helm_delay_step,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b48b9f2977fd322e5989d2be4fb625aedc1e9a82c97ca47c2e6876252260f76e
+src/native_campaign.inl,885,helm_area_water,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,990243a70a2a5cc47e656e651adef91a34ac38e0a0ce36a767a1a4efebed6e31
+src/native_campaign.inl,904,helm_watch_area,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,45fbb9f4de34330788096ffc0c1493cb98b7f165f8b24e0a6897fb104aeb7944
+src/native_campaign.inl,910,helm_area_taken,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,12468edbb7d62c4510b71307ccd6dd9eca0a3401e41d39edad96328612df521d
+src/native_campaign.inl,920,helm_next_area,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,53ed18dbe1918f477d6a569899dbdd1764a87d94ffe60eb2fe26b7e5ed4000d7
+src/native_campaign.inl,953,helm_ring_lost,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d40863f4bafbaaa098ee2b5fecb1c8656c889b2125d19312a5a68ef6bc0dea9c
+src/native_campaign.inl,967,helm_ring_castle,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d9e51631669e9893f8529307d7983cb74c0bccd3df693e499e5402268f2bc25c
+src/native_campaign.inl,973,helm_pad_pick,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,a662afa5d5dd37984ee981c658ce2caef1d7499d6fb94d358423465ea8215393
+src/native_campaign.inl,995,helm_switch_again,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3610bd3cef9ff8a4c06fe8b135fc2144680802792467936ad6cd14024dc3c534
+src/native_campaign.inl,996,helm_step,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,fa2e13f3f43ff3951d9001621065bc1380974cc1673dad0ecf3b9b50f28c71b5
+src/native_campaign.inl,1148,intercept_step,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,a9fd407b144f28128baf88eeb74a6bc8e08c216c61df50b20b8babb13705f27d
+src/native_campaign.inl,1190,campaign_regional_step,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d4ed797964d69945175dd0499351fed4e5158a10b7717d68ac34b4f07440406d
+src/native_campaign.inl,1211,next_region,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,fc465dff5ded2560f085b2533e5e57a65ce96bec1d0e4dbf9ca4af66c86ff4a3
+src/native_campaign.inl,1235,prepare_local_build,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5bc6dd643519cac5d3efcb33fffafd212eab697190e7602f057b474c8e6eda66
+src/native_campaign.inl,1271,recovery_return,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c36a5fa4c7ffaebabc12560b45e7e31d6e8955610b59f923a50c9447561b6c01
+src/native_campaign.inl,1306,native_fort_assault,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5912e12e538483602d91eaa80140f531b72da03e6b8e087dd8f2618d39855930
+src/native_campaign.inl,1317,siege_goal_hex,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,6a80b324b6cede5b843c8f27b189a0f605c6f292570d47b20acfb081fa24d716
+src/native_campaign.inl,1324,siege_tile_distance,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,db2eef3fd4069f4852d0ef162dec60ce8e43c2ba18c532c31f0bc544e6ebfbcc
+src/native_campaign.inl,1328,native_on_mission,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,311562a5ca85593c65e22307c5acb8ee3a76b7f442660dc96112fb81ae26e88f
+src/native_campaign.inl,1351,mission_corridor_distance,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3421631e651190ff5ef7305b874221a47cbbd9ee6adf94c3959707611a541105
+src/native_campaign.inl,1365,mission_route_corridor,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,6da9b16438a12d877738bd19fc2e1fd75cbebf165baa601a1df4861a1b6b676d
+src/native_campaign.inl,1394,mission_route_waypoint,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,fa1c60e49f3f5990495fcc7551cd266a425d0487ec616dcbb77c785ac27f8931
+src/native_campaign.inl,1414,targetless,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2da16e1229beb125b015f6284253d081bf1d27381ffc769339c3a38470aa2067
+src/native_campaign.inl,1419,recover_idle,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,cd0a6be2ba3f8ad29f0f8028a76a0c9f298c44e3fa3d8aa7a66361a5c03f4412
+src/native_campaign.inl,1459,pause_assembly,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,12ea4a61d79258810ae1437a0d2c8811c7b8be56880d7a460cf8ecfff9aeabf4
+src/native_campaign.inl,1460,campaign_step,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5501b177c7ff4153b8100ffb14872d8c9ca4a37ba8fbf66ad739982a0d1e90dd
+src/native_campaign.inl,1483,campaign_individual_priority,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2d1f7d75a0577a8fec893072d8bc7f36dc332a4ecd74dbbdfc8846a53ee915dc
 src/native_campaign_assault.inl,5,campaign_assault_goal,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,bee1e6697ef9d08ddc7ef1caef2c53374517b99eba703b501d8c93038c6a29d1
 src/native_campaign_assault.inl,10,campaign_assault_hostile,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7a6ade1b4c2023347e535d6a89b97c7e362463d8795cff694f67bccb427ea287
 src/native_campaign_assault.inl,16,campaign_commit_castle,지역 점령·집결·원군,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,79953e0ca73f170d18c2d68f7935311a08204cfc05f06fca304ec94481f271cc
@@ -1766,56 +1770,56 @@ src/native_layout_ui.inl,385,to_ns,정책·자료구조·저장 형식·공통 �
 src/native_layout_ui.inl,389,raise_max,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,6eb074d9a801e133dd05f175cc4a877a1ba792f13254a7dc1889c97ed53b665b
 src/native_layout_ui.inl,393,track_live,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,bee9667ce0fed1f4a5097a50c519a07499b9a4182bb225a66f9263189a0c5d95
 src/native_layout_ui.inl,400,on_built,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2dad0ee7f6cf3f5e900eee07f01aa13844b0893d93f3f23daecbefd326deb09a
-src/native_layout_ui.inl,433,purge_created_for,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,0b2e6690871b36912b3a1e41fcfae8b0cf9dba53966a0c3e43c921a8e2c93036
-src/native_layout_ui.inl,440,on_destroyed,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c28b3dc2b0260f941910a8e0a7bf051974c2ca43024bd2611d424d225b60341c
-src/native_layout_ui.inl,465,built_hook,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8698647a3e7651102f18d49f90195781033a5b06b02990c13f22e081b7617832
-src/native_layout_ui.inl,492,destroy_hook,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,839c7b4e5990b74adf4bbcbacf67bcf8d39cd1268ab27579fdff4d5533ecdf09
-src/native_layout_ui.inl,511,in_event,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b9831ca53859be8cfab0f80540f25ead7a59fa4314bbe1d807d9ba988514b76f
-src/native_layout_ui.inl,512,track,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e27db867e7df42d082f6a81633f211439d9953466cfc3fd65ec78a6f76764c1d
-src/native_layout_ui.inl,521,kind_of,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8d0d6b659c5586ee5f2907840b7ba174aee5cb7d566908acad6f178cfeed613e
-src/native_layout_ui.inl,529,raw_destroy,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,556d54c8977ab1072278da8868d0ed6a128bba8622d34d5849ccffb6247c758d
-src/native_layout_ui.inl,559,svc_attach,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f58a5538f2186717c9c8f0f38c7d7c3cba8aafaac892a43ded014113534ca949
-src/native_layout_ui.inl,624,svc_set_text,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7e4c306275a8597a5fbe15988c45fb6001b4536baf1c056226bf05611e44c5b8
-src/native_layout_ui.inl,635,svc_set_visible,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f5f010d2dbfd3517aecc6980fff3c444235effaabdec465da39901d8e8909612
-src/native_layout_ui.inl,640,svc_set_position,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3880f224d37ad1dd5b45b91020562ba80ab1926b4bfa9c0ec96b3a6c1d8f9e85
-src/native_layout_ui.inl,645,svc_get_position,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,634d0c1126d4e603d36787a3b280442be5bb23923c4d1b9647aabf52d786e256
-src/native_layout_ui.inl,651,click_copy,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,cbe57dac3bf83ec77d905eb607e171c1263572d66827c9d3e5f8aa4db6f8aed4
-src/native_layout_ui.inl,652,click_call,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,398e9839b0e085127ded486a9557431475b8c0de16911593f07744143fec0f68
-src/native_layout_ui.inl,653,click_type,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2ebec81ed7ec45eaf6fd5cfa5211dde5de69132282bc890c1745e849aa81d5a2
-src/native_layout_ui.inl,654,click_delete,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,bce10a76fb8c992c5257523bb0222aec5c800cdd865568418efbc1b792869c4d
-src/native_layout_ui.inl,655,click_get,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7682ca0374487c76972e2a37aef603374f30d144d0687a6f1d9886e88370672f
-src/native_layout_ui.inl,658,svc_bind_click,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,33a08b43e344732a25df3e1366519e8b368cba41ec4dcbf0612b83f0cb45c2a5
-src/native_layout_ui.inl,671,svc_destroy,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b55975fe6254a9716730ec0143973884160c3b271bfb6621f3d77d6e3e296061
-src/native_layout_ui.inl,697,svc_ui_begin,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,092ecbee1e4e40ea3e76b88a4441cf20b8042b7b6e057b3152296592bb4b5d97
-src/native_layout_ui.inl,704,svc_ui_end,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,037b2f6af041a55253fa5009ac2c205180d77df6b1f8d236d53a068ce9103b45
-src/native_layout_ui.inl,729,svc_ui_activate,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8953bf344b8030f2cd5c98173283b1ae27d6693fe2aefc9e3b5457daf1603be2
-src/native_layout_ui.inl,741,svc_ui_set_node_text,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,a8289614b842713936a07c99fd6b1ee1941ca75d379aae4d2a4b3f3f8976f015
-src/native_layout_ui.inl,747,svc_ui_set_node_visible,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3508fe3ec3bebfb1cdfb05733605bcf3ea58043c6e064aadaa3d780fda272557
-src/native_layout_ui.inl,753,svc_ui_select,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,85a70c613256c6dd9c64bc6d62b664dfd0970d27d63157b127c8cebec5c09041
-src/native_layout_ui.inl,764,svc_ui_sync_visibility,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,554e5b8dd74e02f06956e39c9a7b5f6f4add037dd61ce189096b6f297fe230c8
-src/native_layout_ui.inl,781,svc_ui_enable,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1d9c7c9d812a110daac463fe94dade494e934fefae6b5946e3db77f10504116f
-src/native_layout_ui.inl,801,tip_hide,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5d239ebe91a08881a051b277ea07c0b5b6ca2b3002a54cac2e46e35e6aa7e4a1
-src/native_layout_ui.inl,805,tip_make,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5e766db30b22b59805f04aeab00b9d3b114f991c5ffa1031d19e036f268c5ebd
-src/native_layout_ui.inl,831,svc_ui_tooltip,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c13928b7e5ce3deafee47e91a9c3184a68706cb9d881d43d76ad5bf32c60c4d8
-src/native_layout_ui.inl,853,tip_release,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5fe6402bf4fe9d07d18ecb64e76d1caf83c88522269ee85a5d8e6b60066ede96
-src/native_layout_ui.inl,868,svc_ui_release,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9b8819eb25a038928ff066df6694dca3194b28dbf67dbe5e3cc61eedf9632453
-src/native_layout_ui.inl,893,api_attach,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7aaf432754c4d9faf8b5187aaaf46e346c022de3a640412c4da4a88fe05b7ae9
-src/native_layout_ui.inl,896,api_set_text,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,40583294e19ba5fb88e76805ed0c88e296fce206e5961c6d33a1452210f99d94
-src/native_layout_ui.inl,897,api_set_visible,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7bcca4adb50a4a1d8e1126f3d9f92f2e215e46866153cf5228fef19c72dd8415
-src/native_layout_ui.inl,898,api_bind_click,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9423bb88e2af638ad6442d5d6be0234d015439815ea04cfe1fa3c206b80a1fbc
-src/native_layout_ui.inl,899,api_destroy,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,af50903be2b28877d4659f041f14e503c347efe9c23633cc6c206e067ad86170
-src/native_layout_ui.inl,900,api_set_position,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,78b34dd2ac3f50c9f9e6ca70bd31d55057db8ab5ae2e4967f98b603beb05c527
-src/native_layout_ui.inl,901,api_get_position,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c77b6ce8e903e2e6b2d636d8f5618b16feba994cfc30f0e2def865ef8fe7b720
-src/native_layout_ui.inl,902,api_ui_begin,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,bb07ceee3a00f56cbc4adb2d1a2eec0a771e13e76d5e5398babb6aaa17097704
-src/native_layout_ui.inl,903,api_ui_end,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b4ae79b025c47b7139fcc3991c0421fc1c0cecf26db215a4877d8e835ae69f75
-src/native_layout_ui.inl,905,api_ui_activate,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,60cfb2930885a5198aa44b892614a54a72a98496ff691aff7c7ec2e00e552c7b
-src/native_layout_ui.inl,907,api_ui_set_node_text,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b87034c5998a5b8535f4c8536c511848e2afce414b2b6928ff29250ede13db31
-src/native_layout_ui.inl,908,api_ui_set_node_visible,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f18a544705fa1ee4d3bc3cf9be5f6fb04f56bf492e9e2afe0faed1ae84be82f3
-src/native_layout_ui.inl,909,api_ui_select,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b5d31355ee57e3330b56c7ce82eaafa26365b411fb38cdd8470bdfed98e7f96f
-src/native_layout_ui.inl,910,api_ui_sync_visibility,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7b3d1b98aeb99f3f6516f2d72ac77715785072a5af945e22c4db330e4c5f6683
-src/native_layout_ui.inl,911,api_ui_release,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,992c8aac7411f6d9aa2897adf6e4b8c483497cb511e161ff7f1f3cbf3f1d3ada
-src/native_layout_ui.inl,912,api_ui_enable,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,53d0e829b108c94070b4c1862f9e62058ddc56ae2db1e8876292f17dd82e34f0
-src/native_layout_ui.inl,913,api_ui_tooltip,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,319aa229988507c5caad027192e40fd3b518c653d064d2aad7a839abb1ef3128
+src/native_layout_ui.inl,435,purge_created_for,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,104901d9c12d0aab6c5407db0ae4edf2b4e792b149a8ad22b99d180b31adbc26
+src/native_layout_ui.inl,441,on_destroyed,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,961c446e5ccfbcbc7311bd7ed9d5db5fd47dc56787ec35f64398d4be413232ce
+src/native_layout_ui.inl,464,built_hook,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8698647a3e7651102f18d49f90195781033a5b06b02990c13f22e081b7617832
+src/native_layout_ui.inl,491,destroy_hook,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,839c7b4e5990b74adf4bbcbacf67bcf8d39cd1268ab27579fdff4d5533ecdf09
+src/native_layout_ui.inl,510,in_event,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b9831ca53859be8cfab0f80540f25ead7a59fa4314bbe1d807d9ba988514b76f
+src/native_layout_ui.inl,511,track,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e27db867e7df42d082f6a81633f211439d9953466cfc3fd65ec78a6f76764c1d
+src/native_layout_ui.inl,520,kind_of,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8d0d6b659c5586ee5f2907840b7ba174aee5cb7d566908acad6f178cfeed613e
+src/native_layout_ui.inl,528,raw_destroy,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,556d54c8977ab1072278da8868d0ed6a128bba8622d34d5849ccffb6247c758d
+src/native_layout_ui.inl,558,svc_attach,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f58a5538f2186717c9c8f0f38c7d7c3cba8aafaac892a43ded014113534ca949
+src/native_layout_ui.inl,623,svc_set_text,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7e4c306275a8597a5fbe15988c45fb6001b4536baf1c056226bf05611e44c5b8
+src/native_layout_ui.inl,634,svc_set_visible,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f5f010d2dbfd3517aecc6980fff3c444235effaabdec465da39901d8e8909612
+src/native_layout_ui.inl,639,svc_set_position,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3880f224d37ad1dd5b45b91020562ba80ab1926b4bfa9c0ec96b3a6c1d8f9e85
+src/native_layout_ui.inl,644,svc_get_position,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,634d0c1126d4e603d36787a3b280442be5bb23923c4d1b9647aabf52d786e256
+src/native_layout_ui.inl,650,click_copy,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,cbe57dac3bf83ec77d905eb607e171c1263572d66827c9d3e5f8aa4db6f8aed4
+src/native_layout_ui.inl,651,click_call,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,398e9839b0e085127ded486a9557431475b8c0de16911593f07744143fec0f68
+src/native_layout_ui.inl,652,click_type,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2ebec81ed7ec45eaf6fd5cfa5211dde5de69132282bc890c1745e849aa81d5a2
+src/native_layout_ui.inl,653,click_delete,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,bce10a76fb8c992c5257523bb0222aec5c800cdd865568418efbc1b792869c4d
+src/native_layout_ui.inl,654,click_get,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7682ca0374487c76972e2a37aef603374f30d144d0687a6f1d9886e88370672f
+src/native_layout_ui.inl,657,svc_bind_click,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,33a08b43e344732a25df3e1366519e8b368cba41ec4dcbf0612b83f0cb45c2a5
+src/native_layout_ui.inl,670,svc_destroy,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b55975fe6254a9716730ec0143973884160c3b271bfb6621f3d77d6e3e296061
+src/native_layout_ui.inl,696,svc_ui_begin,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,092ecbee1e4e40ea3e76b88a4441cf20b8042b7b6e057b3152296592bb4b5d97
+src/native_layout_ui.inl,703,svc_ui_end,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,037b2f6af041a55253fa5009ac2c205180d77df6b1f8d236d53a068ce9103b45
+src/native_layout_ui.inl,728,svc_ui_activate,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8953bf344b8030f2cd5c98173283b1ae27d6693fe2aefc9e3b5457daf1603be2
+src/native_layout_ui.inl,740,svc_ui_set_node_text,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,a8289614b842713936a07c99fd6b1ee1941ca75d379aae4d2a4b3f3f8976f015
+src/native_layout_ui.inl,746,svc_ui_set_node_visible,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3508fe3ec3bebfb1cdfb05733605bcf3ea58043c6e064aadaa3d780fda272557
+src/native_layout_ui.inl,752,svc_ui_select,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,85a70c613256c6dd9c64bc6d62b664dfd0970d27d63157b127c8cebec5c09041
+src/native_layout_ui.inl,763,svc_ui_sync_visibility,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,554e5b8dd74e02f06956e39c9a7b5f6f4add037dd61ce189096b6f297fe230c8
+src/native_layout_ui.inl,780,svc_ui_enable,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1d9c7c9d812a110daac463fe94dade494e934fefae6b5946e3db77f10504116f
+src/native_layout_ui.inl,800,tip_hide,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5d239ebe91a08881a051b277ea07c0b5b6ca2b3002a54cac2e46e35e6aa7e4a1
+src/native_layout_ui.inl,804,tip_make,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5e766db30b22b59805f04aeab00b9d3b114f991c5ffa1031d19e036f268c5ebd
+src/native_layout_ui.inl,830,svc_ui_tooltip,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c13928b7e5ce3deafee47e91a9c3184a68706cb9d881d43d76ad5bf32c60c4d8
+src/native_layout_ui.inl,852,tip_release,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5fe6402bf4fe9d07d18ecb64e76d1caf83c88522269ee85a5d8e6b60066ede96
+src/native_layout_ui.inl,867,svc_ui_release,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9b8819eb25a038928ff066df6694dca3194b28dbf67dbe5e3cc61eedf9632453
+src/native_layout_ui.inl,892,api_attach,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7aaf432754c4d9faf8b5187aaaf46e346c022de3a640412c4da4a88fe05b7ae9
+src/native_layout_ui.inl,895,api_set_text,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,40583294e19ba5fb88e76805ed0c88e296fce206e5961c6d33a1452210f99d94
+src/native_layout_ui.inl,896,api_set_visible,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7bcca4adb50a4a1d8e1126f3d9f92f2e215e46866153cf5228fef19c72dd8415
+src/native_layout_ui.inl,897,api_bind_click,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9423bb88e2af638ad6442d5d6be0234d015439815ea04cfe1fa3c206b80a1fbc
+src/native_layout_ui.inl,898,api_destroy,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,af50903be2b28877d4659f041f14e503c347efe9c23633cc6c206e067ad86170
+src/native_layout_ui.inl,899,api_set_position,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,78b34dd2ac3f50c9f9e6ca70bd31d55057db8ab5ae2e4967f98b603beb05c527
+src/native_layout_ui.inl,900,api_get_position,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c77b6ce8e903e2e6b2d636d8f5618b16feba994cfc30f0e2def865ef8fe7b720
+src/native_layout_ui.inl,901,api_ui_begin,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,bb07ceee3a00f56cbc4adb2d1a2eec0a771e13e76d5e5398babb6aaa17097704
+src/native_layout_ui.inl,902,api_ui_end,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b4ae79b025c47b7139fcc3991c0421fc1c0cecf26db215a4877d8e835ae69f75
+src/native_layout_ui.inl,904,api_ui_activate,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,60cfb2930885a5198aa44b892614a54a72a98496ff691aff7c7ec2e00e552c7b
+src/native_layout_ui.inl,906,api_ui_set_node_text,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b87034c5998a5b8535f4c8536c511848e2afce414b2b6928ff29250ede13db31
+src/native_layout_ui.inl,907,api_ui_set_node_visible,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f18a544705fa1ee4d3bc3cf9be5f6fb04f56bf492e9e2afe0faed1ae84be82f3
+src/native_layout_ui.inl,908,api_ui_select,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b5d31355ee57e3330b56c7ce82eaafa26365b411fb38cdd8470bdfed98e7f96f
+src/native_layout_ui.inl,909,api_ui_sync_visibility,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7b3d1b98aeb99f3f6516f2d72ac77715785072a5af945e22c4db330e4c5f6683
+src/native_layout_ui.inl,910,api_ui_release,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,992c8aac7411f6d9aa2897adf6e4b8c483497cb511e161ff7f1f3cbf3f1d3ada
+src/native_layout_ui.inl,911,api_ui_enable,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,53d0e829b108c94070b4c1862f9e62058ddc56ae2db1e8876292f17dd82e34f0
+src/native_layout_ui.inl,912,api_ui_tooltip,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,319aa229988507c5caad027192e40fd3b518c653d064d2aad7a839abb1ef3128
 src/native_layout_wait.inl,34,make_holder,화면자료 유지·선택 진단,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,0ddc88883013266a0413c84be233e1aa10f90b472b0f96c201c2e22fbe4cafed
 src/native_layout_wait.inl,43,keep,화면자료 유지·선택 진단,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1d35de216b7c6858c15974f4bc9dc5751e5cfb608ad32efb39e04bf3ef703205
 src/native_layout_wait.inl,61,timed_call,화면자료 유지·선택 진단,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e4c5ead6a74b462927cc851c33cd45f3049a75dbc6d22943a4dc0476239e7f65
@@ -1918,8 +1922,8 @@ src/native_merit_save.inl,79,merit_write_sidecar,무공 병력·논공 친애·�
 src/native_merit_save.inl,85,merit_read_sidecar,무공 병력·논공 친애·열전·보조 저장,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4d2a06e833ebb1acbd423f25fdb1263992e40db520e50c63aaf944dc1b4d26e6
 src/native_merit_save.inl,104,merit_host_log,무공 병력·논공 친애·열전·보조 저장,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,a3844d17094e2a4a8657e4de236c46b2e97ed8869b043f9c14e94f71d146da48
 src/native_merit_save.inl,107,merit_save_host,무공 병력·논공 친애·열전·보조 저장,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,33fbf5ca17bd1f54493373a8d23628fb5abcd63d2ae7aaadc0578c1779b15666
-src/native_merit_save.inl,145,start_state_guard,무공 병력·논공 친애·열전·보조 저장,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4a2c5ab1618746126d6b3049a6b0dd6714583a00b0f7459ac6e7dd4c366d9c20
-src/native_merit_save.inl,153,merit_load_host,무공 병력·논공 친애·열전·보조 저장,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,81d6fbbc7a6653e65bf709055b7ae62fab9b7d9f81519ba3d45241e355ec1786
+src/native_merit_save.inl,145,start_state_guard,무공 병력·논공 친애·열전·보조 저장,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,bf74141e4c2353c7c93a5eac1a2f9cd4a544c81e442c6ef364ac7257eca8902f
+src/native_merit_save.inl,154,merit_load_host,무공 병력·논공 친애·열전·보조 저장,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,81d6fbbc7a6653e65bf709055b7ae62fab9b7d9f81519ba3d45241e355ec1786
 src/native_merit_scroll.inl,24,merit_scroll_foreground,무공 병력·논공 친애·열전·보조 저장,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,044ec669e53f0d5dec5bfbff1d2a0df6bef08354430888f10ade8ab72437c1a8
 src/native_merit_scroll.inl,31,merit_scroll_route,무공 병력·논공 친애·열전·보조 저장,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4818c974b7e75406594c2f1e01251d6de9f34507b43c832cb0bf9e21449d8926
 src/native_merit_scroll.inl,57,merit_scroll_message,무공 병력·논공 친애·열전·보조 저장,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b6fe0d15262049bc35459fe9cad27ea9e86c3ed2705179cd5debc07963211d43
@@ -2025,12 +2029,12 @@ src/native_officer_rotation.inl,271,move_one,시험 무장 목록·검색·스�
 src/native_officer_rotation.inl,291,monthly,시험 무장 목록·검색·스냅샷,시험 기능; 설치기 기본 꺼짐,34dbff33ffc1c5acf90409c3c9d7fc4888bcfe914b0bb823f6b65205c56e72ad
 src/native_officer_rotation.inl,312,start_pass,시험 무장 목록·검색·스냅샷,시험 기능; 설치기 기본 꺼짐,34356593123e1c2265883969b30ba36286c1e29c49ce1f5dd3bfd575bd07cec6
 src/native_officer_rotation.inl,344,drain,시험 무장 목록·검색·스냅샷,시험 기능; 설치기 기본 꺼짐,eaf41089a7c4a813d3f130384504676dd3399bd3b07a90da4eca4fb0859ef528
-src/native_officer_rotation.inl,371,helm_trait,시험 무장 목록·검색·스냅샷,시험 기능; 설치기 기본 꺼짐,1727d5c38f929e36dbb40ac3ca0bf2339ed05457b02e6f20c7ef1fd3e6312f5b
-src/native_officer_rotation.inl,375,helm_place,시험 무장 목록·검색·스냅샷,시험 기능; 설치기 기본 꺼짐,816f53a9290896a993ec1413115dde82775eb69427990a44c65ddf71d68882fa
-src/native_officer_rotation.inl,394,rotate_force,시험 무장 목록·검색·스냅샷,시험 기능; 설치기 기본 꺼짐,4405cb4f6f24b3c24c5cd3a94953db9a19741c400a17fea1c8a49e956e3f844d
-src/native_officer_rotation.inl,442,demo_play,시험 무장 목록·검색·스냅샷,시험 기능; 설치기 기본 꺼짐,d0f6add88a96ed9e16d3efe2b83c4722dce6a0e67efc4bd48e09a11c70c31bc4
-src/native_officer_rotation.inl,443,player_force,시험 무장 목록·검색·스냅샷,시험 기능; 설치기 기본 꺼짐,dc704543255c7892b5542b086918b84b593dfbc6c71ee9494d62247f9e57e1a2
-src/native_officer_rotation.inl,452,tick,시험 무장 목록·검색·스냅샷,시험 기능; 설치기 기본 꺼짐,de81379c6e60aabc7739b9836d41b6d8231776278ba88f9ff5423f8e12bc46d3
+src/native_officer_rotation.inl,375,helm_trait,시험 무장 목록·검색·스냅샷,시험 기능; 설치기 기본 꺼짐,1727d5c38f929e36dbb40ac3ca0bf2339ed05457b02e6f20c7ef1fd3e6312f5b
+src/native_officer_rotation.inl,379,helm_place,시험 무장 목록·검색·스냅샷,시험 기능; 설치기 기본 꺼짐,847410577c46b417fae97a97448e5eaf939ab68aca6839b909a0bc75877c1ef9
+src/native_officer_rotation.inl,409,rotate_force,시험 무장 목록·검색·스냅샷,시험 기능; 설치기 기본 꺼짐,4405cb4f6f24b3c24c5cd3a94953db9a19741c400a17fea1c8a49e956e3f844d
+src/native_officer_rotation.inl,457,demo_play,시험 무장 목록·검색·스냅샷,시험 기능; 설치기 기본 꺼짐,d0f6add88a96ed9e16d3efe2b83c4722dce6a0e67efc4bd48e09a11c70c31bc4
+src/native_officer_rotation.inl,458,player_force,시험 무장 목록·검색·스냅샷,시험 기능; 설치기 기본 꺼짐,dc704543255c7892b5542b086918b84b593dfbc6c71ee9494d62247f9e57e1a2
+src/native_officer_rotation.inl,467,tick,시험 무장 목록·검색·스냅샷,시험 기능; 설치기 기본 꺼짐,de81379c6e60aabc7739b9836d41b6d8231776278ba88f9ff5423f8e12bc46d3
 src/native_path_count.inl,8,matches,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b528b3c4dbe67faac261b130d0dc0ce9bd56d59737bc52f9e2c59a6d8a2cbb6f
 src/native_path_count.inl,13,guards_match,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,42789ce39303815a4ad5cb00f6db6024a1d04daba4b73b0608ca79b902f2edd9
 src/native_path_count.inl,23,scalar,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4478cb0a7a08514eab1496d5f1cc5919297b1b09be5dcf88df4aafe71e1d92ca
@@ -2132,24 +2136,24 @@ src/native_recruit_ui.inl,17,recruit_alert_hated,등용 화면·알림·컴퓨�
 src/native_recruit_ui.inl,22,recruit_alert_candidate,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,77628fbf57b4207437d7dc6f766c079e747ca26d30b59cefd97252a21b1d76e5
 src/native_recruit_ui.inl,28,recruit_alert_location,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,172b933fda105a955c46bb55dc3f40457db610213958c5ab0cb07b661cbe7083
 src/native_recruit_ui.inl,35,recruit_alert_search,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5f8c69c2c759eea0b8111ab49838c52026d15101fa20b0a0bf613ba4017112d5
-src/native_recruit_ui.inl,52,recruit_district_id,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,893c15b593d21ad62125469df33c3778c5c76264d19549cb0b1eb2f466ec3995
-src/native_recruit_ui.inl,60,recruit_bind_context,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1fb982ec026ef0671ac42da98f036f5e853febd7ed5fc901d4fcf8ace52d2ada
-src/native_recruit_ui.inl,66,recruit_display_district,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e5f029145ba53e6b2c0e99412d8cc50aa76f97851256297f67d6005975fb6db8
-src/native_recruit_ui.inl,77,RecruitScope,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2175fd14d962b83ead1506802ad65256d0699b19fb08acb3c1d708ab6c37f416
-src/native_recruit_ui.inl,97,recruit_family_available,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,76f8d667650cf19ac4089b11fb2b4d07296253a6c2d1048326fb7cbff3927f61
-src/native_recruit_ui.inl,112,recruit_reason_text,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,ec880c54c08ef005fc7ea1d8a011636a99cbae8c4e8a40f5495464f800b429b8
-src/native_recruit_ui.inl,120,recruit_reason_compare,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4e4d42759a23388cc4a67247c540e519d7baef4af77fa73fb74a0603848d8e8e
-src/native_recruit_ui.inl,129,recruit_prepare_columns,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c59794fde079e282fc1e0af74972997aa8f58673ddf415d68da0f02e711d0979
-src/native_recruit_ui.inl,172,recruit_person,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e304170108f9328b63f52ec7b7bade0e0a39e758e7e532411cefccaba5f09109
-src/native_recruit_ui.inl,175,recruit_multi_matches,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,66fa9e3e25aff1e75509c7d352ee22a08acf3dcd006c56038d81e4c6f1df2398
-src/native_recruit_ui.inl,185,recruit_selector_close,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,ddc21b8c74725837622f03e6749d9147176acf531fd11302a9aef292361507c4
-src/native_recruit_ui.inl,213,recruit_selector_init,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,797d03c588208e4c17275748c1f2bf5c398d7a90393e6c0fa25ed8d9258c2d22
-src/native_recruit_ui.inl,247,recruit_layout_init,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,adfea6f4fed0bbb167f72ffc9e7e3e51dcbd3b72610ad372157874f55bb537f1
-src/native_recruit_ui.inl,250,recruit_report_automatic,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b6b6b0a59198a5bd89d353c034af019e95350eb702e51950713fd64a21ecb79d
-src/native_recruit_ui.inl,277,recruit_actor_count,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3b859c6c97a4815b928a73c177e1449f2bdc28c1ae29e4a8cd5dee5e190dc9a1
-src/native_recruit_ui.inl,283,recruit_multi_preview,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,409b239246ba1a7f7d13d781e8a1ae9d503108fac21c11063e922b269eb2a5a4
-src/native_recruit_ui.inl,308,recruit_multi_align,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c9acecfa85f7d67300b8153459bca89b869008b9c3121826ff1255bd6e1911a6
-src/native_recruit_ui.inl,316,recruit_state_update,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,99b8939c15472d15144c3ab21a260dbb7342459a58b5703d4634f4f17242e5f1
+src/native_recruit_ui.inl,65,recruit_district_id,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,893c15b593d21ad62125469df33c3778c5c76264d19549cb0b1eb2f466ec3995
+src/native_recruit_ui.inl,73,recruit_bind_context,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1fb982ec026ef0671ac42da98f036f5e853febd7ed5fc901d4fcf8ace52d2ada
+src/native_recruit_ui.inl,79,recruit_display_district,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e5f029145ba53e6b2c0e99412d8cc50aa76f97851256297f67d6005975fb6db8
+src/native_recruit_ui.inl,90,RecruitScope,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2175fd14d962b83ead1506802ad65256d0699b19fb08acb3c1d708ab6c37f416
+src/native_recruit_ui.inl,110,recruit_family_available,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,76f8d667650cf19ac4089b11fb2b4d07296253a6c2d1048326fb7cbff3927f61
+src/native_recruit_ui.inl,125,recruit_reason_text,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,ec880c54c08ef005fc7ea1d8a011636a99cbae8c4e8a40f5495464f800b429b8
+src/native_recruit_ui.inl,133,recruit_reason_compare,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4e4d42759a23388cc4a67247c540e519d7baef4af77fa73fb74a0603848d8e8e
+src/native_recruit_ui.inl,142,recruit_prepare_columns,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c59794fde079e282fc1e0af74972997aa8f58673ddf415d68da0f02e711d0979
+src/native_recruit_ui.inl,185,recruit_person,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e304170108f9328b63f52ec7b7bade0e0a39e758e7e532411cefccaba5f09109
+src/native_recruit_ui.inl,188,recruit_multi_matches,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,66fa9e3e25aff1e75509c7d352ee22a08acf3dcd006c56038d81e4c6f1df2398
+src/native_recruit_ui.inl,199,recruit_selector_close,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b42e0dda9a74a8167be82e799fbb6a6428313b1e2590d3653e81f39cf17ab6e2
+src/native_recruit_ui.inl,238,recruit_selector_init,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,231f48515b7928cba8b0b654c0c6c8eb4b6754e830c9c9efa0257b56a80fea6c
+src/native_recruit_ui.inl,276,recruit_layout_init,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,adfea6f4fed0bbb167f72ffc9e7e3e51dcbd3b72610ad372157874f55bb537f1
+src/native_recruit_ui.inl,279,recruit_report_automatic,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b6b6b0a59198a5bd89d353c034af019e95350eb702e51950713fd64a21ecb79d
+src/native_recruit_ui.inl,306,recruit_actor_count,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3b859c6c97a4815b928a73c177e1449f2bdc28c1ae29e4a8cd5dee5e190dc9a1
+src/native_recruit_ui.inl,312,recruit_multi_preview,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e50cea1bf2d7ddbf97e72a43e9ee9e7d0a0db9201afacd76e6f314734d04008b
+src/native_recruit_ui.inl,341,recruit_multi_align,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,815be75a301406a178e2240d5d5825ee29b415735e76bb9a081790222b0f39da
+src/native_recruit_ui.inl,349,recruit_state_update,등용 화면·알림·컴퓨터 등용 제한,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,806135dd560acebd02b1f8a5919054d4426e35aa12e75eb91df94349ef190f42
 src/native_region_officer_traits.inl,13,clear,담당관·관련개성 표시·분산 생성,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2c810b32685a5d6c21f34383d06184896cf500202f35e9dc4a79eb992448977a
 src/native_region_officer_traits.inl,14,related,담당관·관련개성 표시·분산 생성,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,63f865f7bcb4e710471c9d997e8875e9856513b5232d028267f8739284b9aa00
 src/native_region_officer_traits.inl,50,clear_trait_cache,담당관·관련개성 표시·분산 생성,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e01ffb6a745afec5f6dc66a35acf6797d46d9ff9661f71a06a10478161cd71bb
@@ -2237,72 +2241,72 @@ src/native_season_bake.inl,63,map_created,정책·자료구조·저장 형식·�
 src/native_season_bake.inl,82,source_created,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,252d56dc5c46f968df33283d69ade31b1f9a48e42b05aff1b90147821480ac9a
 src/native_season_bake.inl,99,read_data,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,bde19c7da6130f3291d79268adf9b9099117c95966d4297101207f528d805d6c
 src/native_season_bake.inl,113,block_bytes,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,30ecfce986947a0e273ca367545b5e52a0e52be746e6246fc7c9acfc43052041
-src/native_season_bake.inl,173,ground_kind,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b0e86d9695d5d5197c1fc83c96e42cede888f85cc7511bbb1e2dea7c91235534
-src/native_season_bake.inl,178,shader_mode,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9ab24277f4503d4da6154f2fa38190ae3de08c717b47a3ab573628ec052c46d9
-src/native_season_bake.inl,184,lit_kind,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1a217d4283e15ebcc64f2e6897816f2cdbebbaf0dd06d834dc059bb8993ace59
-src/native_season_bake.inl,189,swap_slot,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9b11a8b57dbc640d3d5a6e0b4fb4c701097d163b99f6c5ade62de7b20406d5c2
-src/native_season_bake.inl,201,mat_on,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c35a5b66e7623c9c1c7cb95809c4b67d8a25904984fd58a5fd1eb941fe7b95bd
-src/native_season_bake.inl,203,mat_ready,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,52b8994596018b0671e9952dfec1ece7f1a8b77635c0cda98f2b4b99e742eb51
-src/native_season_bake.inl,204,rgb565,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4c00e8baf58675158654befcadca62238299baa31ac44881ae274a0b83f44ac7
-src/native_season_bake.inl,205,to565,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9c010f5502795f3b40501020828cc97df840bddafcf6ab54fcf7df252b536b18
-src/native_season_bake.inl,209,hash2,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b0acc75e1fa4eeb85ba7cb009893d33afbb5f8f600899e7c9670fd88714970de
-src/native_season_bake.inl,210,vnoise,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2be8222892af56df5e79b4e63478e749f1f7f5d1ddd082090fe22d1c1378454e
-src/native_season_bake.inl,216,fbm,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,cf4e02051083a02e6473f70b752e8127a48c032cccd1fab52be6caacf30a9aa7
-src/native_season_bake.inl,218,tfbm,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,78afdd8a960999ab16c2a85f42725c6b00ffda9e88ecbf73cf895f219a008ed7
-src/native_season_bake.inl,223,crack_edge,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5af16c598d89f3412f2cd2982fc915866605f7dc445f42abe8bb585b24c8289e
-src/native_season_bake.inl,234,palette,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8ba8e1107b6d863f7542bda1501ee4b68448aadc875c435c77a99dca4f95a00b
-src/native_season_bake.inl,258,recolor,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8ffeb79702e27e20a43cb0c3016eaacb8fef594d6b113e10b23e37a1146c6825
-src/native_season_bake.inl,276,mat_class,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2f4f476c2b9a177b3dbe93561262a030238a128f993e153a0833f68fc907f916
-src/native_season_bake.inl,288,mat_match,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,42d02e5ee5410425aea32bccd94f68b677557a5f9d11cad932ca4254ec20ac98
-src/native_season_bake.inl,292,mat_extend,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4af09cf4a785c79dc074f2fcd4a73b7dfdf748e59f54ecf44b2ab8cab1d38934
-src/native_season_bake.inl,307,mat_created,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7a11fa14d44c52c15b4569a3a679f921f64be0bebcfbc3989740f59661987785
-src/native_season_bake.inl,316,table_ok,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,bcfa49fea5bd109fe5d648839e66e4c1ecf2839de6c5bbd91864c48a1312aae4
-src/native_season_bake.inl,323,table_patch,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,33c0d205ed5009fd90f5d2d6c5043edf29254129b58825db35bd17b3636d8328
-src/native_season_bake.inl,347,create_buffer,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9b33cfcb90fb7cda57942a13a6facc554ebfacb7fa01ae91dc9524f26b584797
-src/native_season_bake.inl,360,create_srv,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d5e4515072710a5d9f6fd6f3b8a92e8132451d1b0d9498cf7ec58f708e8a21f0
-src/native_season_bake.inl,379,create_ps,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9012890a55debb242554c148bd7487e7649d782d4e015b96607a275f6fe49d39
-src/native_season_bake.inl,415,swap_ps,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,59a68089e7c14835c1df3dcffc1dd6214c6b2f3baf6be16ca2132957f3821f8b
-src/native_season_bake.inl,421,install_ps,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8a422e4a7573843fe638e87102088666a851c7fe1b79f0f855359450a4244551
-src/native_season_bake.inl,455,restore_ps,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4ba608ce2a95c277d1b527abe3a82b007d1881dc9cffdb84f7562c0c5513db95
-src/native_season_bake.inl,464,load_gpu,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,6abb62c96fdc74d90c4bb163a5ac8e95744f77f3fe6bc089e387466ef392481c
-src/native_season_bake.inl,503,turn_key,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,ebc28c0bc2d0bfb4bf71f685efbabd9c05c1312ada9dd6d5d9b3c879add87f53
-src/native_season_bake.inl,510,items_per_map,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e1c8d46540288317431b68770d7d19ec632d597f3c7cf36eae81d889ff567b32
-src/native_season_bake.inl,511,set_params,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,75d68bbe5535fb8f8ee2fefec89c814d17a92aa7269b67949d565c9219819a52
-src/native_season_bake.inl,527,Saved,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,0f4c52a5c33cb0d17ed83aab86246bb2ca52a244acaa6db9edb66fb87872e414
-src/native_season_bake.inl,550,locate,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c52219583023ebe82798a5346230727ef27255bde179c573800ced396dba58ec
-src/native_season_bake.inl,555,bake_item,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9babf1ee71e40509eaa18938338b93b87253b094d730fbc94892fd74ad29b4ae
-src/native_season_bake.inl,590,ready_locked,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d5729baeed09e903260b62c7304d492a85aafbdf687d0f10a0c1955e5ba2b127
-src/native_season_bake.inl,591,wants,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,143b98ceab0fea4afcb9b7d377e764b6176cd8bacb7dbf90a20495746313743c
-src/native_season_bake.inl,595,swap_in,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,edceb89f1c7528330ddb081947fdb61ca7c3f096cfa38782b03c6ffe872f6a1e
-src/native_season_bake.inl,629,load_fx,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2cb6f638b4cd7e3a986beaed5447a325df89d1a69411a036a964e0e22c2b11ef
-src/native_season_bake.inl,660,scene_for,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,bc8367d482d4ba987c29597d1393c789f11e736cfe2523f48a8bb44f478f0f62
-src/native_season_bake.inl,680,run_rain,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c2b46a275e8c310031e61f71d1f34609a171bd33ec4e6083e6d998a1f25e86e3
-src/native_season_bake.inl,744,cloud_grab,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d52eccb857ba11b10251744052ec9ef29a5ad16fa366d0961a877b19525bd484
-src/native_season_bake.inl,768,cloud_touch,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1e088d82d8200f56006d30e596b30f42fd0c07ee2453706868a9ea492b447736
-src/native_season_bake.inl,772,run_cloud,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1458e979ed50aee81312e51bdbe6d9d5fe69588565732d0fe1ae9e8d64512c6d
-src/native_season_bake.inl,815,lit_end,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b4efc9a1a3f3e8542597539359b02f47dccfb12e8d0d25a1975b986af208a1b4
-src/native_season_bake.inl,822,after_draw,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d994e3b41f10deb9670a30b876c1a6dde593be820789fb02fc42ba1adb309ebe
-src/native_season_bake.inl,843,table_buffer,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,40ad35b4fbd05aeb39c9698b415be979e27a8a46a0007b3e51b5cfeda9d8f192
-src/native_season_bake.inl,849,hook_map,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1af0e3b2b4dc8920136bba5cb45e300a721eb6326ba880a4da5b86878d02a407
-src/native_season_bake.inl,856,hook_unmap,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,003053e28a93e48f1ca434ec9a2e1481ede6781397a74965e019e0629397f69c
-src/native_season_bake.inl,864,hook_update,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,bed333dae5c3a70f6f2fe2039f07c4ed070716ff098f7130fc075038a980cdf1
-src/native_season_bake.inl,872,hook_pss,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8381cae64826c6656c20698d9679373b55b599708f603a67889f6900c6371760
-src/native_season_bake.inl,892,hook_pssrv,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c77bbd337108029b484e630a898d7303c417e400f51fda2dd94502ccbed10604
-src/native_season_bake.inl,897,hook_pscb,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,6010242bc5579f244eb04606f7f46c77727f990b66c5c88088c911521328ef0e
-src/native_season_bake.inl,901,hook_omsetrt,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,6201be6bc23570add4bfd1fcb010a12d647192db227fbf9d6d8b95e377293d84
-src/native_season_bake.inl,904,hook_draw,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,71ac01578c2e170a84a414a15afef225649e5c525b03e57527f8b38527f85cd0
-src/native_season_bake.inl,905,hook_drawi,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,0298b3d92b53175800ee1b99ccc83235c27747c7f1ced718261c18d50318fe30
-src/native_season_bake.inl,906,hook_drawii,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f658721de503a730a67604d953149685abe305a911717f1b2091ce696237af84
-src/native_season_bake.inl,907,hook_drawinst,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,191935dba2a4fb7884127bbcce5c3ad28c83c82148ad12a306eba59d6f7ae86b
-src/native_season_bake.inl,908,hook_drawiii_b,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d344dd931e7d7e1c72806d3ed3f021bc84d0e543eee7c899e81e8f45ce2315fa
-src/native_season_bake.inl,909,hook_drawiind_b,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,fb1f59e052167d1eea5b0963b2c79c9c37f287875110ab593975a2bbf13de945
-src/native_season_bake.inl,921,hook_context,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9a4dccfd21ea70691a81ed39f5679f4fb42dfbc4d44ba813c856061491bab4b3
-src/native_season_bake.inl,937,unhook_context,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,af1d050d39f24276233e71537d774ea4b7bf66ed7429fc637d563a6748e368e1
-src/native_season_bake.inl,945,rain_diag,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,fd17d9091415d87e8b9ba34dbb67f462490e6ba53e198133325ec88f22b5cc7f
-src/native_season_bake.inl,965,fx_fetch,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b3164a7f4103423590825a7720ee8c59cebe63db897217de84c52c7bcb6b2504
-src/native_season_bake.inl,969,fx_frame,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,cc877b2f0c5aed3739ac6d5d07eee01e7f9437ac57499bcbe3e47904eb14a191
-src/native_season_bake.inl,986,frame,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e98885ade99d488342fdfe7a05516a668151fdadd9ad1e579939b682d9da2e0d
-src/native_season_bake.inl,1055,restore,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4deeff482035027a719771d53261b8929f6fce182408ac38a5f80b44137bb7ad
+src/native_season_bake.inl,177,ground_kind,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b0e86d9695d5d5197c1fc83c96e42cede888f85cc7511bbb1e2dea7c91235534
+src/native_season_bake.inl,182,shader_mode,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9ab24277f4503d4da6154f2fa38190ae3de08c717b47a3ab573628ec052c46d9
+src/native_season_bake.inl,188,lit_kind,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1a217d4283e15ebcc64f2e6897816f2cdbebbaf0dd06d834dc059bb8993ace59
+src/native_season_bake.inl,193,swap_slot,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9b11a8b57dbc640d3d5a6e0b4fb4c701097d163b99f6c5ade62de7b20406d5c2
+src/native_season_bake.inl,205,mat_on,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c35a5b66e7623c9c1c7cb95809c4b67d8a25904984fd58a5fd1eb941fe7b95bd
+src/native_season_bake.inl,210,mat_ready,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,a023f8dfbc1968806cd66488d5ac083c1724001648a6f68397063c723e047851
+src/native_season_bake.inl,212,rgb565,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4c00e8baf58675158654befcadca62238299baa31ac44881ae274a0b83f44ac7
+src/native_season_bake.inl,213,to565,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9c010f5502795f3b40501020828cc97df840bddafcf6ab54fcf7df252b536b18
+src/native_season_bake.inl,217,hash2,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b0acc75e1fa4eeb85ba7cb009893d33afbb5f8f600899e7c9670fd88714970de
+src/native_season_bake.inl,218,vnoise,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2be8222892af56df5e79b4e63478e749f1f7f5d1ddd082090fe22d1c1378454e
+src/native_season_bake.inl,224,fbm,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,cf4e02051083a02e6473f70b752e8127a48c032cccd1fab52be6caacf30a9aa7
+src/native_season_bake.inl,226,tfbm,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,78afdd8a960999ab16c2a85f42725c6b00ffda9e88ecbf73cf895f219a008ed7
+src/native_season_bake.inl,231,crack_edge,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5af16c598d89f3412f2cd2982fc915866605f7dc445f42abe8bb585b24c8289e
+src/native_season_bake.inl,242,palette,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8ba8e1107b6d863f7542bda1501ee4b68448aadc875c435c77a99dca4f95a00b
+src/native_season_bake.inl,266,recolor,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8ffeb79702e27e20a43cb0c3016eaacb8fef594d6b113e10b23e37a1146c6825
+src/native_season_bake.inl,284,mat_class,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2f4f476c2b9a177b3dbe93561262a030238a128f993e153a0833f68fc907f916
+src/native_season_bake.inl,296,mat_match,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,42d02e5ee5410425aea32bccd94f68b677557a5f9d11cad932ca4254ec20ac98
+src/native_season_bake.inl,300,mat_extend,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4af09cf4a785c79dc074f2fcd4a73b7dfdf748e59f54ecf44b2ab8cab1d38934
+src/native_season_bake.inl,315,mat_created,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7a11fa14d44c52c15b4569a3a679f921f64be0bebcfbc3989740f59661987785
+src/native_season_bake.inl,324,table_ok,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,bcfa49fea5bd109fe5d648839e66e4c1ecf2839de6c5bbd91864c48a1312aae4
+src/native_season_bake.inl,331,table_patch,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,33c0d205ed5009fd90f5d2d6c5043edf29254129b58825db35bd17b3636d8328
+src/native_season_bake.inl,355,create_buffer,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9b33cfcb90fb7cda57942a13a6facc554ebfacb7fa01ae91dc9524f26b584797
+src/native_season_bake.inl,368,create_srv,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d5e4515072710a5d9f6fd6f3b8a92e8132451d1b0d9498cf7ec58f708e8a21f0
+src/native_season_bake.inl,387,create_ps,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9012890a55debb242554c148bd7487e7649d782d4e015b96607a275f6fe49d39
+src/native_season_bake.inl,423,swap_ps,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,59a68089e7c14835c1df3dcffc1dd6214c6b2f3baf6be16ca2132957f3821f8b
+src/native_season_bake.inl,429,install_ps,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,fae9b584884236efbdcf4fa583ac463a71a6b5ad13211b9470bf3f02c7e639fd
+src/native_season_bake.inl,468,restore_ps,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,afd9c163b036980410d07d4b37a5aec0c2d749670f52f690fadd56ec149a25ed
+src/native_season_bake.inl,486,load_gpu,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,6abb62c96fdc74d90c4bb163a5ac8e95744f77f3fe6bc089e387466ef392481c
+src/native_season_bake.inl,525,turn_key,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,ebc28c0bc2d0bfb4bf71f685efbabd9c05c1312ada9dd6d5d9b3c879add87f53
+src/native_season_bake.inl,532,items_per_map,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e1c8d46540288317431b68770d7d19ec632d597f3c7cf36eae81d889ff567b32
+src/native_season_bake.inl,533,set_params,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,75d68bbe5535fb8f8ee2fefec89c814d17a92aa7269b67949d565c9219819a52
+src/native_season_bake.inl,549,Saved,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,0f4c52a5c33cb0d17ed83aab86246bb2ca52a244acaa6db9edb66fb87872e414
+src/native_season_bake.inl,572,locate,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c52219583023ebe82798a5346230727ef27255bde179c573800ced396dba58ec
+src/native_season_bake.inl,577,bake_item,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9babf1ee71e40509eaa18938338b93b87253b094d730fbc94892fd74ad29b4ae
+src/native_season_bake.inl,612,ready_locked,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d5729baeed09e903260b62c7304d492a85aafbdf687d0f10a0c1955e5ba2b127
+src/native_season_bake.inl,613,wants,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,143b98ceab0fea4afcb9b7d377e764b6176cd8bacb7dbf90a20495746313743c
+src/native_season_bake.inl,617,swap_in,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,edceb89f1c7528330ddb081947fdb61ca7c3f096cfa38782b03c6ffe872f6a1e
+src/native_season_bake.inl,651,load_fx,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2cb6f638b4cd7e3a986beaed5447a325df89d1a69411a036a964e0e22c2b11ef
+src/native_season_bake.inl,682,scene_for,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,bc8367d482d4ba987c29597d1393c789f11e736cfe2523f48a8bb44f478f0f62
+src/native_season_bake.inl,702,run_rain,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c2b46a275e8c310031e61f71d1f34609a171bd33ec4e6083e6d998a1f25e86e3
+src/native_season_bake.inl,766,cloud_grab,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d52eccb857ba11b10251744052ec9ef29a5ad16fa366d0961a877b19525bd484
+src/native_season_bake.inl,790,cloud_touch,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1e088d82d8200f56006d30e596b30f42fd0c07ee2453706868a9ea492b447736
+src/native_season_bake.inl,794,run_cloud,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1458e979ed50aee81312e51bdbe6d9d5fe69588565732d0fe1ae9e8d64512c6d
+src/native_season_bake.inl,837,lit_end,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b4efc9a1a3f3e8542597539359b02f47dccfb12e8d0d25a1975b986af208a1b4
+src/native_season_bake.inl,844,after_draw,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d994e3b41f10deb9670a30b876c1a6dde593be820789fb02fc42ba1adb309ebe
+src/native_season_bake.inl,865,table_buffer,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,40ad35b4fbd05aeb39c9698b415be979e27a8a46a0007b3e51b5cfeda9d8f192
+src/native_season_bake.inl,871,hook_map,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1af0e3b2b4dc8920136bba5cb45e300a721eb6326ba880a4da5b86878d02a407
+src/native_season_bake.inl,878,hook_unmap,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,003053e28a93e48f1ca434ec9a2e1481ede6781397a74965e019e0629397f69c
+src/native_season_bake.inl,886,hook_update,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e8a42bc70cca2f48363b3054577263ec960680d567a84174ea002982e878cb57
+src/native_season_bake.inl,894,hook_pss,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8381cae64826c6656c20698d9679373b55b599708f603a67889f6900c6371760
+src/native_season_bake.inl,914,hook_pssrv,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c77bbd337108029b484e630a898d7303c417e400f51fda2dd94502ccbed10604
+src/native_season_bake.inl,919,hook_pscb,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,6010242bc5579f244eb04606f7f46c77727f990b66c5c88088c911521328ef0e
+src/native_season_bake.inl,923,hook_omsetrt,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,6201be6bc23570add4bfd1fcb010a12d647192db227fbf9d6d8b95e377293d84
+src/native_season_bake.inl,926,hook_draw,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,71ac01578c2e170a84a414a15afef225649e5c525b03e57527f8b38527f85cd0
+src/native_season_bake.inl,927,hook_drawi,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,0298b3d92b53175800ee1b99ccc83235c27747c7f1ced718261c18d50318fe30
+src/native_season_bake.inl,928,hook_drawii,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f658721de503a730a67604d953149685abe305a911717f1b2091ce696237af84
+src/native_season_bake.inl,929,hook_drawinst,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,191935dba2a4fb7884127bbcce5c3ad28c83c82148ad12a306eba59d6f7ae86b
+src/native_season_bake.inl,930,hook_drawiii_b,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d344dd931e7d7e1c72806d3ed3f021bc84d0e543eee7c899e81e8f45ce2315fa
+src/native_season_bake.inl,931,hook_drawiind_b,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,fb1f59e052167d1eea5b0963b2c79c9c37f287875110ab593975a2bbf13de945
+src/native_season_bake.inl,943,hook_context,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,df41e36800a9484dc0f2701dd12bfcabaca6255d347961997cb9250fe899f217
+src/native_season_bake.inl,969,unhook_context,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,52b4749ff49c991c1b7271b370bd86ce8dabd08c24b0e3cec51f55bf88ad0f80
+src/native_season_bake.inl,983,rain_diag,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,fd17d9091415d87e8b9ba34dbb67f462490e6ba53e198133325ec88f22b5cc7f
+src/native_season_bake.inl,1003,fx_fetch,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b3164a7f4103423590825a7720ee8c59cebe63db897217de84c52c7bcb6b2504
+src/native_season_bake.inl,1007,fx_frame,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,cc877b2f0c5aed3739ac6d5d07eee01e7f9437ac57499bcbe3e47904eb14a191
+src/native_season_bake.inl,1024,frame,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e98885ade99d488342fdfe7a05516a668151fdadd9ad1e579939b682d9da2e0d
+src/native_season_bake.inl,1093,restore,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4deeff482035027a719771d53261b8929f6fce182408ac38a5f80b44137bb7ad
 src/native_season_probe.inl,10,bits,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,ecaa5159f4bfa8836a024504d2d02886f17429e73b2ca6c509f1b0fcf4a03fe9
 src/native_season_probe.inl,11,on,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,80aeda545b9fb5a331beac37e1a71ea8a95672bc395a59b90f5175e1ed5159cf
 src/native_season_probe.inl,15,now_ms,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f8adfb06d9eb3a3ccee98f00c29401e9d6301103b32d588a3bec2d04d1800b47
@@ -2491,10 +2495,10 @@ src/native_tactic_memory_save.inl,20,tactic_memory_record,정책·자료구조·
 src/native_tactic_memory_save.inl,30,tactic_memory_lookup,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,7ddb34d33ea0b81717711592279587c7c0d9144e6bc04025994c937cf36e0671
 src/native_tactic_memory_save.inl,39,tactic_memory_flag,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,98e532c67002a090c143bf94970042a34dc3e20881e8abdfac97efa79f7752a7
 src/native_tactic_memory_save.inl,46,tactic_memory_set_flag,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,564e1439a20d483978bdfe203f7417c52069b8c6e4eedd56fee198c6fccc443b
-src/native_tactic_memory_save.inl,54,tactic_memory_snapshot,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4f01cde65a7c8778653493513fc21f928e0c264ca795c320bf8a2f1b81aa2d08
-src/native_tactic_memory_save.inl,59,tactic_memory_path,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,607e07965a5c55597525200702262ebdded9d092c3455f4ce1dc27fabc2d5d0d
-src/native_tactic_memory_save.inl,62,tactic_memory_write_sidecar,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b787cc9ada1f4c5efb193d03d00549ade86d4e116a32056e29f0da2c73ff7eb4
-src/native_tactic_memory_save.inl,68,tactic_memory_restore_sidecar,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,aed5fdce8543cd1dd733034cd071b829601aebc9d3ad637eb5feaf61a1f1d064
+src/native_tactic_memory_save.inl,54,tactic_memory_snapshot,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,97f3d412651aeaff7c92dd935f3a89bf254ce6a67a35c13418e7f587a7d57a55
+src/native_tactic_memory_save.inl,60,tactic_memory_path,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,607e07965a5c55597525200702262ebdded9d092c3455f4ce1dc27fabc2d5d0d
+src/native_tactic_memory_save.inl,63,tactic_memory_write_sidecar,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b787cc9ada1f4c5efb193d03d00549ade86d4e116a32056e29f0da2c73ff7eb4
+src/native_tactic_memory_save.inl,69,tactic_memory_restore_sidecar,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,aed5fdce8543cd1dd733034cd071b829601aebc9d3ad637eb5feaf61a1f1d064
 src/native_tactic_priority.inl,33,catalog,시험 플레이어 출진 전법 우선순위,시험 기능; 설치기 기본 꺼짐,283305f17d9de133c1012b32bb26dbacb35598d295cadf48b9812c5fbbdfe71a
 src/native_tactic_priority.inl,38,publish,시험 플레이어 출진 전법 우선순위,시험 기능; 설치기 기본 꺼짐,7acb47ea054ac4ab5569cc789257d3f9d1e4f9f1a59d3624dbc7bf54993a11bb
 src/native_tactic_priority.inl,41,load_settings,시험 플레이어 출진 전법 우선순위,시험 기능; 설치기 기본 꺼짐,ce8b8fb9a683df96f0670790341af332161d8c9fd350657f098cde35912636e6
@@ -2997,14 +3001,14 @@ src/save_host.h,154,decode_manifest,정책·자료구조·저장 형식·공통 
 src/save_host.h,168,write_manifest,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,26ff24ff7be5b1eec0a504febf4e97c3a31ac2667ed295566e05e1c2ad394d4d
 src/save_host.h,175,read_manifest,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,ca50aea8e9c78c31b8691606a4dfc509965529e9e89f08a7cb7daa3fadcd07ae
 src/save_host.h,196,classify,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3e10604119028ebaef2ba0cac8eb3a4257285bcb1a2bdf4f259b8a407ab9e7eb
-src/save_host.h,206,snapshot_all,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e4224a76aabd41a0ec8a6b314f7836d654b961a4e5c9a044e7341bd9f0fda2b2
-src/save_host.h,209,begin_load_all,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8bcc0541b625c56dc690e588e4469d0141533fb9dcba231cd892877b34108e84
-src/save_host.h,212,ext_label,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,cd2f3b6a809a1cbc654dd91e9bdcc484fb79669f25b1e4f69167783a72e618f6
-src/save_host.h,216,fill_entry,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f13d284e38a59d41762d2e10d32dfebd43a1fde3c2e4c631289ebaca8b5c7b21
-src/save_host.h,222,save_all,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b68c54dc53b93f65519f0ddb11699e086d93efe5c93bed3249dd4476e4f4f4f8
-src/save_host.h,242,count_old_versions,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,40d612375f760fb0b1e9ac6116cc3bc79b120094e44f942a9d4973fbde8bbe57
-src/save_host.h,260,file_digest,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b2504021ebc16d43e66dc76249e8c333d43cdce794403e4ecd76a9754f3b27c5
-src/save_host.h,273,restore_all,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,22b63d93e0ea8c276dfeb4ebf5f18abf44da4766048ca92e6b484d9627052167
+src/save_host.h,210,snapshot_all,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3dbc461e5a0061fd9dfcb0804ec01bd2e6aaa6a0e11d627d8761bd99bb5e7114
+src/save_host.h,217,begin_load_all,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8bcc0541b625c56dc690e588e4469d0141533fb9dcba231cd892877b34108e84
+src/save_host.h,220,ext_label,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,cd2f3b6a809a1cbc654dd91e9bdcc484fb79669f25b1e4f69167783a72e618f6
+src/save_host.h,224,fill_entry,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f13d284e38a59d41762d2e10d32dfebd43a1fde3c2e4c631289ebaca8b5c7b21
+src/save_host.h,230,save_all,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,cd4f12b63ca95813204e7d052bffa022cfa2e8ffffa05ee3791040ddaca89201
+src/save_host.h,251,count_old_versions,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,40d612375f760fb0b1e9ac6116cc3bc79b120094e44f942a9d4973fbde8bbe57
+src/save_host.h,269,file_digest,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b2504021ebc16d43e66dc76249e8c333d43cdce794403e4ecd76a9754f3b27c5
+src/save_host.h,282,restore_all,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,22b63d93e0ea8c276dfeb4ebf5f18abf44da4766048ca92e6b484d9627052167
 src/season/season_bake.hlsl,8,register,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,df4edafe8b6689f594d63b597123b14b18f962a5fe622ef5082107e4b08a25ed
 src/season/season_bc.hlsl,6,register,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,8e537c4ab92d0fc9a7e801f3be3ec877b868373cd359b9b4ae283cffac1e6316
 src/season/season_bc.hlsl,7,pack565,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,511ef1cd79eb538f99ad18347a76bf7facc9e1ddb608caebc00ceb6c27e1e2d0
@@ -3204,41 +3208,41 @@ src/season/season_engine_v26.inc,535,flood_paint_s,정책·자료구조·저장 
 src/season/season_engine_v26.inc,548,flood_entry,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,41988ceab6d63facd38fe6e725cd8c07572fda1ffc59bd5b619da4044e11bd47
 src/season/season_engine_v26.inc,559,flood_food,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1857cb1825918481ac6a79aa98c64d31b2a024fcc00b5c7fb74c1604c47c8903
 src/season/season_engine_v26.inc,595,radd_place,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,36265bcb9951041df7bd2ea42b03653f6461d4c1329d4381f30fff761feecf10
-src/season/season_engine_v26.inc,603,minor_city,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,338826b4e941aa804b7420f9c7394e130773b94bac75fcbfd8ffd76b57e075b9
-src/season/season_engine_v26.inc,610,sr_minor_rivers,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,bd1380f918679fc33823ca135aa3ec5438fc0a3fb8af97b7210e1637089afbcd
-src/season/season_engine_v26.inc,662,minor_runoff,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,30442f58e9828848d7eb4eba8937ea3ba839de05a93caf7da71826546c56f42e
-src/season/season_engine_v26.inc,670,hydro_day,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1fadabb54ba8d9f217035fcaa83b8ca5b2f6d01836ccf0832193d43ec5db1784
-src/season/season_engine_v26.inc,687,ep_final,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c68a7d61d81aef28b8d38622318e489682a4a8fcbeef182b33a8a4fce9c7ce6a
-src/season/season_engine_v26.inc,695,ep_end,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,111660cd7704ef461083ea2412a45068850c40804b01a526168dedd2459b645d
-src/season/season_engine_v26.inc,703,stretch_set,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,a52a91a2d9eb8c711a4e1abc8bc12d5b73ed51a4a214d8d0808323d1ee7118e7
-src/season/season_engine_v26.inc,745,floods_day,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f7b05def0878fc2bb9d91843bbd4a66601ab4f19f8b7ed89c6c4801857238a20
-src/season/season_engine_v26.inc,767,floods_turn,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d4b1401af4eb14a5ebf687dd6c5fac0d3b441283878a3099725a4aa70c7ec7d5
-src/season/season_engine_v26.inc,793,force_flood,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2ecc130a03fcfd19fa873f16e2b9f47ced3beb8445ea0f0ff255002275e3a98e
-src/season/season_engine_v26.inc,801,slides_turn,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,70988cec0e0ef4c86877aedafcf8b31e73ff5efe62cd0169a804a7dc7d8c918c
-src/season/season_engine_v26.inc,822,drought_turn,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,0e907f09f776a7106d0b72ca90e1806386d9ad94fe82c894eafafd22cfd8d00f
-src/season/season_engine_v26.inc,859,state_build,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1ad9446695657f1b1b795f72c5e4381eadc6db028965a9f9e76735f0c4798fe4
-src/season/season_engine_v26.inc,882,grid_params,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,19771bedb1d1f0d311131f050df3ac2ef27d08c97f9f0c61521b07dcb30dcf34
-src/season/season_engine_v26.inc,893,cell_wx,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,fbb41a7a09b34e3f2f9c902c0be9d785307125b44b36fbf1407b238cf4b38ba5
-src/season/season_engine_v26.inc,898,weather_write,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,71e6d0a2eb5c5a7d9d5f0883776d3b525285d141a1cdc1d7a8f0f5d021513c2f
-src/season/season_engine_v26.inc,945,perf_path,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,715d4ab198c008ec09c21b12c0880aeafd0dae3b4ee0a24cded56958abc1357e
-src/season/season_engine_v26.inc,946,perf_save,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,0ccbf94191180c1800c2e527de9ebddd499608340b9f515803d3ae9243ca6f6c
-src/season/season_engine_v26.inc,952,perf_load,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,609cd880534780533ffb18e81519f5144e8a40c77d973db129d7c88611b094d0
-src/season/season_engine_v26.inc,962,rain_calibrate,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f39a9f8436e2d894c4e871cd2e698f96bdb4d5db42194953f1bcf1e3205d2d29
-src/season/season_engine_v26.inc,995,wl_watch,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,addf877c4ba8df834f59b7cc0c8c3e6157f6c5b8a7ed32374f299b08c5b32b3c
-src/season/season_engine_v26.inc,1036,pf_set,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e6006f35aae5ce6e8d995d3f8ee9a3f126b40cc5bd0e11184de223989908dfd1
-src/season/season_engine_v26.inc,1037,perf_summary,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c439736e20f435ae0dbcd831ae29ef2576c229189a4f5087e55ad2c00e88b85b
-src/season/season_engine_v26.inc,1051,perf_ab,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,6a168725eb9ed456fb71bba104819017aaecfab2d99dfc9a97d62bf994b3d0a6
-src/season/season_engine_v26.inc,1090,perf_ab,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3b3b8704187d25f94fdf836c3e54719f969eb7bf6de4ee36cc50b8cfae60ed5d
-src/season/season_engine_v26.inc,1100,diag_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e470e93d567b45989a45469bbc82bd7e1f7bce5890dc80bca283ba034f3095a2
-src/season/season_engine_v26.inc,1157,diag_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,48e3ddfe6403fe502040d705dfc57e01776388db9027ef0fac34f7ee0e2538ae
-src/season/season_engine_v26.inc,1165,FireRateHook,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5e56b743b747e8a129b2c47446c1cd548aaaa9112ab8bb6d94759d70f2a8c372
-src/season/season_engine_v26.inc,1175,install_firerate,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5b8622c5d4df0880c7f348f0df36855a132fd27a70d0a08ae68b6b84a911e910
-src/season/season_engine_v26.inc,1193,game_fires_day,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9ceccd3a41856ee58a0ed0e1cbdcf49837003fcc336179ccc37bf0ea188363f9
-src/season/season_engine_v26.inc,1205,force_rain_at,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b2d31f45663c41aa32395f5c25fcb99b63380c51943d55d224c3d88dcf39e592
-src/season/season_engine_v26.inc,1211,force_fire_size,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3bfa5ae084ad0fd46b52467dd078493c589b9225b6b25193846bb7ce6b9f8aa6
-src/season/season_engine_v26.inc,1229,flood_rings,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,404213f91430a9747eb803444fcb46a8371de38bd8028a5af7eecbd579b4cd5e
-src/season/season_engine_v26.inc,1266,engine_load,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,32f5d5fc8a58d2d183b4e2a249828c9acc6e2a35b62e948010c22dae079e53ec
-src/season/season_engine_v26.inc,1283,engine_reset,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4f5ba26cc04b4f91488871190229a42969ead340f4688fdd0ceb9508956defea
+src/season/season_engine_v26.inc,603,minor_city,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b8a7a0b43cbca884f7044454ab9e340b7d372eeefcbf59ee1c39c067bf2e48df
+src/season/season_engine_v26.inc,611,sr_minor_rivers,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,47ab1211f12e6900427ddcb0ee2ee69c9e732caff34d1de414d6326e7937a7a3
+src/season/season_engine_v26.inc,673,minor_runoff,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,30442f58e9828848d7eb4eba8937ea3ba839de05a93caf7da71826546c56f42e
+src/season/season_engine_v26.inc,681,hydro_day,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1fadabb54ba8d9f217035fcaa83b8ca5b2f6d01836ccf0832193d43ec5db1784
+src/season/season_engine_v26.inc,698,ep_final,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c68a7d61d81aef28b8d38622318e489682a4a8fcbeef182b33a8a4fce9c7ce6a
+src/season/season_engine_v26.inc,706,ep_end,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,111660cd7704ef461083ea2412a45068850c40804b01a526168dedd2459b645d
+src/season/season_engine_v26.inc,714,stretch_set,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,a52a91a2d9eb8c711a4e1abc8bc12d5b73ed51a4a214d8d0808323d1ee7118e7
+src/season/season_engine_v26.inc,756,floods_day,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f7b05def0878fc2bb9d91843bbd4a66601ab4f19f8b7ed89c6c4801857238a20
+src/season/season_engine_v26.inc,778,floods_turn,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,d4b1401af4eb14a5ebf687dd6c5fac0d3b441283878a3099725a4aa70c7ec7d5
+src/season/season_engine_v26.inc,804,force_flood,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,2ecc130a03fcfd19fa873f16e2b9f47ced3beb8445ea0f0ff255002275e3a98e
+src/season/season_engine_v26.inc,812,slides_turn,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,70988cec0e0ef4c86877aedafcf8b31e73ff5efe62cd0169a804a7dc7d8c918c
+src/season/season_engine_v26.inc,833,drought_turn,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,0e907f09f776a7106d0b72ca90e1806386d9ad94fe82c894eafafd22cfd8d00f
+src/season/season_engine_v26.inc,870,state_build,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1ad9446695657f1b1b795f72c5e4381eadc6db028965a9f9e76735f0c4798fe4
+src/season/season_engine_v26.inc,893,grid_params,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,19771bedb1d1f0d311131f050df3ac2ef27d08c97f9f0c61521b07dcb30dcf34
+src/season/season_engine_v26.inc,904,cell_wx,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,fbb41a7a09b34e3f2f9c902c0be9d785307125b44b36fbf1407b238cf4b38ba5
+src/season/season_engine_v26.inc,909,weather_write,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,71e6d0a2eb5c5a7d9d5f0883776d3b525285d141a1cdc1d7a8f0f5d021513c2f
+src/season/season_engine_v26.inc,956,perf_path,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,715d4ab198c008ec09c21b12c0880aeafd0dae3b4ee0a24cded56958abc1357e
+src/season/season_engine_v26.inc,957,perf_save,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,0ccbf94191180c1800c2e527de9ebddd499608340b9f515803d3ae9243ca6f6c
+src/season/season_engine_v26.inc,963,perf_load,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,609cd880534780533ffb18e81519f5144e8a40c77d973db129d7c88611b094d0
+src/season/season_engine_v26.inc,973,rain_calibrate,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,f39a9f8436e2d894c4e871cd2e698f96bdb4d5db42194953f1bcf1e3205d2d29
+src/season/season_engine_v26.inc,1006,wl_watch,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,addf877c4ba8df834f59b7cc0c8c3e6157f6c5b8a7ed32374f299b08c5b32b3c
+src/season/season_engine_v26.inc,1047,pf_set,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e6006f35aae5ce6e8d995d3f8ee9a3f126b40cc5bd0e11184de223989908dfd1
+src/season/season_engine_v26.inc,1048,perf_summary,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,c439736e20f435ae0dbcd831ae29ef2576c229189a4f5087e55ad2c00e88b85b
+src/season/season_engine_v26.inc,1062,perf_ab,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,6a168725eb9ed456fb71bba104819017aaecfab2d99dfc9a97d62bf994b3d0a6
+src/season/season_engine_v26.inc,1101,perf_ab,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3b3b8704187d25f94fdf836c3e54719f969eb7bf6de4ee36cc50b8cfae60ed5d
+src/season/season_engine_v26.inc,1111,diag_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,e470e93d567b45989a45469bbc82bd7e1f7bce5890dc80bca283ba034f3095a2
+src/season/season_engine_v26.inc,1168,diag_tick,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,48e3ddfe6403fe502040d705dfc57e01776388db9027ef0fac34f7ee0e2538ae
+src/season/season_engine_v26.inc,1176,FireRateHook,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5e56b743b747e8a129b2c47446c1cd548aaaa9112ab8bb6d94759d70f2a8c372
+src/season/season_engine_v26.inc,1186,install_firerate,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5b8622c5d4df0880c7f348f0df36855a132fd27a70d0a08ae68b6b84a911e910
+src/season/season_engine_v26.inc,1204,game_fires_day,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,9ceccd3a41856ee58a0ed0e1cbdcf49837003fcc336179ccc37bf0ea188363f9
+src/season/season_engine_v26.inc,1216,force_rain_at,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,b2d31f45663c41aa32395f5c25fcb99b63380c51943d55d224c3d88dcf39e592
+src/season/season_engine_v26.inc,1222,force_fire_size,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,3bfa5ae084ad0fd46b52467dd078493c589b9225b6b25193846bb7ce6b9f8aa6
+src/season/season_engine_v26.inc,1240,flood_rings,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,404213f91430a9747eb803444fcb46a8371de38bd8028a5af7eecbd579b4cd5e
+src/season/season_engine_v26.inc,1277,engine_load,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,32f5d5fc8a58d2d183b4e2a249828c9acc6e2a35b62e948010c22dae079e53ec
+src/season/season_engine_v26.inc,1294,engine_reset,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,4f5ba26cc04b4f91488871190229a42969ead340f4688fdd0ceb9508956defea
 src/season/season_rain.hlsl,19,register,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,1118fcdd6b0e81ac96cc4b38e7eb2b8baeca545e965003c230f9c9c04698969b
 src/season/season_rain.hlsl,28,gridInit,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,5329dcd7b2d83acb2195b5e9ba2c19d31ed692b45d3a3941a296419c8b8301fd
 src/season/season_rain.hlsl,34,sanSH,정책·자료구조·저장 형식·공통 보조 함수,현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단,ee7684c522da30ef882fcadbb7813ea2086e83dfc55af50922531e2f8b4f3c40

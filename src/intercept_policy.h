@@ -32,6 +32,75 @@ inline bool behind(unsigned center,unsigned attacker,unsigned hex) {
 // without building and army). The stand is one of them on the far side from the nearest attacker (farther from it
 // than the gate center), never next to any attacker, and as near that attacker as possible so the 안행 reaches it over
 // the gate; ties go to the exact mirror of the attacker, then to the lower hex. none = no stand.
+// local179 (user 2026-11-15 "어떤 관문들은 관문헥스하고 인접한 칸이 1개가 아니라 여러개일 수 있어. 그걸 감지해서 그 헥스타일에
+// 안행진을 더 배치", then "관문칸에 안행진으로 공격가능한 헥스는 동관은 저렇게 3칸이고 양평관, 검각은 1칸"): every stand pick()
+// accepts, in pick()'s order but with the attack stands first (out may be null to count only); *front = the attack stands,
+// one 안행 unit each. An attack stand lies across the gate from every attacker - the gate and impassable ground split
+// the free hexes around it into sides (hexes linked through touching free hexes), an attacker's side being the one of the
+// free hex(es) nearest to it - and within kRanged of an attacker. Checked on the original map (MapExCe.bin, terrain 17
+// = gate tiles): 동관 3 (one attacker; 4 hexes touch its west wall), 양평관 1, 검각 1.
+constexpr int kRanged=2;   // 안행 reach over the gate (assumed from the gate geometry above, not read from the game)
+inline unsigned ranked(unsigned center,const unsigned *attackers,unsigned attacker_count,const unsigned *open,unsigned open_count,
+                       unsigned *out,unsigned limit,unsigned *front=nullptr) {
+    if(front)*front=0;
+    if(center>=none || !attackers || !attacker_count || !open)return 0;
+    unsigned nearest=none;int range=0;
+    for(unsigned i=0;i<attacker_count;++i) {
+        if(attackers[i]>=none)continue;
+        const int d=distance(center,attackers[i]);
+        if(nearest==none || d<range || (d==range && attackers[i]<nearest)) {nearest=attackers[i];range=d;}
+    }
+    if(nearest==none)return 0;
+    const unsigned opposite=mirror(center,nearest);
+    constexpr unsigned kMax=64;unsigned hex[kMax];int reach[kMax],to_opposite[kMax];unsigned count=0;
+    for(unsigned k=0;k<open_count && count<kMax;++k) {
+        const unsigned h=open[k];if(h>=none || h==center)continue;
+        const int r=distance(h,nearest);
+        if(r<=range)continue;   // the attacker's side of the gate
+        bool contact=false,seen=false;
+        for(unsigned i=0;i<attacker_count && !contact;++i)contact=attackers[i]<none && distance(h,attackers[i])<=1;
+        for(unsigned j=0;j<count && !seen;++j)seen=hex[j]==h;
+        if(contact || seen)continue;
+        const int o=opposite<none?distance(h,opposite):0;
+        unsigned at=count;   // insertion by (reach, distance to the mirror, hex)
+        while(at>0 && (r<reach[at-1] || (r==reach[at-1] && (o<to_opposite[at-1] || (o==to_opposite[at-1] && h<hex[at-1]))))) {
+            hex[at]=hex[at-1];reach[at]=reach[at-1];to_opposite[at]=to_opposite[at-1];--at;
+        }
+        hex[at]=h;reach[at]=r;to_opposite[at]=o;++count;
+    }
+    // Sides of all free hexes (not only the accepted ones): labels by touching free hexes.
+    unsigned side[kMax];unsigned all[kMax];unsigned all_count=0;
+    for(unsigned k=0;k<open_count && all_count<kMax;++k) {
+        const unsigned h=open[k];if(h>=none || h==center)continue;
+        bool seen=false;for(unsigned j=0;j<all_count && !seen;++j)seen=all[j]==h;
+        if(!seen) {side[all_count]=all_count;all[all_count++]=h;}
+    }
+    for(bool changed=true;changed;) {
+        changed=false;
+        for(unsigned i=0;i<all_count;++i)for(unsigned j=0;j<all_count;++j)
+            if(side[j]<side[i] && distance(all[i],all[j])==1) {side[i]=side[j];changed=true;}
+    }
+    auto side_of=[&](unsigned h) {for(unsigned j=0;j<all_count;++j)if(all[j]==h)return side[j];return kMax;};
+    bool attacker_side[kMax]={};
+    for(unsigned i=0;i<attacker_count;++i) {
+        if(attackers[i]>=none)continue;
+        int nearest_open=-1;
+        for(unsigned j=0;j<all_count;++j) {const int d=distance(all[j],attackers[i]);if(nearest_open<0 || d<nearest_open)nearest_open=d;}
+        for(unsigned j=0;j<all_count;++j)if(distance(all[j],attackers[i])==nearest_open)attacker_side[side[j]]=true;
+    }
+    unsigned attack[kMax],rest[kMax],attack_count=0,rest_count=0;
+    for(unsigned j=0;j<count;++j) {
+        const unsigned s=side_of(hex[j]);
+        bool in_reach=false;
+        for(unsigned i=0;i<attacker_count && !in_reach;++i)in_reach=attackers[i]<none && distance(hex[j],attackers[i])<=kRanged;
+        if(s<kMax && !attacker_side[s] && in_reach)attack[attack_count++]=hex[j];else rest[rest_count++]=hex[j];
+    }
+    for(unsigned j=0;j<attack_count;++j)hex[j]=attack[j];
+    for(unsigned j=0;j<rest_count;++j)hex[attack_count+j]=rest[j];
+    if(front)*front=attack_count;
+    for(unsigned j=0;out && j<count && j<limit;++j)out[j]=hex[j];
+    return count<limit || !out?count:limit;
+}
 inline unsigned pick(unsigned center,const unsigned *attackers,unsigned attacker_count,const unsigned *open,unsigned open_count) {
     if(center>=none || !attackers || !attacker_count || !open)return none;
     unsigned nearest=none;int range=0;

@@ -53,7 +53,8 @@ static void tactic_memory_check_world() {
 }
 [[maybe_unused]] static void tactic_memory_snapshot() {
     AcquireSRWLockExclusive(&tactic_memory_lock);
-    tactic_memory_check_world();tactic_memory_saved=tactic_memory_live;
+    try {tactic_memory_check_world();tactic_memory_saved=tactic_memory_live;}
+    catch(...) {ReleaseSRWLockExclusive(&tactic_memory_lock);throw;}   // review CR-11: never leave the lock held (save_host isolates the throw)
     ReleaseSRWLockExclusive(&tactic_memory_lock);
 }
 static bool tactic_memory_path(const merit::SaveCoordinator::Completed &job,wchar_t *path,bool create) {

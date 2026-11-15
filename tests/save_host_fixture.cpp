@@ -28,7 +28,7 @@ static Binding binding_of(unsigned seed) {Binding b={};for(unsigned i=0;i<32;++i
 // ---- fake plugins: each keeps a "live" string it writes and restores from its file
 struct Fake {
     const char *label;std::wstring ext;std::string live;std::string restored;SidecarCache cache;
-    bool active=true,throws=false,fail=false;unsigned writes=0,restores=0;
+    bool active=true,throws=false,fail=false,snap_throws=false;unsigned writes=0,restores=0;
 };
 static Fake fakes[3];
 static std::vector<std::string> calls;
@@ -50,13 +50,13 @@ template<unsigned I> static bool fake_restore(const Job *job) {
     f.restored=text;return true;
 }
 template<unsigned I> static bool fake_active() {return fakes[I].active;}
-template<unsigned I> static void fake_snapshot() {calls.push_back(std::string("snapshot:")+fakes[I].label);}
+template<unsigned I> static void fake_snapshot() {calls.push_back(std::string("snapshot:")+fakes[I].label);if(fakes[I].snap_throws)throw std::bad_alloc();}
 template<unsigned I> static void fake_begin() {calls.push_back(std::string("begin:")+fakes[I].label);}
 #define FAKE(I,NAME,EXT) {NAME,EXT,1,"ok_" NAME,"fail_" NAME,&fake_active<I>,&fake_snapshot<I>,&fake_write<I>,&fake_begin<I>,&fake_restore<I>}
 static const SidecarPlugin plugin_a=FAKE(0,"a",L"aaa"),plugin_b=FAKE(1,"b",L"bbb"),plugin_c=FAKE(2,"c",L"ccc");
 static Plugins<4> list;
 static void reset_fakes() {
-    for(auto &f:fakes) {f.live.clear();f.restored.clear();f.cache.clear();f.active=true;f.throws=false;f.fail=false;f.writes=0;f.restores=0;}
+    for(auto &f:fakes) {f.live.clear();f.restored.clear();f.cache.clear();f.active=true;f.throws=false;f.fail=false;f.snap_throws=false;f.writes=0;f.restores=0;}
     fakes[0].label="a";fakes[0].ext=L"aaa";fakes[1].label="b";fakes[1].ext=L"bbb";fakes[2].label="c";fakes[2].ext=L"ccc";
     fakes[0].live="OK:a";fakes[1].live="OK:b";fakes[2].live="OK:c";
     calls.clear();events.clear();fail_step=0;
@@ -172,6 +172,19 @@ int main() {
     reset_fakes();remove_all(job);fakes[0].throws=true;
     save_all(list,module(),job,&record);
     check(fakes[1].writes==1 && fakes[2].writes==1 && has_event("fail_a"),"throwing plugin never stops the next one");
+    // review CR-11: a throwing snapshot is isolated (the others still snapshot), that plugin is not written this save (FAILED)
+    {
+        reset_fakes();remove_all(job);fakes[1].snap_throws=true;
+        bool escaped=false;unsigned failed=0;
+        try {failed=snapshot_all(list);} catch(...) {escaped=true;}
+        check(!escaped && failed==2u,"snapshot exception stays inside the host (bit of plugin b)");
+        check(calls==std::vector<std::string>({"snapshot:a","snapshot:b","snapshot:c"}),"the plugins after a throwing snapshot still snapshot");
+        calls.clear();save_all(list,module(),job,&record);
+        check(fakes[1].writes==0 && fakes[0].writes==1 && fakes[2].writes==1,"the plugin whose snapshot failed is not written");
+        std::vector<Entry> entries;check(read_manifest(module(),job,entries) && entries.size()==3 && entries[1].state==kFailed && entries[0].state==kWritten,"manifest records FAILED for it");
+        check(has_event("sidecar_snapshot_failed:1,0,0") && has_event("fail_b"),"snapshot failure logged");
+        reset_fakes();check(snapshot_all(list)==0 && snapshot_failed==0,"the next clean snapshot clears the failure");
+    }
     // absent_failed: manifest says written, file gone
     reset_fakes();remove_all(job);save_all(list,module(),job,&record);
     {wchar_t f[MAX_PATH];path(module(),job,L"bbb",f,MAX_PATH,false);DeleteFileW(f);}

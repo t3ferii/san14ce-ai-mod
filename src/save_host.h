@@ -203,8 +203,16 @@ inline Load classify(const Entry *entry,bool file_exists,bool file_ok,const Bind
 }
 // ---------------------------------------------------------------- host phases (called from the native save/load host hooks)
 using Log=void (*)(const char *,unsigned,unsigned,unsigned);
-template<unsigned N> static void snapshot_all(const Plugins<N> &plugins) {
-    for(unsigned i=0;i<plugins.count;++i)if(plugins.rows[i]->snapshot)plugins.rows[i]->snapshot();
+// Review CR-11 (2026-11-15): a throwing snapshot never leaves the game's save callback. Each plugin is isolated; a plugin whose
+// snapshot of this save failed is not written in phase 3 (manifest state FAILED) instead of writing a stale or half-copied snapshot.
+// The native .s14 save runs as before.
+static unsigned snapshot_failed;   // bit per plugin row of the last snapshot_all
+template<unsigned N> static unsigned snapshot_all(const Plugins<N> &plugins) {
+    unsigned failed=0;
+    for(unsigned i=0;i<plugins.count;++i)if(plugins.rows[i]->snapshot) {
+        try {plugins.rows[i]->snapshot();} catch(...) {failed|=1u<<i;}
+    }
+    snapshot_failed=failed;return failed;
 }
 template<unsigned N> static void begin_load_all(const Plugins<N> &plugins) {
     for(unsigned i=0;i<plugins.count;++i)if(plugins.rows[i]->begin_load)plugins.rows[i]->begin_load();
@@ -225,6 +233,7 @@ template<unsigned N> static void save_all(const Plugins<N> &plugins,HMODULE modu
         const SidecarPlugin &p=*plugins.rows[i];
         Written w;
         if(p.active && !p.active())w.state=kOff;
+        else if(snapshot_failed&(1u<<i)) {w.state=kFailed;if(p.log_fail && log)log(p.log_fail,0,0,0);if(log)log("sidecar_snapshot_failed",i,0,0);}
         else {
             bool ok=false;
             try {ok=p.write(job,w);} catch(...) {ok=false;}

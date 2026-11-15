@@ -1,6 +1,6 @@
 {
   "snapshot_date": "2026-11-15",
-  "type": "v16.1 public build source",
+  "type": "v16.2 public build source",
   "ai_contract_comments": 19,
   "cpp_files_token_equal": true,
   "assets_not_included": [
@@ -9,11 +9,11 @@
     "assets/ccz/preview_classes.png",
     "data/ (game-derived tables, 4계절 payload)"
   ],
-  "manifest_scope": "Every git-tracked text file of the v16.1 build plus assets/ccz metadata, as staged (LF); excludes this manifest and repository-only files",
+  "manifest_scope": "Every git-tracked text file of the v16.2 build plus assets/ccz metadata, as staged (LF); excludes this manifest and repository-only files",
   "files": [
     {
       "path": "AGENTS.md",
-      "sha256": "b54031dbf61336eb7e32049b3dd0fecfe58279045064bd5f1297fd74e33037c3"
+      "sha256": "d931463bc8952dbc0cba80daa7a7d899d1acb8bc8cf255e9fd7727f6a62e8863"
     },
     {
       "path": "AI모드_적용.cmd",
@@ -29,7 +29,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "7e9f70581bdbe1dbc5ef7a76e10415b9055042c1892d0934f7ffba8df51dd840"
+      "sha256": "0019d2eb3db1800d30701d579b681a49448412a2ca69d79c9fd868c29dacd248"
     },
     {
       "path": "SplitManage.ps1",
@@ -49,11 +49,11 @@
     },
     {
       "path": "development/FUNCTION_AUDIT.md",
-      "sha256": "c41ffed0cb21d6e7c7f8c27fd83e064ecd48c08e2b4e060be1c30d6f45af21d1"
+      "sha256": "70651042594ccb0f00a0185094ba1dcac1e83c6d554982050c457864144ccfa7"
     },
     {
       "path": "development/FUNCTION_INDEX.csv",
-      "sha256": "b41fd216e3b7fcea1d3e3bb773263d16e846a1de7e730afaadcc4cef23649462"
+      "sha256": "e6cde7ed4cf2f20b39f2966785cdb74dbb6239d8115dcc680ba640dd762bbb0b"
     },
     {
       "path": "development/HANDOFF_U35_LAG.md",
@@ -473,7 +473,7 @@
     },
     {
       "path": "development/source_audit.json",
-      "sha256": "e79d1262b09e72030b9ec7a2a3647b390e8e60a6ade1c7b08f42793fe768a6eb"
+      "sha256": "e0b96392c384326e742f3ab21a0c2812aa07616f08b0e0cd7211e93ab5165e47"
     },
     {
       "path": "distribution/Diagnose.ps1",
@@ -557,7 +557,7 @@
     },
     {
       "path": "docs/CHANGES_ALL.md",
-      "sha256": "e84a824d0b3d8ad776285486839248c73ec849b186161bdf2d291c66d81c3b91"
+      "sha256": "80468451b48d67e1c7726a8ab137b40f60ea6503325256b7dd7c2fef77fbe4b2"
     },
     {
       "path": "docs/CHECKS.md",
@@ -656,12 +656,16 @@
       "sha256": "0d17dedf652dbec99530e31c029dfd4fe8a44a5b104b35046d65d93123b54cbb"
     },
     {
+      "path": "docs/MOD_CHANGES_VS_ORIGINAL.md",
+      "sha256": "ee7ec5ec80da9ad885a41e2b45bbd77851a7c9a143001c70a8516fce1ea4e38c"
+    },
+    {
       "path": "docs/MOD_COMPATIBILITY.md",
       "sha256": "04caaaa31a56b81a9cc855c13746847c9d909254c80e1c46d2a4918cc4ab924a"
     },
     {
       "path": "docs/MOD_DEV_LESSONS.md",
-      "sha256": "9fd8a5404a675128000d43d4f0f36431192878fe02a120f5620ac42e3d8096a7"
+      "sha256": "1b431b88fae299423bf0ed5a7c825cc50b5a4306404a3faad47e23085fa19de9"
     },
     {
       "path": "docs/MOD_MANAGER_DESIGN.md",
@@ -685,15 +689,15 @@
     },
     {
       "path": "docs/PUBLISH.md",
-      "sha256": "dc1505c90fc4e2b485855e170818311b4bb4938add694286e221eb3b00a84a68"
+      "sha256": "8d6d80fc4e58a54eb6f7c6a21974bb46550627e712c07d5ffdce141b8fccc922"
     },
     {
       "path": "docs/README.md",
-      "sha256": "2f73c53e48c5cc9cb7bfdc41d5d6f466d307c8af6be595fd29deafd6ab14b5f8"
+      "sha256": "a35bebd3ae3f9febf49855fc7cd0d9aca6c5b6fbb090602f64d75b13d138601e"
     },
     {
       "path": "docs/REFERENCE_MODS.md",
-      "sha256": "a9bd34a02498592394878b71e66ff95fd5d12d71c5f2007e6071b20e38b68a6b"
+      "sha256": "5e3d3985fde7bf720f69f9ea0654d85fe79c2298df5fef75fa7644024f2e77db"
     },
     {
       "path": "docs/REGION_OFFICERS.md",
@@ -701,7 +705,7 @@
     },
     {
       "path": "docs/RELEASE_NOTES.md",
-      "sha256": "8e1273c3d6096144e3fc6dce156f90869303fef7c0c376fe3e6932c98ecc93d4"
+      "sha256": "a072a44cefb27fc335a9aeb3c31225b3afeb92fb8129775230082d1c18219835"
     },
     {
       "path": "docs/SESSION_RULES.md",
@@ -798,6 +802,10 @@
     {
       "path": "docs/references/integrated_patch_merit_gacha.md",
       "sha256": "dcd2f772e1b442d910fdb22285c959a38f9e34936c6f1addd12f505d96a31504"
+    },
+    {
+      "path": "docs/references/sam123123_modpack_compat.md",
+      "sha256": "c25eac0ea3b012019f35da90837ae31e3dcc40ce68ca1607f0e4c058ce11ba4b"
     },
     {
       "path": "docs/읽어주세요.txt",
@@ -1037,7 +1045,7 @@
     },
     {
       "path": "src/intercept_policy.h",
-      "sha256": "06e3ff38dfdef686460b5dbe21ec1f07eba6dd426d4b0895f831db0d12d84a7b"
+      "sha256": "c02e485387655fc5073b8788a460e477acfd5d2bc6881dee9390ff8709911e09"
     },
     {
       "path": "src/layout_api.h",
@@ -1145,7 +1153,7 @@
     },
     {
       "path": "src/native_ai_nodes.inl",
-      "sha256": "3a5fd8b15f89ceebeccbd2d71eedaa1d0aedac2a3fbc7a72af9ede649fb11c31"
+      "sha256": "818a5c1a760931c06555f17afb5a0bf5621e1542319dd1a9e5680ff953262d61"
     },
     {
       "path": "src/native_ai_trace.inl",
@@ -1197,7 +1205,7 @@
     },
     {
       "path": "src/native_campaign.inl",
-      "sha256": "2c86e6609ad68022c135655156cc67effa9a8d89de3b6a6cc98b778128289c67"
+      "sha256": "613c7f0f91155b9261f778da0b4ef723aaaaefa2357eb508aef09ac3a21e8996"
     },
     {
       "path": "src/native_campaign_assault.inl",
@@ -1341,7 +1349,7 @@
     },
     {
       "path": "src/native_layout_ui.inl",
-      "sha256": "25431f5abc2a743faf4f1baafbb2834fed9e91aa316d6f2ed1e3ba0bad02d47c"
+      "sha256": "7f59fabe61216bcc63600d5afd070433c6e5b9e56427491de43404edd2e444b2"
     },
     {
       "path": "src/native_layout_wait.inl",
@@ -1365,7 +1373,7 @@
     },
     {
       "path": "src/native_merit_save.inl",
-      "sha256": "21949934f67449b2ab2cd47e27ec5c86c9704287603db082ba3631d4105b92dd"
+      "sha256": "64cfc20014aeb455558b276513ab2598d7a32ff73916c7b00056fe72c7cca111"
     },
     {
       "path": "src/native_merit_scroll.inl",
@@ -1393,7 +1401,7 @@
     },
     {
       "path": "src/native_officer_rotation.inl",
-      "sha256": "bcce05895ba93d5a71f2e9178b9be95fe96d1bdf2c4aac36f5b48a8db5f5c238"
+      "sha256": "f4190bb4135a1203bab86ae75473b6faeb06b1517a5785a1b17b77b5593c67db"
     },
     {
       "path": "src/native_path_count.inl",
@@ -1433,7 +1441,7 @@
     },
     {
       "path": "src/native_recruit_ui.inl",
-      "sha256": "b5d4570f91e1184ef492ab1f46db8999ff3acaeeb2dd9584caea4bb4703f9ea4"
+      "sha256": "38e345fb9c825f2396d97267268f1d7ec12bed084ab6b266193626649162a673"
     },
     {
       "path": "src/native_region_officer_traits.inl",
@@ -1453,7 +1461,7 @@
     },
     {
       "path": "src/native_season_bake.inl",
-      "sha256": "fdd33be7c344df8fb074ec79ca68bdf789439465eef6762aa56be9e73d3034ca"
+      "sha256": "1d317555a5f34d1e9c52525ede4fa1eb19085ef89dc4a9a13621d75ec82e6a53"
     },
     {
       "path": "src/native_season_probe.inl",
@@ -1461,7 +1469,7 @@
     },
     {
       "path": "src/native_siege_guard.inl",
-      "sha256": "7caa537ec489376264bfc5eb7777a7d0ff9398b934773159f389f68150caea78"
+      "sha256": "385b009abb52e1496f2a81b2394cb7dc3f50f1fb6773f761c4f0ddb826f077cd"
     },
     {
       "path": "src/native_sortie.inl",
@@ -1485,7 +1493,7 @@
     },
     {
       "path": "src/native_tactic_memory_save.inl",
-      "sha256": "7934e51e74cf0823bb20ed1f6890dc4535d636e991cdf1d0da0122345ce55d9c"
+      "sha256": "a7f2c71a75eceaf16bcf986fc76d3b37e67429c54d6cd9e2442561c909b39f81"
     },
     {
       "path": "src/native_tactic_priority.inl",
@@ -1593,7 +1601,7 @@
     },
     {
       "path": "src/save_host.h",
-      "sha256": "31cd6ecd8fbaca6fce1b167a57cbaef57f3ff3f853d0c1cf032cf7ffa8ab3ad3"
+      "sha256": "dd2c1bdce487ee85c2c7dee24eab7a965dfcd1cab78c2cf8512d42fc232481b2"
     },
     {
       "path": "src/season/season_bake.hlsl",
@@ -1613,7 +1621,7 @@
     },
     {
       "path": "src/season/season_engine_v26.inc",
-      "sha256": "ba95054ef31334884812b923cb39b3780b205202f49f93f8e482a01a68408599"
+      "sha256": "a029c84b413f4168f8331ddf5d0aeafe69f058a6a168e7c3861b24300665b0ec"
     },
     {
       "path": "src/season/season_rain.hlsl",
@@ -1997,7 +2005,7 @@
     },
     {
       "path": "tests/recruitment_ui_fixture.cpp",
-      "sha256": "24ebcfaa3a5afc2bbaa0f379436318e57f72540f902e32771a39dff333f4b9f4"
+      "sha256": "63fc9dd30c3ddcd603529bd7424747e4b8251e473f5500096be9acad5d9ca5f9"
     },
     {
       "path": "tests/region_officer_fixture.cpp",
@@ -2013,7 +2021,7 @@
     },
     {
       "path": "tests/save_host_fixture.cpp",
-      "sha256": "11f7e444c9ef944571c12fdb39495889833dcb816edf39bbe097279336fbe2eb"
+      "sha256": "69628a73da1d71f72fe39274ec7e69e5ec0357b0a50d2829c3b7d53c0e981143"
     },
     {
       "path": "tests/season_bake_fixture.cpp",
@@ -2029,7 +2037,7 @@
     },
     {
       "path": "tests/sortie_fixture.inl",
-      "sha256": "b1c4ba0215e97513b3ecb4b94d489fbe41635bb13c4fe7b75486d67a944fd054"
+      "sha256": "c3198ecff154a70ed0f7f4832867d3e656a6ce0c82e18d6e846e49d49a00b2b5"
     },
     {
       "path": "tests/split_module_fixture.cpp",
@@ -2705,7 +2713,7 @@
     },
     {
       "path": "tools/release_features.py",
-      "sha256": "43723e565956dd45bfb8e28fc3d0468fe1fe4511048365c7ebf6577eeba34c59"
+      "sha256": "00aa3e555fd7d148bd2f1e7d2cc00501b62076e45c672649074e7f01cd50839d"
     },
     {
       "path": "tools/rollback_progress_native.py",

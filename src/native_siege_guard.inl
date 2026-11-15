@@ -24,7 +24,7 @@ static unsigned players[500];           // live player-force army ids, refreshed
 static unsigned player_count;
 static int built_day = -1000000;
 static Obj built_root;
-static Obj active_army;                 // army whose 273AC0 call currently runs with the transient option
+static thread_local Obj active_army;    // army whose 273AC0 call currently runs with the transient option (review CR-06: per thread)
 
 using Tick = void(__fastcall *)(Obj);
 using Collect = unsigned(__fastcall *)(Obj, int, Obj);

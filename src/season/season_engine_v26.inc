@@ -603,7 +603,8 @@ static int minor_done; static SDesc sd2[MAXS]; static u16 *mcatch[MAXS + 1]; sta
 static int minor_city(u8 *d, const u16 *name, int any_base)
 {
     for (int i = 1; i <= 500; i++) { u8 *f = foot(d, i); if (!f) continue; const u16 *n = (const u16 *)(f + 0x10);
-        if (n[0] != name[0] || n[1] != name[1] || n[2] != 0) continue; int c = *(u16 *)(f + 0x3a); if (c >= NCELL) continue;
+        int same = 1; for (int k = 0; k < 8; k++) { if (n[k] != name[k]) { same = 0; break; } if (!name[k]) break; }   /* local184: the whole name (유수항) */
+        if (!same) continue; int c = *(u16 *)(f + 0x3a); if (c >= NCELL) continue;
         u8 *h = cellp(d, c); if (!h || (!any_base && h[0x10] != 16)) continue; return c; }
     return -1;
 }
@@ -616,11 +617,16 @@ static void sr_minor_rivers(u8 *d)
        local173 (user 2026-11-15 "여남 홍수 습지도 여강으로 바꿔야하는데"): the user meant 여강, not 여남 - the 여남 stretch is replaced by
        one around 여강 (장강 2, bank x0.6); its own 장강 water stays with the data stretches (20 / 21), the rest of the water near it is
        this stretch's. */
-    static const struct { const u16 *a, *b; u8 rv, any, r; float bank; } G[7] = { { L"하비", L"소패", 4, 0, 7, 1.0f }, { L"여강", 0, 2, 0, 7, 0.6f },
-        { L"무릉", L"장사", 6, 0, 7, 1.0f }, { L"영릉", L"계양", 7, 0, 7, 1.0f }, { L"강주", 0, 2, 0, 7, 1.0f }, { L"건녕", 0, 8, 0, 7, 1.0f },
-        { L"합비", L"역양", 5, 1, 9, 0.6f } };
-    int cities[7][2], found = 0;
-    for (int g = 0; g < 7; g++) { cities[g][0] = minor_city(d, G[g].a, G[g].any); cities[g][1] = G[g].b ? minor_city(d, G[g].b, G[g].any) : -1; if (cities[g][0] >= 0 || cities[g][1] >= 0) found++; }
+    /* local184 (user 2026-11-15 "유수항쪽도 범람되서 바다랑 연결되어야 하는거 아닌가? ... 유수항 변경안도 적용해줘"): the 소호 stretch takes
+       유수항 as a third anchor (radius 6): the water near it - the 유수 way down to the 장강 included, even a data stretch's - seeds the
+       stretch, and the open land 1-2 hexes beside it moves to the 소호 stretch even when a data stretch (the 장강) held it, so a 소호
+       flood reaches 유수항 and the 장강. Other side stretches' ground is never taken. */
+    static const struct { const u16 *a, *b; u8 rv, any, r; float bank; const u16 *c; u8 rc; } G[7] = { { L"하비", L"소패", 4, 0, 7, 1.0f, 0, 0 }, { L"여강", 0, 2, 0, 7, 0.6f, 0, 0 },
+        { L"무릉", L"장사", 6, 0, 7, 1.0f, 0, 0 }, { L"영릉", L"계양", 7, 0, 7, 1.0f, 0, 0 }, { L"강주", 0, 2, 0, 7, 1.0f, 0, 0 }, { L"건녕", 0, 8, 0, 7, 1.0f, 0, 0 },
+        { L"합비", L"역양", 5, 1, 9, 0.6f, L"유수항", 6 } };
+    int cities[7][3], found = 0;
+    for (int g = 0; g < 7; g++) { cities[g][0] = minor_city(d, G[g].a, G[g].any); cities[g][1] = G[g].b ? minor_city(d, G[g].b, G[g].any) : -1;
+        cities[g][2] = G[g].c ? minor_city(d, G[g].c, 1) : -1; if (cities[g][0] >= 0 || cities[g][1] >= 0) found++; }
     if (!found) return;   /* the city table is not up yet: next day */
     minor_done = 1;
     for (int c = 0; c < NCELL; c++) if (fstr[c] > NSt0) { fstr[c] = 0; fneed[c] = 0; floodz[c] = 0; }
@@ -635,17 +641,21 @@ static void sr_minor_rivers(u8 *d)
     static short dist[NCELL]; static int q[NCELL];
     for (int g = 0; g < 7 && NSt < MAXS; g++) {
         const int R2 = G[g].r * G[g].r;
-        int c0 = cities[g][0], c1 = cities[g][1]; if (c0 < 0 && c1 < 0) continue;
-        int s = NSt + 1, head = 0, tail = 0, nw = 0, ng = 0, mid = c0 >= 0 ? c0 : c1;
+        int c0 = cities[g][0], c1 = cities[g][1], c2 = cities[g][2]; if (c0 < 0 && c1 < 0) continue;
+        const int RC2 = G[g].rc * G[g].rc;
+        int s = NSt + 1, head = 0, tail = 0, nw = 0, ng = 0, moved = 0, mid = c0 >= 0 ? c0 : c1;
         for (int c = 0; c < NCELL; c++) dist[c] = -1;
         for (int c = 0; c < NCELL; c++) { int v = vterr[c]; if (v < 12 || v > 14) continue;
-            int near = (c0 >= 0 && cdist2(c, c0) <= R2) || (c1 >= 0 && cdist2(c, c1) <= R2); if (!near) continue;
-            if ((fstr[c] && fstr[c] <= NSt) || fstem[c]) continue;   /* a data stretch's own river */
+            int at2 = c2 >= 0 && cdist2(c, c2) <= RC2;
+            int near = (c0 >= 0 && cdist2(c, c0) <= R2) || (c1 >= 0 && cdist2(c, c1) <= R2) || at2; if (!near) continue;
+            if (!at2 && ((fstr[c] && fstr[c] <= NSt) || fstem[c])) continue;   /* a data stretch's own river (not by the third anchor) */
             dist[c] = 0; q[tail++] = c; nw++; }
         if (!nw) continue;
         while (head < tail) { int c = q[head++]; if (dist[c] >= 2) continue;
             for (int k = 0; k < 6; k++) { int n = nb6(c, k); if (n < 0 || dist[n] >= 0) continue; int v = vterr[n]; if (v < 1 || v > 4) continue;
-                if (fstr[n] && fneed[n]) continue;   /* another stretch's ground */
+                if (fstr[n] && fneed[n]) {   /* another stretch's ground: only a data stretch's, by the third anchor, moves over */
+                    if (c2 < 0 || fstr[n] > NSt0 || cdist2(n, c2) > RC2) continue;
+                    moved++; }
                 dist[n] = (short)(dist[c] + 1); fstr[n] = (u8)s; fneed[n] = (u8)dist[n]; floodz[n] = (u8)((G[g].rv << 4) | dist[n]); ng++; q[tail++] = n; } }
         if (!ng) continue;
         int nc = 0; for (int c = 0; c < NCELL; c++) if (cl_land(c) && ((c0 >= 0 && cdist2(c, c0) <= 12 * 12) || (c1 >= 0 && cdist2(c, c1) <= 12 * 12))) nc++;
@@ -656,7 +666,8 @@ static void sr_minor_rivers(u8 *d)
         memset(&sd2[s - 1], 0, sizeof(SDesc)); sd2[s - 1].river = G[g].rv; sd2[s - 1].mid = (u16)mid; sd2[s - 1].B = ratio * (float)k2 * G[g].bank;
         memset(&sx[s], 0, sizeof(Stretch)); NSt = s;
         { char b[140], *p = b; p = pstr(p, "engine: side stretch "); p = pint(p, s); p = pstr(p, " river "); p = pint(p, G[g].rv); p = pstr(p, " water "); p = pint(p, nw);
-          p = pstr(p, " ground "); p = pint(p, ng); p = pstr(p, " catch "); p = pint(p, k2); p = pstr(p, " bank x1000 "); p = pint(p, (int)(sd2[s - 1].B * 1000.0f)); *p = 0; logs(b); }
+          p = pstr(p, " ground "); p = pint(p, ng); p = pstr(p, " catch "); p = pint(p, k2); p = pstr(p, " bank x1000 "); p = pint(p, (int)(sd2[s - 1].B * 1000.0f));
+          if (G[g].c) { p = pstr(p, " anchor3 "); p = pint(p, c2); p = pstr(p, " moved "); p = pint(p, moved); } *p = 0; logs(b); }
     }
 }
 static void minor_runoff(void)   /* the day's rain on the side stretches' land (as rain_day does through fcatch for the data stretches) */

@@ -551,9 +551,11 @@ static bool intercept_open(unsigned hex,Obj self) {   // walkable, no building, 
     for(unsigned i=1;i<=500;++i) {Obj a=table(0x7E838,i,500);if(a!=self && valid(a) && word(a,0x2A)==hex)return false;}
     return true;
 }
-static unsigned intercept_stand(unsigned own,unsigned center,Obj self) { COST_SCOPE("campaign:intercept_stand");
+// local179: the gate's stands in pick() order (out[0] = intercept_stand), *front = the equally best ones (one unit each).
+static unsigned intercept_stands(unsigned own,unsigned center,Obj self,unsigned *out,unsigned limit,unsigned *front) { COST_SCOPE("campaign:intercept_stands");
+    if(front)*front=0;
     unsigned attackers[64];const unsigned n=intercept_attackers(own,center,kInterceptAlert+1,attackers,64);
-    if(!n || center>=48400)return 48400;
+    if(!n || center>=48400)return 0;
     // The gate's own tiles carry its building id (+0x1A, KB structs.md: center and the six around it); the stand
     // touches one of them (user: "관문 1헥스 범위에 딱붙여야돼").
     Obj middle=table(0xE270,center,48399);const unsigned gate_id=valid(middle)?word(middle,0x1A):0;
@@ -569,7 +571,33 @@ static unsigned intercept_stand(unsigned own,unsigned center,Obj self) { COST_SC
         if(h>=48400 || own_tile(h) || std::find(open.begin(),open.end(),h)!=open.end() || !intercept_open(h,self))continue;
         open.push_back(h);
     }
-    return intercept::pick(center,attackers,n,open.data(),static_cast<unsigned>(open.size()));
+    return intercept::ranked(center,attackers,n,open.data(),static_cast<unsigned>(open.size()),out,limit,front);
+}
+// local179: up to kInterceptUnits units per gate, one per equally best stand behind it.
+static constexpr unsigned kInterceptUnits=3;
+// The stands the other intercept units of this gate hold (their region_target), so each unit takes its own hex.
+static unsigned intercept_claims(unsigned own,unsigned gate,Obj self,unsigned *out,unsigned limit) {
+    unsigned count=0;
+    for(unsigned i=1;i<=500 && count<limit;++i) {
+        Obj a=table(0x7E838,i,500);if(!valid(a) || a==self || army_force(a)!=own)continue;
+        const Progress &q=progress[i];
+        if(q.army==a && q.root==world() && q.commander==word(a,0x12) && q.intercept && !q.helm && q.intercept_gate==gate &&
+           !q.returning)out[count++]=q.region_target;
+    }
+    return count;
+}
+// The best stand no sibling holds; *front_free = whether it is one of the equally best stands.
+static unsigned intercept_free_stand(unsigned own,unsigned center,unsigned gate,Obj self,bool *front_free=nullptr) {
+    if(front_free)*front_free=false;
+    unsigned stands[64],front=0,claims[16];
+    const unsigned n=intercept_stands(own,center,self,stands,64,&front),c=intercept_claims(own,gate,self,claims,16);
+    for(unsigned k=0;k<n;++k) {
+        bool taken=false;for(unsigned j=0;j<c && !taken;++j)taken=claims[j]==stands[k];
+        if(taken)continue;
+        if(front_free)*front_free=k<front;
+        return stands[k];
+    }
+    return 48400;
 }
 static Obj intercept_gate_object(unsigned gate) {
     if(gate<52 || gate>61)return nullptr;
@@ -1134,11 +1162,19 @@ static bool intercept_step(Obj army,Progress &p) { COST_SCOPE("campaign:intercep
     if(why) {log_event(why,army_id(army),word(army,0x16),p.intercept_gate);recovery_return(army,p);return true;}
     // The stand follows the attackers; a stand that is still behind the gate and free is kept.
     unsigned target=p.region_target;
-    const unsigned best=intercept_stand(own,center,army);
+    // local179: siblings of the same gate keep their own stands; the best one nobody else holds.
+    bool best_attack=false;
+    const unsigned best=intercept_free_stand(own,center,p.intercept_gate,army,&best_attack);
     if(best<48400 && best!=target) {
         unsigned attackers[64];const unsigned n=intercept_attackers(own,center,kInterceptAlert+1,attackers,64);
+        unsigned claims[16];const unsigned c=intercept_claims(own,p.intercept_gate,army,claims,16);
+        bool claimed=false;for(unsigned j=0;j<c && !claimed;++j)claimed=claims[j]==target;
+        unsigned stands[64],front=0;const unsigned listed=intercept_stands(own,center,army,stands,64,&front);
+        bool target_attack=false;for(unsigned k=0;k<front && k<listed && !target_attack;++k)target_attack=stands[k]==target;
         const unsigned both[2]={target,best};   // kept while it is as good a stand as the new one
-        const bool keep=target<48400 && intercept_open(target,army) && intercept::pick(center,attackers,n,both,2)==target;
+        // An attack stand (across the gate, in 안행 reach) is kept; otherwise kept only against a stand that is no attack stand.
+        const bool keep=target<48400 && !claimed && intercept_open(target,army) &&
+            (target_attack || (!best_attack && intercept::pick(center,attackers,n,both,2)==target));
         if(!keep) {log_event("intercept_stand",army_id(army),target,best);target=best;p.region_target=static_cast<unsigned short>(best);}
     }
     p.motion_day=day;   // standing behind the gate is the mission, not a stall

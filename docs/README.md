@@ -14,3 +14,5 @@
 패키지의 버전은 `build/input_package/manifest.json`이 기준입니다. 개발 도구·원작 실행 파일·세이브·백업·원시 추적 로그는 배포하지 않습니다.
 
 - [개발: UI 리소스 적용·OFF·해제 기준](UI_RESOURCE_LIFECYCLE.md)
+- [개발: 원작과 다른 모드 규칙·훅 지점·UI 자료 기준](MOD_CHANGES_VS_ORIGINAL.md) — 원작 사실은 San14Sim/docs/orig, 모드 지침은 여기
+- [개발: 시행착오와 재발 방지 규칙](MOD_DEV_LESSONS.md)

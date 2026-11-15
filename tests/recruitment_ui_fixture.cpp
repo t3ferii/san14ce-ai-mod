@@ -350,6 +350,32 @@ static void test_ui() {
     recruit_selector_close(ui_dialog,42);
     expect(ui_close_calls==++closes_before && ui_closed_code==42 && !recruit_pick_dialog &&
            recruit_multi_revision==revision_before);
+    // local178: 74FDD0 reuses the cached selector through 45E090 -> vt+200
+    // without init; its close is captured only while a target pick is pending.
+    {
+        RecruitMultiSnapshot before=recruit_multi;
+        expect(recruit_cached_dialog==ui_dialog);
+        list_free(selected);list_init(selected,0x13466B0);
+        ui_pick_list={second,ui_target};ui_collect(ui_body,&selected);
+        putptr(ui_config_copy,0x80,&selected);putptr(ui_dialog,0x1A8,ui_config_copy);
+        unsigned revision=recruit_multi_revision;
+        recruit_selector_close(ui_dialog,0x7FFFFFFD); // no pending target pick: native
+        expect(ui_close_calls==++closes_before && recruit_multi_revision==revision && !recruit_pick_dialog);
+        {RecruitScope scope(ui_district);RecruitTargetScope target_scope(ui_layout,true);
+            recruit_selector_close(ui_dialog,0x7FFFFFFD);}
+        expect(ui_close_calls==++closes_before && recruit_multi_revision==revision+1 && !recruit_pick_dialog &&
+               recruit_multi.count==2 && recruit_multi.people[0]==ui_target && recruit_multi.people[1]==second &&
+               recruit_multi.layout==ui_layout && recruit_multi.district==ui_district && recruit_multi.district_id==1 &&
+               recruit_multi.root==world() && list_first(selected)->value==ui_target);
+        expect(!recruit_pending_pick_layout && !recruit_pending_pick_district);
+        // A selector built again at that address without a target pick drops the cache.
+        recruit_selector_init(ui_dialog,config);
+        expect(!recruit_cached_dialog);
+        {RecruitScope scope(ui_district);RecruitTargetScope target_scope(ui_layout,true);
+            recruit_selector_close(ui_dialog,0x7FFFFFFD);}
+        expect(ui_close_calls==++closes_before && recruit_multi_revision==revision+1);
+        recruit_multi=before;
+    }
     list_free(selected);
     // Native state selection releases its output; the copied snapshot lives on.
     ui_pick_list={ui_target,second,last};putptr(ui_layout,0x1A8,ui_widget);
@@ -387,7 +413,7 @@ static void test_ui() {
         expect(pointer(ui_layout,0x188)==second && recruit_multi.count==3 && recruit_multi.people[0]==second &&
                recruit_multi_matches(ui_layout,ui_district) && ui_preview_calls>previews && ui_label==L"은관 외 2명");
         // The native choice outside the snapshot stays unmatched (native single pick).
-        RecruitMultiSnapshot kept=recruit_multi;putptr(ui_layout,0x188,other_actor);recruit_multi_align(ui_layout,ui_district);
+        RecruitMultiSnapshot kept=recruit_multi;putptr(ui_layout,0x188,other_actor);recruit_multi_align(ui_layout,ui_district,true);
         expect(!memcmp(&kept,&recruit_multi,sizeof(kept)) && !recruit_multi_matches(ui_layout,ui_district));
         recruit_multi=before;putptr(ui_layout,0x188,last);ui_pick_list={ui_target,second,last};
     }

@@ -367,7 +367,11 @@ static void drain(Pass &s) {
 // helm_intercept (여강 13 since local172, 건업 25, 시상 28, 강하 32, 장사 36, 무릉 37) is never swapped or drained away from such a castle, and one
 // based elsewhere goes there one way (to the held river castle with the fewest 조타 officers, kind 6), then stays.
 static constexpr unsigned kHelmTrait=154;
-static constexpr unsigned kHelmCastles[7]={17,25,28,32,35,36,37};   // local169: 강릉 35 added
+// local184: 여강 is 13 (17 was 여남 - local172 had changed only the comments).
+static constexpr unsigned kHelmCastles[7]={13,25,28,32,35,36,37};   // local169: 강릉 35 added
+// local184 (user 2026-11-15 "시상을 최우선으로 조타를 배치하고 그다음 건업 그다음 강릉 그다음 강하 ... 장사 무릉 이순서로"): the placement
+// order of the held river castles; local185 (user "시상 > 건업 > 여강 강릉 강하.. 이렇게 바꿔주고"): 여강 third.
+static constexpr unsigned kHelmOrder[7]={28,25,13,35,32,36,37};
 static bool helm_trait(Obj p) {
     for(unsigned slot=0;slot<9;++slot)if(fn<unsigned(__fastcall *)(Obj,unsigned)>(GA(GA_232030))(p,slot)==kHelmTrait)return true;
     return false;
@@ -383,11 +387,22 @@ static void helm_place(Pass &s) { COST_SCOPE("officer_rotation:helm_place");
     if(!any || mine==sizeof(kHelmCastles)/sizeof(*kHelmCastles))return;
     std::vector<Entry *> helms;
     for(Entry &e:s.all)if(helm_trait(e.p)) {helms.push_back(&e);if(held[e.city])++crew[e.city];}
+    // local184: a held river castle without a 조타 officer takes one from the lowest-ranked held castle with two or more, in
+    // kHelmOrder (시상 first), before the pin.
+    for(unsigned i=0;i<7;++i) {
+        const unsigned c=kHelmOrder[i];if(!held[c] || crew[c])continue;
+        for(unsigned j=6;j>i;--j) {
+            const unsigned d=kHelmOrder[j];if(!held[d] || crew[d]<2)continue;
+            Entry *pick=nullptr;for(Entry *e:helms)if(e->city==d && e->movable && !s.used(e->p)) {pick=e;break;}
+            if(pick && move_one(s,*pick,c,6)) {--crew[d];++crew[c];pick->movable=false;break;}
+        }
+    }
     for(Entry *e:helms) {
         if(held[e->city]) {e->movable=false;continue;}   // pinned at his river castle
         if(!e->movable || s.used(e->p))continue;
+        // to the held castle with the fewest 조타 officers, ties by kHelmOrder (local184)
         unsigned to=0;
-        for(unsigned c:kHelmCastles)if(held[c] && (!to || crew[c]<crew[to]))to=c;
+        for(unsigned c:kHelmOrder)if(held[c] && (!to || crew[c]<crew[to]))to=c;
         if(to && move_one(s,*e,to,6)) {++crew[to];e->movable=false;}
     }
 }
