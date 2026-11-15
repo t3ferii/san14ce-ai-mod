@@ -1,0 +1,53 @@
+name: Release v16.3.1
+on:
+  push:
+    branches: [release/v16.3.1]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create release
+        env:
+          TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: SAN14_AI_v16.3.1
+          TARGET: 3511a01a4dfad58add56e80ac6bc19eec125f663
+          TITLE: "v16.3.1 · 삼14CE AI교정 모드"
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, traceback, urllib.error, urllib.request
+          def call(url, data=None, ctype='application/json', method=None):
+              req = urllib.request.Request(url, data=data, method=method, headers={'Authorization': 'Bearer ' + os.environ['TOKEN'],
+                  'Accept': 'application/vnd.github+json', 'Content-Type': ctype, 'User-Agent': 'release'})
+              with urllib.request.urlopen(req, timeout=600) as r: return json.load(r)
+          try:
+              repo = os.environ['REPO']; api = 'https://api.github.com/repos/' + repo
+              rel = None
+              for r in call(api + '/releases?per_page=50'):
+                  if r['tag_name'] == os.environ['TAG']: rel = r; break
+              if rel is None:
+                  rel = call(api + '/releases', json.dumps({'tag_name': os.environ['TAG'], 'target_commitish': os.environ['TARGET'],
+                      'name': os.environ['TITLE'], 'body': open('release_assets/notes.md', encoding='utf-8').read(),
+                      'draft': True, 'prerelease': False}).encode())
+              have = {a['name']: a for a in rel['assets']}
+              up = rel['upload_url'].split('{')[0]
+              for name, ctype in (('SAN14_AI_v16.3.1_integrated.zip', 'application/zip'), ('release_features.json', 'application/json')):
+                  data = open('release_assets/' + name, 'rb').read()
+                  want = 'sha256:' + hashlib.sha256(data).hexdigest()
+                  a = have.get(name)
+                  if a is None:
+                      a = call(up + '?name=' + name, data, ctype)
+                  if a.get('size') != len(data) or a.get('digest') != want:
+                      raise SystemExit('asset mismatch %s size %s/%s digest %s/%s' % (name, a.get('size'), len(data), a.get('digest'), want))
+                  print('::notice::asset %s %s %s' % (name, a.get('size'), a.get('digest')))
+              rel = call(api + '/releases/%d' % rel['id'], json.dumps({'draft': False, 'prerelease': False, 'make_latest': 'true'}).encode(), method='PATCH')
+              print('::notice::published %s draft=%s %s' % (rel['tag_name'], rel['draft'], rel['html_url']))
+          except BaseException as e:
+              detail = e.read().decode()[:400] if hasattr(e, 'read') else ''
+              print('::error::' + repr(e)[:300] + ' ' + ' '.join(detail.split()))
+              print(traceback.format_exc())
+              raise SystemExit(1)
+          PY
