@@ -18,11 +18,33 @@ static unsigned guard_failed_row;   // index of the first guard whose hash diffe
 // version.dll, which replaces its first 5 bytes by `E9 rel32` leaving the image (local10 game log: building_destruction_guard_failed 3). The row
 // hash is therefore computed by ga::hash_ok: the plain hash, or the hash with an OBSERVED prefix put back to the original bytes (a patch inside the
 // game, other padding, or any changed byte behind the prefix still fails). Feature code 50 = building_destruction_all (the addr_unresolved gate id).
+// local104 (live log 2026-11-13, building_destruction_guard_failed 1 on every start since 11-12): the convenience module's own plot_camera
+// (native_advisor_briefing.inl, briefing16) retargets the CALL at GA_1FBB50 inside 1FB170 to its relay before this guard runs, so the whole-
+// function hash of row 1 never matched. A row also matches when every such own CALL site (E8 at the site) is hashed with its original rel32
+// (target GA_2DC840); any other changed byte still fails.
+struct OwnCall {unsigned site,target;};
+static bool hash_own_calls(unsigned rva,unsigned n,unsigned long long expected) {
+    const OwnCall calls[]={{GA(GA_1FBB50),GA(GA_2DC840)}};
+    bool any=false;
+    for(const auto &c:calls)if(c.site && c.target && c.site>=rva && c.site+5<=rva+n && image[c.site]==0xE8)any=true;
+    if(!any)return false;
+    unsigned long long h=0xcbf29ce484222325ull;
+    for(unsigned i=0;i<n;++i) {
+        unsigned char b=image[rva+i];
+        for(const auto &c:calls) {
+            if(!c.site || !c.target || image[c.site]!=0xE8 || rva+i<=c.site || rva+i>c.site+4)continue;
+            const int rel=static_cast<int>(c.target-(c.site+5));
+            b=reinterpret_cast<const unsigned char *>(&rel)[rva+i-c.site-1];
+        }
+        h=(h^b)*0x100000001b3ull;
+    }
+    return h==expected;
+}
 static bool guards_match() {
     unsigned row=0;
     for(const auto &g:guards) {
         ga::ObserverSet used;
-        if(!ga::hash_ok(image,g.rva,g.size,g.hash,&used)) {guard_failed_row=row;return false;}
+        if(!ga::hash_ok(image,g.rva,g.size,g.hash,&used) && !hash_own_calls(g.rva,g.size,g.hash)) {guard_failed_row=row;return false;}
         for(unsigned k=0;k<used.count;++k)log_event("observer_hook_tolerated",50,used.rva[k]);
         ++row;
     }

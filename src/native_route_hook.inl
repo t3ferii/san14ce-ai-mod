@@ -27,6 +27,7 @@ struct Entry {
     Kind kind = none;
     unsigned band = 0, hex = 48400, wall = 0;   // band id / hold or build hex / wall building id
     unsigned goal = 0;                          // breach: the group goal (city/gate id) the wall blocks
+    bool hit = false;                           // local108: breach for the hit response (no group goal)
     Orders original, mine;
 };
 static Entry entries[501];
@@ -205,6 +206,50 @@ static bool wall_near(unsigned from, unsigned goal) {
         if (x >= lx && x <= hx && y >= ly && y <= hy) return true;
     }
     return false;
+}
+static unsigned plain_hexes(unsigned c) { return c == neutral_breach::none ? 65535u : (c / 240u > 65534u ? 65534u : c / 240u); }
+// local108 (user 2026-11-13 "중립건물 돌파에 이 기능을 자연스럽게 넣어줄 수 있나? 2칸이상 돌아가면 부수면 좋겠어", "망루나
+// 투석대도"): the hit response is a breach entry. A computer-side army hit within 10 days by the player's 안행 / water
+// formation army or military facility (망루·투석대·망대) with a neutral wall between them (ranged_wall) compares the way
+// to the shooter around the walls with the way as if no neutral wall stood (terrain-weighted, as breach_group). It breaks
+// the first wall on the wall-free way only when going around costs at least 2 plain hexes more (or is impossible);
+// otherwise the original AI walks around. The order is held like a breach until the wall falls, the hit gets older than
+// 20 days or the shooter stops qualifying. Once per army per day.
+static constexpr unsigned kHitDetour = 2;
+struct HitTry { Obj root = nullptr; int day = -1000000; };
+static HitTry hit_tries[501];
+static void hit_check(Obj a) { COST_SCOPE("route_hook:hit_check");
+    if (!route_hook_hit || !valid(a) || a[0x140] || !computer_side_army(a) || word(a, 0x16) < 1000 || word(a, 0x2A) >= 48400) return;
+    if (campaign_castle_locked(a) || a[0x37] == 11 || a[0x37] == 12 || !ranged_hit_ready(a)) return;
+    const unsigned id = army_id(a);
+    if (!id || id > 500) return;
+    Entry *e = entry(a);
+    if (!e || e->kind != none) return;
+    HitTry &t = hit_tries[id];
+    const int day = game_day();
+    if (t.root == world() && t.day == day) return;
+    t.root = world(); t.day = day;
+    bool between = false;
+    for (unsigned w = 62; w <= 3000 && !between; ++w) {
+        Obj b = table(0x6DA98, w, 3000);
+        between = valid(b) && neutral_wall(b) && ranged_wall(a, b);
+    }
+    if (!between) return;
+    build_grid();
+    const unsigned from = word(a, 0x2A), to = ranged_hit_source(a);
+    const neutral_breach::Plan plan = neutral_breach::plan(grid, from, to, 0, grid_cost, 240);
+    const unsigned wall_id = plan.wall_hex < wall_path::cells ? grid_wall[plan.wall_hex] : 0u;
+    log_event("route_hit_plan", id, plain_hexes(plan.closed), plain_hexes(plan.free) | (wall_id << 16));
+    if (!wall_id || plan.free == neutral_breach::none || distance(from, plan.wall_hex) > 10) return;
+    if (plan.closed != neutral_breach::none && plan.closed < plan.free + kHitDetour * 240u) return;   // walk around
+    Obj wall = table(0x6DA98, wall_id, 3000);
+    if (!valid(wall) || !neutral_wall(wall)) return;
+    Entry next; next.root = world(); next.army = a; next.commander = word(a, 0x12); next.troops = word(a, 0x58);
+    next.kind = breach; next.hit = true; next.wall = wall_id; next.hex = plan.wall_hex; next.goal = 0; next.original = read(a);
+    order(a, 6, 11, static_cast<int>(wall_id));
+    next.mine = read(a);
+    *e = next;
+    log_event("route_breach_hit", id, wall_id | (static_cast<unsigned>(wall[0x12]) << 16), plan.wall_hex);
 }
 static void breach_group(Obj troops, unsigned tid) { COST_SCOPE("route_hook:breach_group");
     if (!mod_features.path_wall || !route_hook_breach || !tid || tid > 500) return;
@@ -395,6 +440,7 @@ static void supply_check(Obj a) { COST_SCOPE("route_hook:supply_check");
     if (!mod_features.supply_relay || !valid(a) || a[0x140] || !computer_side_army(a)) return;
     const unsigned id = army_id(a);
     if (!id || id > 500) return;
+    if (progress[id].army == a && progress[id].regional_worker && progress[id].retake) return;   // local85: a retake unit writes its own relays
     Bridge &b = bridges[id];
     const unsigned now = packed_order(a);
     if (b.root != world() || b.army != a || b.commander != word(a, 0x12)) {   // first sight: no change yet
@@ -457,9 +503,15 @@ static void after(Obj troops) { COST_SCOPE("route_hook:after");
         if (!valid(a) || a[0x140] || !belongs_to_troops(a, troops) || !computer_side_army(a)) continue;
         Entry *e = entry(a);
         if (!e) continue;
+        if (e->kind == none) hit_check(a);   // local108
         if (e->kind == breach) {
-            if (!mod_features.path_wall || !wall_standing(*e)) { finish(a, *e, "route_breach_done"); fallen = true; continue; }
-            if (!attack_mode(word(troops, 0x14)) || word(troops, 0x16) != e->goal) { finish(a, *e, "route_breach_released"); continue; }
+            const bool hit = e->hit;
+            if ((hit ? !route_hook_hit : !mod_features.path_wall) || !wall_standing(*e)) {
+                finish(a, *e, "route_breach_done"); if (!hit) fallen = true; continue;
+            }
+            if (hit ? !ranged_hit_ready(a, 20) : (!attack_mode(word(troops, 0x14)) || word(troops, 0x16) != e->goal)) {
+                finish(a, *e, "route_breach_released"); continue;
+            }
             e->original = read(a);
             if (!same(e->original, e->mine)) { order(a, 6, 11, static_cast<int>(e->wall)); e->mine = read(a); }
             continue;
@@ -530,6 +582,7 @@ static void __fastcall daily(int slot) {
     COST_SCOPE("route_hook:daily");
     if (diagnostic_logging) { watch_young(); AI_TRACE_DAILY(); }
     if (mod_features.supply_relay) for (unsigned i = 1; i <= 500; ++i) supply_check(table(0x7E838, i, 500));
+    if (route_hook_hit) for (unsigned i = 1; i <= 500; ++i) hit_check(table(0x7E838, i, 500));   // local108
     for (unsigned i = 1; i <= 500; ++i) {
         Entry &e = entries[i];
         if (e.kind == none) continue;
@@ -542,20 +595,22 @@ static void __fastcall daily(int slot) {
             // local41 (user 2026-11-10 정원지 left the chain half broken for the long land way): the group run clears
             // member relays (B6B00) without always rebuilding them, so a relay difference alone is not a rival order.
             // While the wall stands and the group still attacks the same goal, a rewritten order is put back.
-            if (!mod_features.path_wall || !wall_standing(e)) {
+            const bool hit = e.hit;
+            if ((hit ? !route_hook_hit : !mod_features.path_wall) || !wall_standing(e)) {
                 // local42 (user 2026-11-10 토성 left standing after the chain fell): the next wall on the way is judged
                 // at once instead of waiting for the group's next route write.
                 const unsigned tid = e.troops;
                 finish(a, e, "route_breach_done");
                 Obj t = tid && tid <= 500 ? table(0x7F8D8, tid, 500) : nullptr;
-                if (mod_features.path_wall && valid(t)) { plans[tid].day = -1000000; breach_group(t, tid); }
+                if (!hit && mod_features.path_wall && valid(t)) { plans[tid].day = -1000000; breach_group(t, tid); }
                 continue;
             }
+            if (hit && !ranged_hit_ready(a, 20)) { finish(a, e, "route_breach_released"); continue; }
             const Orders now = read(a);
             if (now.action == e.mine.action && now.kind == e.mine.kind && now.id == e.mine.id) continue;
             Obj t = table(0x7F8D8, word(a, 0x58), 500);
-            const bool keep = word(a, 0x58) == e.troops && valid(t) && attack_mode(word(t, 0x14)) && word(t, 0x16) == e.goal &&
-                              now.action != 11 && now.action != 12 && word(a, 0x16) >= 1000;
+            const bool alive = now.action != 11 && now.action != 12 && word(a, 0x16) >= 1000;
+            const bool keep = alive && (hit || (word(a, 0x58) == e.troops && valid(t) && attack_mode(word(t, 0x14)) && word(t, 0x16) == e.goal));
             if (!keep) { log_event("route_breach_released", i, packed_order(a), group_state(a)); e = Entry{}; continue; }
             log_event("route_breach_reapply", i, packed_order(a), e.wall);
             e.original = now;
@@ -579,11 +634,12 @@ static bool call_targets(unsigned site, unsigned target) {
 static CallLink calls[4];
 static Obj relay;
 static bool ready;
-static bool wanted() { return mod_features.morale || mod_features.path_wall || mod_features.supply_relay; }
+static bool hit_wanted() { return mod_features.obstacle && mod_features.hit_response; }   // local108
+static bool wanted() { return mod_features.morale || mod_features.path_wall || mod_features.supply_relay || hit_wanted(); }
 // 0 = prepared (or off), 1 = a CALL no longer targets its original function, 2 = prepare failed.
 static unsigned prepare() { COST_SCOPE("route_hook:prepare");
     for (auto &c : calls) c = CallLink{};
-    ready = false; route_hook_morale = route_hook_breach = false; route_hook_owns = nullptr;
+    ready = false; route_hook_morale = route_hook_breach = route_hook_hit = false; route_hook_owns = nullptr;
     if (!wanted()) return 0;
     const unsigned sites[4] = {GA(GA_64F1B), GA(GA_667C7), GA(GA_667C0), GA(GA_44E50D)};
     const unsigned targets[4] = {GA(GA_CC160), GA(GA_CC160), GA(GA_CAA60), GA(GA_2E6E00)};
@@ -604,7 +660,7 @@ static unsigned prepare() { COST_SCOPE("route_hook:prepare");
 }
 static void restore() { COST_SCOPE("route_hook:restore");
     for (unsigned i = 4; i > 0; --i) call_restore(calls[i - 1]);
-    ready = false; route_hook_morale = route_hook_breach = false; route_hook_owns = nullptr;
+    ready = false; route_hook_morale = route_hook_breach = route_hook_hit = false; route_hook_owns = nullptr;
     for (auto &e : entries) e = Entry{};
     for (auto &b : bridges) b = Bridge{};
 }
@@ -617,11 +673,61 @@ static bool publish() { COST_SCOPE("route_hook:publish");
         ok = image[calls[i].site] == 0xE8 && delta == calls[i].original && call_publish(calls[i]);
     }
     if (!ok) restore();
-    else { route_hook_morale = mod_features.morale; route_hook_breach = mod_features.path_wall; route_hook_owns = &owns; }
+    else { route_hook_morale = mod_features.morale; route_hook_breach = mod_features.path_wall; route_hook_hit = hit_wanted(); route_hook_owns = &owns; }
 #ifndef NO_RUNTIME_LOG
-    log_event("route_hook_installed", ok ? 1u : 0u, route_hook_morale, route_hook_breach);
+    log_event("route_hook_installed", ok ? 1u : 0u, route_hook_morale, (route_hook_breach ? 1u : 0u) | (route_hook_hit ? 2u : 0u));
 #endif
     return ok;
 }
 
 }   // namespace route_hook
+
+// local108 (user 2026-11-13 "망루나 투석대도"): the facility attack 192AF0 applies its damage by CALL 192FBB ->
+// 179DE0(kind 0x1B, army id, amount, 0xB, facility id = 22F930 on the stack), not through 175950 where army fire is
+// recorded. This CALL is wrapped: the original runs, then a soldier loss of a computer-side army hostile to the player
+// from a player military facility is recorded for the hit response. Records only; refused = facility fire is simply not
+// recorded (feature_off 95). Off = CALL restored.
+namespace facility_hit_hook {
+using Apply = uint64_t(__fastcall *)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
+static CallLink link;
+static Obj relay;
+static bool ready;
+static uint64_t __fastcall apply(uint64_t kind, uint64_t id, uint64_t amount, uint64_t reason, uint64_t facility) {
+    const unsigned victim_id = static_cast<unsigned>(id);
+    const bool watch = enabled && static_cast<unsigned>(kind) == 0x1B && static_cast<unsigned>(reason) == 0xB && victim_id && victim_id <= 500;
+    Obj victim = watch ? table(0x7E838, victim_id, 500) : nullptr;
+    const unsigned before = valid(victim) ? word(victim, 0x16) : 0u;
+    const uint64_t result = fn<Apply>(GA(GA_179DE0))(kind, id, amount, reason, facility);
+    if (before) record_facility_hit(victim_id, static_cast<uint32_t>(facility), before);
+    return result;
+}
+static bool wanted() { return mod_features.obstacle && mod_features.hit_response; }
+static unsigned prepare() { COST_SCOPE("facility_hit:prepare");
+    link = CallLink{}; ready = false;
+    if (!wanted()) return 0;
+    const unsigned site = GA(GA_192FBB);
+    if (!site || !route_hook::call_targets(site, GA(GA_179DE0))) return 1;
+    if (!relay) relay = allocate_near(image + site, 0x1000);
+    if (!relay) return 2;
+    DWORD old = 0;
+    if (!VirtualProtect(relay, 4096, PAGE_EXECUTE_READWRITE, &old)) return 2;
+    absolute_jump(relay, reinterpret_cast<void *>(&apply));
+    bool ok = call_prepare(link, site, relay);
+    if (!VirtualProtect(relay, 4096, PAGE_EXECUTE_READ, &old) || !FlushInstructionCache(GetCurrentProcess(), relay, 32)) ok = false;
+    if (!ok) return 2;
+    ready = true;
+    return 0;
+}
+static void restore() { COST_SCOPE("facility_hit:restore"); call_restore(link); ready = false; }
+static bool publish() { COST_SCOPE("facility_hit:publish");
+    if (!wanted()) return true;
+    int delta = 0;
+    bool ok = ready;
+    if (ok) { memcpy(&delta, image + link.site + 1, 4); ok = image[link.site] == 0xE8 && delta == link.original && call_publish(link); }
+    if (!ok) restore();
+#ifndef NO_RUNTIME_LOG
+    log_event("facility_hit_installed", ok ? 1u : 0u, 0, 0);
+#endif
+    return ok;
+}
+}   // namespace facility_hit_hook

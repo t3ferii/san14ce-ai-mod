@@ -6,6 +6,7 @@
 #include <cmath>
 #include <algorithm>
 #include "terrain_call_profile.h"
+#include "season_dxbc.h"
 namespace terrain_render {
 using CreateTexture2D=HRESULT(STDMETHODCALLTYPE *)(ID3D11Device *,const D3D11_TEXTURE2D_DESC *,const D3D11_SUBRESOURCE_DATA *,ID3D11Texture2D **);
 static void profile_upload(ID3D11DeviceContext *context,ID3D11Resource *resource,UINT subresource,
@@ -55,6 +56,7 @@ static bool target(const D3D11_TEXTURE2D_DESC &d) {
 #endif
 static bool active() {return enabled && mod_features.convenience && mod_features.terrain_edit && !(mod_features.terrain_diag_mode & 2u);}
 static constexpr unsigned CtrlSize=2049,CtrlPitch=CtrlSize*4,HexCount=48400,FrameLimit=256;
+static constexpr unsigned kUploadPixels=16384;   // local144: stamped height pixels a frame (about 200 clustered cells)
 static constexpr int RestoreOriginal=-1;
 static constexpr double RowHeight=810.5997779422346; // sqrt(3)*468
 static SRWLOCK ctrl_lock=SRWLOCK_INIT;
@@ -101,7 +103,8 @@ static ID3D11Texture2D *readback_texture;
 static CreateTexture2D ctrl_create;
 static bool readback_failed;
 #endif
-static bool needs_present() {return InterlockedCompareExchange(&present_pending,0,0)!=0;}
+namespace season_bake {static bool wants();static void frame(ID3D11DeviceContext *c);static bool mat_ready();}
+static bool needs_present() {return InterlockedCompareExchange(&present_pending,0,0)!=0 || season_bake::wants();}
 static void publish_pending_locked() {
     InterlockedExchange(&present_pending,ctrl_texture && dirty_count && !render_failed?1:0);
 }
@@ -109,7 +112,13 @@ static void clear_queue_locked() {
     memset(queued,0,sizeof(queued));dirty_head=dirty_count=0;
     publish_pending_locked();
 }
+// R1d (user 2026-11-13 "재해 타일"): season disasters paint a material over the cell (no height, cliff or tree change) and
+// give it back when the disaster ends. It sits above the terrain_edit goal, which shows again once the season layer clears.
+static short season_goal[HexCount]={};   // up to 255: R2 adds materials 240..243
+static bool season_has[HexCount]={};
+static int cell_goal(unsigned hex) {return season_has[hex]?season_goal[hex]:has_goal[hex]?goals[hex]:RestoreOriginal;}
 static void clear_targets_locked() {
+    memset(season_goal,0,sizeof(season_goal));memset(season_has,0,sizeof(season_has));
     memset(goals,0,sizeof(goals));memset(has_goal,0,sizeof(has_goal));memset(height_delta,0,sizeof(height_delta));
     memset(carve_delta,0,sizeof(carve_delta));memset(cliff,0,sizeof(cliff));
     world_transition=false;clear_queue_locked();
@@ -149,9 +158,9 @@ static void discard_masks_locked() {
 // Median hex-centre height per terrain in the shipped heightmap (MapExCe × tex[0],
 // 2026-10-29). Regional elevation varies widely, so only differences are applied.
 static float terrain_height(unsigned terrain) {
-    static constexpr float table[25]={-1,786,810,803,773,807,850,840,1166,1447,1528,1243,625,318,78,
-        -1,-1,-1,-1,2072,705,139,-1,-1,67};
-    return terrain<25?table[terrain]:-1.0f;
+    static constexpr float table[26]={-1,786,810,803,773,807,850,840,1166,1447,1528,1243,625,318,78,
+        -1,-1,-1,-1,2072,705,139,-1,-1,67,786};   // local137: 25 「결빙」 stands like 평지
+    return terrain<26?table[terrain]:-1.0f;
 }
 static float height_change(unsigned terrain,unsigned original_terrain) {
     float to=terrain_height(terrain),from=terrain_height(original_terrain);
@@ -172,7 +181,7 @@ static float carve(unsigned terrain) {
 }
 static int material(unsigned terrain) {
     switch(terrain) {
-        case 1:return 0;case 3:return 1;case 2:return 2;
+        case 1:case 25:return 0;case 3:return 1;case 2:return 2;   // local137: 25 「결빙」 (the season ice paint goes over it)
         case 5:case 6:return 4;
         case 8:case 9:case 10:case 11:return 5;
         case 19:return 6;
@@ -185,6 +194,13 @@ static int material(unsigned terrain) {
 }
 static void cpu_cell_locked(unsigned hex);
 static void refresh_cliffs_locked(unsigned hex);
+// local142 (user 2026-11-14 "결빙 해제될때 좀느리더라고"; profile: 300-500 cells a day took up to 150 ms): a batch of marks
+// (season flood / ice) only stamps the +/-11 pixel box of each cell; end_batch() works out every stamped pixel once (neighbouring
+// cells shared each pixel about nine times) and publishes once. The final heights depend only on the final cell arrays, so the
+// result is the same as marking the cells one by one.
+static bool batching;static std::vector<unsigned char> batch_dirty;static unsigned batch_l,batch_t,batch_r,batch_b;
+static void cpu_stamp_locked(unsigned hex);
+static void cpu_or_stamp_locked(unsigned hex) {if(batching)cpu_stamp_locked(hex);else cpu_cell_locked(hex);}
 #ifndef NO_RUNTIME_LOG
 static void log_cliff_locked(unsigned hex);
 #endif
@@ -207,13 +223,49 @@ static void mark(unsigned hex,unsigned terrain,unsigned original_terrain) {
 #ifndef NO_RUNTIME_LOG
         if(cliff[hex])log_cliff_locked(hex);
 #endif
-        cpu_cell_locked(hex);
+        cpu_or_stamp_locked(hex);
         enqueue_locked(hex);
         refresh_cliffs_locked(hex);
-        publish_pending_locked();
+        if(!batching)publish_pending_locked();
     }
     ReleaseSRWLockExclusive(&ctrl_lock);
 }
+// R1d: game thread, right after the season rules' day. kind(cell) -> 0 none, 1 burning, 2 landslide, 3 flood, 4 burnt,
+// 5 shaken, 6 mud, 7 drought crack; nullptr clears the whole layer (feature off = original). Materials reuse the map's own:
+// 0 plain, 1 sand, 2 road, 4 forest, 5 mountain, 6 rock, 7 marsh, 8 poison marsh, 9 water. Returns the cells changed.
+static unsigned season_sync(int (__cdecl *kind)(int)) {
+    // local133: kind 8 river ice (the cell is made 평지 by terrain_edit::flood_sync) - rock until our ice material is ready
+    static const short paint[9]={RestoreOriginal,8,6,7,6,2,7,1,6};
+    // R2 (user 2026-11-13 "에셋 확장"): our own materials once the arrays and the table carry them - 240 burnt, 241 mud,
+    // 242 rubble, 243 cracked earth (fire -> burnt, landslide -> rubble, flood / mud -> mud, burnt -> burnt, quake / drought -> cracked).
+    static const short paint_new[9]={RestoreOriginal,240,242,241,240,243,241,243,244};
+    const short *paint_table=season_bake::mat_ready()?paint_new:paint;
+    if(!kind && !active())return 0;
+    unsigned changed=0;
+    AcquireSRWLockExclusive(&ctrl_lock);
+    if(!render_failed && !world_transition) {
+        for(unsigned hex=0;hex<HexCount;++hex) {
+            int k=kind && active()?kind(static_cast<int>(hex)):0;
+            short goal=k>0 && k<9?paint_table[k]:static_cast<short>(RestoreOriginal);
+            bool has=goal!=RestoreOriginal;
+            if(has==season_has[hex] && (!has || goal==season_goal[hex]))continue;
+            season_has[hex]=has;season_goal[hex]=has?goal:0;enqueue_locked(hex);++changed;
+        }
+        if(changed)publish_pending_locked();
+    }
+    ReleaseSRWLockExclusive(&ctrl_lock);
+    return changed;
+}
+#ifndef NO_RUNTIME_LOG
+// local156 probe (user 2026-11-14 "겨울 두번동안 황하에서 결빙 못봤어"): one cell's render state - bit 0 has_goal, 8..15 goal,
+// 16 season_has, 20..31 season_goal (244 = ice); the height change in the second value.
+static unsigned probe_cell(unsigned hex,int *height) {
+    if(hex>=HexCount)return 0;
+    if(height)*height=static_cast<int>(height_delta[hex]);
+    return (has_goal[hex]?1u:0u)|(static_cast<unsigned>(static_cast<uint8_t>(goals[hex]))<<8)|((season_has[hex]?1u:0u)<<16)|
+        ((static_cast<unsigned>(season_goal[hex])&0xFFFu)<<20)|(season_bake::mat_ready()?2u:0u);   // bit 1: our materials ready
+}
+#endif
 // Invoked only by terrain_edit's existing UI/load-host paths. First queue raw
 // asset restoration of old targets; the current sidecar list overrides these.
 static bool take_ui_work(bool &install_present) {
@@ -575,7 +627,7 @@ static void refresh_cliffs_locked(unsigned hex) {
         if(r<0 || r>=220 || k<0 || k>=220)continue;
         unsigned neighbour=static_cast<unsigned>(r*220+k);
         if(neighbour==hex || !cliff[neighbour])continue;
-        cpu_cell_locked(neighbour);enqueue_locked(neighbour);
+        cpu_or_stamp_locked(neighbour);enqueue_locked(neighbour);
     }
 }
 #ifndef NO_RUNTIME_LOG
@@ -622,6 +674,46 @@ static void cpu_cell_locked(unsigned hex) {
     }
     for(unsigned z=top;z<bottom;++z)for(unsigned x=left;x<right;++x)
         cpu_touched[static_cast<size_t>(z)*CtrlSize+x]=height_at(x,z)!=original_height[static_cast<size_t>(z)*CtrlSize+x];
+}
+static void cpu_stamp_locked(unsigned hex) {
+    if(original_height.empty())return;
+    if(batch_dirty.empty()) {try {batch_dirty.assign(static_cast<size_t>(CtrlSize)*CtrlSize,0);} catch(...) {cpu_cell_locked(hex);return;}}
+    Center c=center(hex);int px=static_cast<int>(std::floor(c.x/100+0.5)),pz=static_cast<int>(std::floor(c.z/100+0.5));
+    auto clip=[](int value) {return static_cast<unsigned>(value<0?0:value>static_cast<int>(CtrlSize)?CtrlSize:value);};
+    unsigned left=clip(px-11),top=clip(pz-11),right=clip(px+12),bottom=clip(pz+12);
+    if(left>=right || top>=bottom)return;
+    for(unsigned z=top;z<bottom;++z)memset(&batch_dirty[static_cast<size_t>(z)*CtrlSize+left],1,right-left);
+    if(batch_r<=batch_l) {batch_l=left;batch_t=top;batch_r=right;batch_b=bottom;}
+    else {batch_l=(std::min)(batch_l,left);batch_t=(std::min)(batch_t,top);batch_r=(std::max)(batch_r,right);batch_b=(std::max)(batch_b,bottom);}
+}
+// Every stamped pixel once: the same writes cpu_cell_locked makes (both heightfields first, cpu_touched after).
+static void cpu_pixels_locked() {
+    TERRAIN_SCOPE(CpuCell);
+    if(original_height.empty() || batch_r<=batch_l || batch_dirty.empty()) {batch_l=batch_r=batch_t=batch_b=0;return;}
+    if(cpu_touched.empty()) {try {cpu_touched.assign(static_cast<size_t>(CtrlSize)*CtrlSize,0);} catch(...) {return;}}
+    unsigned *data[MaxHeightfields]={};double low[MaxHeightfields]={},span[MaxHeightfields]={};
+    for(unsigned i=0;i<MaxHeightfields;++i) {
+        auto &o=heightfields[i];if(o && !heightfield_ok(o))o=nullptr;if(!o)continue;
+        float lo=*reinterpret_cast<const float *>(o+0x50),hi=*reinterpret_cast<const float *>(o+0x54);
+        if(!(hi>lo))continue;data[i]=reinterpret_cast<unsigned *>(o+0x58);low[i]=lo;span[i]=hi-lo;
+    }
+    for(unsigned z=batch_t;z<batch_b;++z)for(unsigned x=batch_l;x<batch_r;++x) {
+        size_t at=static_cast<size_t>(z)*CtrlSize+x;if(!batch_dirty[at])continue;batch_dirty[at]=0;
+        const float height=height_at(x,z);const bool same=height==original_height[at];
+        if(!(same && !cpu_touched[at]))for(unsigned i=0;i<MaxHeightfields;++i)if(data[i]) {
+            double t=(height-low[i])/span[i];t=t<0?0:t>1?1:t;data[i][at]=static_cast<unsigned>(t*4294967295.0+0.5);
+        }
+        cpu_touched[at]=!same;
+    }
+    batch_l=batch_r=batch_t=batch_b=0;
+}
+static void begin_batch() {AcquireSRWLockExclusive(&ctrl_lock);batching=true;ReleaseSRWLockExclusive(&ctrl_lock);}
+static void end_batch() {
+    AcquireSRWLockExclusive(&ctrl_lock);
+    batching=false;
+    if(!render_failed) {{COST_SCOPE("terrain_render:end_batch_cpu");cpu_pixels_locked();}publish_pending_locked();}
+    else {batch_l=batch_r=batch_t=batch_b=0;if(!batch_dirty.empty())std::fill(batch_dirty.begin(),batch_dirty.end(),static_cast<unsigned char>(0));}
+    ReleaseSRWLockExclusive(&ctrl_lock);
 }
 // Called on the loading thread right after A07B70 returns, before the owner publishes it.
 static void heightfield_created(unsigned index,unsigned char *object,const void *vtable) {
@@ -705,12 +797,107 @@ static unsigned height_cell_locked(ID3D11DeviceContext *context,unsigned hex) {
     }
     return mask_cell_locked(context,box);
 }
+// local144 (Fable plan item 1, user 2026-11-14 "한 빌드로 진행"): a frame's changed cells no longer recompute and upload their 23x23
+// boxes one by one (neighbouring cells are 7-8 pixels apart, so a pixel was done about nine times; 0.39 ms a cell). Each cell stamps
+// its box into upload_stamp (row spans up_span_l/r); after the frame's cells, every stamped pixel takes height_at once, the height
+// texture gets one span a row, the work textures the touched runs, and the mask the stamped pixels - the same values as
+// height_cell_locked, which stays for single cells.
+static std::vector<unsigned char> upload_stamp;static std::vector<unsigned short> up_span_l,up_span_r;
+static unsigned up_t=CtrlSize,up_b=0,up_pixels=0;
+static bool stamp_upload_locked(unsigned hex) {
+    if(!height_texture || shadow_height.empty())return false;
+    if(upload_stamp.empty()) {
+        try {upload_stamp.assign(static_cast<size_t>(CtrlSize)*CtrlSize,0);up_span_l.assign(CtrlSize,static_cast<unsigned short>(CtrlSize));up_span_r.assign(CtrlSize,0);}
+        catch(...) {upload_stamp.clear();up_span_l.clear();up_span_r.clear();return false;}
+    }
+    Center c=center(hex);int px=static_cast<int>(std::floor(c.x/100+0.5)),pz=static_cast<int>(std::floor(c.z/100+0.5));
+    auto clip=[](int value) {return static_cast<unsigned>(value<0?0:value>static_cast<int>(CtrlSize)?CtrlSize:value);};
+    const unsigned l=clip(px-11),t=clip(pz-11),r=clip(px+12),b=clip(pz+12);
+    if(l>=r || t>=b)return true;
+    up_t=(std::min)(up_t,t);up_b=(std::max)(up_b,b);
+    for(unsigned z=t;z<b;++z) {
+        if(l<up_span_l[z])up_span_l[z]=static_cast<unsigned short>(l);
+        if(r>up_span_r[z])up_span_r[z]=static_cast<unsigned short>(r);
+        unsigned char *row=upload_stamp.data()+static_cast<size_t>(z)*CtrlSize;
+        for(unsigned x=l;x<r;++x)if(!row[x]) {row[x]=1;++up_pixels;}
+    }
+    return true;
+}
+static unsigned mask_stamped_locked(ID3D11DeviceContext *context) {
+    if(!mask_ready || mask_selected<0 || world_transition || render_failed)return 0;
+    WaterMask &m=water_masks[mask_selected];
+    if(!m.texture || m.device!=height_device)return 0;
+    unsigned pixels=0;float run[24];
+    const int top=(std::max)(0,static_cast<int>(up_t)-mask_offset_z),bottom=(std::min)(static_cast<int>(MaskSize),static_cast<int>(up_b)-mask_offset_z);
+    for(int z=top;z<bottom;++z) {
+        const int gz=z+mask_offset_z;if(gz<0 || gz>=static_cast<int>(CtrlSize) || up_span_r[gz]<=up_span_l[gz])continue;
+        const unsigned char *stamp=upload_stamp.data()+static_cast<size_t>(gz)*CtrlSize;
+        const int left=(std::max)(0,static_cast<int>(up_span_l[gz])-mask_offset_x),right=(std::min)(static_cast<int>(MaskSize),static_cast<int>(up_span_r[gz])-mask_offset_x);
+        for(int x=left;x<right;) {
+            unsigned start=static_cast<unsigned>(x),count=0;
+            while(x<right && count<24) {
+                const int gx=x+mask_offset_x;
+                if(gx<0 || gx>=static_cast<int>(CtrlSize) || !stamp[gx]){if(count)break;++x;start=static_cast<unsigned>(x);continue;}
+                size_t at=static_cast<size_t>(z)*MaskSize+x,g=static_cast<size_t>(gz)*CtrlSize+gx;
+                float offset=shadow_height[g]-original_height[g]+field_at(carve_delta,static_cast<unsigned>(gx),static_cast<unsigned>(gz));
+                float value=offset!=0.0f?m.original[at]+offset*mask_scale:m.original[at];
+                if(!memcmp(&value,&m.shadow[at],4) && (!mask_mirror_pending || !memcmp(&value,&m.original[at],4))){if(count)break;++x;start=static_cast<unsigned>(x);continue;}
+                memcpy(&m.shadow[at],&value,4);memcpy(run+count,&value,4);++count;++x;
+            }
+            if(!count)continue;
+            D3D11_BOX row={start,static_cast<UINT>(z),0,start+count,static_cast<UINT>(z)+1,1};
+            profile_upload(context,m.texture,0,&row,run,count*4,0);
+            for(unsigned i=0;i<mask_work_count;++i)profile_upload(context,mask_work[i],0,&row,run,count*4,0);
+            pixels+=count;
+        }
+    }
+    return pixels;
+}
+static unsigned flush_upload_locked(ID3D11DeviceContext *context) {
+    if(up_b<=up_t || upload_stamp.empty())return 0;
+    COST_SCOPE("terrain_render:upload_flush");
+    unsigned result=0;
+    if(height_texture && !shadow_height.empty()) {
+        static float run[CtrlSize];
+        for(unsigned z=up_t;z<up_b;++z) {
+            const unsigned l=up_span_l[z],r=up_span_r[z];if(r<=l)continue;
+            const unsigned char *stamp=upload_stamp.data()+static_cast<size_t>(z)*CtrlSize;
+            float *row=shadow_height.data()+static_cast<size_t>(z)*CtrlSize;const float *base=original_height.data()+static_cast<size_t>(z)*CtrlSize;
+            static unsigned char touched[CtrlSize];
+            for(unsigned x=l;x<r;++x) {
+                if(!stamp[x]) {touched[x]=0;continue;}
+                const float before=row[x];row[x]=height_at(x,z);
+                touched[x]=(before!=base[x] || row[x]!=base[x])?1:0;   // work textures may carry engine edits
+            }
+            D3D11_BOX span={l,z,0,r,z+1,1};
+            profile_upload(context,height_texture,0,&span,row+l,(r-l)*4,0);   // shadow_height mirrors the whole texture
+            for(unsigned x=l;height_work_count && x<r;) {
+                if(!touched[x]){++x;continue;}
+                unsigned start=x,count=0;
+                while(x<r && touched[x])run[count++]=row[x++];
+                D3D11_BOX part={start,z,0,start+count,z+1,1};
+                for(unsigned i=0;i<height_work_count;++i)profile_upload(context,height_work[i],0,&part,run,count*4,0);
+            }
+        }
+        result=mask_stamped_locked(context);
+    }
+    for(unsigned z=up_t;z<up_b;++z) {
+        if(up_span_r[z]>up_span_l[z])memset(upload_stamp.data()+static_cast<size_t>(z)*CtrlSize+up_span_l[z],0,up_span_r[z]-up_span_l[z]);
+        up_span_l[z]=static_cast<unsigned short>(CtrlSize);up_span_r[z]=0;
+    }
+    up_t=CtrlSize;up_b=0;up_pixels=0;
+    return result;
+}
 #ifndef NO_RUNTIME_LOG
 // Diagnostic only, one synchronous pixel per uploading Present. Keeping Map's
 // flags at zero avoids a pending readback extending the dirty-only Present gate.
 static void readback_locked(ID3D11DeviceContext *context,unsigned hex) {
     TERRAIN_SCOPE(Readback);
     if(readback_failed || !ctrl_create)return;
+    // local144 (Fable plan item 2): the synchronous Map(READ) cost about 2 ms an uploading frame; one sample per 5 s is enough.
+    static ULONGLONG readback_at;const ULONGLONG now=GetTickCount64();
+    if(readback_at && now-readback_at<5000)return;
+    readback_at=now;
     if(!readback_texture) {
         D3D11_TEXTURE2D_DESC d={};d.Width=d.Height=d.MipLevels=d.ArraySize=d.SampleDesc.Count=1;
         d.Format=DXGI_FORMAT_B8G8R8A8_TYPELESS;d.Usage=D3D11_USAGE_STAGING;d.CPUAccessFlags=D3D11_CPU_ACCESS_READ;
@@ -736,6 +923,7 @@ static void readback_locked(ID3D11DeviceContext *context,unsigned hex) {
 #endif
 static void on_present(ID3D11DeviceContext *context) {
     TERRAIN_SCOPE(RenderUpload);
+    season_bake::frame(context);
     if(!context || !active())return;
 #ifndef NO_RUNTIME_LOG
     if(InterlockedCompareExchange(&present_reported,1,0)==0)log_event("terrain_render_present",1,0,0);
@@ -744,20 +932,29 @@ static void on_present(ID3D11DeviceContext *context) {
     unsigned cells=0,pixels=0,mask_cells=0,mask_pixels=0;
     AcquireSRWLockExclusive(&ctrl_lock);
     if(ctrl_texture && !render_failed) {
-        while(dirty_count && cells<FrameLimit) {
+        // local142: a time budget (3 ms, at least 8 cells) besides the 256-cell cap, so a day that changes hundreds of cells
+        // spreads its uploads over several frames instead of stalling one; the rest waits in the queue as before.
+        // local144: the heights are done once for the frame's cells after the loop (flush_upload_locked), so a cell costs only its
+        // control pixels here; the frame also stops at kUploadPixels stamped height pixels.
+        LARGE_INTEGER budget_start,budget_now,budget_freq;QueryPerformanceCounter(&budget_start);QueryPerformanceFrequency(&budget_freq);
+        bool confirmed=false;
+        while(dirty_count && cells<FrameLimit && up_pixels<kUploadPixels) {
+            if(cells>=8) {QueryPerformanceCounter(&budget_now);if((budget_now.QuadPart-budget_start.QuadPart)*1000>budget_freq.QuadPart*3)break;}
             unsigned hex=dirty_hex[dirty_head];dirty_head=(dirty_head+1)%HexCount;--dirty_count;queued[hex]=false;
-            D3D11_BOX box=hex_box(hex);unsigned written=write_cell(shadow_ctrl,original_ctrl,hex,goals[hex]);
+            D3D11_BOX box=hex_box(hex);unsigned written=write_cell(shadow_ctrl,original_ctrl,hex,cell_goal(hex));
             if(written) {
                 profile_upload(context,ctrl_texture,0,&box,shadow_ctrl.data()+static_cast<size_t>(box.top)*CtrlSize+box.left,CtrlPitch,0);
                 mirror_cell_locked(context,hex);
-                unsigned updated=height_cell_locked(context,hex);
-                if(updated){++mask_cells;mask_pixels+=updated;}
+                if(!confirmed) {confirm_release_masks_locked(context);confirmed=true;}
+                if(stamp_upload_locked(hex))++mask_cells;
+                else {unsigned updated=height_cell_locked(context,hex);if(updated){++mask_cells;mask_pixels+=updated;}}
             }
 #ifndef NO_RUNTIME_LOG
             if(written && cells==0)readback_locked(context,hex);
 #endif
             ++cells;pixels+=written;
         }
+        mask_pixels+=flush_upload_locked(context);
     }
     if(!dirty_count)mask_mirror_pending=false;
     publish_pending_locked();ReleaseSRWLockExclusive(&ctrl_lock);
@@ -795,6 +992,19 @@ static bool original_site(void **table,CreateTexture2D original) {
     return (info.Protect&(PAGE_EXECUTE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY))!=0;
 #endif
 }
+#include "native_season_probe.inl"
+#include "native_season_bake.inl"
+static bool season_site(void **table,void *function) {return original_site(table,reinterpret_cast<CreateTexture2D>(function));}
+static bool probe_on() {
+#ifndef NO_RUNTIME_LOG
+    return season_probe::on();
+#else
+    return false;
+#endif
+}
+#ifndef NO_RUNTIME_LOG
+static bool probe_site(void **table,void *function) {return original_site(table,reinterpret_cast<CreateTexture2D>(function));}
+#endif
 static HRESULT STDMETHODCALLTYPE create_texture_2d(ID3D11Device *dev,const D3D11_TEXTURE2D_DESC *desc,
     const D3D11_SUBRESOURCE_DATA *initial,ID3D11Texture2D **out) { COST_SCOPE("terrain_render::create_texture_2d");
     TERRAIN_SCOPE(TextureHook);
@@ -803,7 +1013,7 @@ static HRESULT STDMETHODCALLTYPE create_texture_2d(ID3D11Device *dev,const D3D11
     auto table=*reinterpret_cast<void ***>(dev);
     AcquireSRWLockShared(&slot_lock);
     for(const auto &s:slots)if(s.table==table){original=s.original;break;}
-    observing=permitted && !stopping;
+    observing=permitted && !stopping && !season_bake::inside;   // our own season copies pass straight through
     ReleaseSRWLockShared(&slot_lock);
     // An installed slot always has a saved original, including during restore.
     bool capture=false;
@@ -822,8 +1032,8 @@ static HRESULT STDMETHODCALLTYPE create_texture_2d(ID3D11Device *dev,const D3D11
                 bytes+static_cast<size_t>(row)*initial[0].SysMemPitch,CtrlPitch);
             shadow=base;
             AcquireSRWLockShared(&ctrl_lock);
-            for(unsigned hex=0;hex<HexCount;++hex)if(has_goal[hex] && goals[hex]!=RestoreOriginal) {
-                if(write_cell(shadow,base,hex,goals[hex]))++initial_cells;
+            for(unsigned hex=0;hex<HexCount;++hex)if(cell_goal(hex)!=RestoreOriginal) {
+                if(write_cell(shadow,base,hex,cell_goal(hex)))++initial_cells;
             }
             ReleaseSRWLockShared(&ctrl_lock);
             writable=*desc;writable.Usage=D3D11_USAGE_DEFAULT;
@@ -872,7 +1082,35 @@ static HRESULT STDMETHODCALLTYPE create_texture_2d(ID3D11Device *dev,const D3D11
             writable=*desc;writable.Usage=D3D11_USAGE_DEFAULT;
         } catch(...) {mask_capture=false;}
     }
-    HRESULT result=original(dev,(capture || height_capture || mask_capture)?&writable:desc,create_initial,out);
+#ifndef NO_RUNTIME_LOG
+    // Season G0: tint only textures this module does not already capture.
+    season_probe::TintStore tint_store;unsigned tint_ordinal=0;int tinted=-1;
+    if(observing && out && !capture && !height_capture && !mask_capture)
+        if(auto t=season_probe::tint(desc,initial,tint_store,tint_ordinal)){create_initial=t;tinted=static_cast<int>(tint_ordinal);}
+    double probe_start=season_probe::now_ms();
+#endif
+    // 4계절 G1a: the two ground map textures become DEFAULT (same contents) so baked seasons can be copied in.
+    const int season_kind=observing && out && !capture && !height_capture && !mask_capture && create_initial==initial?season_bake::kind(desc,initial):-1;
+    if(season_kind>=0){writable=*desc;writable.Usage=D3D11_USAGE_DEFAULT;writable.CPUAccessFlags=0;}
+    // R2 materials: the three 19-layer detail arrays are created with 4 generated layers more.
+    const bool mat_match=season_kind<0 && observing && out && !capture && !height_capture && !mask_capture && create_initial==initial && season_bake::mat_match(desc,initial);
+    season_bake::MatExt mat_ext;bool mat_built=false;
+    if(mat_match){try {mat_built=season_bake::mat_extend(desc,initial,mat_ext);} catch(...) {mat_built=false;}}
+    if(mat_built) {
+        HRESULT r=original(dev,&mat_ext.desc,mat_ext.init.data(),out);
+        season_bake::mat_created(true,SUCCEEDED(r),mat_ext.cls);
+        if(SUCCEEDED(r))return r;
+    } else if(mat_match)season_bake::mat_created(true,false,-1);
+    HRESULT result=original(dev,(capture || height_capture || mask_capture || season_kind>=0)?&writable:desc,create_initial,out);
+    if(season_kind>=0) {
+        if(FAILED(result))result=original(dev,desc,initial,out);
+        else if(*out)season_bake::map_created(dev,season_kind,desc,initial,*out);
+    }
+    if(observing && SUCCEEDED(result) && out && *out)season_bake::source_created(dev,desc,create_initial);
+#ifndef NO_RUNTIME_LOG
+    if(tinted>=0 && FAILED(result))result=original(dev,desc,initial,out);
+    if(observing)season_probe::texture_created(desc,initial,result,season_probe::now_ms()-probe_start,tinted);
+#endif
     if(mask_capture) {
         if(FAILED(result))result=original(dev,desc,initial,out);
         else if(*out) {
@@ -1073,7 +1311,7 @@ static void install_early() {
     water_diag::mask_sample=&confirm_mask;
     water_diag::install_early();
 #endif
-    if(!active())return;
+    if(!active() && !probe_on() && !season_bake::on())return;
     AcquireSRWLockExclusive(&slot_lock);
     bool attempt=!early_attempted && permitted && !stopping;
     if(attempt)early_attempted=true;
@@ -1088,6 +1326,10 @@ static void install_early() {
     ID3D11Device *temporary=nullptr;
     HRESULT result=create?create(nullptr,D3D_DRIVER_TYPE_HARDWARE,nullptr,0,nullptr,0,D3D11_SDK_VERSION,&temporary,nullptr,nullptr):E_FAIL;
     bool installed=SUCCEEDED(result) && temporary && install_device(temporary,true);
+    if(installed)season_bake::install_ps(temporary,&season_site);
+#ifndef NO_RUNTIME_LOG
+    if(installed)season_probe::install(temporary,&probe_site);
+#endif
     if(installed) {
         AcquireSRWLockExclusive(&slot_lock);
         early_table=*reinterpret_cast<void ***>(temporary);early_library=library;
@@ -1102,7 +1344,12 @@ static void on_device(ID3D11Device *dev) {
     water_diag::mask_sample=&confirm_mask;
     water_diag::on_device(dev);
 #endif
-    if(!dev || !active())return;
+    if(!dev)return;
+#ifndef NO_RUNTIME_LOG
+    if(season_probe::on())season_probe::install(dev,&probe_site);
+#endif
+    season_bake::install_ps(dev,&season_site);
+    if(!active()) {if(probe_on() || season_bake::on())install_device(dev,false);return;}
     AcquireSRWLockExclusive(&ctrl_lock);
     if(ctrl_texture && ctrl_device!=dev) {discard_ctrl_locked();resync_needed=true;}
     if(height_texture && height_device!=dev)discard_height_locked();
@@ -1139,6 +1386,10 @@ static void restore() {
 #ifdef SAN14_WATER_DIAG_INCLUDED
     water_diag::restore();
 #endif
+#ifndef NO_RUNTIME_LOG
+    season_probe::restore();
+#endif
+    season_bake::restore();
     AcquireSRWLockExclusive(&slot_lock);stopping=true;
     AcquireSRWLockExclusive(&ctrl_lock);render_failed=true;clear_targets_locked();discard_ctrl_locked();discard_height_locked();discard_masks_locked();ReleaseSRWLockExclusive(&ctrl_lock);
     for(auto &s:slots)if(s.published) {

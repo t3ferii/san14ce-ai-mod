@@ -24,6 +24,7 @@
     X(loyalty) \
     X(terrain_edit) \
     X(building_destruction_all) \
+    X(building_destruction_boost) \
     X(diplomacy_overinvest) \
     X(diplomacy_counterturn) \
     X(damage_preview) \
@@ -81,6 +82,15 @@
     X(siege_no_catapult) \
     X(siege_no_watchtower) \
     X(siege_no_trap) \
+    X(siege_fort_first) \
+    X(retake_adjacent) \
+    X(retake_build) \
+    X(gate_intercept) \
+    X(helm_intercept) \
+    X(garrison_recall) \
+    X(computer_trade) \
+    X(front_hire) \
+    X(ranged_facility_kill) \
     X(siege_stall_near) \
     X(attack_eval70) \
     X(retreat_eval60) \
@@ -88,6 +98,8 @@
     X(siege_guard) \
     X(supply_relay) \
     X(no_tribe_target) \
+    X(tribe_terrain_path) \
+    X(ai_tactic_order) \
     X(awards_horse) \
     X(awards_v16) \
     X(merit_bond16) \
@@ -100,4 +112,7 @@
     X(delegated_exclude) \
     X(ai_search2) \
     X(officer_first) \
-    X(officer_rotation)
+    X(officer_rotation) \
+    X(ai_learn) \
+    X(ambush) \
+    X(destruction_ticket)

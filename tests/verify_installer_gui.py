@@ -26,7 +26,8 @@ ids={s+'.'+k for s,k in cs}
 # 사용자 결정: 사용 중지 키 읽기 제거 2026-11-03.
 retired={'combat.departures','combat.group_advance','combat.support','diplomacy.diplomacy_overinvest','officer_ui.unified',
          'ccz.ccz_hide_model','ccz.ccz_depth','ccz.ccz_far_keep','performance.timer_1ms',
-         'combat.siege_native'}
+         'combat.siege_native','extensions.scenery_skip',
+         'season.season_fire','season.season_rain'}   # 2026-11-12: scenery skip became a briefing topic; v15.17: season fire/rain off since local133
 retired_body=re.search(r'HashSet<string> Retired = new HashSet<string> \{(.*?)\};',gui,re.S)
 ok(retired_body is not None and set(re.findall(r'"([\w.]+)"',retired_body[1]))==retired,'GUI retired set')
 ps_retired={s+'.'+k for s,k in re.findall(r"Section='(\w+)'; Key='(\w+)';[^\r\n]*Retired=\$true",menu)}
@@ -45,7 +46,7 @@ ok('retired 2026-10-28 (mission_v2 conflict); keys no longer read' in adapter,'D
 ok('f.diplomacy_overinvest = false; // retired 2026-11-03: native cap/marker restored; key no longer read' in adapter and
    not re.search(r'feature_key\(config, L"diplomacy", L"diplomacy_overinvest"',adapter),'retired diplomacy key is not read')
 ok('!f.IsMaster && !Catalog.Retired.Contains(f.Id)' in gui,'tab denominator excludes retired rows')
-ok(menu.count("Retired=$true;")==10 and
+ok(menu.count("Retired=$true;")==13 and
    menu.count("Note='\uc784\ubb34 \uc77c\uad00\uc131 v2\uc640 \ucda9\ub3cc\ud574 \uc0ac\uc6a9\uc774 \uc911\uc9c0\ub41c \uae30\ub2a5\uc785\ub2c8\ub2e4.'")==3 and
    menu.count("Note='\uac1c\ubc1c \uc911\uc9c0\ub85c \uc81c\uac70\ub41c \uae30\ub2a5\uc785\ub2c8\ub2e4.'")==1 and
    '\uac1c\ubc1c \uc911\uc9c0\ub85c \uc81c\uac70\ub41c \uae30\ub2a5' in gui,'user decision 2026-11-03: retirement explanations')
@@ -54,7 +55,7 @@ ok('Math.Max(0, Math.Min(3, n))' in gui and "[Math]::Max(0, [Math]::Min(3, $task
 ok('0 — 기준: foam ON / renderer ON' in gui and '[0 기준]' in menu and '번호=값' in menu,'GUI/PS expose four terrain diagnostic choices')
 ok('A/B/C는 진단 전용입니다.' in gui and '실제 지형 편집·저장에는 사용하지 마세요.' in menu,'terrain diagnostic warning')
 ok('AssemblyVersion("15.4.0.0")' in gui,'installer assembly version 15.4.0.0')
-tabs=('게임렉제거(성능)','전투','편의성','게임성','조조전','기타(개발용)')
+tabs=('게임렉제거(성능)','전투','편의성','게임성','조조전','180(wprkfdid12-ux) 모드팩 호환','기타(개발용)')
 for (s,k),(g,d,r,i,t) in cs.items():
     ok(t in tabs,'unknown tab %s'%t)
     ok(g=='' or ('groups.'+g) in ids,'unknown group for %s.%s'%(s,k))
@@ -62,7 +63,7 @@ for (s,k),(g,d,r,i,t) in cs.items():
     ok(i=='' or i in ids,'unknown inherit for %s.%s'%(s,k))
     if (s,k)==('diagnostics','ai_trace_original'):
         ok('f.trace_original = f.ai_trace && GetPrivateProfileIntW(L"diagnostics", L"ai_trace_original"' in adapter,'DLL does not AND ai_trace_original with ai_trace')
-    elif r and (s,k) not in {('progress_native','geometry'),('ccz','ccz_hide_model'),('ccz','ccz_depth'),('ccz','ccz_far_keep'),('domestic','population_rate'),('personnel','merit_troops_level')}:
+    elif r and (s,k) not in {('progress_native','geometry'),('ccz','ccz_hide_model'),('ccz','ccz_depth'),('ccz','ccz_far_keep'),('domestic','population_rate'),('personnel','merit_troops_level'),('combat','siege_guard_range'),('season','season_fire'),('season','season_rain')}:  # season_fire/rain: always false since local133
         # The DLL must AND the parent so a child can never run alone.
         parent=r.split('.')[1]
         ok(re.search(r'f\.%s = f\.%s && feature_key\(config, L"%s", L"%s"'%(k,parent,s,k),adapter) is not None,'DLL does not AND %s with %s'%(k,parent))
@@ -100,7 +101,7 @@ ok(cs.get(('stratagem','building_destruction_all'))==('convenience',0,'','','게
 # Dependent rows: the checkbox starts after the measured width of the "└ 종속" tag (any DPI), and the tag toggles it too.
 ok('int tagWidth = nested ? TextRenderer.MeasureText(tag.Text, tag.Font).Width : 0;' in gui and 'nested ? 28 + tagWidth + 16' in gui,'dependent tag must not overlap its checkbox')
 ok('tag.Click += (s, e) => { if (Box.Enabled) Box.Checked = !Box.Checked; };' in gui,'dependent tag click toggles its checkbox')
-ok(masters=={'combat','convenience','performance','diagnostics','ccz'},'master switches %s'%sorted(masters))
+ok(masters=={'combat','convenience','performance','diagnostics','ccz','modpack'},'master switches %s'%sorted(masters))
 for t in tabs:ok(any(v[4]==t for v in cs.values()),'empty tab %s'%t)
 # User classification (2026-10-19): combat tab = AI behaviour correction only.
 ok(all(g=='combat' or (s,k)==('groups','combat') for (s,k),(g,d,r,i,t) in cs.items() if t=='전투'),'non-combat item in 전투 tab')
@@ -116,7 +117,7 @@ exe=Path(sys.argv[1]) if len(sys.argv)>1 else None
 # 사용자 결정 2026-10-30: 기능 설명뿐 아니라 출처 탭 전체 목록과 배포 차단을 검증한다.
 credits=[line for line in (P/'docs/CREDITS.md').read_text(encoding='utf-8-sig').splitlines() if line.startswith('- ')]
 credits_body=re.search(r'static class Credits \{.*?string\[\] Lines = \{(.*?)\};',gui,re.S)
-ok(len(credits)==12 and credits_body is not None and re.findall(r'"([^"]+)"',credits_body[1])==credits,'credits tab matches all twelve canonical lines in order')
+ok(len(credits)==13 and credits_body is not None and re.findall(r'"([^"]+)"',credits_body[1])==credits,'credits tab matches all thirteen canonical lines in order')
 ok('pages["출처"] = creditsPage;' in gui and 'new[] { "출처", "업데이트", "작업 기록" }' in gui,'credits page registered as a peer tab')
 for key,source in re.findall(r'^\* `(\w+)` = (.+)$',(P/'docs/CREDITS.md').read_text(encoding='utf-8-sig'),re.M):
     ok(any('"'+key+'",' in row and '출처: '+source in row for row in gui.splitlines()),'GUI credit note: '+key)

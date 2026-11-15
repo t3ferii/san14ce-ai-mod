@@ -56,6 +56,9 @@ static SRWLOCK log_lock = SRWLOCK_INIT;
 static __declspec(thread) unsigned native_search_depth;
 // Settings (2026-10-22): every switch lives in AI_TacticsMod\기능설정.ini, managed by the installer
 // (기타(개발용) tab for diagnostics). A key missing there falls back to its former file, then default.
+// local99: the scenery skip is one topic of the advisor briefing now ("명승지 발견"); the briefing keeps this in step with
+// its in-game setting and the scenery state hooks (native_modpack.inl) read it.
+static volatile LONG scenery_collect_live=1;
 static bool mod_ini_path(wchar_t *out,const wchar_t *file)
 {
     if(!GetModuleFileNameW(self_module,out,MAX_PATH))return false;
@@ -139,7 +142,8 @@ struct ModFeatures {
     bool convenience = true, performance = true;
     bool merit = true, awards = true, recruit = true, injury = true;          // [personnel]
     bool merit_friendship = true;                                            // [personnel] 2026-11-05: stage-3 mutual friendship on top of the native effect
-    unsigned merit_troops_level = 4;                                         // [personnel] 1..4 = stage 1/2 troops 1500/2000/2500/3000 (default 3000)
+    unsigned siege_guard_range = 2;                                          // [combat] 1..4 = siege guard intercept radius 6/8/10/12 (default 8, user 2026-11-15)
+unsigned merit_troops_level = 4;                                       // [personnel] 1..4 = stage 1/2 troops 1500/2000/2500/3000 (default 3000)
     bool recruit_ai = true, awards_ai = true, injury_herbal = true;          // [personnel] v12.8 split
     bool domestic = true, population = true, region_officers = true;         // [domestic]
     unsigned population_rate = 4;                                           // [domestic] 1..4 (user 2026-11-03), 1 = original
@@ -151,8 +155,12 @@ struct ModFeatures {
     bool terrain_edit = false;                                              // [real_estate]
     // 0=foam+renderer, 1=no foam, 2=no renderer/height capture, 3=neither.
     // Diagnostic startup choice only; terrain editing UI/trees/save remain owned by terrain_edit.
+    bool season_map = false;                                               // [diagnostics] 4계절 G1a ground bake
+    bool season_weather = false, season_disaster = false, season_damage = false, season_news = false, season_fire = false, season_domestic = false, season_rain = false, season_cloud = false, season_tiles = false;   // [diagnostics] 4계절 rules (SAN14_ModPack.dll)
+    unsigned season_probe = 0;                                              // [diagnostics] season G0 probe bits
     unsigned terrain_diag_mode = 0;                                         // [diagnostics]
     bool building_destruction_all = false;                                 // [stratagem], gameplay tab
+    bool building_destruction_boost = false;                               // [stratagem] local92: a successful roll counts 1.5 times
     bool diplomacy_overinvest = false, diplomacy_counterturn = false;       // [diplomacy], incoming computer negotiations
     bool damage_preview = true;                                            // [officer_ui], convenience only
     bool traits9 = true, tooltip_collab = true, stats200 = true, battle_deaths = true, scenery_skip = true; // [extensions]
@@ -185,11 +193,23 @@ struct ModFeatures {
     // local17 (user 2026-11-10): the changes kept from local16, each behind its own key. Every key defaults to 0 so a
     // fresh install equals v15.7.1; the user enables them one by one. Computer-side rules never reach the player force.
     bool siege_ring10 = false, siege_stall_near = false;
-    bool siege_no_catapult = false, siege_no_watchtower = false, siege_no_trap = false;   // [combat] local54, under mission_v2                    // [combat] under mission_v2
+    bool siege_fort_first = false;   // [combat] local74: original camp build -> fort, band, camp
+    bool retake_build = false;   // [combat] local91: retake units also build after taking a base (off = they never build)
+    bool retake_adjacent = false;   // [combat] local80: the original area-occupy filter asks radius 2 for a lost first-ring region
+    bool gate_intercept = false;    // [combat] user 2026-11-13: a 2,000-soldier 안행 unit stands behind an attacked computer gate
+    bool garrison_recall = false;   // [combat] local148: an attacked castle with fewer soldiers than durability calls its own armies home
+    bool tribe_terrain_path = false; // [combat] local149: 장사·사이 computer armies route through forest / mountains with a foe within 15 hexes
+    bool computer_trade = false;    // [combat] local167: monthly 상순 trade to the least friendly tribe city, 통솔<50 특사/정치 officers
+    bool front_hire = false;        // [combat] local167: frontline cities hire only 응원/악주/조타/모집 trait holders
+    bool helm_intercept = false;    // [combat] local148: 조타 officers of six river castles sail out to paint the water around attackers of an own port
+    bool ranged_facility_kill = false;   // [combat] user 2026-11-13: facilities hit from range can drop to 0 (2A0750 cap)
+    bool siege_no_catapult = false, siege_no_watchtower = false, siege_no_trap = false, ai_policy_cap = false;   // [combat] local54, under mission_v2                    // [combat] under mission_v2
     bool attack_eval70 = false, retreat_eval60 = false;                     // [combat] attack review 70%, field retreat recheck 60%
     bool path_wall = false, siege_guard = false, supply_relay = false, no_tribe_target = false;                          // [combat] path_wall needs obstacle
     bool delegated_exclude = false;                                         // [combat] local18: player delegated corps leave the campaign rules
     bool ai_search2 = true, officer_first = true;                           // [personnel] local56 computer corps (native_corps_domestic.inl)
+    bool ai_learn = true;                                                   // [personnel] local150 computer corps learn a tactic instead of the 2nd search
+    bool ai_tactic_order = false;   // [combat] local150 computer departures carry tactics in the computer order
     bool officer_rotation = true;                                           // [personnel] local57 computer forces (native_officer_rotation.inl)
     bool awards_horse = false, awards_v16 = false;                          // [personnel] under awards_ai
     bool merit_bond16 = false;                                              // [personnel] under merit
@@ -198,6 +218,8 @@ struct ModFeatures {
     bool drag_learn_multi = false;                                          // [officer_ui] under drag_learn
     bool auto_search = false, auto_reward = false;                          // [game_flow] main-screen toggles (local17, default off)
     bool sprite_fallback = false;                                           // [ccz] under ccz_sprites
+    bool ambush = false;                                                    // [game_flow] under advisor_briefing (ambush tickets)
+    bool destruction_ticket = false;                                        // [game_flow] under ambush: sure-success building destruction tickets
 };
 static ModFeatures mod_features;
 static bool feature_key(const wchar_t *config, const wchar_t *section, const wchar_t *key, bool fallback)
@@ -230,6 +252,7 @@ static void load_mod_features()
     f.awards_ai = f.awards && feature_key(config, L"personnel", L"awards_ai", true);   // needs the warehouse
     f.injury_herbal = on && feature_key(config, L"personnel", L"injury_herbal", f.injury);
     f.ai_search2 = on && feature_key(config, L"personnel", L"ai_search2", true);
+    f.ai_learn = f.ai_search2 && feature_key(config, L"personnel", L"ai_learn", true);   // local150
     f.officer_first = on && feature_key(config, L"personnel", L"officer_first", true);
     f.officer_rotation = on && feature_key(config, L"personnel", L"officer_rotation", true);
     f.domestic = on && feature_key(config, L"domestic", L"domestic", true);
@@ -243,7 +266,24 @@ static void load_mod_features()
     f.loyalty = on && feature_key(config, L"officer_ui", L"loyalty", true);
     const int terrain_diag = dev_group() ? mod_setting(L"diagnostics", L"terrain_diag_mode", 0) : 0;
     f.terrain_diag_mode = terrain_diag >= 0 && terrain_diag <= 3 ? static_cast<unsigned>(terrain_diag) : 0u;
+    const int season_probe = dev_group() ? mod_setting(L"diagnostics", L"season_probe", 0) : 0;
+    f.season_probe = season_probe > 0 && season_probe <= 15 ? static_cast<unsigned>(season_probe) : 0u;
+    // [groups] modpack: master of the 「180(wprkfdid12-ux) 모드팩 호환」 tab (user 2026-11-13). Keys live in [season]; a key still
+    // under [diagnostics] (the dev-tab test builds) is the fallback, so an existing setting keeps its value.
+    const bool modpack_group = on && GetPrivateProfileIntW(L"groups", L"modpack", 1, config) != 0;
+    auto season_old = [&](const wchar_t *key, int fallback) {return GetPrivateProfileIntW(L"diagnostics", key, fallback, config) != 0;};
+    f.season_map = modpack_group && feature_key(config, L"season", L"season_map", season_old(L"season_map", 0));   // 4계절 ground bake
+    f.season_weather = f.season_map && feature_key(config, L"season", L"season_weather", season_old(L"season_weather", 0));   // rules; the rest need it
+    f.season_disaster = f.season_weather && feature_key(config, L"season", L"season_disaster", season_old(L"season_disaster", 1));
+    f.season_damage = f.season_weather && feature_key(config, L"season", L"season_damage", season_old(L"season_damage", 1));
+    f.season_news = f.season_weather && feature_key(config, L"season", L"season_news", season_old(L"season_news", 1));
+    f.season_fire = false;   // local133 (user 2026-11-14 "비표시 빼자, 홍수랑 결빙만", "결빙타일을 만들어서 대하를 바꾸면"): no weather fire rule (the game's own fire stays)
+    f.season_domestic = f.season_weather && feature_key(config, L"season", L"season_domestic", season_old(L"season_domestic", 1));   // order / population
+    f.season_rain = false;   // local133: no rain layer (the rain picture is off; the rules still keep their weather)
+    f.season_cloud = f.season_weather && feature_key(config, L"season", L"season_cloud", true);   // local152 (user 2026-11-14 "구름만 진행"): the cloud body alone over the rain cells, far view
+    f.season_tiles = f.season_weather && feature_key(config, L"season", L"season_tiles", season_old(L"season_tiles", 1));   // disaster hexes (terrain painter)
     f.building_destruction_all = on && feature_key(config, L"stratagem", L"building_destruction_all", false);
+    f.building_destruction_boost = on && feature_key(config, L"stratagem", L"building_destruction_boost", true);   // local92
     f.diplomacy_overinvest = false; // retired 2026-11-03: native cap/marker restored; key no longer read
     f.diplomacy_counterturn = on && feature_key(config, L"diplomacy", L"diplomacy_counterturn", false);
     f.damage_preview = on && feature_key(config, L"officer_ui", L"damage_preview", true);
@@ -252,7 +292,6 @@ static void load_mod_features()
     f.stats200 = on && feature_key(config, L"extensions", L"stats200", true);
     f.stats200_growth = f.stats200 && feature_key(config, L"extensions", L"stats200_growth", true);
     f.battle_deaths = on && feature_key(config, L"extensions", L"battle_deaths", true);
-    f.scenery_skip = on && feature_key(config, L"extensions", L"scenery_skip", true);
     f.speed_buttons = on && feature_key(config, L"game_flow", L"speed_buttons", true);
     f.occupy_fast = on && feature_key(config, L"game_flow", L"occupy_fast", true);
     f.fast_save = on && feature_key(config, L"game_flow", L"fast_save", true);
@@ -260,6 +299,7 @@ static void load_mod_features()
     f.auto_search = on && feature_key(config, L"game_flow", L"auto_search", false);
     f.auto_reward = on && feature_key(config, L"game_flow", L"auto_reward", false);
     f.advisor_briefing = on && feature_key(config, L"game_flow", L"advisor_briefing", false);
+    f.scenery_skip = f.advisor_briefing;   // local99: no own key; the briefing topic "명승지 발견" decides at run time
     f.terrain_edit = f.advisor_briefing && feature_key(config, L"real_estate", L"terrain_edit", false);
     f.fast_menu = fast && feature_key(config, L"performance", L"fast_menu", false);   // 2026-10-23 user: performance tab
     f.area_index = fast && feature_key(config, L"performance", L"area_index", false);
@@ -303,14 +343,29 @@ static void load_mod_features()
     f.siege_no_catapult = f.mission_v2 && feature_key(config, L"combat", L"siege_no_catapult", false);   // local54
     f.siege_no_watchtower = f.mission_v2 && feature_key(config, L"combat", L"siege_no_watchtower", false);   // local54
     f.siege_no_trap = f.mission_v2 && feature_key(config, L"combat", L"siege_no_trap", false);   // local54
+    f.ai_policy_cap = f.siege_no_catapult;   // local156/158: the computer's 지세연구 stops at 7..9 when it may not build 투석대
+    f.siege_fort_first = feature_key(config, L"combat", L"siege_fort_first", true);   // local74
+    f.retake_adjacent = f.mission_v2 && feature_key(config, L"combat", L"retake_adjacent", true);   // local84
+    f.retake_build = f.retake_adjacent && feature_key(config, L"combat", L"retake_build", false);   // local91 (user: "기본값은 off ... 매우 하드코어")
+    f.gate_intercept = f.mission_v2 && feature_key(config, L"combat", L"gate_intercept", true);   // user 2026-11-13: 안행 2,000 behind an attacked gate
+    f.garrison_recall = f.mission_v2 && feature_key(config, L"combat", L"garrison_recall", true);   // local148: soldiers above durability while attacked
+    f.computer_trade = feature_key(config, L"combat", L"computer_trade", true);   // local167
+    f.front_hire = feature_key(config, L"combat", L"front_hire", true);   // local167
+    f.helm_intercept = f.mission_v2 && feature_key(config, L"combat", L"helm_intercept", true);   // local148: 조타 ships paint the water near an attacked port
+    f.ranged_facility_kill = feature_key(config, L"combat", L"ranged_facility_kill", true);   // user 2026-11-13
     f.siege_stall_near = f.mission_v2 && feature_key(config, L"combat", L"siege_stall_near", false);
     f.attack_eval70 = feature_key(config, L"combat", L"attack_eval70", false);
     f.retreat_eval60 = feature_key(config, L"combat", L"retreat_eval60", false);
     f.path_wall = f.obstacle && feature_key(config, L"combat", L"path_wall", false);
     f.siege_guard = feature_key(config, L"combat", L"siege_guard", false);
+    f.siege_guard_range = (std::max)(1u, (std::min)(4u, GetPrivateProfileIntW(L"combat", L"siege_guard_range", 2, config)));
     f.supply_relay = feature_key(config, L"combat", L"supply_relay", true);
     f.no_tribe_target = feature_key(config, L"combat", L"no_tribe_target", true);
-    f.delegated_exclude = feature_key(config, L"combat", L"delegated_exclude", false);
+    f.tribe_terrain_path = feature_key(config, L"combat", L"tribe_terrain_path", true);   // local149
+    f.ai_tactic_order = feature_key(config, L"combat", L"ai_tactic_order", true);   // local150
+    // local94 (user 2026-11-12 "이건 선택사항이 아니잖아 ... 항상 제외로 고정"): no longer an option. A delegated corps of
+    // the player force never takes the computer sortie/campaign rules; the key is not read.
+    f.delegated_exclude = true;
     f.awards_v16 = f.awards_ai && feature_key(config, L"personnel", L"awards_v16", false);
     f.awards_horse = f.awards_ai && feature_key(config, L"personnel", L"awards_horse", false);
     f.merit_bond16 = f.merit && feature_key(config, L"personnel", L"merit_bond16", false);
@@ -318,6 +373,8 @@ static void load_mod_features()
     f.expert_ingame = f.battle_rules && feature_key(config, L"battle_rules", L"expert_ingame", false);
     f.drag_learn_multi = f.drag_learn && feature_key(config, L"officer_ui", L"drag_learn_multi", false);
     f.sprite_fallback = f.ccz_sprites && feature_key(config, L"ccz", L"sprite_fallback", false);
+    f.ambush = f.advisor_briefing && feature_key(config, L"game_flow", L"ambush", false);
+    f.destruction_ticket = f.ambush && feature_key(config, L"game_flow", L"destruction_ticket", true);   // user 2026-11-13
     // retired 2026-10-28 (mission_v2 conflict); keys no longer read
     f.departures = f.group_advance = f.support = false;
 }

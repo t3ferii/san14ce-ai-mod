@@ -38,4 +38,6 @@ battle_deaths
 trait_hover
 face_timing
 auto_commands
+ambush
+season_rules
 ai_trace

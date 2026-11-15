@@ -268,7 +268,16 @@ static void restore_mouse_filter() {
 }
 struct MouseFilterLifetime {~MouseFilterLifetime(){restore_mouse_filter();}};
 static MouseFilterLifetime mouse_filter_lifetime;
-struct Model {std::wstring adviser=L"군사",title=L"열흘 보고",body;unsigned unread=0,page=0,pages=0,generation=0;bool collecting=false,open=false,city_list=false;std::vector<std::wstring> names,cities;};
+struct Model {std::wstring adviser=L"군사",title=L"열흘 보고",body,note;unsigned unread=0,page=0,pages=0,generation=0,tickets=0,offers=0,offer_kind=0;bool collecting=false,open=false,city_list=false,offer=false,advice=false,settings=false;std::vector<std::wstring> names,cities;};
+// local99: buttons of the open window. 13 = [수집 설정]; its page reuses the city grid (settings implies city_list).
+static const unsigned kButtons[]={2,3,4,5,6,7,8,13};
+static bool button_shown(const Model &m,unsigned id) {
+    if(m.advice)return id==2 || id==8;
+    if(m.offer)return id==2 || id==5 || id==6;
+    if(m.settings)return id==2 || id==13;
+    if(m.city_list)return id==2 || id==7;
+    return true;
+}
 static SRWLOCK lock=SRWLOCK_INIT;
 static void enter_model_lock(bool shared) {
     if(shared)AcquireSRWLockShared(&lock);else AcquireSRWLockExclusive(&lock);
@@ -314,7 +323,7 @@ static ID3D11ShaderResourceView *body_view;
 static ID3D11Texture2D *toast_texture;
 static ID3D11ShaderResourceView *toast_view;
 struct Highlight {ID3D11Texture2D *texture=nullptr;ID3D11ShaderResourceView *view=nullptr;};
-static Highlight highlights[8][2];
+static Highlight highlights[14][2];
 static int body_height=1,body_extent=0;
 static int hover=0;
 static bool srgb_target=false;
@@ -332,12 +341,13 @@ static ID3D11Texture2D *portrait_texture;
 static ID3D11ShaderResourceView *portrait_view;
 static volatile LONG extended_toast;   // local17 briefing16 (set by advisor_briefing::hud): 15 s wrapped toast; off = v15.7.1 5 s line
 static void set_extended(bool on){InterlockedExchange(&extended_toast,on?1:0);}
-static ULONGLONG toast_ms(){return InterlockedCompareExchange(&extended_toast,0,0)?15000:5000;}
+static volatile LONG toast_override;   // local64: a toast may carry its own duration (ambush ending notice, 15 s)
+static ULONGLONG toast_ms(){const LONG own=InterlockedCompareExchange(&toast_override,0,0);return own>0?static_cast<ULONGLONG>(own):InterlockedCompareExchange(&extended_toast,0,0)?15000:5000;}
 static SRWLOCK face_offer_lock=SRWLOCK_INIT;   // local17 briefing16 U6 direct face hand-off (offer_face / take_face_offer)
 static ID3D11Texture2D *face_offer;
 static int face_offer_revision;
-static ID3D11Texture2D *panel_texture,*badge_texture;
-static ID3D11ShaderResourceView *panel_view,*badge_view;
+static ID3D11Texture2D *panel_texture,*badge_texture,*ticket_texture,*coupon_texture,*offer_texture;
+static ID3D11ShaderResourceView *panel_view,*badge_view,*ticket_view,*coupon_view,*offer_view;
 static ID3D11Texture2D *avatar_texture;
 static ID3D11ShaderResourceView *avatar_view;
 static ID3D11Texture2D *shadow_texture,*ring_texture;
@@ -345,7 +355,7 @@ static ID3D11ShaderResourceView *shadow_view,*ring_view;
 static ID3D11Texture2D *stable_scene;
 static volatile LONG report_masked,report_tail,scene_clean;
 static volatile LONG64 report_window_until;
-static unsigned painted_generation=~0u,painted_unread=~0u;
+static unsigned painted_generation=~0u,painted_unread=~0u,painted_tickets=~0u,painted_coupon=~0u;static int painted_offer=-1;
 static ULONGLONG opened_at;
 static ULONGLONG portrait_attempt_at;
 static HFONT fonts[5]{};
@@ -364,14 +374,14 @@ static void release_device() {
     drop(portrait_staging);drop(portrait_candidate_view);drop(portrait_candidate);
     drop(body_view);drop(body_texture);for(auto &by_id:highlights)for(auto &item:by_id){drop(item.view);drop(item.texture);}
     drop(toast_view);drop(toast_texture);
-    drop(portrait_view);drop(portrait_texture);drop(panel_view);drop(panel_texture);drop(badge_view);drop(badge_texture);
+    drop(portrait_view);drop(portrait_texture);drop(panel_view);drop(panel_texture);drop(badge_view);drop(badge_texture);drop(ticket_view);drop(ticket_texture);drop(coupon_view);drop(coupon_texture);drop(offer_view);drop(offer_texture);
     drop(avatar_view);drop(avatar_texture);
     drop(shadow_view);drop(shadow_texture);drop(ring_view);drop(ring_texture);
     drop(stable_scene);InterlockedExchange(&report_tail,0);
     {AcquireSRWLockExclusive(&face_offer_lock);ID3D11Texture2D *offered=face_offer;face_offer=nullptr;ReleaseSRWLockExclusive(&face_offer_lock);if(offered)offered->Release();}
     drop(vs);drop(ps);drop(sampler);drop(blend);drop(raster_state);drop(scissor_state);drop(depth);drop(constants);drop(owner);
     for(auto &font:fonts)if(font){DeleteObject(font);font=nullptr;}
-    painted_generation=~0u;painted_unread=~0u;painted_content=~0u;portrait_attempt_at=0;
+    painted_generation=~0u;painted_unread=~0u;painted_tickets=~0u;painted_coupon=~0u;painted_offer=-1;painted_content=~0u;portrait_attempt_at=0;
 }
 static bool is_visible(){return flag(&visible)!=0;}
 static void mask_report(bool value){InterlockedExchange(&report_masked,value?1:0);}
@@ -411,8 +421,8 @@ static void publish(const Model &next,bool show,bool accepted_input=false) {
         double t=(now-opened_at)/220.0;close_zoom=static_cast<float>(.92+.08*ease_back(t));close_alpha=static_cast<float>((std::min)(1.0,t));closed_at=now;closing=true;
     }
     if(next.unread>model.unread)badge_at=now;
-    if(next.generation!=model.generation || next.page!=model.page || next.city_list!=model.city_list || next.pages!=model.pages || next.adviser!=model.adviser || next.title!=model.title || next.body!=model.body || next.names!=model.names || next.cities!=model.cities || next.collecting!=model.collecting)++content_revision;
-    if(next.generation!=model.generation || next.page!=model.page || next.city_list!=model.city_list || next.pages!=model.pages || next.adviser!=model.adviser || next.title!=model.title || next.body!=model.body || next.names!=model.names || next.cities!=model.cities || next.collecting!=model.collecting || next.open!=model.open || next.unread!=model.unread){model=next;++model_revision;}
+    if(next.generation!=model.generation || next.page!=model.page || next.city_list!=model.city_list || next.pages!=model.pages || next.adviser!=model.adviser || next.title!=model.title || next.body!=model.body || next.names!=model.names || next.cities!=model.cities || next.collecting!=model.collecting || next.offer!=model.offer || (next.offers!=0)!=(model.offers!=0) || next.offer_kind!=model.offer_kind || next.note!=model.note || next.advice!=model.advice || next.settings!=model.settings)++content_revision;
+    if(next.generation!=model.generation || next.page!=model.page || next.city_list!=model.city_list || next.pages!=model.pages || next.adviser!=model.adviser || next.title!=model.title || next.body!=model.body || next.names!=model.names || next.cities!=model.cities || next.collecting!=model.collecting || next.open!=model.open || next.unread!=model.unread || next.offer!=model.offer || next.tickets!=model.tickets || next.offers!=model.offers || next.offer_kind!=model.offer_kind || next.note!=model.note || next.advice!=model.advice || next.settings!=model.settings){model=next;++model_revision;}
 #ifndef NO_RUNTIME_LOG
     if(accepted_input){render_input_started=static_cast<ULONGLONG>(dispatched_input_started);render_input_revision=model_revision;InterlockedIncrement64(&input_accepted);}
 #else
@@ -425,7 +435,8 @@ static void publish(const Model &next,bool show,bool accepted_input=false) {
     InterlockedExchange(&visible,(show || tip)?1:0);
     if(!show){InterlockedExchange(&pending,0);if(capture_window){HWND window=capture_window;capture_window=nullptr;if(GetCapture()==window)ReleaseCapture();}}
 }
-static void toast(const std::wstring &text) {
+static void toast_for(const std::wstring &text,unsigned ms) {
+    InterlockedExchange(&toast_override,static_cast<LONG>(ms));
     enter_model_lock(false);toast_text=text;toast_at=GetTickCount64();leave_model_lock(false);
     InterlockedExchange(&toast_only,1);InterlockedExchange(&visible,1);
 }
@@ -476,6 +487,7 @@ static void take_face_offer(ID3D11Device *d,ID3D11DeviceContext *c) {
     log_event("advisor_face_direct",static_cast<unsigned>(revision),ok?1u:0u,static_cast<unsigned>(sd.Format));
 #endif
 }
+static void toast(const std::wstring &text) {toast_for(text,0);}
 static void forget() {
     InterlockedExchange(&ready,0);
     InterlockedExchange(&portrait_captured,0);InterlockedExchange(&portrait_requested,0);InterlockedExchange(&pending,0);
@@ -505,12 +517,26 @@ static void post_input(unsigned action,unsigned generation) {
 #endif
     InterlockedExchange(&pending_generation,static_cast<LONG>(generation));InterlockedExchange(&pending,static_cast<LONG>(action));
 }
+// local64 (user 2026-11-12 "버블에서 말풍선 띄워서 수락/거절"): the pending ambush proposal is a balloon above the head
+// (below it near the top edge) while the report is closed. 10 = 수락, 11 = 거절, 12 = balloon body.
+static const float kOfferW=660,kOfferH=150;   // user 2026-11-13: the ambush line was cut at 560
+static Rect offer_box(float hx,float hy) {
+    Rect box{bounded(hx-44-236.0f,16.0f,1904.0f-kOfferW),hy-44-kOfferH-10,kOfferW,kOfferH};
+    if(box.y<16)box.y=hy+44+10;
+    return box;
+}
+static Rect offer_button(Rect box,bool accept){return {box.x+box.w-(accept?236.0f:120.0f),box.y+box.h-52,104,38};}
+static bool offer_balloon(const Model &m){return m.offers && !m.open && !m.collecting;}
 static int widget(float x,float y,bool open) {
     float dx=x-head.x,dy=y-head.y;if(dx*dx+dy*dy<=44*44)return 1;
+    if(offer_balloon(model) && !open) {
+        Rect box=offer_box(head.x,head.y);
+        if(box.contains(x,y))return offer_button(box,true).contains(x,y)?10:offer_button(box,false).contains(x,y)?11:12;
+    }
     Rect panel=panel_rect(head.x);double zoom=model.open?.92+.08*ease_back((GetTickCount64()-opened_at)/220.0):1;
     if(!open || !panel_transform(panel,head.x,head.y,zoom).contains(x,y))return 0;
-    for(unsigned id=2;id<=7;++id) {
-        if(model.city_list && id!=2 && id!=7)continue;
+    for(unsigned id:kButtons) {
+        if(!button_shown(model,id))continue;
         if(panel_transform(control(id,panel),head.x,head.y,zoom).contains(x,y))return static_cast<int>(id);
     }
     if(model.city_list && !model.cities.empty())
@@ -687,14 +713,49 @@ static bool raster_toast_line(ID3D11DeviceContext *c,const std::wstring &text) {
     SelectObject(dc,oldfont);SelectObject(dc,old);DeleteObject(bm);DeleteDC(dc);
     return ok;
 }
+static unsigned offer_texture_kind=~0u;   // destruction_ticket: the balloon text follows the proposal kind
+static bool raster_offer(ID3D11DeviceContext *c,unsigned kind) {   // static content, rasterised once per device and kind
+    if(offer_texture && offer_view && offer_texture_kind==kind)return true;
+    drop(offer_view);drop(offer_texture);offer_texture_kind=kind;
+    const int w=static_cast<int>(kOfferW),h=static_cast<int>(kOfferH);
+    HDC dc=CreateCompatibleDC(nullptr);if(!dc)return false;
+    BITMAPINFO bi{};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=w;bi.bmiHeader.biHeight=-h;
+    bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;bi.bmiHeader.biCompression=BI_RGB;
+    void *bits=nullptr;HBITMAP bm=CreateDIBSection(dc,&bi,DIB_RGB_COLORS,&bits,nullptr,0);
+    if(!bm){DeleteDC(dc);return false;}auto old=SelectObject(dc,bm);
+    auto rgb=[](unsigned v){return RGB((v>>16)&255,(v>>8)&255,v&255);};
+    auto box=[&](RECT r,unsigned line,unsigned fill,int radius){HPEN pen=CreatePen(PS_SOLID,1,rgb(line));HBRUSH brush=CreateSolidBrush(rgb(fill));
+        auto op=SelectObject(dc,pen),ob=SelectObject(dc,brush);RoundRect(dc,r.left,r.top,r.right,r.bottom,radius,radius);
+        SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(brush);DeleteObject(pen);};
+    RECT full{0,0,w,h};HBRUSH fill=CreateSolidBrush(rgb(look::kNavyBottom));FillRect(dc,&full,fill);DeleteObject(fill);
+    box({1,1,w-1,h-1},look::kGoldBorder,look::kNavyBottom,14);
+    SetBkMode(dc,TRANSPARENT);auto oldfont=SelectObject(dc,cached_font(dc,0));
+    SetTextColor(dc,rgb(look::kText));
+    RECT line1{22,16,w-22,48},line2{22,50,w-22,82};
+    const wchar_t *a=kind==1?L"주공, 맞닿은 지역의 적 시설을 확실히 부술 수 있습니다.":L"주공, 매복이동으로 전황을 바꿀 수도 있을 것 같습니다.",
+                  *b=kind==1?L"금 1000을 주시면 파괴공작을 준비해 두겠습니다.":L"금 1000을 주시면 준비해 두겠습니다.";
+    DrawTextW(dc,a,-1,&line1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+    DrawTextW(dc,b,-1,&line2,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+    SelectObject(dc,cached_font(dc,2));SetTextColor(dc,rgb(look::kTitle));
+    for(int accept=1;accept>=0;--accept) {
+        RECT r{w-(accept?236:120),h-52,w-(accept?236:120)+104,h-14};
+        box(r,look::kGoldBorder,look::kButtonFill,8);
+        DrawTextW(dc,accept?L"수락":L"거절",-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+    }
+    bool ok=upload(c,offer_texture,offer_view,w,h,static_cast<const unsigned *>(bits));
+    SelectObject(dc,oldfont);SelectObject(dc,old);DeleteObject(bm);DeleteDC(dc);
+    return ok;
+}
 // local17 briefing16: 15 s wrapped toast; off = the v15.7.1 5 s single-line toast.
 static bool raster_toast(ID3D11DeviceContext *c,const std::wstring &text) {
-    if(InterlockedCompareExchange(&extended_toast,0,0))return raster_toast_wrapped(c,text);
+    if(InterlockedCompareExchange(&extended_toast,0,0) || InterlockedCompareExchange(&toast_override,0,0)>0)return raster_toast_wrapped(c,text);
     toast_raster_text.clear();toast_drawn_h=72;return raster_toast_line(c,text);
 }
 struct TextLine {std::wstring text;int x,y;bool bullet;int right=0;bool table=false,header=false;};
 // One table row's background: rows are laid out by body_lines, painted by raster (header fill, alternate tint, separator). index 0 is the header.
+// index kCardBand = one advice card (a paragraph starting with kCardMark opens it, the next mark or the end closes it): tinted box, gold edge.
 struct TableBand {int y,h,x0,x1,index;bool header;};
+constexpr int kCardBand=-1;constexpr wchar_t kCardMark=L'\x1E';
 // Greedy wrap of one paragraph or table cell to `room` pixels (GDI extents): break at a space past the middle of the line, else mid-word; a surrogate pair is never split.
 static std::vector<std::wstring> wrap_text(HDC dc,const std::wstring &text,int room) {
     std::vector<std::wstring> out;
@@ -741,7 +802,12 @@ static std::vector<TextLine> body_lines(HDC dc,const std::wstring &body,int widt
     // User 2026-10-27: one reading edge, generous leading, and hanging bullets.
     // Use GDI's measured glyph widths; never split a UTF-16 surrogate pair.
     // User 2026-11-07: consecutive tab-separated lines are one table (first line = header), see table_layout.
-    std::vector<TextLine> lines;height=0;
+    // User 2026-11-13 "조언마다 테이블로 감싸서 배경으로 구분": kCardMark + title starts a card; the title is drawn gold (header line).
+    std::vector<TextLine> lines;height=0;int card_top=-1;
+    auto close_card=[&] {
+        if(card_top<0)return;
+        height+=12;if(bands)bands->push_back({card_top,height-card_top,44,56+width+12,kCardBand,false});height+=16;card_top=-1;
+    };
     std::vector<std::wstring> paragraphs;
     for(size_t start=0;start<body.size();) {
         size_t end=body.find(L'\n',start);if(end==std::wstring::npos)end=body.size();
@@ -756,6 +822,12 @@ static std::vector<TextLine> body_lines(HDC dc,const std::wstring &body,int widt
             table_layout(dc,std::move(rows),width,height,lines,bands);continue;
         }
         ++index;
+        if(!paragraph.empty() && paragraph[0]==kCardMark) {
+            close_card();card_top=height;height+=12;
+            paragraph.erase(0,1);
+            for(const auto &part:wrap_text(dc,paragraph,width)){TextLine t{part,56,height,false};t.header=true;lines.push_back(std::move(t));height+=36;}
+            continue;
+        }
         bool bullet=paragraph.size()>=2 && paragraph[0]==L'•' && paragraph[1]==L' ';
         if(bullet)paragraph.erase(0,2);
         size_t split=paragraph.rfind(L"  ·  ");bool amount=false;
@@ -774,6 +846,7 @@ static std::vector<TextLine> body_lines(HDC dc,const std::wstring &body,int widt
             for(size_t k=0;k<parts.size();++k){lines.push_back({parts[k],56+(bullet?24:0),height,bullet && k==0});height+=36;}
         }
     }
+    close_card();
     return lines;
 }
 // Owned-castle list (2026-11-08 user): row-major three-column grid, no wrapping; a long name is ellipsized by the text draw.
@@ -789,11 +862,14 @@ static std::vector<TextLine> city_lines(const std::vector<std::wstring> &cities,
     height=static_cast<int>((cities.size()+advisor_briefing_core::kCityColumns-1)/advisor_briefing_core::kCityColumns)*advisor_briefing_core::kCityPitch;
     return lines;
 }
-enum class Layer {Chrome,Body,Badge,Avatar,Highlight};
+enum class Layer {Chrome,Body,Badge,Avatar,Highlight,Ticket,Coupon};
 static bool raster(ID3D11DeviceContext *c,const Model &m,Layer layer,unsigned button=0,int state=0) {
     ++raster_calls;
-    bool badge=layer==Layer::Badge,avatar=layer==Layer::Avatar,body=layer==Layer::Body,highlight=layer==Layer::Highlight;
-    int w=avatar?88:badge?38:static_cast<int>(bubble.w),h=avatar?88:badge?38:static_cast<int>(bubble.h);
+    // Ticket = the blue ambush count left of the head (user 2026-11-11: blue, top-left, not the red unread badge).
+    // local64: Ticket (blue circle) = pending proposals; Coupon = ready tickets, a ticket-shaped mark under the head.
+    const bool coupon=layer==Layer::Coupon;
+    bool ticket=layer==Layer::Ticket,badge=layer==Layer::Badge || ticket,avatar=layer==Layer::Avatar,body=layer==Layer::Body,highlight=layer==Layer::Highlight;
+    int w=avatar?88:coupon?64:badge?38:static_cast<int>(bubble.w),h=avatar?88:coupon?34:badge?38:static_cast<int>(bubble.h);
     int height=body_extent,room=static_cast<int>(bubble.h)-382;
     std::vector<TextLine> lines;std::vector<TableBand> bands;
     if(body){HDC measure=CreateCompatibleDC(nullptr);if(!measure)return false;auto prior=SelectObject(measure,cached_font(measure,0));if(m.city_list)lines=city_lines(m.cities,w-112,height);else lines=body_lines(measure,m.body,w-112,height,&bands);SelectObject(measure,prior);DeleteDC(measure);body_extent=height;body_height=(std::max)(1,(std::min)(8192,(std::max)(height,room)));enter_model_lock(false);max_scroll=(std::max)(0,body_height-room);leave_model_lock(false);}
@@ -814,18 +890,26 @@ static bool raster(ID3D11DeviceContext *c,const Model &m,Layer layer,unsigned bu
         for(int shift=16;shift>=0;shift-=8){int ca=(a>>shift)&255,cb=(b>>shift)&255;out|=static_cast<unsigned>(ca+(cb-ca)*t/d)<<shift;}
         return out;
     };
-    const unsigned flat=body?look::kInset:badge?look::rgb(163,57,44):highlight?(state==1?look::kButtonDown:look::kButtonHover):0;
+    const unsigned flat=coupon?look::rgb(198,152,64):body?look::kInset:ticket?look::rgb(44,92,170):badge?look::rgb(163,57,44):highlight?(state==1?look::kButtonDown:look::kButtonHover):0;
     for(int y=0;y<rh;++y) {
-        const unsigned row=(body || badge || highlight)?flat:mix(look::kNavyTop,look::kNavyBottom,y,h-1);
+        const unsigned row=(body || badge || highlight || coupon)?flat:mix(look::kNavyTop,look::kNavyBottom,y,h-1);
         for(int x=0;x<rw;++x)data[y*rw+x]=0xff000000u|row;
     }
     if(body)SetViewportOrgEx(dc,-56,0,nullptr);else if(highlight)SetViewportOrgEx(dc,-bx,-by,nullptr);
-    SetBkMode(dc,TRANSPARENT);HFONT font=cached_font(dc,avatar?3:badge?4:0);auto oldfont=SelectObject(dc,font);
+    SetBkMode(dc,TRANSPARENT);HFONT font=cached_font(dc,avatar?3:(badge || coupon)?4:0);auto oldfont=SelectObject(dc,font);
     HFONT heading=nullptr,caption_font=nullptr;
     auto text=[&](const std::wstring &s,RECT r,COLORREF color,UINT format){SetTextColor(dc,color);DrawTextW(dc,s.c_str(),static_cast<int>(s.size()),&r,format|DT_NOPREFIX);};
     auto outline=[&](RECT r,COLORREF color,COLORREF fill,int radius,bool filled){HPEN pen=CreatePen(PS_SOLID,1,color);HBRUSH brush=filled?CreateSolidBrush(fill):nullptr;auto op=SelectObject(dc,pen),ob=SelectObject(dc,filled?brush:GetStockObject(NULL_BRUSH));RoundRect(dc,r.left,r.top,r.right,r.bottom,radius,radius);SelectObject(dc,ob);SelectObject(dc,op);if(brush)DeleteObject(brush);DeleteObject(pen);};
     auto fill_rect=[&](RECT r,unsigned color){HBRUSH brush=CreateSolidBrush(cr(color));FillRect(dc,&r,brush);DeleteObject(brush);};
     if(avatar)text(L"軍",{0,0,w,h},cr(look::kTitle),DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    else if(coupon) {   // stub with 伏, perforation, count
+        outline({0,0,w,h},RGB(96,62,20),RGB(198,152,64),12,true);
+        fill_rect({1,1,19,h-1},look::rgb(168,120,44));
+        for(int yy=3;yy<h-3;yy+=5)fill_rect({19,yy,20,yy+3},look::rgb(96,62,20));
+        text(L"伏",{0,0,19,h},RGB(70,40,10),DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        text(m.tickets>99?L"99+":std::to_wstring(m.tickets),{20,0,w,h},RGB(58,32,8),DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    }
+    else if(ticket){outline({1,1,w-1,h-1},RGB(150,190,240),0,38,false);text(m.tickets>99?L"99+":std::to_wstring(m.tickets),{0,0,w,h},RGB(236,244,255),DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
     else if(badge){outline({1,1,w-1,h-1},RGB(211,157,97),0,38,false);text(m.unread>99?L"99+":std::to_wstring(m.unread),{0,0,w,h},RGB(255,242,212),DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
     else {
         heading=cached_font(dc,1);caption_font=cached_font(dc,2);
@@ -834,7 +918,7 @@ static bool raster(ID3D11DeviceContext *c,const Model &m,Layer layer,unsigned bu
             Rect r=control(id);RECT box{static_cast<LONG>(r.x-bubble.x),static_cast<LONG>(r.y-bubble.y),static_cast<LONG>(r.x-bubble.x+r.w),static_cast<LONG>(r.y-bubble.y+r.h)};
             outline(box,cr(over?look::kTitle:look::kGoldBorder),cr(down?look::kButtonDown:over?look::kButtonHover:look::kButtonFill),8,true);
             SelectObject(dc,id==2 || id==3 || id==4?heading:caption_font);
-            const wchar_t *label=id==2?L"×":id==3?L"‹":id==4?L"›":id==5?L"지우기":id==6?L"모두 지우기":m.city_list?L"보고로":L"부동산 개발";
+            const wchar_t *label=id==2?L"×":id==3?L"‹":id==4?L"›":id==5?(m.offer?L"수락":L"지우기"):id==6?(m.offer?L"거절":L"모두 지우기"):id==8?L"군사 제안":id==13?(m.settings?L"보고로":L"수집 설정"):m.city_list?L"보고로":L"부동산 개발";
             text(label,box,cr(over?look::kButtonHoverText:look::kTitle),DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         };
         if(!body && !highlight){
@@ -847,11 +931,11 @@ static bool raster(ID3D11DeviceContext *c,const Model &m,Layer layer,unsigned bu
             fill_rect({44,34,47,86},look::kGold);
             outline({16,132,w-16,h-96},cr(look::kGoldDim),cr(look::kInset),16,true);
             fill_rect({56,222,w-56,223},look::kGoldDim);
-            SelectObject(dc,heading);text(m.city_list?L"부동산 개발":m.adviser+L"의 열흘 보고",{64,30,w-354,68},cr(look::kTitle),DT_SINGLELINE|DT_VCENTER);
-            SelectObject(dc,caption_font);text(m.city_list?L"성을 고르면 그 성의 지역내정으로 이동합니다":m.collecting?L"진행 중  /  소식을 모으고 있습니다":L"지난 순의 전갈  /  다음 진행 전까지 보관",{65,76,w-80,105},cr(look::kDim),DT_SINGLELINE);
-            SelectObject(dc,font);text(m.title,{56,158,w-174,194},cr(look::kText),DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
-            for(unsigned id=2;id<=7;++id)if(!m.city_list || id==2 || id==7)button_box(id,false,false);
-            SelectObject(dc,caption_font);text(m.city_list?(m.cities.empty()?std::wstring(L"성 없음"):std::to_wstring(m.cities.size())+L"곳"):m.pages?std::to_wstring(m.page+1)+L" / "+std::to_wstring(m.pages):L"소식 없음",{w-272,30,w-164,68},cr(look::kDim),DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            SelectObject(dc,heading);text(m.offer || m.advice?m.adviser+L"의 진언":m.settings?L"수집 설정":m.city_list?L"부동산 개발":m.adviser+L"의 열흘 보고",{64,30,w-354,68},cr(look::kTitle),DT_SINGLELINE|DT_VCENTER);
+            SelectObject(dc,caption_font);text(m.advice?L"군사 제안  /  준비된 작전":m.offer?(m.offer_kind==1?L"파괴공작  /  금 1000":L"매복기동  /  금 1000"):m.settings?L"누르면 바뀝니다  /  알림함: 군사가 모아 보고  ·  원작대로: 원작 창과 연출 그대로":m.city_list?L"성을 고르면 그 성의 지역내정으로 이동합니다":m.collecting?L"진행 중  /  소식을 모으고 있습니다":L"지난 순의 전갈  /  다음 진행 전까지 보관",{65,76,w-80,105},cr(look::kDim),DT_SINGLELINE);
+            SelectObject(dc,font);text(m.title,{56,158,w-270,194},cr(look::kText),DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
+            for(unsigned id:kButtons)if(button_shown(m,id))button_box(id,false,false);
+            SelectObject(dc,caption_font);text(m.settings?std::wstring():m.city_list?(m.cities.empty()?std::wstring(L"성 없음"):std::to_wstring(m.cities.size())+L"곳"):(m.offer || m.advice?std::wstring():m.pages?std::to_wstring(m.page+1)+L" / "+std::to_wstring(m.pages):std::wstring(L"소식 없음")),{w-272,30,w-164,68},cr(look::kDim),DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             text(L"Esc로 닫기",{44,h-64,250,h-26},cr(look::kDim),DT_VCENTER|DT_SINGLELINE);
             if(height>room)text(L"마우스 휠로 이어 읽기",{300,h-64,w-300,h-26},cr(look::kDimmer),DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
@@ -866,6 +950,12 @@ static bool raster(ID3D11DeviceContext *c,const Model &m,Layer layer,unsigned bu
         if(highlight)button_box(button,hot==static_cast<int>(button),pressed==static_cast<int>(button));
         if(body){
             for(const auto &band:bands) {
+                if(band.index==kCardBand) {
+                    fill_rect({band.x0,band.y,band.x1,band.y+band.h},look::kRowTint);
+                    fill_rect({band.x0,band.y,band.x1,band.y+1},look::kGoldDim);fill_rect({band.x0,band.y+band.h-1,band.x1,band.y+band.h},look::kGoldDim);
+                    fill_rect({band.x0,band.y,band.x0+1,band.y+band.h},look::kGoldDim);fill_rect({band.x1-1,band.y,band.x1,band.y+band.h},look::kGoldDim);
+                    continue;
+                }
                 if(band.header){fill_rect({band.x0,band.y,band.x1,band.y+band.h},look::kHeaderFill);fill_rect({band.x0,band.y+band.h-1,band.x1,band.y+band.h},look::kGoldBorder);}
                 else {
                     if(band.index%2==0)fill_rect({band.x0,band.y,band.x1,band.y+band.h},look::kRowTint);
@@ -875,7 +965,7 @@ static bool raster(ID3D11DeviceContext *c,const Model &m,Layer layer,unsigned bu
             for(const auto &line:lines) {
                 int y=line.y;if(y>=rh)continue;
                 if(line.bullet)text(L"·",{56,y,74,y+32},cr(look::kGold),DT_SINGLELINE);
-                COLORREF ink=cr(look::kText);
+                COLORREF ink=cr(line.header?look::kGold:look::kText);
                 if(line.table) {
                     const int tone=line.header?0:cell_tone(line.text);
                     ink=cr(line.header?look::kGold:tone==1?look::kPositive:tone==2?look::kNegative:look::kText);
@@ -894,6 +984,8 @@ static bool raster(ID3D11DeviceContext *c,const Model &m,Layer layer,unsigned bu
     for(int i=0;i<rw*rh;++i)data[i]|=0xff000000u;
     bool ok=false;
     if(avatar)ok=upload(c,avatar_texture,avatar_view,rw,rh,data);
+    else if(coupon)ok=upload(c,coupon_texture,coupon_view,rw,rh,data);
+    else if(ticket)ok=upload(c,ticket_texture,ticket_view,rw,rh,data);
     else if(badge)ok=upload(c,badge_texture,badge_view,rw,rh,data);
     else if(body){ok=upload(c,body_texture,body_view,rw,rh,data);if(ok)++panel_uploads;}
     else if(highlight){auto &item=highlights[button][state];ok=upload(c,item.texture,item.view,rw,rh,data);}
@@ -1025,9 +1117,9 @@ static void draw(ID3D11Device *d,ID3D11DeviceContext *c,ID3D11Texture2D *back,co
         enter_model_lock(false);portrait_confirmation.reset();leave_model_lock(false);
         srgb_target=next_srgb;drop(body_view);drop(body_texture);
         for(auto &by_id:highlights)for(auto &item:by_id){drop(item.view);drop(item.texture);}
-        drop(portrait_staging);drop(portrait_candidate_view);drop(portrait_candidate);drop(panel_view);drop(panel_texture);drop(badge_view);drop(badge_texture);drop(avatar_view);drop(avatar_texture);
+        drop(portrait_staging);drop(portrait_candidate_view);drop(portrait_candidate);drop(panel_view);drop(panel_texture);drop(badge_view);drop(badge_texture);drop(ticket_view);drop(ticket_texture);drop(coupon_view);drop(coupon_texture);drop(offer_view);drop(offer_texture);drop(avatar_view);drop(avatar_texture);
         drop(shadow_view);drop(shadow_texture);drop(ring_view);drop(ring_texture);drop(portrait_view);drop(portrait_texture);InterlockedExchange(&portrait_captured,0);
-        painted_generation=painted_unread=~0u;painted_content=~0u;
+        painted_generation=painted_unread=painted_tickets=painted_coupon=~0u;painted_offer=-1;painted_content=~0u;
     }
     double scale=(std::min)(desc.Width/1920.0,desc.Height/1080.0),ox=(desc.Width-1920*scale)/2,oy=(desc.Height-1080*scale)/2;
     take_face_offer(d,c);   // briefing16 U6: original face texture first; the capture below stays as the fallback
@@ -1039,12 +1131,17 @@ static void draw(ID3D11Device *d,ID3D11DeviceContext *c,ID3D11Texture2D *back,co
         if(x>=0 && y>=0 && w>8 && h>8 && x+w<=static_cast<int>(desc.Width) && y+h<=static_cast<int>(desc.Height))capture_portrait(d,c,back,desc,x,y,w,h,revision,source_rect);
     }
     if((!flag(&portrait_captured) || !portrait_view) && !avatar_view && !raster(c,m,Layer::Avatar))return;
+    if(painted_offer!=(m.offer?1:0)){   // 수락/거절 vs 지우기 labels are baked into the button highlights
+        for(unsigned id=5;id<=6;++id)for(int state=0;state<2;++state){drop(highlights[id][state].view);drop(highlights[id][state].texture);}
+        painted_offer=m.offer?1:0;
+    }
     if(m.open && (painted_content!=content || !panel_view || !body_view)){
         if(!raster(c,m,Layer::Body) || !raster(c,m,Layer::Chrome))return;
-        for(unsigned id=2;id<=7;++id)for(int state=0;state<2;++state)if(!highlights[id][state].view && !raster(c,m,Layer::Highlight,id,state))return;
+        for(unsigned id:kButtons)for(int state=0;state<2;++state)if(!highlights[id][state].view && !raster(c,m,Layer::Highlight,id,state))return;
         painted_content=content;painted_generation=m.generation;
     }
     if(painted_unread!=m.unread){if(m.unread && !raster(c,m,Layer::Badge))return;painted_unread=m.unread;}
+    if(painted_tickets!=m.tickets){if(m.tickets && !raster(c,m,Layer::Ticket))return;painted_tickets=m.tickets;}
     bool idle=!m.open && !is_closing && !position.pressed && !position.dragging && !position.snapping && !scroll_active && (!pop_at || now-pop_at>=250);
     unsigned black=0xff000000u,gold=0xffb79960u;
     if(!idle && ((!shadow_view && !upload(c,shadow_texture,shadow_view,1,1,&black)) || (!ring_view && !upload(c,ring_texture,ring_view,1,1,&gold))))return;
@@ -1066,6 +1163,8 @@ static void draw(ID3D11Device *d,ID3D11DeviceContext *c,ID3D11Texture2D *back,co
     quad(face,scale,ox,oy,44*head_zoom,1,flag(&portrait_captured) && portrait_view?portrait_view:avatar_view);
     if(m.unread){double t=pop_at?(now-pop_at)/250.0:1;float pop=t<1?static_cast<float>(1+.25*std::exp(-5*t)*std::cos(9*t)):1;
         quad({position.x+18+19*(1-pop),position.y-52+19*(1-pop),38*pop,38*pop},scale,ox,oy,19*pop,1,badge_view);}
+    if(m.tickets && ticket_view)quad({position.x-56,position.y-52,38,38},scale,ox,oy,19,1,ticket_view);   // blue = ready ambush tickets
+    if(offer_balloon(m) && !is_closing && raster_offer(c,m.offer_kind))quad(offer_box(position.x,position.y),scale,ox,oy,12,1,offer_view);   // blue ambush count, top-left
     {   // 2026-11-08 user: phone-message style military message next to the advisor head, 5 s.
         std::wstring tip;ULONGLONG tip_at=0;enter_model_lock(true);if(!toast_text.empty()){tip=toast_text;tip_at=toast_at;}leave_model_lock(true);
         const ULONGLONG span=toast_ms();
@@ -1094,7 +1193,7 @@ static void draw(ID3D11Device *d,ID3D11DeviceContext *c,ID3D11Texture2D *back,co
         if(body_height>body_rect(base).h){Rect area=body_rect(base);float thumb=(std::max)(32.0f,area.h*area.h/body_height),offset=bounded(static_cast<float>(sy),0,static_cast<float>(max_scroll))*(area.h-thumb)/max_scroll;
             quad(transform({base.x+base.w-37,area.y,3,area.h}),scale,ox,oy,1,alpha*.16f,ring_view);
             quad(transform({base.x+base.w-37,area.y+offset,3,thumb}),scale,ox,oy,1,alpha*.65f,ring_view);}
-        for(unsigned id=2;id<=7;++id)if(hot==static_cast<int>(id) || pressed==static_cast<int>(id)){
+        for(unsigned id:kButtons)if(hot==static_cast<int>(id) || pressed==static_cast<int>(id)){
             auto &item=highlights[id][pressed==static_cast<int>(id)?1:0];
             if(item.view)quad(transform(control(id,base)),scale,ox,oy,4,opaque,item.view);
         }

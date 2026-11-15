@@ -39,8 +39,55 @@ static SortieMovement sortie_movement_nexts[49];
 template<unsigned K> static int __fastcall sortie_search_site(SortieNativePath *p,Obj c,unsigned f,unsigned *t,int a,int b,int d) {
     return sortie_search_next(sortie_search_nexts[K],p,c,f,t,a,b,d);
 }
+// local149 tribe_terrain_path (user 2026-11-14 "이민족 사이진형이나 장사 진형같은 경우는 숲이나 저산 중산 고산으로 이동 안하면 벌점을
+// 줘서 숲 이나 산으로 이동하도록 유도 ... 중계경로를 가도로 잡는 경우가 있어"): 장사 (6) and 사이 (14) get 1.5x on terrain 5, 6, 8..11
+// (숲·밀림·저산·중산·고산·산길; 22F7A0 rule, San14Sim combat_formulas.h). Only at the two path-cost CALLs (184FF9 in the A* 184D60,
+// 18793A in its cost scaler 187880, cost = terrain cost / this mobility) and only for a computer army with a hostile army within
+// 15 hexes (with none it takes the road as before): any other land hex costs
+// kTribePathFactor^-1 times as much there, so the route keeps to forest and mountains. Real daily movement, the panel and the
+// player (direct or delegated) are untouched; water, castle / gate / port hexes and other formations too. Off = native value.
+static constexpr float kTribePathFactor=0.3f;
+static constexpr unsigned char kTribeMoraleFloor=50;   // local153: below this morale the route is the native one
+static bool tribe_path_site(unsigned k) {
+    const unsigned site=sortie_movement_sites[k];
+    return site==GA(GA_184FF9) || site==GA(GA_18793A);
+}
+// local149 (user "장사나 사이진형도 가도로 이동은 해야해 그런데 적이 주변 15칸에 있으면 경로 계산할때 그렇게 적용"): only while a hostile
+// army (2CC630) is within kTribeFoeReach hexes of the army; answered once per army and game day (a stale answer is harmless).
+static constexpr int kTribeFoeReach=15;
+static bool tribe_foe_near(Obj army) {
+    static volatile LONG day_of[501];static volatile LONG answer[501];
+    const unsigned id=army_id(army);if(!id || id>500)return false;
+    const LONG day=game_day()+1;
+    if(day_of[id]==day)return answer[id]!=0;
+    const unsigned own=army_force(army),here=word(army,0x2A);bool near_foe=false;
+    if(here<48400)for(unsigned i=1;i<=500 && !near_foe;++i) {
+        Obj o=table(0x7E838,i,500);if(!valid(o) || o==army)continue;
+        const unsigned other=army_force(o);
+        if(!other || other==own || word(o,0x2A)>=48400 || distance(here,word(o,0x2A))>kTribeFoeReach)continue;
+        near_foe=fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,other)!=0;
+    }
+    InterlockedExchange(&answer[id],near_foe?1:0);InterlockedExchange(&day_of[id],day);
+    return near_foe;
+}
+static float tribe_path(float value,Obj army,Obj formation,Obj tile) {
+    if(!mod_features.tribe_terrain_path || !(value>0) || !valid(tile) || !valid(formation) || !valid(army))return value;
+    const unsigned id=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F7A0))(formation);
+    if(id!=6 && id!=14)return value;
+    const unsigned terrain=tile[0x10];
+    if(terrain==5 || terrain==6 || (terrain>=8 && terrain<=11))return value;                       // the 1.5x ground
+    if(terrain==12 || terrain==13 || terrain==14 || terrain==24 || (terrain>=16 && terrain<=18))return value;   // water, bases
+    // local153 (user 2026-11-14 "사이/장사진형 사기가 떨어지면 평지로 내려와야하는데"): forest and hills drain more morale every 5 days
+    // (terrain +0x40: plain / road 1, forest 2, 고산 / 산길 3), so under kTribeMoraleFloor (army +0x1A) the army takes the native route.
+    if(army[0x1A]<kTribeMoraleFloor)return value;
+    return computer_side_army(army) && tribe_foe_near(army)?value*kTribePathFactor:value;
+}
 template<unsigned K> static float __fastcall sortie_movement_site(Obj a,Obj f,int p,int m,Obj t) {
-    return sortie_movement_next(sortie_movement_nexts[K],a,f,p,m,t);
+    // local67 (user 2026-11-12 "계속 기동력 그대로 표시되는데"): every native 2B2550 call goes through these 49 call-site
+    // thunks, not through sortie_movement(), so the ambush half was never applied to real movement or to the panel.
+    const float value=sortie_movement_next(sortie_movement_nexts[K],a,f,p,m,t);
+    const float v=season_mobility::apply(value>0 && ambush_hook::slow(a)?value*0.5f:value,a,t);   // local68: half only until the first ZOC day; local135 snow / ice
+    return tribe_path_site(K)?tribe_path(v,a,f,t):v;
 }
 template<size_t... K> static auto sortie_search_thunks(std::index_sequence<K...>) {
     return std::array<SortieSearch,sizeof...(K)>{{&sortie_search_site<K>...}};

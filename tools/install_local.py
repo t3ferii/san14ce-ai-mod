@@ -17,12 +17,13 @@ from package_mod import atomic_write, no_game, ORIGINAL_SHA, KNOWN_ORIGINAL_SHAS
 from install_damage_preview import exports, windows_script
 
 P=Path(__file__).resolve().parents[1]; G=P.parent
-NAMES={'loader':'dinput8.dll','combat':'SAN14_CombatAI.dll','convenience':'SAN14_Convenience.dll','ccz':'SAN14_CCZ.dll','layout':'SAN14_Layout.dll'}
+NAMES={'loader':'dinput8.dll','combat':'SAN14_CombatAI.dll','convenience':'SAN14_Convenience.dll','ccz':'SAN14_CCZ.dll','layout':'SAN14_Layout.dll','modpack':'SAN14_ModPack.dll'}
+# 2026-11-13 user: SAN14_ModPack.dll (6th DLL) = other authors' patches (4계절 규칙 first), loaded by the convenience module.
 # 2026-11-05 user exception: SAN14_Layout.dll (5th DLL) and the dinput8 loader (loads Layout first) are modules too.
 # 'loader' = dinput8.dll only; it is bundled with 'layout' in practice (loader + layout + the three feature DLLs = all five).
 EXPORTS={'loader':['DirectInput8Create'],'layout':['SAN14LayoutGetApi','SAN14LayoutInitialize','SAN14LayoutPublish'],
-         'combat':['AIInitialize','SAN14CombatGetApi','SAN14CombatTraceStep'],
-         'convenience':['AIInitialize','SAN14ConvenienceInitialize'],'ccz':['SAN14CczGetApi']}
+         'combat':['AIInitialize','SAN14CombatAmbush','SAN14CombatGetApi','SAN14CombatSeasonMobility','SAN14CombatTraceStep'],
+         'convenience':['AIInitialize','SAN14ConvenienceInitialize'],'ccz':['SAN14CczGetApi'],'modpack':['SAN14ModPackGetApi']}
 DIAG_EXPORTS={'ccz':['SAN14CczDiagCrumbs']}   # diagnostic-only crash breadcrumb export (2026-11-04)
 def exports_ok(found,key): return found==EXPORTS[key] or sorted(found)==sorted(EXPORTS[key]+DIAG_EXPORTS.get(key,[]))
 DIAG=P/'build/development/loader_split_diagnostic'; RELEASE=P/'build/development/loader_split'; GUI_BUILD=P/'build/development/installer'
@@ -47,6 +48,14 @@ def settings():
     legacy=values.pop('game_flow.fast_menu',None)
     if legacy is not None: values.setdefault('performance.fast_menu',legacy)
     values.pop('performance.strategy_batch',None)
+    # 2026-11-13: retired catalog keys (no longer read by the DLLs) are normalized by the Apply step (e.g.
+    # extensions.scenery_skip 1 -> 0, local99); they are not user settings to preserve.
+    try:
+        items=json.loads((P/'development'/'installer_map.json').read_text(encoding='utf-8'))
+        items=items if isinstance(items,list) else next(v for v in items.values() if isinstance(v,list))
+        for it in items:
+            if it.get('retired'): values.pop(it['section']+'.'+it['key'],None)
+    except (OSError,ValueError,StopIteration,KeyError): pass
     return values
 def set_diagnostics_on():
     """[groups] diagnostics=1 in the settings INI (UTF-16 file kept as is; every other character unchanged)."""
@@ -86,7 +95,7 @@ def prepare(a):
     no_game(); proof=proof_path(a.version)
     assert not proof.exists() or read(proof)['status']!='installed_and_verified','Version already installed'
     modules=[m for m in a.modules.split(',') if m]; assert modules or a.gui or a.layout,'Nothing to install'
-    assert all(m in EXPORTS for m in modules),'Modules: loader, layout, combat, convenience, ccz'
+    assert all(m in EXPORTS for m in modules),'Modules: loader, layout, combat, convenience, ccz, modpack'
     assert sha(G/'SAN14CE_KO.exe')==ORIGINAL_SHA
     state=read(P/'backup/input_state.json'); manifest=read(P/'build/input_package/manifest.json')
     # 2026-11-05 user: a fresh install over a NOT installed baseline (a Steam update removed the mod DLLs; the install record says
@@ -94,7 +103,7 @@ def prepare(a):
     fresh=not state['installed']
     assert state['release_version']==manifest['release_version'],'Install record and Apply package versions differ'
     if fresh:
-        assert set(modules)>=set(NAMES),'Fresh install needs every module: --modules loader,layout,combat,convenience,ccz'
+        assert set(modules)>=set(NAMES),'Fresh install needs every module: --modules loader,layout,combat,convenience,ccz,modpack'
         assert not any((G/n).exists() for n in NAMES.values()),'Mod DLL already present although the record says not installed'
     # 2026-11-01: SAN14_CCZ.dll is new; a baseline without it is installed with it once 'ccz' is listed.
     # A user may have manually installed a newer local DLL (2026-11-01 local14 CCZ). Never
@@ -153,7 +162,7 @@ def install(a):
         assert (sorted(exports(f))==sorted(x for x in EXPORTS[m] if x!='SAN14CombatTraceStep') if release else exports_ok(exports(f),m)),'Unexpected exports: '+f.name
         # SAN14_CCZ.dll writes through the convenience module's log_event (no day= writer of its own).
         # (the loader and Layout DLLs have no day= writer either: Layout is checked by its own diagnostic exports)
-        assert release or m in ('ccz','loader','layout') or b'day=' in f.read_bytes(),'Diagnostic variant required: '+f.name
+        assert release or m in ('ccz','loader','layout','modpack') or b'day=' in f.read_bytes(),'Diagnostic variant required: '+f.name
     if p['gui']: assert (GUI_BUILD/gui).stat().st_mtime>=newest,'Stale installer build'
     for key,name in NAMES.items():   # listed modules from the build, everything else as installed
         if key not in p['modules'] and not (G/name).exists(): continue   # a module never installed (e.g. layout) is not staged

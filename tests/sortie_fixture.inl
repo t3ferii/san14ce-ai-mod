@@ -79,7 +79,42 @@ static void __fastcall sortie_mock_path(Obj army) {
 static int __fastcall sortie_mock_likes(Obj,Obj) {return 0;}   // 234880 친애 (local58 roster bonus): nobody by default
 #include "campaign_reinforcement_fixture.inl"
 #include "campaign_departure_fixture.inl"
+// gate_intercept (user 2026-11-13 "관문 1헥스 범위에 딱붙여야돼"): the stand touching a gate, pure geometry (intercept_policy.h).
+static std::vector<unsigned> intercept_ring(unsigned c,int r) {
+    std::vector<unsigned> out;
+    for(unsigned h=c-4*220-4;h<=c+4*220+4;++h)if(intercept::distance(h,c)==r)out.push_back(h);
+    return out;
+}
+static void intercept_tests() {
+    for(unsigned c:{100u*220u+100u,100u*220u+101u})for(unsigned d=0;d<6;++d) {
+        const unsigned a2=sortie::neighbor(sortie::neighbor(c,d),d),m2=sortie::neighbor(sortie::neighbor(c,(d+3)%6),(d+3)%6);
+        check(intercept::distance(c,a2)==sortie_hex_distance(static_cast<int>(c),static_cast<int>(a2)) &&
+              intercept::distance(a2,m2)==sortie_hex_distance(static_cast<int>(a2),static_cast<int>(m2)),"intercept distance equals the fixture hex distance");
+        check(intercept::mirror(c,a2)==m2,"mirror of an attacker two hexes out is two hexes out on the far side");
+        // one-hex gate: attacker - gate - stand all touching
+        const unsigned a1=sortie::neighbor(c,d),m1=sortie::neighbor(c,(d+3)%6);
+        std::vector<unsigned> ring1=intercept_ring(c,1);
+        check(intercept::pick(c,&a1,1,ring1.data(),static_cast<unsigned>(ring1.size()))==m1,"one-hex gate: attacker - gate - stand in a line, all touching");
+        // seven-hex gate (center + six): the stand touches the gate on the far side and is as near the attacker as possible
+        std::vector<unsigned> ring2=intercept_ring(c,2);
+        const unsigned s=intercept::pick(c,&a2,1,ring2.data(),static_cast<unsigned>(ring2.size()));
+        check(s<intercept::none && intercept::distance(s,c)==2 && intercept::distance(s,a2)==3,"seven-hex gate: far side, three hexes from the attacker");
+        // only the attacker's side is open: no stand
+        std::vector<unsigned> front;for(unsigned h:ring1)if(intercept::distance(h,a1)<=1)front.push_back(h);
+        check(intercept::pick(c,&a1,1,front.data(),static_cast<unsigned>(front.size()))==intercept::none,"no hex behind the gate = no stand");
+        // the straight stand taken: the next one behind, never next to the attacker
+        std::vector<unsigned> rest;for(unsigned h:ring1)if(h!=m1)rest.push_back(h);
+        const unsigned r=intercept::pick(c,&a1,1,rest.data(),static_cast<unsigned>(rest.size()));
+        check(r<intercept::none && intercept::distance(r,a1)==2,"a taken stand falls back to another hex behind the gate");
+        // two attackers, the nearer one decides the side
+        const unsigned distant=sortie::neighbor(sortie::neighbor(sortie::neighbor(c,(d+1)%6),(d+1)%6),(d+1)%6);
+        const unsigned both[2]={distant,a1};
+        check(intercept::pick(c,both,2,ring1.data(),static_cast<unsigned>(ring1.size()))==m1,"the nearest attacker sets the far side");
+    }
+    check(intercept::mirror(0,1)==intercept::none,"mirror off the left edge is none");
+}
 static void sortie_tests() {
+    intercept_tests();
     for(unsigned x:{0u,1u,100u,101u,218u,219u})for(unsigned y:{0u,1u,100u,218u,219u})
         for(unsigned d=0;d<6;++d) {
             unsigned h=y*220+x,n=sortie::neighbor(h,d);
@@ -105,8 +140,9 @@ static void sortie_tests() {
         "two twenty thousand defensive units can move together without a mandatory ranged or seventh unit");
     check(sortie::roster(facts,7,selected,12000),"twelve thousand selects a smaller roster");
     unsigned seats=0;for(unsigned i=0;i<7;++i) {capacity[i]=selected[i]<7?10000:0;seats+=capacity[i]!=0;}
-    check(seats==4 && selected[3]<7 && selected[2]==128 && selected[4]==128 && selected[5]==128,
-        "small army retains two front, one middle and one support instead of seven underfilled units");
+    // local101 (user 2026-11-13: 안행 seats first): 12,000 = front 0, center 6, rear 2 and the support seat.
+    check(seats==4 && selected[3]<7 && selected[2]<7 && selected[1]==128 && selected[4]==128 && selected[5]==128,
+        "small army keeps one front, two middle/rear and one support instead of seven underfilled units");
     check(sortie::allocate(capacity,12000,allocation),"small army allocation remains valid");
     sum=0;for(unsigned i=0;i<7;++i)sum+=allocation[i];
     check(sum==12000 && allocation[3]==1000 && allocation[0]>allocation[6],"small budget conserves soldiers and protects a lighter rear");

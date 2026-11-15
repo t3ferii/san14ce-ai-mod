@@ -80,7 +80,7 @@ static void personnel_filter_wounded(GameList &list) {
 }
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
 #define CORPS_DOMESTIC_HOOKS 1   // local56: native_corps_domestic.inl (links slot) defines these
-namespace corps_domestic {static bool skip_second_search(Obj context);static void arm(Obj context,bool selected);}
+namespace corps_domestic {static bool skip_second_search(Obj context);static void arm(Obj context,bool selected);static void learn_instead(Obj officer);}
 #endif
 static uint64_t personnel_actor_node(Obj node,Obj context,Obj subject,unsigned original_rva,unsigned output_field=0x38) {
     uint64_t result=fn<Execute>(original_rva)(node,context,subject);
@@ -193,7 +193,10 @@ static uint64_t __fastcall personnel_spy_officer(Obj node,Obj context,Obj subjec
 }
 static uint64_t __fastcall personnel_search_command(Obj node,Obj context,Obj subject) { COST_SCOPE("personnel_search_command");
 #ifdef CORPS_DOMESTIC_HOOKS
-    if(corps_domestic::skip_second_search(context))return 2;   // local56 ai_search2: computer corps, second pass
+    if(corps_domestic::skip_second_search(context)) {   // local56 ai_search2: computer corps, second pass
+        corps_domestic::learn_instead(personnel_context_object(node,context,0x3C));   // local150 ai_learn: a tactic with the order instead
+        return 2;
+    }
     if(enabled && mod_features.injury) {
 #else
     if(enabled) {

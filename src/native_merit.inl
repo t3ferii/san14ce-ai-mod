@@ -448,7 +448,8 @@ static uint64_t __fastcall merit_join(Obj person,Obj district,Obj city,Obj event
 // world constructor allocates identically in both builds, see docs/HISTORY.md 14; types and values come from the
 // scenario/save archive, never from code). Fixed by structure: row pointers contiguous, one vtable, +8 == 0, types 0,1,1,S,2,2,3,
 // rows 0 and 4..6 values 0,1,1,1. S (row 3 = stage 3 military effect) tells the shape:
-//   shape A (S == 1, troops; old build and old saves) : row 3 value 1000 (original) or 0 (changed by this mod)
+//   shape A (S == 1, troops; old build and old saves) : row 3 value 1000 (original) or 0; since 2026-11-12 rewritten to
+//                                                        shape B (type 3) on validation, see merit_effect_state
 //   shape B (S in merit_new_stage3_types)              : patch 25953386 stage 3 = city administration level +1;
 //                                                        value 1 original, 0 while merit_friendship is on
 // Rows 1..2 (stage 1/2 troops) are set to the chosen troops (merit_troops_level) in both shapes; accepted current values are the
@@ -510,7 +511,18 @@ static unsigned merit_effect_state() {
     if(word(records[0],0x12)!=0 ||
         word(records[4],0x12)!=1 || word(records[5],0x12)!=1 || word(records[6],0x12)!=1)return fail(4,0);
     const unsigned troops=merit_troops_choices[(mod_features.merit_troops_level-1)&3];
-    const unsigned want3=shape_a?(mod_features.merit_friendship?0u:1000u):(mod_features.merit_bond16 && mod_features.merit_friendship?0u:1u);
+    // 2026-11-12 (user: "논공친애를 껐을때 공식패치처럼 무공도 시정+1로 바뀌어야해"): the current Steam fixdata table 39
+    // (origlib) has stage 3 = type 3 value 1 (policy level +1); a troops stage 3 (shape A) can only come from older
+    // data. It is rewritten to the patch row (type 3) so stage 3 never gives +1000 troops; the shape B policy below
+    // then applies (off = policy +1, friendship rules unchanged).
+    if(shape_a) {
+        records[3][0x10]=3;
+#ifndef NO_RUNTIME_LOG
+        static volatile LONG converted_logged;
+        if(!InterlockedExchange(&converted_logged,1))log_event("merit_effect_stage3_patched",1,stage3,3);
+#endif
+    }
+    const unsigned want3=mod_features.merit_bond16 && mod_features.merit_friendship?0u:1u;
     *reinterpret_cast<uint16_t *>(records[1]+0x12)=static_cast<uint16_t>(troops);
     *reinterpret_cast<uint16_t *>(records[2]+0x12)=static_cast<uint16_t>(troops);
     *reinterpret_cast<uint16_t *>(records[3]+0x12)=static_cast<uint16_t>(want3);
@@ -521,8 +533,8 @@ static unsigned merit_effect_state() {
         log_event("merit_effect_stage3_set",records[3][0x10],stage3,want3);
 #endif
     if(!InterlockedExchange(&merit_effect_applied_logged,1))
-        log_event("merit_effect_table_applied",shape_a?1:2,troops,mod_features.merit_friendship?1:0);
-    return shape_a?1:2;
+        log_event("merit_effect_table_applied",2,troops,mod_features.merit_friendship?1:0);
+    return 2;   // shape A rows were rewritten to shape B above
 }
 // local24 (user 2026-11-10 lag analysis: merit_query ran 7.7M times in 95 s, 7% of each day's stall).
 // merit_effect_state() re-validated and re-wrote all 7 rows on every query. Once a validation succeeded, a
@@ -545,8 +557,18 @@ static bool merit_effect_cached_locked(Obj current,unsigned config) {
         word(rows+72,0x12)==c.stage3 && word(rows,0x12)==0 && word(rows+96,0x12)==1 && word(rows+120,0x12)==1 &&
         word(rows+144,0x12)==1;
 }
+static unsigned merit_effect_state_slow(Obj current,unsigned config);
 static unsigned merit_effect_state_cached() {
     Obj current=world();const unsigned config=merit_effect_config();
+    // local141 (user 2026-11-14 frame drops after a year; cost_profile: merit_query 111k -> 225k calls/s, the lock and the row check
+    // about as much as the original query): the answer is kept per thread for 250 ms of the same world and settings.
+    static thread_local Obj fast_world;static thread_local unsigned fast_config,fast_state;static thread_local ULONGLONG fast_at;
+    const ULONGLONG now=GetTickCount64();
+    if(current && current==fast_world && config==fast_config && now-fast_at<250)return fast_state;
+    const unsigned answer=merit_effect_state_slow(current,config);
+    fast_world=current;fast_config=config;fast_state=answer;fast_at=now;return answer;
+}
+static unsigned merit_effect_state_slow(Obj current,unsigned config) {
     AcquireSRWLockShared(&merit_effect_lock);
     const bool hit=merit_effect_cached_locked(current,config);const unsigned cached=merit_effect_cache.state;
     ReleaseSRWLockShared(&merit_effect_lock);
@@ -586,8 +608,7 @@ static const wchar_t *__fastcall merit_effect_text(int stage) { COST_SCOPE("meri
     if(state && stage==3 && mod_features.merit_friendship && mod_features.merit_bond16)
         return L"논공친애";
     if(state && stage==3 && mod_features.merit_friendship) {
-        if(state==1)return L"군주와 상호 친애";   // shape A: the troops effect is replaced
-        // shape B: native "city administration level +1" stays, friendship is added to it.
+        // shape B (shape A is rewritten to it by merit_effect_state): native "city administration level +1" stays, friendship is added to it.
         static thread_local std::wstring combined;
         const wchar_t *native=original_merit_text(stage);
         combined=native?native:L"";if(!combined.empty())combined+=L" / ";combined+=L"군주와 상호 친애";

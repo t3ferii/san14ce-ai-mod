@@ -158,6 +158,7 @@ static void seed_pointers() {
         put(slot,slot==0x1347518?0x201C0:slot==0x1346C98?0x1F380:slot==0x134E518?0x69AB0:slot==0x134DF20?0x61C90:slot==0x1349E98?0x36E80:0x7B0B0);
     put(0x13542C0,0x8F810);   // CVariableGetPersonInfoNode (combat: ai_max_aggression)
     put(0x1350268,0x7EBA0);put(0x13547C8,0x92080);   // attack_recheck_fix nodes
+    put(0x134B390,0x2DAB0);put(0x134CC78,0x54CE0);   // local167 front_hire / computer_trade nodes
     for(const auto &x:recruit_ui_links)put(x.slot,x.original);
     for(const auto &x:recruit_ai_links)put(x.slot,x.original);
     for(const auto &x:injury_links)put(x.slot,x.original);

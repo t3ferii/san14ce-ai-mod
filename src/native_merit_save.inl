@@ -135,9 +135,32 @@ static bool merit_load_restored;
         } catch(...) {log_event("merit_save_write_failed");}
     }
 }
+// local166 start guard (user 2026-11-15 "둘다 고쳐", crash after a load: AV at 17FA38 in 50AE80 case 3, worker thread):
+// the game-start state (vtable 13EA938 slot 5 = 50AE80) creates its loader holder 1BB6D48 in case 2 (4EA810 -> 17ED60)
+// only while 27D5C30 == 0, but 27D5C30 is set once (4C7290) and never cleared, and the teardown 572840 -> 17ED90 frees the
+// holder. A start after that teardown reaches case 3 with the holder null. When case 3 is about to run with no holder,
+// create it the way case 2 does (17ED60(*(14DAE0()+0x210)): two plain allocations), on this same state thread, then let
+// the original run. Any other phase, or a holder present, is the original call untouched.
+static void *next_start_state;
+static void __fastcall start_state_guard(Obj state,unsigned long long a,unsigned long long b,unsigned long long c) {
+    if(state && dword(state,0x470)==3 && !*reinterpret_cast<void **>(image+GA(GA_1BB6D48))) {
+        Obj owner=fn<Obj(__fastcall *)()>(GA(GA_14DAE0))();
+        if(owner)fn<void(__fastcall *)(unsigned long long)>(GA(GA_17ED60))(*reinterpret_cast<unsigned long long *>(owner+0x210));
+        log_event("start_holder_recreated",*reinterpret_cast<void **>(image+GA(GA_1BB6D48))?1u:0u,dword(image,GA(GA_27D5C30)),owner?1u:0u);
+    }
+    next_or<void(__fastcall *)(Obj,unsigned long long,unsigned long long,unsigned long long)>(next_start_state,GA(GA_50AE80))(state,a,b,c);
+}
 [[maybe_unused]] static void __fastcall merit_load_host(Obj host) {
     COST_SCOPE("merit_load_host");
     unsigned phase=dword(host,0x470);
+#ifndef NO_RUNTIME_LOG
+    // local161 diagnostic (user 2026-11-15 crash after alt-tab): the game-start state 50AE80 case 3 read the global 1BB6D48
+    // (created by 17EDD0 through 4EA810 only while 27D5C30 == 0, destroyed by 572840 while it is set) as null right after a
+    // load. Each load-host phase change logs the phase, whether that global exists and the 27D5C30 flag. Reads only.
+    {static unsigned last_phase=~0u;
+     if(phase!=last_phase) {last_phase=phase;
+        log_event("load_host_phase",phase,*reinterpret_cast<void **>(image+GA(GA_1BB6D48))?1u:0u,dword(image,GA(GA_27D5C30)));}}
+#endif
     if(enabled && phase==1)try {
         // Loading is an explicit boundary: respect missing/replaced sidecars
         // and never resurrect a relation from a previous save's RAM cache.

@@ -99,6 +99,16 @@ static const LayoutRow layout_rows[]={
     // button call inside the enter (862280(footer,1,1,-1)) where the 확인 button is added. Registered only when the key is on.
     {"expert_links",LR_VT,GA(GA_141F250),GA(GA_609100),LF_C},
     {"expert_links",LR_VT,GA(GA_141F270),GA(GA_60EF50),LF_C},
+    // local102 normal-mode 설정3 rows: the layout build call and the nine callers of the row binder 644070
+    {"expert_links",LR_CALL,GA(GA_609980),GA(GA_5F4470),LF_C},
+    {"expert_links",LR_CALL,GA(GA_5F841A),GA(GA_644070),LF_C},{"expert_links",LR_CALL,GA(GA_609A18),GA(GA_644070),LF_C},
+    {"expert_links",LR_CALL,GA(GA_60F2E8),GA(GA_644070),LF_C},{"expert_links",LR_CALL,GA(GA_60F333),GA(GA_644070),LF_C},
+    {"expert_links",LR_CALL,GA(GA_60F365),GA(GA_644070),LF_C},{"expert_links",LR_CALL,GA(GA_64477C),GA(GA_644070),LF_C},
+    {"expert_links",LR_CALL,GA(GA_6447A7),GA(GA_644070),LF_C},{"expert_links",LR_CALL,GA(GA_6447D8),GA(GA_644070),LF_C},
+    {"expert_links",LR_CALL,GA(GA_644816),GA(GA_644070),LF_C},
+    // local105: CSetUpScenarioState slot 5 frame (in-game view reads our two rows, expert_ingame only)
+    {"expert_links",LR_VT,GA(GA_141EAD8),GA(GA_60F210),LF_C},
+    {"expert_links",LR_CALL,GA(GA_609CC5),GA(GA_862280),LF_C},
     {"expert_links",LR_CALL,GA(GA_609543),GA(GA_862280),LF_C},
     // 33-35 unified_dialogs
     {"unified_dialogs",LR_VT,GA(GA_13AF618),GA(GA_2FD830),LF_C},
@@ -116,6 +126,8 @@ static const LayoutRow layout_rows[]={
     // merit_prisoner is split out of the bundle (G4 exception) and yields to R1 PrisonerReturn.
     {"merit_save",LR_VT,GA(GA_13E9A30),GA(GA_50DD30),LF_C},
     {"merit_save",LR_VT,GA(GA_13E9188),GA(GA_50BD20),LF_C},
+    // local166 game-start holder guard (state 3 with a null 1BB6D48): its own owner, so a refusal never rolls back merit_save.
+    {"start_guard",LR_VT,GA(GA_13EA960),GA(GA_50AE80),LF_C},
     {"merit_prisoner",LR_VT,GA(GA_13A9BF0),GA(GA_23AA60),LAYOUT_CHAIN_OK|LAYOUT_YIELD_IF_PEER},
     {"merit",LR_VT,GA(GA_1416690),GA(GA_90ACC0),LF_CW},               // yuga waits for this slot and chains behind it
     {"merit",LR_VT,GA(GA_1416518),GA(GA_87ABC0),LF_C},

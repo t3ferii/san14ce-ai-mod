@@ -82,6 +82,26 @@ inline int pick_waypoint(const std::vector<unsigned> &wall_hexes,unsigned from,u
     }
     return best;
 }
+// local106b (user 2026-11-13 "부수는 대상을 선택할때 적이 가까운 중립건물보다 멀리있는 중립건물을 부수고 싶긴하네"):
+// enemy[i] = distance from wall i to the nearest hostile army (large = none). Walls with an enemy within enemy_near
+// hexes come last; among the others the minimum detour as above; when every wall is near an enemy, the farthest
+// from its enemy, then the minimum detour.
+constexpr int enemy_near=2;   // local106c (user "8칸안에 적대부대는 너무 심하고 2칸안으로")
+inline int pick_waypoint(const std::vector<unsigned> &wall_hexes,const std::vector<int> &enemy,unsigned from,unsigned goal) {
+    int best=-1,sum=0,nearest=0,best_enemy=0;bool best_near=true;
+    for(size_t i=0;i<wall_hexes.size();++i) {
+        unsigned w=wall_hexes[i];
+        if(w>=cells)continue;
+        const int e=i<enemy.size()?enemy[i]:1<<20;const bool is_near=e<=enemy_near;
+        int a=distance(from,w),b=distance(w,goal);
+        bool better=best<0;
+        if(!better && is_near!=best_near)better=!is_near;
+        else if(!better && is_near && e!=best_enemy)better=e>best_enemy;
+        else if(!better)better=a+b<sum || (a+b==sum && a<nearest);
+        if(better) {best=static_cast<int>(i);sum=a+b;nearest=a;best_enemy=e;best_near=is_near;}
+    }
+    return best;
+}
 inline unsigned neighbours(unsigned h,unsigned out[6]) {
     unsigned count=0;
     int x=static_cast<int>(h%width),y=static_cast<int>(h/width);
@@ -200,8 +220,9 @@ constexpr unsigned none=0xFFFFFFFFu;
 enum : unsigned char {blocked=0,open_cell=1,wall=2};
 struct Plan {unsigned closed=none,open=none,wall_hex=none,free=none,unit=1;};
 // weight (local38b): per-cell terrain movement cost (the original BF1B0, about 240 on plain); null = 1 per hex.
+// extra (local106): an added per-cell cost (enemy armies for the every-fifth pick); null = none. Not applied to the goal.
 inline unsigned search(const unsigned char *walk,unsigned start,unsigned goal,unsigned penalty,bool through,unsigned *wall_hex,
-                       const unsigned short *weight=nullptr) {
+                       const unsigned short *weight=nullptr,const unsigned short *extra=nullptr) {
     using wall_path::cells;
     if(wall_hex)*wall_hex=none;
     if(start>=cells || goal>=cells)return none;
@@ -223,6 +244,7 @@ inline unsigned search(const unsigned char *walk,unsigned start,unsigned goal,un
             if(next!=goal) {
                 if(walk[next]==blocked)continue;
                 if(walk[next]==wall) {if(!through)continue;step+=penalty;}
+                if(extra)step+=extra[next];
             }
             if(c+step<cost[next]) {cost[next]=c+step;parent[next]=h;open.push({c+step,next});}
         }

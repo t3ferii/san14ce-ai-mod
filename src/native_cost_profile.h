@@ -67,12 +67,16 @@ struct Key {
 };
 struct Entry {uint64_t calls;LONGLONG total,self,maximum;};
 struct Frame {LONGLONG children;};
-struct ThreadState {Entry values[maximum];Frame frames[128];unsigned depth;ULONGLONG window,sequence,writes;};
+// local159 long-frame record: self time of every scope inside the running depth-0 scope, per key, for this one invocation.
+struct ThreadState {Entry values[maximum];Frame frames[128];unsigned depth;ULONGLONG window,sequence,writes;
+    LONGLONG invocation[maximum];unsigned short touched[256];unsigned touched_count;};
 static __declspec(thread) ThreadState state;
+static wchar_t stall_path[MAX_PATH];
 inline void initialize(HMODULE module) {
     LARGE_INTEGER q;QueryPerformanceFrequency(&q);frequency=q.QuadPart;on=frequency>0;
     if(!GetModuleFileNameW(module,file_path,MAX_PATH)) {file_path[0]=0;return;}
     wchar_t *slash=wcsrchr(file_path,L'\\');if(!slash) {file_path[0]=0;return;}
+    wcscpy_s(stall_path,file_path);
     swprintf_s(slash+1,MAX_PATH-static_cast<size_t>(slash+1-file_path),
 #ifdef SPLIT_COMBAT
         L"AI_TacticsMod\\data\\performance\\function_cost_Combat_%lu.csv",
@@ -80,6 +84,43 @@ inline void initialize(HMODULE module) {
         L"AI_TacticsMod\\data\\performance\\function_cost_Convenience_%lu.csv",
 #endif
         GetCurrentProcessId());
+    wchar_t *stall_slash=stall_path+(slash-file_path);
+    swprintf_s(stall_slash+1,MAX_PATH-static_cast<size_t>(stall_slash+1-stall_path),
+#ifdef SPLIT_COMBAT
+        L"AI_TacticsMod\\data\\performance\\function_stall_Combat_%lu.csv",
+#else
+        L"AI_TacticsMod\\data\\performance\\function_stall_Convenience_%lu.csv",
+#endif
+        GetCurrentProcessId());
+}
+static void note_child(unsigned slot,LONGLONG self) {
+    if(slot>=maximum)return;
+    if(!state.invocation[slot] && state.touched_count<256)state.touched[state.touched_count++]=static_cast<unsigned short>(slot);
+    state.invocation[slot]+=self?self:1;
+}
+// A depth-0 scope of 50 ms or more (user 2026-11-14 순-boundary stutter): one line with the root, its time, its own time and the
+// ten largest self times inside it (name=ms). Written at once (rare); the per-second CSV keeps the totals.
+static void long_root(unsigned slot,LONGLONG elapsed,LONGLONG self) {
+    if(stall_path[0] && frequency>0 && elapsed*20>=frequency && slot<maximum) {
+        char line[2048];size_t used=0;
+        int n=_snprintf_s(line,sizeof(line),_TRUNCATE,"%llu,%lu,%s,%.3f,%.3f",GetTickCount64(),GetCurrentThreadId(),names[slot],
+            1000.0*elapsed/frequency,1000.0*self/frequency);
+        if(n>0)used=static_cast<size_t>(n);
+        bool taken[256]={};
+        for(unsigned k=0;k<10 && used<sizeof(line)-64;++k) {
+            int best=-1;
+            for(unsigned i=0;i<state.touched_count;++i)if(!taken[i] && (best<0 || state.invocation[state.touched[i]]>state.invocation[state.touched[best]]))best=static_cast<int>(i);
+            if(best<0)break;
+            taken[best]=true;const unsigned s=state.touched[best];
+            n=_snprintf_s(line+used,sizeof(line)-used,_TRUNCATE,",%s=%.3f",names[s],1000.0*state.invocation[s]/frequency);
+            if(n<0)break;used+=static_cast<size_t>(n);
+        }
+        if(used<sizeof(line)-2) {line[used++]='\r';line[used++]='\n';}
+        HANDLE file=CreateFileW(stall_path,FILE_APPEND_DATA,FILE_SHARE_READ|FILE_SHARE_WRITE,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
+        if(file!=INVALID_HANDLE_VALUE) {DWORD written=0;WriteFile(file,line,static_cast<DWORD>(used),&written,nullptr);CloseHandle(file);}
+    }
+    for(unsigned i=0;i<state.touched_count;++i)state.invocation[state.touched[i]]=0;
+    state.touched_count=0;
 }
 static void flush() {
     if(state.depth || !file_path[0] || frequency<=0)return;
@@ -110,10 +151,11 @@ struct Scope {
         if(!active)return;
         LARGE_INTEGER q;QueryPerformanceCounter(&q);LONGLONG elapsed=q.QuadPart-begin;
         Entry &e=state.values[slot];++e.calls;e.total+=elapsed;
-        e.self+=(elapsed>state.frames[frame].children?elapsed-state.frames[frame].children:0);
+        const LONGLONG self=elapsed>state.frames[frame].children?elapsed-state.frames[frame].children:0;
+        e.self+=self;
         if(elapsed>e.maximum)e.maximum=elapsed;
-        --state.depth;if(state.depth)state.frames[state.depth-1].children+=elapsed;
-        else if(GetTickCount64()-state.window>=1000)flush();
+        --state.depth;if(state.depth) {state.frames[state.depth-1].children+=elapsed;note_child(slot,self);}
+        else {long_root(slot,elapsed,self);if(GetTickCount64()-state.window>=1000)flush();}
     }
 };
 }

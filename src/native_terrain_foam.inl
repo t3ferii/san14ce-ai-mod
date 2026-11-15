@@ -136,7 +136,11 @@ static void mark(unsigned hex,unsigned next,unsigned original) {
         transition=false;
         goals[hex].known=true;goals[hex].next=static_cast<unsigned char>(next);goals[hex].original=static_cast<unsigned char>(original);
         enqueue_locked(hex);
-        log_event("foam_mark",hex,next,original);
+        // local144 (Fable plan item 2): a flood day marked hundreds of cells and each line cost about 17 us; the first four in a
+        // 5 s window are logged, the rest only as a count (foam_mark_total).
+        static ULONGLONG mark_at;static unsigned mark_count;const ULONGLONG now=GetTickCount64();
+        if(now-mark_at>=5000) {if(mark_count>4)log_event("foam_mark_total",mark_count,0,0);mark_at=now;mark_count=0;}
+        if(++mark_count<=4)log_event("foam_mark",hex,next,original);
     }
     ReleaseSRWLockExclusive(&lock);
 }

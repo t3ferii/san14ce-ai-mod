@@ -140,7 +140,7 @@ static void scenery_result(Obj o) {
     ++*reinterpret_cast<int *>(o+0x470);
 }
 static void __fastcall scenery_tick(Obj o) { COST_SCOPE("modpack_scenery_tick");
-    if(pointer(o,0)==image+GA(GA_13D5F68) && *reinterpret_cast<int *>(o+0x470)==0) {
+    if(scenery_collect_live && pointer(o,0)==image+GA(GA_13D5F68) && *reinterpret_cast<int *>(o+0x470)==0) {
         if(!reinterpret_cast<int(__fastcall *)(Obj)>(image+GA(GA_572670))(o))return;
         auto valid=reinterpret_cast<int(__fastcall *)(Obj)>(image+GA(GA_331780));
         if(valid(pointer(o,0x490)) && valid(pointer(o,0x488))) {
@@ -152,7 +152,7 @@ static void __fastcall scenery_tick(Obj o) { COST_SCOPE("modpack_scenery_tick");
 }
 static uint64_t __fastcall scenery_discovery(Obj o,Obj b,Obj c,Obj d) { COST_SCOPE("scenery_discovery");
     auto result=next_or<CollabRead>(next_scenery_discovery,GA(GA_724E40))(o,b,c,d);
-    if(static_cast<unsigned>(result) && *reinterpret_cast<int *>(o+0x4B0)==5) {
+    if(scenery_collect_live && static_cast<unsigned>(result) && *reinterpret_cast<int *>(o+0x4B0)==5) {
         auto hide=reinterpret_cast<void(__fastcall *)(Obj,unsigned)>(image+GA(GA_83E450));
         hide(o,3);hide(o,4);
         reinterpret_cast<void(__fastcall *)(Obj)>(pointer(pointer(o,0),0x40))(o);

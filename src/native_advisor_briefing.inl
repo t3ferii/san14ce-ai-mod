@@ -4,7 +4,17 @@
 #include "advisor_terrain_bridge.h"
 #include <d3d11.h>   // local17 briefing16: direct face texture
 #include <psapi.h>   // GetModuleInformation -> K32GetModuleInformation (kernel32.lib)
+#include "advisor_ambush_bridge.h"   // [game_flow] ambush (docs/AMBUSH.md): proposal + blue count, nullptr = off
 namespace advisor_briefing {
+static void ambush_tick(){if(advisor_bridge::ambush)advisor_bridge::ambush->tick();}
+[[maybe_unused]] static unsigned ambush_badge(){return advisor_bridge::ambush?advisor_bridge::ambush->badge():0;}
+[[maybe_unused]] static bool ambush_offer_pending(){return advisor_bridge::ambush && advisor_bridge::ambush->offer_pending();}
+[[maybe_unused]] static void ambush_offer_shown(){if(advisor_bridge::ambush)advisor_bridge::ambush->offer_shown();}
+static void ambush_answer(bool accept){if(advisor_bridge::ambush)advisor_bridge::ambush->answer(accept);}
+static unsigned ambush_tickets(){return advisor_bridge::ambush && advisor_bridge::ambush->tickets?advisor_bridge::ambush->tickets():0;}
+static void ambush_status(std::wstring &out){out.clear();if(advisor_bridge::ambush && advisor_bridge::ambush->status)advisor_bridge::ambush->status(out);}
+static unsigned ambush_offers(){return advisor_bridge::ambush && advisor_bridge::ambush->offers?advisor_bridge::ambush->offers():0;}
+static unsigned ambush_offer_kind(){return advisor_bridge::ambush && advisor_bridge::ambush->offer_kind?advisor_bridge::ambush->offer_kind():0;}
 static bool scene_yield=false;
 // local5: a failing guard reports which sub-guard it was (diagnostic group, one line per failure):
 // advisor_guard_failed(part, index, rva): part 1 callee prologue (index = row of the prologue list), 2 hash row (index in guards[]),
@@ -118,6 +128,45 @@ static unsigned rendered_generation=~0u,rendered_page=~0u;
 static bool rendered_open=false;
 static bool rendered_collecting=false;
 static bool rendered_city_list=false;
+static bool advice=false,rendered_advice=false;   // [군사 제안] page (local68)
+// local99 수집 설정: bit = Topic. One value for every save ([advisor_briefing] collect in 기능설정.ini), changed on the
+// [수집 설정] page of the report window. native_item: the latest notice was left to the original because its topic is
+// off, so its pictures and waits are left alone too until the next notice arrives.
+static volatile LONG collect_mask=0xFFFF,native_item=0;
+static bool settings=false,rendered_settings=false;
+static unsigned settings_revision=0,rendered_settings_revision=0;
+static bool collects(Topic t){return ((static_cast<unsigned>(collect_mask)>>static_cast<unsigned>(t))&1u)!=0;}
+static bool topic_gate(Topic t){const bool on=collects(t);InterlockedExchange(&native_item,on?0:1);return on;}
+static void collect_apply() {
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+    InterlockedExchange(&scenery_collect_live,collects(Topic::Scenery)?1:0);
+#endif
+}
+static void collect_load() {
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+    wchar_t path[MAX_PATH];
+    if(mod_ini_path(path,L"기능설정.ini"))InterlockedExchange(&collect_mask,static_cast<LONG>(GetPrivateProfileIntW(L"advisor_briefing",L"collect",0xFFFF,path)&0xFFFF));
+#endif
+    collect_apply();
+}
+static void collect_toggle(unsigned index) {
+    if(index>=static_cast<unsigned>(Topic::Count))return;
+    InterlockedExchange(&collect_mask,static_cast<LONG>(static_cast<unsigned>(collect_mask)^(1u<<index)));
+    ++settings_revision;collect_apply();
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+    wchar_t path[MAX_PATH],value[16];
+    if(mod_ini_path(path,L"기능설정.ini") && swprintf_s(value,L"%u",static_cast<unsigned>(collect_mask)&0xFFFFu)>0)WritePrivateProfileStringW(L"advisor_briefing",L"collect",value,path);
+    log_event("advisor_collect_changed",index,static_cast<unsigned>(collect_mask)&0xFFFFu);
+#endif
+}
+static std::vector<std::wstring> collect_labels() {
+    std::vector<std::wstring> out;
+    for(unsigned i=0;i<static_cast<unsigned>(Topic::Count);++i)
+        out.push_back(std::wstring(topic_name(static_cast<Topic>(i)))+(collects(static_cast<Topic>(i))?L"  ·  알림함":L"  ·  원작대로"));
+    return out;
+}
+static bool offer=false,rendered_offer=false;   // ambush proposal shown in the panel instead of the report
+static unsigned rendered_tickets=~0u,rendered_offers=~0u,rendered_offer_kind=~0u;static std::wstring rendered_note;
 static Obj rendered_adviser;
 static briefing_overlay::Model display_cache;
 static int started_day=-1;
@@ -343,7 +392,7 @@ static volatile LONG64 picture_counts[2]{},picture_id_counts[79][2]{};
 static volatile LONG64 picture_close_counts[3]{};
 #endif
 static void __fastcall picture_show(Obj object,int id) { COST_SCOPE("advisor_briefing::picture_show"); COST_CRUMB("advisor_briefing_object",object);
-    bool suppressed=defer(); // Includes !interaction(), on the native UI caller.
+    bool suppressed=defer() && !native_item; // Includes !interaction(), on the native UI caller. local99: a notice left to the original keeps its picture.
     auto it=std::find_if(pictures.begin(),pictures.end(),[&](const Picture &p){return p.object==object;});
     if(it==pictures.end())pictures.push_back({object,id,suppressed});
     else *it={object,id,suppressed};
@@ -506,7 +555,7 @@ static bool duel_running(){Obj m=pointer(image,GA(GA_2786780));return m && dword
 static void __fastcall time_wait(unsigned milliseconds,int *result,unsigned allow_skip) { COST_SCOPE("time_wait");
     const bool live=live_success_active();
     if(live)live_success_pass(1);   // the live success scene's own waits must run to completion
-    bool expired=!live && result && !duel_running() && defer() && fn<int(__fastcall *)()>(GA(GA_335110))()==0 &&
+    bool expired=!live && result && !duel_running() && defer() && !native_item && fn<int(__fastcall *)()>(GA(GA_335110))()==0 &&
         fn<Obj(__fastcall *)(Obj)>(GA(GA_572480))(manager())!=nullptr;
 #ifndef NO_RUNTIME_LOG
     InterlockedIncrement64(&time_wait_counts[expired?0:1]);
@@ -534,6 +583,7 @@ static bool capture_message(unsigned path,int speaker,const wchar_t *text) { COS
     Event e;e.speaker=static_cast<unsigned>(speaker);e.day=day();
     if(!message_gate(path,message_bad_text,copy(text,e.text) && !e.text.empty()))return false;
     const bool capture_scene=mod_features.briefing16 && capture_scene_line(e.text);   // stored, and shown natively like a duel line
+    if(!topic_gate(duel_running()?Topic::Duel:topic_of_text(e.text)))return false;   // local99: topic switched off = the original window
     if(path==2 && speaker>=0 && speaker<6001)name_speaker(e,pointer(world(),0x158+static_cast<unsigned>(speaker)*8));
     if(!message_gate(path,message_store_failed,store({e})))return false;
     return !duel_running() && !capture_scene;   // stored; a duel or capture line is also shown natively
@@ -676,6 +726,7 @@ static bool capture_employ_scene(Obj params) { COST_SCOPE("advisor_briefing:capt
     if(!scene_ready(4) || !message_gate(4,message_params,params!=nullptr))return false;
     Obj actor=pointer(params,0),target=pointer(params,8);std::wstring a,b;
     if(!message_gate(4,message_fields,scene_person(actor,a) && scene_person(target,b)))return false;
+    if(!topic_gate(Topic::Employ))return false;
     const bool success=dword(params,0x10)!=0;
     const bool stored=save_scene(4,Kind::Recruitment,actor,recruitment_scene_summary(a,b,success),recruitment_scene_row(a,b,success));
     if(stored && success && mod_features.briefing16)remember_scene_row(actor,target);
@@ -690,6 +741,7 @@ static bool capture_discovery_scene(Obj params) { COST_SCOPE("advisor_briefing:c
     else if(fields && type<=4)fields=scene_advantage(pointer(params,0x10),b);
     else if(fields)fields=scene_object_name(pointer(params,0x30),b);
     if(!message_gate(5,message_fields,fields))return false;
+    if(!topic_gate(type==0?Topic::Treasure:type==1?Topic::Talent:type==2?Topic::Goods:type<=4?Topic::Advantage:Topic::Scenery))return false;
     // Item/person summaries omit location rather than guess a city string ABI.
     Kind kind=type==0 || type==2?Kind::Treasure:type==1?Kind::Recruitment:Kind::News;
     const bool success=dword(params,0x38)!=0;
@@ -700,6 +752,7 @@ static bool capture_discovery_scene(Obj params) { COST_SCOPE("advisor_briefing:c
 static bool capture_scenery_scene(Obj actor,Obj scenery) { COST_SCOPE("advisor_briefing:capture_scenery_scene");
     if(!scene_ready(6))return false;
     std::wstring a,b;if(!message_gate(6,message_fields,scene_person(actor,a) && scene_object_name(scenery,b)))return false;
+    if(!topic_gate(Topic::Scenery))return false;
     // 41D550's remaining arguments are display-only bonus message/amount.
     return save_scene(6,Kind::News,actor,discovery_scene_summary(5,a,b,L"",true),discovery_scene_row(5,a,b,L"",true));
 }
@@ -786,6 +839,7 @@ static bool capture_destiny(Obj data) { COST_SCOPE("advisor_briefing:capture_des
     if(!message_gate(7,message_phase,fields[4]==0x5EE4 || fields[4]==0x5EE5))return false;
     std::wstring force_name,city_name;
     if(!message_gate(7,message_fields,destiny_names(fields[0],fields[1],force_name,city_name)))return false;
+    if(!topic_gate(Topic::Weather))return false;
     Event event;event.kind=Kind::Weather;event.day=day();
     event.text=event.report=destiny_summary(force_name,city_name,fields[4],fields[5],fields[6]);
     return message_gate(7,message_store_failed,store({event}));
@@ -821,7 +875,7 @@ template<unsigned Branch> static void __fastcall disaster_push(Obj state_manager
     auto &pending=disaster_pending[Branch];pending={};
     bool captured=false;
     // A push may be suppressed only with its own successfully published yield.
-    if(scene_calls[index+1].published && scene_ready(path) && message_gate(path,message_params,type==image+GA(GA_13AFEA0))) {
+    if(scene_calls[index+1].published && scene_ready(path) && message_gate(path,message_params,type==image+GA(GA_13AFEA0)) && topic_gate(Topic::Disaster)) {
         Obj caller=fn<Obj(__fastcall *)(Obj)>(GA(GA_572480))(state_manager);
         std::vector<Event> batch;
         if(caller && message_gate(path,message_bad_text,copy_scene_list(list,batch,Kind::Disaster))) {
@@ -902,7 +956,7 @@ static void refresh_progress() { COST_SCOPE("advisor_briefing:refresh_progress")
     // their badge snapshot directly from this original UI callback instead.
     if(!inbox.collecting)return;
     briefing_overlay::Model m;m.adviser=adviser_name();m.generation=inbox.generation;
-    m.unread=inbox.unread();m.collecting=true;m.title=L"이번 순의 소식을 모으고 있습니다";
+    m.unread=inbox.unread();m.tickets=ambush_badge();m.collecting=true;m.title=L"이번 순의 소식을 모으고 있습니다";
     m.body=L"진행이 끝나면 한데 모아 보고드리겠습니다.";
     bool show=!interaction();briefing_overlay::progress_flags(show,clean_scene());
     briefing_overlay::publish(m,show);
@@ -939,6 +993,7 @@ static void hud(Obj layout,bool eligible,bool modal) { COST_SCOPE("advisor_brief
     // modal window. Live standby cycles this through CGameState/CRootState.
     // The actual top-of-stack test already excludes every standby dialog.
     bool show=!interaction() && (player || inbox.collecting);
+    if(player && !inbox.collecting)ambush_tick();   // one pass per 10-day turn: monthly 상순 roll, expiry
     if(show)unified_overlay::install();
     unsigned generation=0,action=briefing_overlay::take(generation);
     std::vector<Card> cards;
@@ -947,8 +1002,18 @@ static void hud(Obj layout,bool eligible,bool modal) { COST_SCOPE("advisor_brief
     if(action && page>=cards.size())page=0;
     if(action && show && player && !inbox.collecting && generation==inbox.generation) {
         accepted_input=true;
-        if(action==1)open=!open;
-        else if(action==2){open=false;city_list=false;}
+        // local64 (user 2026-11-12): the ambush proposal is a speech balloon at the head (10 수락 / 11 거절, 12 = its
+        // body); the head click always opens the report.
+        if(action==10 || action==11){if(ambush_offers())ambush_answer(action==10);}
+        else if(action==12){}
+        else if(action==1){open=!open;offer=false;advice=false;}
+        else if(action==2){open=false;city_list=false;offer=false;advice=false;settings=false;}
+        else if(offer && (action==5 || action==6)){ambush_answer(action==5);offer=false;open=false;}
+        else if(offer){}   // the proposal has only 수락/거절/×
+        else if(action==8){advice=!advice;city_list=false;settings=false;}   // local68: [군사 제안] page next to [부동산 개발]
+        else if(advice){}
+        else if(action==13){settings=!settings;city_list=false;}   // local99: [수집 설정] page
+        else if(settings){if(action>=100)collect_toggle(action-100);}   // a row = one topic: 알림함 <-> 원작대로
         else if(action==7){city_list=!city_list;if(city_list)refresh_cities();}
         else if(action>=100 && action<100+city_ids.size()) {
             unsigned chosen=city_ids[action-100];
@@ -966,15 +1031,37 @@ static void hud(Obj layout,bool eligible,bool modal) { COST_SCOPE("advisor_brief
         else if(!city_list && action==5 && !cards.empty()){inbox.erase(cards[page].kind);page=0;}
         else if(!city_list && action==6){inbox.clear();page=0;}
         if(!city_list && (action==5 || action==6))cards=inbox.cards();
-        if(!city_list && open && !cards.empty() && cards[page].unread){inbox.mark(cards[page].kind);cards[page].unread=0;}
+        if(!city_list && !offer && !advice && open && !cards.empty() && cards[page].unread){inbox.mark(cards[page].kind);cards[page].unread=0;}
     }
-    if(inbox.collecting){open=false;city_list=false;}
-    if(rendered_generation==inbox.generation && rendered_page==page && rendered_open==open && rendered_collecting==inbox.collecting && rendered_adviser==last_adviser && rendered_city_list==city_list) {
+    if(inbox.collecting){open=false;city_list=false;offer=false;advice=false;settings=false;}
+    const unsigned tickets_now=ambush_tickets(),offers_now=ambush_offers(),offer_kind_now=offers_now?ambush_offer_kind():0;
+    std::wstring note_now;if(open && advice)ambush_status(note_now);
+    if(rendered_generation==inbox.generation && rendered_page==page && rendered_open==open && rendered_collecting==inbox.collecting && rendered_adviser==last_adviser && rendered_city_list==city_list && rendered_offer==offer && rendered_tickets==tickets_now && rendered_offers==offers_now && rendered_offer_kind==offer_kind_now && rendered_note==note_now && rendered_advice==advice && rendered_settings==settings && rendered_settings_revision==settings_revision) {
         briefing_overlay::publish(display_cache,show,accepted_input);return;
     }
     if(!have_cards)cards=inbox.cards();if(page>=cards.size())page=0;
     briefing_overlay::Model m;m.adviser=adviser_name();m.generation=inbox.generation;m.unread=inbox.unread();m.open=open;m.collecting=inbox.collecting;m.city_list=city_list;m.page=page;m.pages=static_cast<unsigned>(cards.size());
-    if(city_list) {
+    m.tickets=tickets_now;m.offer=offer;m.offers=offers_now;m.offer_kind=offer_kind_now;m.advice=advice && !offer;
+    m.settings=settings && !offer && !m.advice;if(m.settings)m.city_list=true;   // the topic rows use the city grid
+    if(offer && offer_kind_now==1) {   // destruction_ticket (user 2026-11-13)
+        m.title=L"파괴공작 제안";
+        m.body=L"주공, 우리 성이 있는 지역과 바로 맞닿은 지역에 적의 시설이 서 있습니다. 금 1000을 주시면 파괴공작을 준비해 두겠습니다.\n\n"
+               L"파괴공작이 준비된 뒤 우리 성이 있는 지역과 바로 맞닿은 지역에 계략 [건물파괴]를 쓰면, 원래 판정이 실패하더라도 준비 하나를 써서 성공시킵니다. "
+               L"스스로 성공한 계략에는 준비를 쓰지 않습니다. 준비는 두 개까지 갖출 수 있습니다.\n\n"
+               L"금은 군주께서 머무시는 거점에서 나갑니다.";
+    } else if(offer) {
+        m.title=L"매복 작전 제안";
+        m.body=L"주공, 매복이동으로 전황을 바꿀 수도 있을 것 같습니다. 금 1000을 주시면 준비해보겠습니다.\n\n"
+               L"준비가 끝나면 출진 화면 오른쪽 아래의 [군사제안수행]를 켜고 출진하십시오. 그 부대는 적 영역(ZOC)에 닿은 날부터 60일(길어도 180일) 동안 적의 임무와 목표 탐색에 잡히지 않습니다. "
+               L"가까이 붙으면 싸움은 피할 수 없고, 그동안 진형 기동력은 절반으로 줄어듭니다.\n\n"
+               L"금은 군주께서 머무시는 거점에서 나갑니다.";
+    } else if(advice) {
+        m.title=L"군사 제안";
+        m.body=note_now.empty()?std::wstring(L"지금은 올릴 계책이 없습니다."):note_now;
+    } else if(m.settings) {
+        m.title=L"알림함에 모을 소식";
+        m.cities=collect_labels();
+    } else if(city_list) {
         m.title=L"보유한 성";
         m.cities=city_names;
     } else if(cards.empty()) {
@@ -992,7 +1079,7 @@ static void hud(Obj layout,bool eligible,bool modal) { COST_SCOPE("advisor_brief
             }
         }
     }
-    display_cache=std::move(m);rendered_generation=inbox.generation;rendered_page=page;rendered_open=open;rendered_collecting=inbox.collecting;rendered_adviser=last_adviser;rendered_city_list=city_list;
+    display_cache=std::move(m);rendered_generation=inbox.generation;rendered_page=page;rendered_open=open;rendered_collecting=inbox.collecting;rendered_adviser=last_adviser;rendered_city_list=city_list;rendered_offer=offer;rendered_tickets=tickets_now;rendered_offers=offers_now;rendered_offer_kind=offer_kind_now;rendered_note=note_now;rendered_advice=advice;rendered_settings=settings;rendered_settings_revision=settings_revision;
     briefing_overlay::publish(display_cache,show,accepted_input);(void)layout;(void)eligible;(void)modal;
 }
 static unsigned long long __fastcall user_enter(Obj state,Obj argument) { COST_SCOPE("advisor_briefing::user_enter"); COST_CRUMB("advisor_briefing_state",state);
@@ -1035,10 +1122,11 @@ static void __fastcall narration(Obj state) { COST_SCOPE("advisor_briefing::narr
 static unsigned long long message_enter(Obj state,unsigned original,bool diplomatic) { COST_SCOPE("advisor_briefing:message_enter");
     bool accepted=false;
     const bool skip=diplomatic && dialogue_ready(false),watch=diplomatic && !skip && dialogue_observed(false);
+    const bool wanted=!diplomatic || collects(Topic::Diplomacy);   // local99: topic off = the original dialog, nothing stored
 #ifndef NO_RUNTIME_LOG
     if(diplomatic)skip_decision(0,false,skip);
 #endif
-    if(skip || watch) {
+    if((skip || watch) && wanted) {
         std::vector<Event> batch;Obj head=pointer(state,0x478),node=head?pointer(head,0):nullptr;
         Obj scene=skip?diplomatic_parent(false):diplomatic_observed(false);
         size_t count=static_cast<size_t>(*reinterpret_cast<unsigned long long *>(state+0x480));
@@ -1193,6 +1281,7 @@ static bool capture_event(Obj owner,Obj person,const wchar_t *text) { COST_SCOPE
         }
     }
     const bool capture_scene=mod_features.briefing16 && capture_scene_line(e.text);
+    if(!topic_gate(e.kind==Kind::Recruitment?Topic::Employ:duel_running()?Topic::Duel:topic_of_text(e.text)))return false;   // local99
     name_speaker(e,person);
     if(!message_gate(3,message_store_failed,store({e})))return false;
     return !capture_scene;   // briefing16: the capture scene stays on screen; the briefing keeps the copy
@@ -1230,8 +1319,9 @@ static void __fastcall diplomatic_speech(Obj owner,int slot,Obj person,const wch
         if(live_success_other_thread()){live_success_pass(5);original_speech(owner,slot,person,text,extra);return;}
         live_success_end(4);   // 4 other message: diplomatic speech is not the scene's own line
     }
-    bool capture=dialogue_ready(true) && owner==diplomatic_parent(true) && (slot==3 || slot==4);
-    const bool watch=!capture && (slot==3 || slot==4) && dialogue_observed(true) && owner==diplomatic_observed(true);
+    const bool wanted=collects(Topic::Diplomacy);   // local99
+    bool capture=wanted && dialogue_ready(true) && owner==diplomatic_parent(true) && (slot==3 || slot==4);
+    const bool watch=wanted && !capture && (slot==3 || slot==4) && dialogue_observed(true) && owner==diplomatic_observed(true);
 #ifndef NO_RUNTIME_LOG
     if(slot==3 || slot==4)skip_decision(1,true,capture);
 #endif
@@ -1474,7 +1564,7 @@ static unsigned long long __fastcall report_enter(Obj state) { COST_SCOPE("advis
     if(try_headless_report(state,headless_result))return headless_result;
     // Native reports are pushed after CUserStrategyState has already entered.
     // Accept only this final native report into the completed cycle.
-    std::vector<Event> batch;bool capture=defer(true) && pending_world_reports(batch);
+    std::vector<Event> batch;bool capture=collects(Topic::Income) && defer(true) && pending_world_reports(batch);
     if(capture)briefing_overlay::mask_report(true);
     auto result=fn<unsigned long long(__fastcall *)(Obj)>(GA(GA_67DB40))(state);
     report_state=state;report_deferred=false;
@@ -1747,6 +1837,47 @@ static void __fastcall advice_leave(Obj layout,Obj context) { COST_SCOPE("adviso
     fn<void(__fastcall *)(Obj,Obj)>(GA(GA_895A10))(layout,context);
 }
 static void *replacements[]={reinterpret_cast<void *>(&user_enter),reinterpret_cast<void *>(&user_leave),reinterpret_cast<void *>(&game_leave),reinterpret_cast<void *>(&narration),reinterpret_cast<void *>(&simple_enter),reinterpret_cast<void *>(&simple_frame),reinterpret_cast<void *>(&report_enter),reinterpret_cast<void *>(&report_frame),reinterpret_cast<void *>(&report_leave),reinterpret_cast<void *>(&report_wait),reinterpret_cast<void *>(&log_frame),reinterpret_cast<void *>(&log_leave),reinterpret_cast<void *>(&advice_frame),reinterpret_cast<void *>(&advice_leave),reinterpret_cast<void *>(&diplomatic_enter),reinterpret_cast<void *>(&simple_frame),reinterpret_cast<void *>(&diplomatic_wait),reinterpret_cast<void *>(&user_frame),reinterpret_cast<void *>(&person_notice_enter),reinterpret_cast<void *>(&simple_frame)};
+// local65 (user 2026-11-12 "계략이 카메라 포커스 가져가는거 스킵하고 싶어 군사보고에 어차피 기록되는데"), part of briefing16.
+// The stratagem effects 1FB170 (kind 0x14 건물파괴), 1FC530 (kind 14) and 1FD930 (kind 13) call
+// 2DC840(tile,ms,state,zoom) when the player is involved: it saves the camera (singleton 110D0) into state, moves to the
+// target tile and waits ms; the effect ends with 2EB1F0(state) = restore + wait state[0] ms. The replacement saves the
+// camera exactly the same way but neither moves nor waits, and stores 0 ms, so the closing restore is instant and lands
+// where the camera already is. Results, messages and the briefing copy are untouched. briefing16 off = original calls.
+namespace plot_camera {
+using Focus=void(__fastcall *)(unsigned,unsigned,unsigned *,float);
+static void __fastcall focus(unsigned tile,unsigned ms,unsigned *state,float zoom) { COST_SCOPE("plot_camera:focus");
+    Obj camera=mod_features.briefing16 && state && advisor_briefing::collects(advisor_briefing_core::Topic::Plot)?fn<Obj(__fastcall *)()>(GA(GA_110D0))():nullptr;
+    if(!camera){fn<Focus>(GA(GA_2DC840))(tile,ms,state,zoom);return;}
+    float *out=reinterpret_cast<float *>(state);
+    for(unsigned i=0;i<4;++i)out[4+i]=static_cast<float>(*reinterpret_cast<double *>(camera+0xA0+i*8));
+    double height=*reinterpret_cast<double *>(camera+0x1A8);
+    if(height==*reinterpret_cast<double *>(image+GA(GA_1345CF0)))height=*reinterpret_cast<double *>(camera+0xE0);
+    memcpy(state+8,&height,8);memcpy(state+10,camera+0xF8,8);memcpy(state+12,camera+0x110,8);
+    state[14]=1;state[0]=0;   // saved; 0 ms: 2EB1F0 restores at once and does not wait
+#ifndef NO_RUNTIME_LOG
+    static unsigned logged;if(logged<32){++logged;log_event("plot_camera_skipped",tile,ms,0);}
+#endif
+}
+static CallLink links[3];
+static void install() { COST_SCOPE("plot_camera:install");
+    if(!mod_features.briefing16)return;
+    const unsigned sites[3]={GA(GA_1FBB50),GA(GA_1FCA60),GA(GA_1FDB73)},target=GA(GA_2DC840);
+    bool ok=target && GA(GA_110D0) && GA(GA_1345CF0);
+    for(unsigned site:sites) {
+        int delta=0;if(ok && site)memcpy(&delta,image+site+1,4);
+        ok=ok && site && image[site]==0xE8 && site+5+static_cast<unsigned>(delta)==target;
+    }
+    Obj relay=ok?allocate_near(image+sites[0]):nullptr;
+    if(!relay){log_event("plot_camera_rejected",ok?1u:0u,0,0);return;}
+    absolute_jump(relay,reinterpret_cast<void *>(&focus));
+    DWORD old;unsigned n=0;
+    ok=VirtualProtect(relay,4096,PAGE_EXECUTE_READ,&old) && FlushInstructionCache(GetCurrentProcess(),relay,16);
+    for(;ok && n<3;++n)ok=call_prepare(links[n],sites[n],relay);
+    for(unsigned i=0;ok && i<3;++i)ok=call_publish(links[i]);
+    if(!ok)for(unsigned i=0;i<3;++i)call_restore(links[i]);
+    log_event(ok?"plot_camera_installed":"plot_camera_rejected",2,n,0);
+}
+}   // namespace plot_camera
 static bool install() { COST_SCOPE("advisor_briefing:install");
     if(!guards_match())return false;
     Obj relay=allocate_near(image+GA(GA_9332B0));if(!relay)return false;
@@ -1796,6 +1927,8 @@ static bool install() { COST_SCOPE("advisor_briefing:install");
     log_event("advisor_briefing_entry_schema",message_entry_paths,message_reason_columns);
     log_event("advisor_briefing_picture_schema",picture_count_slots);
 #endif
+    plot_camera::install();   // optional part of briefing16; its failure leaves the report as it is
+    collect_load();   // local99: topics chosen on the [수집 설정] page
     log_event("advisor_briefing_installed");return true;
 }
 #endif

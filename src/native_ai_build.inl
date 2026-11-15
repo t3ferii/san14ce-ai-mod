@@ -84,12 +84,29 @@ static bool try_build(Obj army, Progress &p, unsigned cohort_center=48400,unsign
         if(siege_open) {if(allow6)steps[step_count++]={6,0};if(allow5)steps[step_count++]={5,0};}
         if(fort_open) {steps[step_count++]={4,0};steps[step_count++]={3,0};}
         if(band_open)steps[step_count++]={7,0};
-        if(!siege_open && !fort_open && !band_open && allow_trap) {
-            trap_phase=true;
+        // local69 (user 2026-11-12 "함정 넣으니까 투석대 요새 군악대 건설이 줄어들어보여. 함정은 확률로 (10프로) 분기하고 다시
+        // 투석대 우선순위로 돌아가게끔"): the trap is a 10 % branch per army and day; otherwise the catapult/fort/band
+        // order runs, and with every slot already filled it runs again (repeats allowed, still one build per army and
+        // region; area capacity, spacing and the original permission checks limit the count).
+        const unsigned roll=(army_id(army)*2654435761u+static_cast<unsigned>(game_day())*40503u+word(area,0x3A)*97u)%100u;
+        const bool trap_roll=allow_trap && roll<10u;
+        const bool filled=!siege_open && !fort_open && !band_open;
+        if(trap_roll) {
             // 17 rockfall (user 2026-11-11 "시정으로 열리는 낙석같은것도"): opened by the 산천시설 policy, mountain sites only;
             // the original candidate list and permission decide both (unlock and terrain).
-            for(unsigned f:{11u,12u,17u,14u,13u})steps[step_count++]={f,0};
+            Step first[5];unsigned n=0;for(unsigned f:{11u,12u,17u,14u,13u})first[n++]={f,0};
+            for(unsigned i=step_count;i--;)steps[i+n]=steps[i];
+            for(unsigned i=0;i<n;++i)steps[i]=first[i];
+            step_count+=n;
         }
+        if(filled) {
+            if(allow6)steps[step_count++]={6,0};if(allow5)steps[step_count++]={5,0};
+            steps[step_count++]={4,0};steps[step_count++]={3,0};steps[step_count++]={7,0};
+        }
+        trap_phase=trap_roll || filled;   // seen types may be built again; one build per army and region (below)
+#ifndef NO_RUNTIME_LOG
+        if(trap_roll)log_event("build_trap_roll",army_id(army),roll,filled?1u:0u);
+#endif
     } else
     for(unsigned pass=0;pass<(builder?2u:1u);++pass)for(unsigned f:order)steps[step_count++]={f,pass};
     for (unsigned step=0;step<step_count && !applied;++step) {
@@ -117,13 +134,15 @@ static bool try_build(Obj army, Progress &p, unsigned cohort_center=48400,unsign
                 list_add(candidates,item->value);
             list_free(local);
         }
-        bool offered=list_first(candidates)!=nullptr,native_rejected=false,out_of_range=false;
+        bool offered=list_first(candidates)!=nullptr,native_rejected=false,out_of_range=false,spaced=false;
         for (Link *item = list_first(candidates); item; item = item->next) {
             Obj tile = item->value;
             if (!valid(tile) || tile[0x14] != army_force(army)) continue;
             unsigned hex = fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F830))(tile);
             if (hex >= 48400 || reserved_hex(hex, army)) continue;
-            if(siege_range && (siege_castle>=48400 || distance(siege_castle,hex)<3 || distance(siege_castle,hex)>ring_max)) {out_of_range=true;continue;}
+            if (military_spacing_blocked(army, facility, hex) || military_order_near(army, facility, hex)) {spaced=true;continue;}
+            // local166: nothing within 3 hexes of the castle footprint (centre distance <= 4, fixdata base interval 3).
+            if(siege_range && (siege_castle>=48400 || distance(siege_castle,hex)<=4 || distance(siege_castle,hex)>ring_max)) {out_of_range=true;continue;}
             if(morale_band && distance(word(army,0x2A),hex)>6) {out_of_range=true;continue;}
             if(cohort_center<48400 && distance(cohort_center,hex)>2)continue;
             if (!fn<int(__fastcall *)(GameList *, Obj, Obj)>(GA(GA_27A8D0))(&people, tile, definition)) {native_rejected=true;continue;}
@@ -142,7 +161,7 @@ static bool try_build(Obj army, Progress &p, unsigned cohort_center=48400,unsign
         }
         list_free(candidates);
         if(!applied)build_skip(army,p,facility,!offered?"build_skip_native_candidates":
-                              (native_rejected?"build_skip_native_check":out_of_range?"build_skip_siege_range":"build_skip_no_free_site"));
+                              (native_rejected?"build_skip_native_check":out_of_range?"build_skip_siege_range":spaced?"build_skip_spacing":"build_skip_no_free_site"));
         if (applied) break;
     }
     list_free(people);

@@ -40,6 +40,7 @@ static void split_address_gates(ModFeatures &f) {
     ga_gate(f.advisor_briefing,48,ga::files_ok({GF_advisor_briefing_profile_h,GF_native_advisor_briefing_inl}));
     ga_gate(f.damage_preview,49,ga::files_ok({GF_damage_preview_profile_h,GF_native_damage_preview_inl}));
     ga_gate(f.building_destruction_all,50,ga::files_ok({GF_building_destruction_profile_h,GF_native_building_destruction_inl}));
+    ga_gate(f.building_destruction_boost,50,ga::files_ok({GF_building_destruction_profile_h,GF_native_building_destruction_inl}));
     ga_gate(f.diplomacy_overinvest,51,ga::files_ok({GF_diplomacy_intel_profile_h,GF_native_diplomacy_intel_inl}));
     ga_gate(f.diplomacy_counterturn,52,ga::files_ok({GF_diplomacy_intel_profile_h,GF_native_diplomacy_intel_inl}));
     // The stat-cap byte patches (modpack_bytes rows) belong to stats200/stats200_growth only; tooltip_collab, scenery_skip and
@@ -100,5 +101,9 @@ static void combat_address_gates(ModFeatures &f) {
         GA_13466B0,GA_44F281,GA_453310,GA_11040,GA_230270,GA_330B90,
         // PW36b main-screen toggles: CGameLayout setup/destroy slots and the two redirected 8685C0 call sites.
         GA_13D9268,GA_13D90E0,GA_4452B0,GA_43BE70,GA_44616D,GA_445FA6,GA_8685C0}));
+    // 91/92 (local167): computer trade (monthly tick + trade node 54CE0) and frontline hire filter (hire node 2DAB0).
+    ga_gate(f.computer_trade,91,ga_ids_known({GA_70F210,GA_230350,GA_6E01F0,GA_22F740,GA_32F080,GA_1EBC60,GA_134F6D8,
+        GA_230270,GA_231770,GA_232030,GA_233BE0,GA_234AB0,GA_22C4B0,GA_22BAB0,GA_1AC60,GA_1BFFF0,GA_13466B0,GA_54CE0,GA_134CC78,GA_B7210,GA_22E870}));
+    ga_gate(f.front_hire,92,ga_ids_known({GA_2DAB0,GA_134B390,GA_232030,GA_231770,GA_22E3E0,GA_2CC630}));
 }
 #endif

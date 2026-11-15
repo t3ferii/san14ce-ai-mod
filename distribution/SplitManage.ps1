@@ -285,14 +285,31 @@ function Get-TraitLayoutPlan($State,$Patch,[bool]$Install,$FeatureValues=$null) 
     if($taskPlan.Deletes.Count){$taskPlan.Changed=$true}
     return $taskPlan
 }
+# v15.18 (user 2026-11-14 "앞으론 용량커지니까 지우고 되돌릴때도 깃헙에서 받으면 되는거아냐"): the 4계절 data under AI_TacticsMod\data\season
+# (SAN14_ModPack.dll / season bake) goes with the mod. Restore removes it; Apply removes files the new package no longer lists.
+# A rollback runs Restore first, and the older package is downloaded from GitHub again. A development checkout (src or .git) is never touched.
+function Remove-SeasonData($Keep) {
+    $taskSeason=Join-Path $taskProject 'data\season'
+    if(-not [IO.Directory]::Exists($taskSeason)){return}
+    if([IO.Directory]::Exists((Join-Path $taskProject 'src')) -or (Test-Path -LiteralPath (Join-Path $taskProject '.git'))){return}
+    $taskRemoved=0
+    foreach($taskFile in [IO.Directory]::GetFiles($taskSeason)) {
+        $taskName=[IO.Path]::GetFileName($taskFile)
+        if(@('.dds','.cso','.dat','.log','.txt') -notcontains [IO.Path]::GetExtension($taskName).ToLowerInvariant()){continue}
+        if($null -ne $Keep -and ($Keep -contains ('data/season/'+$taskName) -or $taskName -like '*.log' -or $taskName -like '*.txt')){continue}
+        try{[IO.File]::Delete($taskFile);$taskRemoved++}catch{Write-Host ('계절 자료를 지우지 못했습니다: '+$taskName)}
+    }
+    if([IO.Directory]::GetFileSystemEntries($taskSeason).Length -eq 0){try{[IO.Directory]::Delete($taskSeason)}catch{}}
+    if($taskRemoved){Write-Host ('4계절 자료 {0}개를 지웠습니다(AI_TacticsMod\data\season).' -f $taskRemoved)}
+}
 function Invoke-SplitPackage {
     Assert-GameClosed
-    $taskAllowed=@('SAN14_CombatAI.dll','SAN14_Convenience.dll','SAN14_CCZ.dll','SAN14_Layout.dll','SAN14_전법설명.txt')+$taskLegacyLayout
+    $taskAllowed=@('SAN14_CombatAI.dll','SAN14_Convenience.dll','SAN14_CCZ.dll','SAN14_Layout.dll','SAN14_ModPack.dll','SAN14_전법설명.txt')+$taskLegacyLayout
     # 2026-11-01 user: 조조전 탭 = SAN14_CCZ.dll (v15+). Optional in a package; older packages do not know the
     # name, so a restore drops it from the record it leaves (the file itself is deleted) for an older Apply.
     # 2026-11-05 user exception: SAN14_Layout.dll (5th DLL, loaded first by dinput8) is listed the same way, so packages from before
     # it existed still apply; a package that carries it is hash-checked, installed and restored like every other module.
-    $taskOptionalModules=@('SAN14_CCZ.dll','SAN14_Layout.dll')
+    $taskOptionalModules=@('SAN14_CCZ.dll','SAN14_Layout.dll','SAN14_ModPack.dll')   # 2026-11-13 user: SAN14_ModPack.dll = other authors' patches
     # Reference text only; no DLL reads it. A same-named file from another mod or an
     # older copy never blocks install/update/restore: it is left as it is, not owned.
     $taskOptionalAssets=@('SAN14_전법설명.txt')
@@ -368,6 +385,7 @@ function Invoke-SplitPackage {
         }
         if($null -ne $taskOriginal){[IO.File]::Delete($taskChain)}
         foreach($taskMessage in $taskLayout.Messages){Write-Host $taskMessage}
+        Remove-SeasonData $null
         Write-Host '로더·전투 판단·편의·조조전 기능 DLL을 해제하고 설치 전 구성을 복구했습니다.'
         return
     }
@@ -473,6 +491,7 @@ function Invoke-SplitPackage {
             Write-State $taskState
             Write-Host ('설치 기록을 '+$taskManifest.release_version+'(으)로 갱신했습니다.')
         }
+        Remove-SeasonData @(if($taskManifest.PSObject.Properties.Name -contains 'season_assets'){$taskManifest.season_assets.PSObject.Properties.Name})
         Write-Host '모든 DLL이 최신 버전입니다.';return
     }
     foreach($taskPath in @($taskLayout.Writes.Keys)+$taskLayout.Deletes) {
@@ -506,6 +525,7 @@ function Invoke-SplitPackage {
         throw
     }
     foreach($taskMessage in $taskLayout.Messages){Write-Host $taskMessage}
+    Remove-SeasonData @(if($taskManifest.PSObject.Properties.Name -contains 'season_assets'){$taskManifest.season_assets.PSObject.Properties.Name})
     Write-Host '로더·전투 판단·편의·조조전 기능 DLL을 설치했습니다. 평소 Steam/런처로 실행해 주세요.'
     Write-Host '기능을 나중에 바꾸려면 AI_TacticsMod\optional_tools\AI모드_기능선택.cmd를 실행하세요.'
 }

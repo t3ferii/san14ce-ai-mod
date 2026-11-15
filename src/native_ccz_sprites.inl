@@ -454,6 +454,19 @@ static CellTexture textures[kTextures];
 static bool resources_failed;
 static SRWLOCK dsv_lock=SRWLOCK_INIT;
 static ID3D11DepthStencilView *scene_dsv;static ID3D11DepthStencilView *rejected[8];static unsigned rejected_next;
+// 2026-11-12 (user: sprites flicker during 진행, then units vanish): rejected[] used to hold raw addresses, so a depth view
+// the game recreated at a reused address stayed "not the scene depth" until a new device. Entries now hold a reference
+// (the address cannot be reused while we keep it; depth textures only, never a swap-chain buffer) and are cleared after
+// a Present stall or a back-buffer size change.
+// Visibility: a Draw call alone no longer counts as "drawn". Each sprite batch runs inside an occlusion query; only a
+// result with passing pixels refreshes last_draw_ok, so a sprite covered or failing depth lets the native model return.
+// Query creation failure keeps the previous rule (a submitted Draw counts).
+constexpr unsigned kVisibilityQueries=8;
+static ID3D11Query *visibility[kVisibilityQueries];static ULONGLONG visibility_at[kVisibilityQueries];
+static bool visibility_busy[kVisibilityQueries];static unsigned visibility_next;
+#ifndef NO_RUNTIME_LOG
+static LONG visibility_seen,visibility_hidden,visibility_streak,visibility_logs;
+#endif
 static volatile LONG want_width,want_height,drawing;
 using SetTargets=void(STDMETHODCALLTYPE *)(ID3D11DeviceContext *,UINT,ID3D11RenderTargetView *const *,ID3D11DepthStencilView *);
 constexpr unsigned kSetTargetsSlot=33;   // ID3D11DeviceContext::OMSetRenderTargets
@@ -462,7 +475,8 @@ template<class T> static void drop(T *&p){if(p){p->Release();p=nullptr;}}
 static void release_resources() {
     drop(vs);drop(ps);drop(layout);drop(vertices);drop(palette_view);drop(original_palette_view);drop(label_view);drop(depth_on[0]);drop(depth_on[1]);drop(depth_off);drop(raster);
     for(auto &t:textures){drop(t.view);t=CellTexture{};}
-    AcquireSRWLockExclusive(&dsv_lock);drop(scene_dsv);memset(rejected,0,sizeof(rejected));ReleaseSRWLockExclusive(&dsv_lock);
+    for(unsigned i=0;i<kVisibilityQueries;++i){drop(visibility[i]);visibility_busy[i]=false;}
+    AcquireSRWLockExclusive(&dsv_lock);drop(scene_dsv);for(auto &r:rejected)drop(r);rejected_next=0;ReleaseSRWLockExclusive(&dsv_lock);
     if(device){device->Release();device=nullptr;}
 }
 struct Stats {   // read-only diagnostics, inspected from outside the process (frame-drop question)
@@ -487,8 +501,14 @@ static void note_dsv(ID3D11DepthStencilView *dsv) {
             // local7 log: two back-buffer-sized depth views alternate ~15 times a frame -> log only the first few.
             static volatile LONG depth_logs;if(InterlockedIncrement(&depth_logs)<=4)log_event("ccz_sprites_scene_depth",d.Width,d.Height,d.Format);
 #endif
-        } else {rejected[rejected_next++%8]=dsv;++stats.slow_notes;}
+        } else {ID3D11DepthStencilView *&slot=rejected[rejected_next++%8];drop(slot);dsv->AddRef();slot=dsv;++stats.slow_notes;}
     }
+    ReleaseSRWLockExclusive(&dsv_lock);
+}
+static void reset_views(bool resized) {   // render thread: Present stall or back-buffer size change
+    AcquireSRWLockExclusive(&dsv_lock);
+    for(auto &r:rejected)drop(r);rejected_next=0;
+    if(resized)drop(scene_dsv);
     ReleaseSRWLockExclusive(&dsv_lock);
 }
 // 2026-10-31 live: drawing at Present covered the HUD portraits and stayed above full-screen windows.
@@ -644,6 +664,8 @@ static bool create_resources(ID3D11Device *d) {
     ds.DepthEnable=FALSE;if(FAILED(d->CreateDepthStencilState(&ds,&depth_off)))return false;
     D3D11_RASTERIZER_DESC rs{};rs.FillMode=D3D11_FILL_SOLID;rs.CullMode=D3D11_CULL_NONE;rs.DepthClipEnable=TRUE;
     if(FAILED(d->CreateRasterizerState(&rs,&raster)))return false;
+    D3D11_QUERY_DESC qd{D3D11_QUERY_OCCLUSION,0};
+    for(unsigned i=0;i<kVisibilityQueries;++i)if(FAILED(d->CreateQuery(&qd,&visibility[i]))){for(unsigned k=0;k<kVisibilityQueries;++k)drop(visibility[k]);break;}
     resources_failed=false;return true;
 }
 // PW6 rule 2: remember a cell we could not load; reason 1 decode, 2 texture, 3 view. The set is functional
@@ -869,8 +891,32 @@ static bool linear_target(ID3D11RenderTargetView *rtv) {   // float / sRGB targe
         default:return false;
     }
 }
+static void poll_visibility(ID3D11DeviceContext *c) {   // render thread; never flushes
+    for(unsigned i=0;i<kVisibilityQueries;++i) {
+        if(!visibility_busy[i] || !visibility[i])continue;
+        UINT64 pixels=0;HRESULT hr=c->GetData(visibility[i],&pixels,sizeof(pixels),D3D11_ASYNC_GETDATA_DONOTFLUSH);
+        if(hr==S_FALSE)continue;
+        visibility_busy[i]=false;if(hr!=S_OK)continue;
+        if(pixels) {
+            LONGLONG at=static_cast<LONGLONG>(visibility_at[i]);
+            if(at>InterlockedCompareExchange64(&last_draw_ok,0,0))InterlockedExchange64(&last_draw_ok,at);
+#ifndef NO_RUNTIME_LOG
+            ++visibility_seen;visibility_streak=0;
+#endif
+        }
+#ifndef NO_RUNTIME_LOG
+        else {
+            ++visibility_hidden;
+            if(++visibility_streak==30 && visibility_logs++<32)   // ~30 drawn-but-invisible frames in a row
+                log_event("ccz_sprites_invisible",static_cast<unsigned>(visibility_seen),static_cast<unsigned>(visibility_hidden),0);
+        }
+#endif
+    }
+}
 static bool draw(ID3D11DeviceContext *c,ID3D11RenderTargetView *rtv,ID3D11DepthStencilView *dsv,float width,float height,bool scene) { COST_SCOPE("ccz_draw");
     LARGE_INTEGER t0;QueryPerformanceCounter(&t0);
+    poll_visibility(c);
+    ID3D11Query *query=nullptr;unsigned query_slot=0;
     unsigned cells[kQuads];float cam[80];
     unsigned written=build(c,height,linear_target(rtv),scene,cells,cam);
     bool submitted=false;
@@ -886,17 +932,27 @@ static bool draw(ID3D11DeviceContext *c,ID3D11RenderTargetView *rtv,ID3D11DepthS
             c->RSSetState(raster);c->RSSetViewports(1,&viewport);c->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);c->IASetInputLayout(layout);
             UINT stride=sizeof(Vertex),offset=0;c->IASetVertexBuffers(0,1,&vertices,&stride,&offset);
             c->VSSetShader(vs,nullptr,0);c->PSSetShader(ps,nullptr,0);c->GSSetShader(nullptr,nullptr,0);c->HSSetShader(nullptr,nullptr,0);c->DSSetShader(nullptr,nullptr,0);
+            for(unsigned k=0;k<kVisibilityQueries && !query;++k) {
+                unsigned s=(visibility_next+k)%kVisibilityQueries;
+                if(visibility[s] && !visibility_busy[s]){query=visibility[s];query_slot=s;}
+            }
+            bool query_open=false;
+            if(query){c->Begin(query);query_open=true;}
             for(unsigned i=0;i<written;) {
                 unsigned j=i;while(j<written && cells[j]==cells[i])++j;
+                if(query_open && cells[i]==kLabelCell){c->End(query);query_open=false;}   // labels do not prove the body is visible
                 ID3D11ShaderResourceView *views[2]={cells[i]==kLabelCell?label_view:cell_view(cells[i]),cells[i]>=4096 && cells[i]<5596?original_palette_view:palette_view};
                 if(views[0]){c->PSSetShaderResources(0,2,views);c->Draw((j-i)*6,i*6);submitted=true;}
                 i=j;
             }
+            if(query_open)c->End(query);
+            if(query){visibility_busy[query_slot]=true;visibility_at[query_slot]=GetTickCount64();visibility_next=query_slot+1;}
         }
         InterlockedExchange(&drawing,0);
     }
     stats.units_drawn=submitted?static_cast<LONG>(written):0;
-    if(submitted)InterlockedExchange64(&last_draw_ok,static_cast<LONGLONG>(GetTickCount64()));   // PW6: draws are really happening
+    // PW6: draws are really happening. With a visibility query the result (poll_visibility) decides instead.
+    if(submitted && !query)InterlockedExchange64(&last_draw_ok,static_cast<LONGLONG>(GetTickCount64()));
 #ifndef NO_RUNTIME_LOG
     if(submitted)InterlockedExchangeAdd(&health_drawn,static_cast<LONG>(written));
     if(submitted) {
@@ -967,6 +1023,7 @@ bool zoom_stall=stats.last_present && stats.qpc_per_second &&
 #endif
     stats.seq_armed=0;if(stats.frames%600==1 || want_sample){stats.seq_count=0;stats.seq_armed=1;}   // sample one frame's target sequence
     back_texture=back;
+    const bool resized=(want_width && static_cast<UINT>(want_width)!=desc.Width) || (want_height && static_cast<UINT>(want_height)!=desc.Height);
     InterlockedExchange(&want_width,static_cast<LONG>(desc.Width));InterlockedExchange(&want_height,static_cast<LONG>(desc.Height));
 #ifndef NO_RUNTIME_LOG
     // 2026-11-01 user (local8): from the strategy zoom step (a short stall) the sprites stop. Every 60 frames
@@ -991,7 +1048,16 @@ bool zoom_stall=stats.last_present && stats.qpc_per_second &&
     // RTV size cache holds raw pointers. A zoom transition can recreate render
     // targets at reused addresses, so invalidate after a >100ms Present gap.
     // Keep the original periodic eviction as a fallback.
-    if(zoom_stall || stats.frames%600==0){memset(sizes,0,sizeof(sizes));sizes_next=0;}
+    if(zoom_stall || resized || stats.frames%600==0){memset(sizes,0,sizeof(sizes));sizes_next=0;}
+    if(zoom_stall || resized) {
+        reset_views(resized);
+#ifndef NO_RUNTIME_LOG
+        static unsigned reset_logs;
+        if(resized && reset_logs++<16)log_event("ccz_sprites_view_reset",desc.Width,desc.Height,zoom_stall?1u:0u);
+#endif
+    }
+    if(device==d)poll_visibility(c);   // queries belong to the current device only
+
     if(!needs_present()) {
 #ifndef NO_RUNTIME_LOG
         if(has_submitted_sprites)zoom_recovery_pending=true;

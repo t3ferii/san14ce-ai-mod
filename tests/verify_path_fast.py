@@ -260,7 +260,7 @@ def implementation():
     normalized={0x184FF9,0x18793A}
     for name in ('sortie_plan_sites','sortie_search_sites','sortie_movement_sites'):
         body=re.search(name+r'\[\]=\{(.*?)\};',sortie,re.S).group(1)
-        for raw in re.findall(r'0x([0-9A-F]+)',body):
+        for raw in re.findall(r'(?:0x|GA\(GA_)([0-9A-F]+)',body):   # 2026-11-12: site lists now use GA ids
             site=int(raw,16)
             if site not in normalized:patches.append((site,5,'sortie caller '+raw))
     ok('movement_calls[]={0x184FF9,0x18793A}' in native and 'movement_call_match(site)' in native,
@@ -268,9 +268,9 @@ def implementation():
     import registry_text as R
     split=R.split_install_text()   # W5: install code plus the generated SplitPointer rows
     combat=split.split('static const SplitPointer split_pointers[]={',1)[1].split('#else',1)[0]
-    patches += [(int(a,16),8,'combat pointer '+a) for a in re.findall(r'\{0x([0-9A-F]+),0x',combat)]
+    patches += [(int(a,16),8,'combat pointer '+a) for a in re.findall(r'\{(?:0x|GA\(GA_)([0-9A-F]+)\)?,',combat)]
     patches += [(0x2ACB80,16,'progress distance')]
-    ok(len(patches)==82,'2026-10-30 reviewed graph: dispatch block, 73 disjoint sortie callers, 7 combat pointer slots and progress distance block enumerated')
+    ok(len(patches)==83,'2026-10-30 reviewed graph (2026-11-12 recount, GA-id lists): dispatch block, 73 disjoint sortie callers, 8 combat pointer slots and progress distance block enumerated')
     for address,size,_ in guards:
         a,n=int(address,16),int(size,16)
         ok(all(a+n<=b or b+size<=a for b,size,_ in patches),'fingerprint excludes all existing owner patches '+address)

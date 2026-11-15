@@ -4,7 +4,7 @@
 
 ## 1. 실행 파일은 다섯 DLL과 설치기 하나뿐
 
-- `dinput8.dll`(로더만), `SAN14_CombatAI.dll`(컴퓨터 AI 판단), `SAN14_Convenience.dll`(그 밖의 모든 기능), `SAN14_CCZ.dll`(조조전 탭 기능: 병종 그림·막기·회심. 사용자 2026-11-01; 편의 DLL이 [ccz] 기능이 켜졌을 때만 불러오며 Present 훅·169F8B CALL 게시는 편의 DLL 소유), `AI모드_설치관리자.exe`(설정·설치·업데이트). 예외로 `SAN14_Layout.dll`(UI 진입·생성·제거 훅 전담. ScreenLayout.rdb를 고치지 않고 런타임에 UI를 만들고 지운다. 통합패치·발탁/육아/안개 모드 호환용. 사용자 2026-11-05 이번 한 번만 허용, 설계는 `docs/LAYOUT_DLL_COMPAT_DESIGN.md`)을 추가한다. **이 밖의 새 DLL·EXE·상주 도구를 만들지 않는다.**
+- `dinput8.dll`(로더만), `SAN14_CombatAI.dll`(컴퓨터 AI 판단), `SAN14_Convenience.dll`(그 밖의 모든 기능), `SAN14_CCZ.dll`(조조전 탭 기능: 병종 그림·막기·회심. 사용자 2026-11-01; 편의 DLL이 [ccz] 기능이 켜졌을 때만 불러오며 Present 훅·169F8B CALL 게시는 편의 DLL 소유), `AI모드_설치관리자.exe`(설정·설치·업데이트). 예외로 `SAN14_Layout.dll`(UI 진입·생성·제거 훅 전담. ScreenLayout.rdb를 고치지 않고 런타임에 UI를 만들고 지운다. 통합패치·발탁/육아/안개 모드 호환용. 사용자 2026-11-05 이번 한 번만 허용, 설계는 `docs/LAYOUT_DLL_COMPAT_DESIGN.md`)을 추가한다. 또 `SAN14_ModPack.dll`(다른 모더 제작자의 패치를 옮겨 담는 전용 DLL. 사용자 2026-11-13 "모더 제작자 패치를 앞으로 계속 넣을거라 DLL 규칙을 바꿔서 하나 더". 첫 내용은 4계절 패치(wprkfdid12-ux) 규칙 엔진. 편의 DLL이 해당 기능이 켜졌을 때만 불러오며 훅 게시는 편의 DLL 소유, 게임 변경은 원작 함수 호출로만)을 둔다. 새 모더 패치는 DLL을 더 만들지 말고 이 DLL에 넣는다. **이 밖의 새 DLL·EXE·상주 도구를 만들지 않는다.**
 - 새 기능은 해당 DLL 안의 모듈(`src/native_<기능>.inl`)로 추가하고 `development/features.json`과 `tools/check_feature.ps1` 경로에 등록한다.
 - 훅 하나에는 소유 DLL 하나. 같은 원작 주소·vtable 슬롯을 두 DLL이 걸지 않는다. 기존 소유자는 `docs/MODULES.md`, `src/native_split_install.inl`의 `split_pointers`로 확인한다.
 - 원작 함수는 원래 UI/AI 스레드에서만 부른다. 외부 프로세스의 메모리 쓰기·원격 호출 금지.

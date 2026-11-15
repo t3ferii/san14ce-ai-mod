@@ -21,8 +21,9 @@ inline bool accepts(const Officer &p,unsigned slot) {
     return role(slot)==0?p.capacity>=3000 && (p.mask&((1u<<1)|(1u<<4)|(1u<<7)))!=0:
         role(slot)==1?p.capacity>=1500 && (p.mask&rear)!=0:p.support && p.capacity>=1000 && (p.mask&0xfe)!=0;
 }
-inline bool match(unsigned slot,const Officer *people,unsigned count,int *owners,bool *seen) {
-    for(unsigned i=0;i<count;++i)if(!seen[i] && accepts(people[i],slot)) {
+// wedge: only officers who hold 안행 (formation 3) are tried for this seat.
+inline bool match(unsigned slot,const Officer *people,unsigned count,int *owners,bool *seen,bool wedge=false) {
+    for(unsigned i=0;i<count;++i)if(!seen[i] && accepts(people[i],slot) && (!wedge || (people[i].mask&(1u<<3)))) {
         seen[i]=true;
         if(owners[i]<0 || match(static_cast<unsigned>(owners[i]),people,count,owners,seen)) {
             owners[i]=static_cast<int>(slot);return true;
@@ -33,16 +34,40 @@ inline bool match(unsigned slot,const Officer *people,unsigned count,int *owners
 inline bool roster(const Officer *people,unsigned count,unsigned *selected,unsigned budget=0xFFFFFFFFu,unsigned limit=7) {
     if(count<2 || count>128)return false;
     int owners[128];for(unsigned i=0;i<count;++i)owners[i]=-1;
+    // local101 (user 2026-11-13 "안행진을 최우선 기준으로 놓고 어린 방원 편성", chosen: 안행 먼저 뽑고 앞줄은 어린·방원):
+    // the middle/rear seats 6, 2, 4 first take officers who hold 안행 and those seats stay theirs; then the fronts
+    // 0, 1, 5 (어린/방원/추행), then what is left of the rear seats, then the support seat. If that leaves the two
+    // required seats (front 0, center 6) empty or seats fewer officers than the earlier way (fronts first), the
+    // earlier matching is used. Seats 2 and 4 are tried before the center, which also takes 어린/방원.
     for(unsigned i=0;i<7;++i)selected[i]=128;
-    const unsigned order[7]={0,6,1,5,2,4,3};
-    for(unsigned slot:order) {bool seen[128]={};match(slot,people,count,owners,seen);}
+    int plain[128];unsigned seated[2]={0,0};
+    for(unsigned pass=0;pass<2;++pass) {   // pass 0 = the earlier matching, pass 1 = 안행 holders first
+        for(unsigned i=0;i<count;++i)owners[i]=-1;
+        bool kept[128]={};
+        if(pass==1) {
+            for(unsigned slot:{2u,4u,6u}) {bool seen[128]={};match(slot,people,count,owners,seen,true);}
+            for(unsigned i=0;i<count;++i)kept[i]=owners[i]>=0;
+        }
+        const unsigned order[7]={0,6,1,5,2,4,3};
+        for(unsigned slot:order) {
+            bool taken=false;for(unsigned i=0;i<count;++i)if(owners[i]==static_cast<int>(slot))taken=true;
+            if(taken)continue;
+            bool seen[128]={};for(unsigned i=0;i<count;++i)seen[i]=kept[i];
+            match(slot,people,count,owners,seen);
+        }
+        bool front=false,center=false;
+        for(unsigned i=0;i<count;++i)if(owners[i]>=0) {++seated[pass];front|=owners[i]==0;center|=owners[i]==6;}
+        if(pass==0)for(unsigned i=0;i<count;++i)plain[i]=owners[i];
+        else if(!front || !center || seated[1]<seated[0])for(unsigned i=0;i<count;++i)owners[i]=plain[i];
+    }
     for(unsigned i=0;i<count;++i)if(owners[i]>=0)selected[owners[i]]=i;
     if(selected[0]>=count || selected[6]>=count || limit<2)return false;
     unsigned minimum=3000+1500,number=2;
     if(budget<minimum)return false;
-    const unsigned priority[5]={1,5,3,2,4};
+    // Seats added as the budget grows: rear 2 (9,000), front 1 (16,000), rear 4 (24,000), front 5 (32,000), support 3.
+    const unsigned priority[5]={2,1,4,5,3};
     for(unsigned slot:priority)if(selected[slot]<count) {
-        bool wanted=slot==1?budget>=9000:slot==5?budget>=16000:slot==2?budget>=24000:slot==4?budget>=32000:true;
+        bool wanted=slot==2?budget>=9000:slot==1?budget>=16000:slot==4?budget>=24000:slot==5?budget>=32000:true;
         unsigned base=slot==3?1000:role(slot)==0?3000:1500;
         if(!wanted || number>=limit || budget-minimum<base)selected[slot]=128;
         else {minimum+=base;++number;}

@@ -176,7 +176,7 @@ static void test_bindings() {
         put16(row,0x12,values[i]);putptr(root,0x85DF0+i*8,row);}
     for(unsigned stage=0;stage<=3;++stage) {a[0x1C2]=static_cast<unsigned char>(stage);
         expect(merit_query(a,1)==(stage==0?0:stage==1?3000:6000));}
-    expect(word(records+3*24,0x12)==0 && word(records+4*24,0x12)==1);
+    expect(word(records+3*24,0x12)==1 && records[3*24+0x10]==3 && word(records+4*24,0x12)==1);   // troops stage 3 -> policy +1
     // 2026-10-23 one merit route per officer: with both counts the civil (tie) or larger route counts.
     a[0x1C2]=1;a[0x1C3]=1;expect(merit_query(a,1)==0 && merit_query(a,2)==1);
     a[0x1C2]=2;expect(merit_query(a,1)==6000 && merit_query(a,2)==0);a[0x1C2]=0;a[0x1C3]=0;
@@ -201,7 +201,7 @@ static void test_bindings() {
         zero.nodes[0][0x20]=0x11;zero.nodes[1][0x20]=0x31;zero.nodes[2][0x20]=0x13;   // 0/0, both chosen: tie civil, larger civil, larger military
         merit_route_lock(zrows);expect(zero.nodes[0][0x20]==0x10 && zero.nodes[1][0x20]==0x30 && zero.nodes[2][0x20]==0x03);
     }
-    expect(!wcscmp(merit_effect_text(3),L"군주와 상호 친애"));
+    expect(!wcscmp(merit_effect_text(3),L"원래 3단계 설명 / 군주와 상호 친애"));   // 2026-11-12: troops stage 3 becomes policy +1
     expect(!wcscmp(merit_effect_text(4),L"문공 설명"));
     {   // 2026-11-05 (user): stage 1/2 troops are chosen (merit_troops_level 1..4 = 1500/2000/2500/3000) in both builds; stage 3 friendship
         // (merit_friendship) is added on top of the native effect: old shape (troops) 0 troops vs original 1000, new patch shape
@@ -216,11 +216,11 @@ static void test_bindings() {
             mod_features.merit_troops_level=level;mod_features.merit_friendship=friend_on!=0;
             const unsigned want=choices[level-1];
             const unsigned old_start[][3]={{500,500,1000},{3000,3000,0},{1500,2500,1000},{1000,1000,1000}};
-            for(const auto &s:old_start) {   // shape A: old build original, old mod output, other earlier choices
+            for(const auto &s:old_start) {   // shape A: rewritten to the patch row (type 3 policy +1), user 2026-11-12
                 rows(s[0],s[1],1,s[2]);
-                expect(merit_effect_state()==1 && merit_effects());
-                expect(word(records+24,0x12)==want && word(records+48,0x12)==want && word(records+72,0x12)==(friend_on?0u:1000u) && records[3*24+0x10]==1);
-                expect(!wcscmp(merit_effect_text(3),friend_on?L"군주와 상호 친애":L"원래 3단계 설명"));
+                expect(merit_effect_state()==2 && merit_effects());
+                expect(word(records+24,0x12)==want && word(records+48,0x12)==want && word(records+72,0x12)==1 && records[3*24+0x10]==3);
+                expect(!wcscmp(merit_effect_text(3),friend_on?L"원래 3단계 설명 / 군주와 상호 친애":L"원래 3단계 설명"));
             }
             for(unsigned type3=2;type3<=3;++type3)for(unsigned start:{1000u,500u,3000u}) {   // shape B: patch 25953386
                 rows(start,start,type3,1);
@@ -257,8 +257,8 @@ static void test_bindings() {
         a[0x1C2]=2;batch_result=0;next_grades={{100,3}};mod_features.merit_friendship=false;
         expect(merit_batch(tree.command)==0);mod_features.merit_friendship=true;expect(!merit_has(a,r2));
         merit_reset(a);batch_result=1;a[0x1C2]=0;
-        rows(500,500,1,1000);expect(merit_effect_state()==1);   // final: original table -> 3000/3000/0 as before
-        expect(word(records+24,0x12)==3000 && word(records+72,0x12)==0);
+        rows(500,500,1,1000);expect(merit_effect_state()==2);   // final: old table -> 3000/3000 + policy +1 (2026-11-12)
+        expect(word(records+24,0x12)==3000 && word(records+72,0x12)==1 && records[3*24+0x10]==3);
     }
     enabled=0;expect(!merit_has(a,r2));enabled=1;
     free(records);for(Obj p:native) {slot(0x158,word(p,0x10),nullptr);free(p);}

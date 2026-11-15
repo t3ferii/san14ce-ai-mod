@@ -109,6 +109,13 @@ static CodeLink link,clear_link;
 static bool active;
 static volatile LONG skip_clear;
 static thread_local bool busy;
+// local71: true while the current search was asked by 9DA10 (its CALL 185710 returns to 9DAD7), which reads the cost only.
+static bool focus_enabled;
+static thread_local bool focus_now;
+__declspec(noinline) static bool focus_caller() {
+    void *frames[2]={};   // skip this function and path(): [0] returns into 185710, [1] into the caller of 185710
+    return RtlCaptureStackBackTrace(2,2,frames,nullptr)==2 && frames[1]==image+GA(GA_9DAD7);
+}
 // 2026-10-26 memory leak fix (user report: commit grew ~2.4GiB per 2 min at x8, 65.9GB crash).
 // The original runs each force AI on a NEW thread, so a per-thread `new` (2.9MB) was never freed.
 // One storage per native node-buffer slot instead: 1843E0 holds that slot's critical section
@@ -117,6 +124,14 @@ static thread_local bool busy;
 // AI-CONTRACT [lifetime]: Storage ownership is per native buffer slot, not per thread. Native force-AI threads are short-lived; thread_local heap ownership caused the v13.1/v13.2 leak. Preserve slot critical-section evidence before changing reuse.
 static path_fast_core::Storage *volatile slot_storage[3];
 static thread_local path_fast_core::Storage *storage;   // current call's slot storage (no ownership)
+// local72 per-search cell memo (user 2026-11-12): a search evaluates a cell once per neighbour it is reached from (up to six
+// times) with the same answer. For searches without a unit the first answer (blocked, or the adjusted cost) is kept until
+// that search ends; nothing outlives the search. One table per native slot, under the same slot lock as the storage.
+struct Memo {unsigned generation=0;unsigned stamp[path_fast_core::cells]={};std::int32_t value[path_fast_core::cells];};
+static constexpr std::int32_t memo_blocked=(std::numeric_limits<std::int32_t>::min)();
+static Memo *volatile slot_memo[3];
+static thread_local Memo *memo;
+static bool memo_enabled,bounded_enabled;
 #ifndef NO_RUNTIME_LOG
 static unsigned verify;
 static LONGLONG frequency;
@@ -242,6 +257,25 @@ static void dup_note(Obj ctx,unsigned start,unsigned goal,unsigned flags,const N
     for(unsigned i=0;i<dup_used;++i)if(dup_callers[i].frame==frame) {(kind==1?dup_callers[i].same:dup_callers[i].diff)++;return;}
     if(dup_used<16)dup_callers[dup_used++]=DupCaller{frame,kind==1?1u:0u,kind==2?1u:0u};
 }
+// local71 cost-only searches (user 2026-11-12): 9DA10 (CVariableGetMoveCostNode) keeps only the total cost of its search
+// and has no unit, so no goal-specific rule applies. For that caller the heuristic is hex distance x the cheapest positive
+// terrain cost instead of hex distance x 1: still a lower bound, so the minimum cost is the same while far fewer cells are
+// expanded. A cell cheaper than that bound repeats the search with the original heuristic.
+// [diagnostics] path_count=2 runs both searches, returns the original-heuristic one and logs path_focus_* per day.
+static unsigned focus_check,focus_calls,focus_mismatch,focus_bad;static LONGLONG focus_ticks,focus_plain_ticks;
+static unsigned bound_calls,bound_mismatch;static LONGLONG bound_ticks,bound_plain_ticks;
+static void focus_flush() {   // under day_lock
+    if(focus_calls) {
+        log_event("path_focus_day",focus_calls,focus_mismatch,focus_bad);
+        log_event("path_focus_time_day",microseconds(focus_ticks),microseconds(focus_plain_ticks),0);
+    }
+    focus_calls=focus_mismatch=focus_bad=0;focus_ticks=focus_plain_ticks=0;
+    if(bound_calls) {
+        log_event("path_bound_day",bound_calls,bound_mismatch,0);
+        log_event("path_bound_time_day",microseconds(bound_ticks),microseconds(bound_plain_ticks),0);
+    }
+    bound_calls=bound_mismatch=0;bound_ticks=bound_plain_ticks=0;
+}
 static void record(bool fast,bool compared,bool mismatch,bool dirty,std::uint64_t call,
                    LONGLONG elapsed=0,const Diagnostic *detail=nullptr,Node *buffer=nullptr) {
     AcquireSRWLockExclusive(&day_lock);
@@ -253,9 +287,9 @@ static void record(bool fast,bool compared,bool mismatch,bool dirty,std::uint64_
             if(verify)log_event("path_fast_verify_day",totals.compared,totals.mismatches,totals.multi);
             log_event("path_fast_time_day",totals.only_fast,microseconds(totals.only_ticks),totals.all_compared);
             caller_flush(totals.fast+totals.delegated);
-            dup_flush();
+            dup_flush();focus_flush();
         }
-        else {caller_used=0;dup_flush();}
+        else {caller_used=0;dup_flush();focus_flush();}
         totals={};totals.day=today;
     }
     if(fast)++totals.fast;else ++totals.delegated;
@@ -300,6 +334,10 @@ struct Native {
     unsigned start=0,goal=0,flags=0,local_b0=0,c4=0,c8=1;
     int force=0,valid=0;
     float scale=1.0f;
+    bool focus=false,bad=false;int boost=0;   // local71 cost-only heuristic (see focus_caller)
+    Memo *seen=nullptr;unsigned seen_generation=0,last_id=0;bool hit=false;   // local72 per-search cell memo
+    bool bounded=false;int limit=0;   // local72: 1861E0 rules (no key list / +0x28 / +0x2C checks) and its cost limit
+    bool over(std::int32_t g) const {return bounded && g>limit;}
     Obj aux[2]={};
     // local25b: the native callbacks of the per-cell loop, resolved once per search instead of per call (same targets).
     Obj world_root=nullptr;
@@ -325,6 +363,11 @@ struct Native {
     }
     bool prepare(Node *nodes,unsigned from,unsigned to,unsigned bits) {
         start=from;goal=to;flags=bits;
+        if(memo && !pointer(ctx,0)) {
+            seen=memo;
+            if(!++seen->generation) {memset(seen->stamp,0,sizeof(seen->stamp));seen->generation=1;}
+            seen_generation=seen->generation;
+        }
         int x,y;
         fn<void(__fastcall *)(unsigned,int *,int *)>(GA(GA_2B11B0))(start,&x,&y);
         army=pointer(ctx,0);
@@ -375,6 +418,14 @@ struct Native {
             fn<void(__fastcall *)(Obj)>(GA(GA_2239F0))(object);
         }
         scale=_mm_cvtss_f32(_mm_div_ss(numerator,denominator));
+        if(focus && flags==1 && !pointer(ctx,0) && !dword(ctx,0x10) && !dword(ctx,0x28) && !dword(ctx,0x2C)) {
+            // Cheapest positive cost 2B0A20 can return (its marker term only adds): BF1B0 over the terrain-kind table.
+            for(unsigned kind=0;kind<0x1F;++kind) {
+                Obj type=pointer(world(),0x73860+kind*8);if(!type)continue;
+                const int low=fn<Unary>(GA(GA_BF1B0))(type);
+                if(low>0 && (!boost || low<boost))boost=low;
+            }
+        }
     }
     // local25: 2A9910 is pure integer geometry (cell, direction -> cell or BD10). Its answers for every cell and the six
     // directions are read once from the original function itself and then served from this table (same values).
@@ -382,11 +433,26 @@ struct Native {
         if(id<path_fast_core::cells && direction>=1 && direction<=6 && neighbour_ready)return neighbour_table[id*6+direction-1];
         return fn<unsigned(__fastcall *)(unsigned,unsigned)>(GA(GA_2A9910))(id,direction);
     }
-    Obj tile(unsigned id) {return pointer(world_root,0xE270+(id<path_fast_core::cells?id:0)*8);}
-    int terrain(Obj cell) {return f_2B0A20(cell,force,c8);}
+    Obj tile(unsigned id) {
+        last_id=id;hit=seen && id<path_fast_core::cells && id!=start && seen->stamp[id]==seen_generation;
+        return pointer(world_root,0xE270+(id<path_fast_core::cells?id:0)*8);
+    }
+    int terrain(Obj cell) {return hit?0:f_2B0A20(cell,force,c8);}
     bool allowed(unsigned id,Obj cell,std::int32_t &cost) {
+        if(hit) {
+            if(seen->value[id]==memo_blocked)return false;
+            cost=seen->value[id];return true;
+        }
+        const bool ok=allowed_raw(id,cell,cost);
+        if(!ok && seen && id<path_fast_core::cells) {seen->stamp[id]=seen_generation;seen->value[id]=memo_blocked;}
+        return ok;
+    }
+    bool allowed_raw(unsigned id,Obj cell,std::int32_t &cost) {
         if(!(flags&0xC)) {
             if(!f_18B410(pointer(ctx,0),cell,force,flags&0x40,c4,&goal,1))return false;
+            if(bounded) {
+                // 1861E0: no key list, +0x28 or +0x2C checks; its local_b0 rule is never reached (bounded_cost requires 0).
+            } else {
             if(local_b0 && f_2CC630(force,cell[0x14]))return false;
             Obj key=pointer(ctx,0x20);
             const unsigned id_key=key?dword(key,0):0x14000;
@@ -396,6 +462,7 @@ struct Native {
                     if(pointer(item,0)==cell)return false;
             if(dword(ctx,0x28) && word(cell,0x16))return false;
             if(dword(ctx,0x2C) && cell[0x10]==7)cost=path_fast_core::add(cost,10000);
+            }
             if(!(flags&0x40)) {
                 Obj building=f_2315A0(cell);
                 if(f_331780(building) && !f_233FF0(building) && !f_234570(building)) {
@@ -410,11 +477,16 @@ struct Native {
         return true;
     }
     int adjust(int cost,Obj cell) {
-        return f_187880(cost,flags,cell,pointer(ctx,0),a0,a8,aux);
+        if(hit)return cost;   // the kept value is already adjusted
+        if(boost && cost<boost)bad=true;   // the bound would not hold: the caller repeats without it
+        const int out=f_187880(cost,flags,cell,pointer(ctx,0),a0,a8,aux);
+        if(seen && last_id<path_fast_core::cells && last_id!=start) {seen->stamp[last_id]=seen_generation;seen->value[last_id]=out;}
+        return out;
     }
     void coordinate(unsigned) {}   // local25: 2B11B0 only writes id%220 / id/220 to its two outputs, which were unused
     int heuristic(unsigned id) {
         const int distance=f_2ACB80(id,start);
+        if(boost)return distance*boost;
         return _mm_cvttss_si32(_mm_mul_ss(_mm_cvtepi32_ps(_mm_cvtsi32_si128(distance)),_mm_set_ss(scale)));
     }
     void success() {*reinterpret_cast<unsigned *>(image+debug_rva)=0;}
@@ -446,13 +518,51 @@ static bool acquire_storage(const Node *buffer) {
             reinterpret_cast<PVOID volatile *>(&slot_storage[slot]),s,nullptr));
         if(previous) {delete s;s=previous;}
     }
-    storage=s;return true;
+    storage=s;
+    Memo *m=slot_memo[slot];
+    if(!m && memo_enabled) {
+        try {m=new Memo;}catch(...) {m=nullptr;}
+        if(m) {
+            auto *previous=static_cast<Memo *>(InterlockedCompareExchangePointer(reinterpret_cast<PVOID volatile *>(&slot_memo[slot]),m,nullptr));
+            if(previous) {delete m;m=previous;}
+        }
+    }
+    memo=memo_enabled?m:nullptr;
+    return true;
 }
 static Node *delegate(Obj ctx,unsigned start,const int *goals,int count,Node *buffer,int clear_bytes,unsigned flags) {
     // The only direct caller supplies these static slots. Unknown buffers retain
     // the native clear_bytes contract; never assume an arbitrary pointer owns 1.9MB.
     path_fast_core::clear_delegate(buffer,known_slot(buffer),skip_clear!=0);
     return original(ctx,start,goals,count,buffer,clear_bytes,flags);
+}
+static Node *run_search(Obj ctx,unsigned start,unsigned goal,unsigned flags,Node *buffer) {
+#ifndef NO_RUNTIME_LOG
+    if(focus_now && focus_check) {
+        Native quick(ctx);quick.focus=true;
+        const LONGLONG t0=ticks();
+        Node *fast_result=path_fast_core::search(*storage,start,goal,flags,quick);
+        const int quick_g=fast_result?fast_result->g:-1;
+        const LONGLONG t1=ticks();
+        Native plain(ctx);
+        Node *result=path_fast_core::search(*storage,start,goal,flags,plain);
+        const LONGLONG t2=ticks();
+        const int plain_g=result?result->g:-1;
+        AcquireSRWLockExclusive(&day_lock);
+        ++focus_calls;focus_ticks+=t1-t0;focus_plain_ticks+=t2-t1;
+        if(quick.bad)++focus_bad;
+        else if(quick_g!=plain_g && ++focus_mismatch<=16) {
+            log_event("path_focus_mismatch",start,goal,static_cast<unsigned>(quick_g));
+            log_event("path_focus_mismatch2",static_cast<unsigned>(plain_g),static_cast<unsigned>(quick.boost),0);
+        }
+        ReleaseSRWLockExclusive(&day_lock);
+        return path_fast_core::materialize(buffer,result);
+    }
+#endif
+    Native native(ctx);native.focus=focus_now;
+    Node *result=path_fast_core::search(*storage,start,goal,flags,native);
+    if(native.bad) {Native plain(ctx);result=path_fast_core::search(*storage,start,goal,flags,plain);}
+    return path_fast_core::materialize(buffer,result);
 }
 static Node *path_body(Obj ctx,unsigned start,const int *goals,int count,Node *buffer,int clear_bytes,unsigned flags) {
     const DWORD incoming_error=GetLastError();
@@ -507,9 +617,7 @@ static Node *path_body(Obj ctx,unsigned start,const int *goals,int count,Node *b
             const LONGLONG begin=ticks();
 #endif
             SetLastError(incoming_error);
-            Native native(ctx);
-            Node *result=path_fast_core::search(*storage,start,static_cast<unsigned>(*goals),flags,native);
-            output=path_fast_core::materialize(buffer,result);
+            output=run_search(ctx,start,static_cast<unsigned>(*goals),flags,buffer);
 #ifndef NO_RUNTIME_LOG
             const DWORD result_error=GetLastError();
             elapsed=ticks()-begin;
@@ -532,7 +640,89 @@ static Node *__fastcall path(Obj ctx,unsigned start,const int *goals,int count,N
     caller_capture();
 #endif
     COST_SCOPE("path_fast");
+    focus_now=focus_enabled && flags==1 && count==1 && ctx && !pointer(ctx,0) && focus_caller();
     SetLastError(error);return path_body(ctx,start,goals,count,buffer,clear_bytes,flags);
+}
+// local72 cost limit queries (user 2026-11-12): conditions 43/55 (AF520, AF830) call 186950 -> 1861E0, the original search
+// with a cost limit, and read only "found" and the total cost. Without a unit and with +0x10 = 0 the answer is "minimum
+// cost <= limit" and that cost, so the fast search with the cost-only heuristic and the same limit gives the same pair.
+// The four CALLs are redirected; anything else goes to the original. Follows [performance] path_fast.
+// [diagnostics] path_count=2 also runs the original, returns its answer and logs path_bound_* per day.
+using Bounded=int(__fastcall *)(Obj,Obj,unsigned,const int *,int,unsigned,unsigned,int);
+static Node *bounded_search(Obj ctx,unsigned start,unsigned goal,int limit) {
+    Native native(ctx);native.focus=true;native.bounded=true;native.limit=limit;
+    Node *result=path_fast_core::search(*storage,start,goal,1,native);
+    if(native.bad) {Native plain(ctx);plain.bounded=true;plain.limit=limit;result=path_fast_core::search(*storage,start,goal,1,plain);}
+    return result;
+}
+static int __fastcall bounded_cost(Obj result,Obj ctx,unsigned start,const int *goals,int count,unsigned flags,unsigned slot,int limit) {
+    auto native_call=fn<Bounded>(GA(GA_186950));
+    Obj section=slot==2?pointer(image,GA(GA_1BB6D58)+slot*8):nullptr;
+    if(!active || !bounded_enabled || !section || count!=1 || flags!=1 || !result || !ctx || !goals || pointer(ctx,0) || dword(ctx,0x10) ||
+       start>=path_fast_core::cells || static_cast<unsigned>(*goals)>=path_fast_core::cells || busy)
+        return native_call(result,ctx,start,goals,count,flags,slot,limit);
+    const DWORD error=GetLastError();
+    auto lock=reinterpret_cast<LPCRITICAL_SECTION>(section+0x10);
+    Node *buffer=reinterpret_cast<Node *>(image+GA(GA_1BBAB50)+slot*path_fast_core::node_bytes);
+    bool found=false,done=false;int cost=0;unsigned cells_out=0;
+#ifndef NO_RUNTIME_LOG
+    const LONGLONG t0=ticks();
+#endif
+    EnterCriticalSection(lock);
+    __try {
+        if(acquire_storage(buffer)) {
+            busy=true;
+            neighbour_fill();
+            Node *node=bounded_search(ctx,start,static_cast<unsigned>(*goals),limit);
+            auto list=reinterpret_cast<unsigned *>(image+GA(GA_1BB6D70)+slot*0x14A0);
+            memset(list,0,0x14A0);
+            *reinterpret_cast<Obj *>(result)=reinterpret_cast<Obj>(list);*reinterpret_cast<unsigned long long *>(result+8)=0;
+            if(node) {
+                found=true;cost=node->g;
+                for(const Node *n=node;n && cells_out<0x14A0/4;n=n->parent)list[cells_out++]=n->cell;
+                *reinterpret_cast<int *>(result+8)=static_cast<int>(cells_out);*reinterpret_cast<int *>(result+0xC)=cost;
+            }
+            done=true;
+        }
+    } __finally {busy=false;LeaveCriticalSection(lock);}
+    SetLastError(error);
+    if(!done)return native_call(result,ctx,start,goals,count,flags,slot,limit);
+#ifndef NO_RUNTIME_LOG
+    if(focus_check) {
+        const LONGLONG t1=ticks();
+        const int native_found=native_call(result,ctx,start,goals,count,flags,slot,limit);
+        const LONGLONG t2=ticks();
+        const int native_cost=*reinterpret_cast<int *>(result+0xC);
+        AcquireSRWLockExclusive(&day_lock);
+        ++bound_calls;bound_ticks+=t1-t0;bound_plain_ticks+=t2-t1;
+        if(((native_found!=0)!=found || (found && native_cost!=cost)) && ++bound_mismatch<=16) {
+            log_event("path_bound_mismatch",start,static_cast<unsigned>(*goals),static_cast<unsigned>(limit));
+            log_event("path_bound_mismatch2",static_cast<unsigned>(cost),static_cast<unsigned>(native_cost),(found?1u:0u)|(native_found?2u:0u));
+        }
+        ReleaseSRWLockExclusive(&day_lock);
+        return native_found;
+    }
+#endif
+    return found?1:0;
+}
+static CallLink bounded_links[4];
+static void bounded_install() {
+    if(!bounded_enabled)return;
+    const unsigned sites[4]={GA(GA_AF70A),GA(GA_AF7D5),GA(GA_AFA45),GA(GA_AFB11)},target=GA(GA_186950);
+    bool ok=target && GA(GA_1BB6D58) && GA(GA_1BB6D70) && GA(GA_1BBAB50);
+    for(unsigned site:sites) {
+        int delta=0;if(ok && site)memcpy(&delta,image+site+1,4);
+        ok=ok && site && image[site]==0xE8 && site+5+static_cast<unsigned>(delta)==target;
+    }
+    Obj relay=ok?allocate_near(image+sites[0]):nullptr;
+    if(!relay) {bounded_enabled=false;log_event("path_bound_rejected",ok?1u:0u,0,0);return;}
+    absolute_jump(relay,reinterpret_cast<void *>(&bounded_cost));
+    DWORD old;unsigned n=0;
+    ok=VirtualProtect(relay,4096,PAGE_EXECUTE_READ,&old) && FlushInstructionCache(GetCurrentProcess(),relay,16);
+    for(;ok && n<4;++n)ok=call_prepare(bounded_links[n],sites[n],relay);
+    for(unsigned i=0;ok && i<4;++i)ok=call_publish(bounded_links[i]);
+    if(!ok) {for(unsigned i=0;i<4;++i)call_restore(bounded_links[i]);bounded_enabled=false;}
+    log_event(ok?"path_bound_installed":"path_bound_rejected",2,n,0);
 }
 static bool prepare(Obj relay) {
     if(!guards_match())return false;
@@ -558,6 +748,7 @@ static bool install() {
     verify=interval>0?static_cast<unsigned>(interval):0;
     LARGE_INTEGER q;if(!QueryPerformanceFrequency(&q) || q.QuadPart<=0)return false;frequency=q.QuadPart;
     caller_ranges();
+    focus_check=dev_group() && mod_setting(L"diagnostics",L"path_count",0)==2?1u:0u;
 #endif
     Obj relay=allocate_near(image+entry);if(!relay)return false;
     DWORD old;
@@ -576,7 +767,10 @@ static bool install() {
             restore_link(clear_link);InterlockedExchange(&skip_clear,0);restore_link(link);return false;
         }
     }
-    active=true;log_event("path_fast_installed",skip_clear?1:0);return true;
+    // local72: the three cost-only accelerations follow [performance] path_fast itself (no keys of their own).
+    focus_enabled=GA(GA_9DAD7)!=0;memo_enabled=true;bounded_enabled=true;
+    active=true;bounded_install();
+    log_event("path_fast_installed",skip_clear?1:0,(focus_enabled?1u:0u)|(memo_enabled?2u:0u)|(bounded_enabled?4u:0u));return true;
 }
 #endif
 }

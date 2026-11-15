@@ -35,6 +35,10 @@ try {
         if($LASTEXITCODE -ne 0){throw 'Other-module build failed.'}
         & cl.exe @taskFlags /DSPLIT_COMBAT /LD (Join-Path $taskProject 'src\native_adapter.cpp') "/Fe$taskCombat" /link @taskDiagnosticLink kernel32.lib user32.lib
         if($LASTEXITCODE -ne 0){throw 'Combat-module build failed.'}
+        if(-not $Fixture) {   # 2026-11-13 user: other authors' patches = SAN14_ModPack.dll (4계절 규칙 first), loaded by the convenience module
+            & cl.exe @taskFlags "/I$(Join-Path $taskProject 'src')" /LD (Join-Path $taskProject 'src\modpack_dll.cpp') (Join-Path $taskProject 'src\season\season_engine.c') /FeSAN14_ModPack.dll /link @taskDiagnosticLink kernel32.lib user32.lib
+            if($LASTEXITCODE -ne 0){throw 'ModPack-module build failed.'}
+        }
         if(-not $Fixture) {   # 2026-11-01 user: 조조전 탭 = SAN14_CCZ.dll, loaded by the convenience module
             & cl.exe @taskFlags "/I$(Join-Path $taskProject 'src')" /LD (Join-Path $taskProject 'src\ccz_module.cpp') /FeSAN14_CCZ.dll /link @taskDiagnosticLink kernel32.lib user32.lib gdi32.lib
             if($LASTEXITCODE -ne 0){throw 'CCZ-module build failed.'}

@@ -243,7 +243,17 @@ inline std::wstring income_summary(const std::wstring &title,const std::vector<s
 // 2026-11-09 user, local17 briefing16: the original capture scene (msggame 11014-11041 capturer lines, 10781/10783
 // "X, Y의 Z측을 포박") plays on screen again; the briefing keeps a copy only.
 inline bool capture_scene_line(const std::wstring &s) {
-    static const wchar_t *const keys[]={L"포박",L"사로잡",L"생포",L"포로를 데리고",L"포로를 붙잡",L"포로를 연행",L"포로를 잡아",L"포로로 잡"};
+    // local64 (user 2026-11-12: the scene after beating an enemy in the field did not play). Every variant of the
+    // capturer lines msggame 11012-11027 and the captive lines 10798-10813 / 10977-10983 / 11008-11009 (origlib) is
+    // covered now; the first list missed e.g. "적장을 붙잡았다", "포로를 잡았다", "포로를 어떻게 할지 ...".
+    static const wchar_t *const keys[]={L"포박",L"사로잡",L"생포",L"포로를 데리고",L"포로를 붙잡",L"포로를 연행",L"포로를 잡아",L"포로로 잡",
+        L"붙잡아 왔",L"때려잡",L"포로 신세",L"적도 오합지졸",L"붙잡은 적장",L"이 포로를",L"포로를 어떻게",L"적장은 내 힘 앞에",L"구속한 적",
+        L"포로의 처우",L"붙잡은 포로",L"적장을 붙잡",L"포로를 잡았",L"적장을 잡아오",
+        L"날 붙잡",L"나를 붙잡",L"붙잡히다니",L"붙잡혀",L"가두어둔다고",L"갇혀있을",L"패장",L"패배는 인정",L"적의 수중",L"포로의 몸",L"포로가 되",
+        L"이런 추태",L"살아서 수모",L"줄을 조금만 느슨",L"밧줄이 너무",L"어서 풀",L"당장 풀",L"썩 풀지",L"이 몸을 묶어",L"결코 항복할 수는",
+        L"나를 죽일 생각",L"어서 죽여라",L"이런 꼴",L"이 무슨 꼴",L"험하게 다루지",L"목숨만은",L"목숨만 붙어있으면",L"목숨이 붙어있어야",
+        L"살아만 있으면",L"실책을 범했",L"계책이 다 무용",L"마음대로 해봐라",L"뜻대로 해",L"뜻대로 하십시오",L"각오는 되어 있습니다",
+        L"하늘만 아시겠지",L"조용히 있다 보면",L"패자가 입에 담을"};
     for(const wchar_t *k:keys)if(s.find(k)!=std::wstring::npos)return true;
     return false;
 }
@@ -480,6 +490,50 @@ inline std::wstring card_body(const Card &card) {
     }
     return body;
 }
+// local99 (user 2026-11-12 "군사보고가 수집하는 항목을 게임 안에서 켜고 끌 수 있으면 ... 수집하는 종류별로 나눠야지
+// 명품발견 / 탐색 인재발견 / 명승지 / 포로"). What the player sees, not which original window carried it. A topic that is
+// switched off is not stored and its original window, scene or line plays as in the unmodded game.
+enum class Topic:unsigned {Treasure,Goods,Talent,Employ,Scenery,Advantage,Growth,Captive,Duel,Army,Plot,Weather,Disaster,Diplomacy,Income,Other,Count};
+inline const wchar_t *topic_name(Topic t) {
+    switch(t) {
+    case Topic::Treasure:return L"명품 발견";case Topic::Goods:return L"금·물품 발견";case Topic::Talent:return L"인재 발견";
+    case Topic::Employ:return L"등용 결과";case Topic::Scenery:return L"명승지 발견";case Topic::Advantage:return L"지리 이점";
+    case Topic::Growth:return L"무장 성장";case Topic::Captive:return L"포로";case Topic::Duel:return L"일기토";
+    case Topic::Army:return L"부대 소식";case Topic::Plot:return L"계략 결과";case Topic::Weather:return L"천시·계절";
+    case Topic::Disaster:return L"재해";case Topic::Diplomacy:return L"외교 보고";case Topic::Income:return L"수입과 지출";
+    default:return L"그 밖의 소식";
+    }
+}
+// A plain notice has no type of its own: the topic comes from its wording (the same frames the report tables use).
+inline Topic topic_of_text(const std::wstring &raw) {
+    const std::wstring s=display_text(raw);
+    if(capture_scene_line(s))return Topic::Captive;
+    const std::wstring row=parse_row(raw);
+    if(!row.empty()) {
+        switch(row[0]) {
+        case L'M':return Topic::Army;
+        case L'R':return Topic::Employ;
+        case L'P':case L'E':return Topic::Diplomacy;
+        case L'D':
+            if(has(row,L"명품"))return Topic::Treasure;
+            if(has(row,L"명승"))return Topic::Scenery;
+            if(has(row,L"지리"))return Topic::Advantage;
+            if(has(row,L"물품"))return Topic::Goods;
+            break;
+        default:break;
+        }
+    }
+    if(has(s,L"건물파괴") || has(s,L"계략") || has(s,L"유언비어") || has(s,L"이간"))return Topic::Plot;
+    switch(classify(s)) {
+    case Kind::Disaster:return Topic::Disaster;
+    case Kind::Weather:return Topic::Weather;
+    case Kind::Treasure:return Topic::Treasure;
+    case Kind::Recruitment:return has(s,L"발견")?Topic::Talent:Topic::Employ;
+    case Kind::Growth:return Topic::Growth;
+    case Kind::Gold:return Topic::Goods;
+    default:return Topic::Other;
+    }
+}
 struct Inbox {
     static constexpr size_t limit=2048,text_limit=4095;
     std::vector<Event> events;std::uintptr_t world=0;unsigned force=0,generation=0;
@@ -628,6 +682,8 @@ inline Rect control(unsigned id,Rect panel=bubble) {
     case 5:return {panel.x+panel.w-276,panel.y+panel.h-64,104,38};
     case 6:return {panel.x+panel.w-164,panel.y+panel.h-64,112,38};
     case 7:return {panel.x+panel.w-152,panel.y+160,96,30};
+    case 8:return {panel.x+panel.w-256,panel.y+160,96,30};   // [군사 제안] page, left of [부동산 개발] (local68)
+    case 13:return {panel.x+panel.w-360,panel.y+160,96,30};  // [수집 설정] page, left of [군사 제안] (local99; 9 = body, 10..12 = balloon)
     default:return {};
     }
 }

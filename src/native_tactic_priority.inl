@@ -14,6 +14,7 @@
 #include "tactic_priority_profile.h"
 #include "tactic_priority_io.h"
 #include "trait_hover_profile.h"   // pure tactic text tables shared with trait_hover (mouse-over text of the grid tiles)
+#include "sortie_screen_bridge.h"  // another feature on this screen (ambush toggle) plugs into these three hooks
 #include <map>
 namespace tactic_priority {
 static SRWLOCK settings_lock=SRWLOCK_INIT;
@@ -309,10 +310,12 @@ static void __fastcall update(Obj state) { COST_SCOPE("tactic_priority_update");
         }
 #endif
     }
+    if(!skip && sortie_bridge::extra)sortie_bridge::extra->update(state);
     if(!skip)next_pick(next_update,GA(GA_7E18E0))(state);
 }
 static uint64_t __fastcall leave(Obj state,Obj next) { COST_SCOPE("tactic_priority_leave");
-    grid::leave(state,next);   // Layout releases our panes with the original sequence BEFORE the original leave destroys their parent
+    const bool released=grid::leave(state,next);   // Layout releases our panes with the original sequence BEFORE the original leave destroys their parent
+    if(sortie_bridge::extra)sortie_bridge::extra->leave(state,next,released);
     if(active_state==state)reset();
     return next_pick(next_leave,GA(GA_7DC200))(state,next);
 }
@@ -324,6 +327,7 @@ static Obj __fastcall depart(unsigned *cmd,int spend) { COST_SCOPE("tactic_prior
         tactic_memory_record(id,f,t);
         log_event("tactic_priority_recorded",id,f,(t[0]&0xFF)|((t[1]&0xFF)<<8)|((t[2]&0xFF)<<16));
     }
+    if(army && sortie_bridge::extra)sortie_bridge::extra->depart(id,army);
     return army;
 }
 static bool guards_match() {
@@ -335,6 +339,8 @@ static bool guards_match() {
     if(ga::mcmp_at(image,GA(GA_7EE1C4)-sizeof(depart_before),depart_before,sizeof(depart_before))) {log_event("tactic_priority_guard_rejected",2);return false;}
     return true;
 }
+static bool hooks_ok;   // the three screen hooks are registered (the ambush module plugs in through sortie_screen_bridge.h)
+static bool screen_hooks_ready() {return hooks_ok;}
 static bool install() {
     load_settings();
     if(!guards_match())return false;
@@ -345,6 +351,6 @@ static bool install() {
        !layout_client::call(GA(GA_7EE1C4),reinterpret_cast<void *>(&depart),reinterpret_cast<void **>(&next_dispatch))) {
         log_event("tactic_priority_register_rejected");return false;
     }
-    tx.done=true;log_event("tactic_priority_installed");return true;
+    tx.done=true;hooks_ok=true;log_event("tactic_priority_installed",mod_features.tactic_priority?1u:0u,mod_features.ambush?1u:0u);return true;
 }
 }

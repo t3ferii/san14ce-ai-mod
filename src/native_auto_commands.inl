@@ -101,6 +101,19 @@ static void show_toggle_toast(unsigned which,const std::wstring &text) { COST_SC
     (void)which;
 #endif
 }
+// local148 (user 2026-11-14 "전략중일때 숨겼다가 다시 플레이어턴에 보이게"): 44ED30 runs the computer phase in states
+// 5 -> 6 -> 3 -> 4 (43C1A0 starts the strategy worker, the 「전략중…」 banner) and never reaches the 17B990 frame there.
+// search_site (453310(0), the call right before state 5) hides both toggles; reward_site (17B990, the player frame)
+// shows them again. Both run on the 44ED30 UI thread.
+static bool buttons_hidden;
+static void set_buttons_visible(bool on) { COST_SCOPE("auto_commands:set_buttons_visible");
+    if(!buttons_layout || buttons_hidden==!on)return;
+    layout_client::UiScope scope(kButtonsOwner);
+    if(!scope.ok)return;
+    if(button_search)layout_client::ui_show(button_search,on?1:0);
+    if(button_reward)layout_client::ui_show(button_reward,on?1:0);
+    buttons_hidden=!on;
+}
 static void button_clicked(unsigned which) { COST_SCOPE("auto_commands:button_clicked");
     if(which==0)toggle_search();else toggle_reward();
     refresh_button_labels_scoped();
@@ -133,7 +146,7 @@ static void build_buttons(Obj layout) { COST_SCOPE("auto_commands:build_buttons"
     if(!roots)return;
     layout_client::UiScope scope(kButtonsOwner);
     if(!scope.ok)return;
-    if(layout!=buttons_layout) {buttons_layout=layout;button_search=button_reward=nullptr;}
+    if(layout!=buttons_layout) {buttons_layout=layout;button_search=button_reward=nullptr;buttons_hidden=false;}
     if(search_ready && !button_search)button_search=make_button(layout,roots[0],0);
     if(reward_ready && !button_reward)button_reward=make_button(layout,roots[1],1);
     refresh_button_labels();
@@ -174,7 +187,7 @@ static void __fastcall layout_dtor(Obj layout,unsigned long long a,unsigned long
         if(scope.ok)layout_client::ui_release(kButtonsOwner,reinterpret_cast<void *>(a));
     }
     if(layout==building_layout)building_layout=nullptr;
-    if(layout==buttons_layout) {buttons_layout=nullptr;button_search=button_reward=nullptr;}
+    if(layout==buttons_layout) {buttons_layout=nullptr;button_search=button_reward=nullptr;buttons_hidden=false;}
     next_layout_dtor(layout,a,b,c);
 }
 static bool install_layout_hooks() { COST_SCOPE("auto_commands:install_layout_hooks");
@@ -339,6 +352,7 @@ static void reward_turn() { COST_SCOPE("auto_commands:reward_turn");
 }
 static void __fastcall reward_site(Obj a) { COST_SCOPE("auto_commands::reward_site");
     fn<void(__fastcall *)(Obj)>(GA(GA_17B990))(a);
+    set_buttons_visible(true);
     // PW36b: the main-screen toggles queue a pending bit; drain it here, on the player strategy frame, after the
     // original call. UI work (labels, popup, toast) then runs on the game UI thread that owns this frame.
     if(const LONG clicks=InterlockedExchange(&pending_clicks,0)) {
@@ -473,9 +487,15 @@ static void search_run() { COST_SCOPE("auto_commands:search_run");
 // Progress block of 44ED30: the original call 453310(0) at 44F281, one search pass first while the toggle is on.
 // local14 WPR (user 2026-11-09 "탐색위임 끄니까 끊기는거 사라지긴한다"): this site runs on every day of 진행, and each
 // pass rebuilt the 7161D0 registry (path search per officer, ~300 ms main-thread stall). Search once per 10-day turn.
+// local164 (user 2026-11-15 "자동탐색처럼 진행턴 누르면 한번하고 지금처럼 턴시작할때 한번하고 탐색위임보다 먼저 실행해야해 그래야 탐색으로
+// 빠져서 포상못받는거 방지"): one more award pass at 진행 (once per turn, own guard), before the search pass takes officers away.
+static int progress_reward_turn=-1;
 static int __fastcall search_site(Obj a) { COST_SCOPE("auto_commands::search_site");
+    if(reward_ready && reward_on_state &&
+       auto_commands_policy::turn_changed(auto_commands_policy::turn_of(game_day_read()),progress_reward_turn))reward_turn();
     if(mod_features.auto_search && search_on_state &&
        auto_commands_policy::turn_changed(auto_commands_policy::turn_of(game_day_read()),search_turn))search_run();
+    set_buttons_visible(false);
     return fn<int(__fastcall *)(Obj)>(GA(GA_453310))(a);
 }
 static CallLink search_link;
@@ -498,7 +518,9 @@ bool install() {
     // PW36b: the 17B990 frame site also drains the button clicks, so it is needed whenever either toggle is on;
     // the award pass itself still runs only for auto_reward (reward_ready).
     if(mod_features.auto_reward || mod_features.auto_search) {const bool site=install_reward();if(mod_features.auto_reward)reward_ready=site;ok=site && ok;}
-    if(mod_features.auto_search) {search_ready=install_search();ok=search_ready && ok;}
+    // local148: the 진행 site also hides the toggles, so it is installed for either toggle; the search pass itself
+    // stays gated on mod_features.auto_search inside search_site.
+    if(mod_features.auto_search || mod_features.auto_reward) {const bool site=install_search();if(mod_features.auto_search)search_ready=site;ok=site && ok;}
     // Layout hooks only when at least one toggle is enabled (rule 1): both off leaves the original screen untouched.
     if(mod_features.auto_search || mod_features.auto_reward)ok=install_layout_hooks() && ok;
     return ok;
@@ -510,7 +532,7 @@ bool install() {
 static const size_t kSideSize=44;
 static unsigned char saved_search,saved_reward,saved_limit=70;
 static SidecarCache side_cache;
-static void side_reset() {search_on_state=false;reward_on_state=false;reward_limit=70;search_turn=-1;last_date=-1;}
+static void side_reset() {search_on_state=false;reward_on_state=false;reward_limit=70;search_turn=-1;last_date=-1;progress_reward_turn=-1;}
 static void side_snapshot() { COST_SCOPE("auto_commands:side_snapshot");
     saved_search=search_on_state?1:0;saved_reward=reward_on_state?1:0;
     saved_limit=static_cast<unsigned char>(auto_commands_policy::clamp_threshold(reward_limit));

@@ -14,7 +14,7 @@
 using Obj=unsigned char *;
 static Obj image;
 static LONG enabled=1;
-static struct {bool convenience=true,building_destruction_all=true;} mod_features;
+static struct {bool convenience=true,building_destruction_all=true,building_destruction_boost=false,destruction_ticket=false;} mod_features;
 static unsigned checks;
 static void check(bool b,const char *s){++checks;if(!b){std::fprintf(stderr,"FAIL %s\n",s);std::exit(1);}}
 template<class T> static void put(Obj p,unsigned off,T value){std::memcpy(p+off,&value,sizeof(value));}

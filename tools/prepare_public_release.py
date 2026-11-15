@@ -45,10 +45,12 @@ def main():
     m=read(P/'build/input_package/manifest.json')
     inputs=sources()
     newest=max((P/n).stat().st_mtime for n in inputs if n.startswith('src/'))
-    expected={'dinput8.dll':['DirectInput8Create'],'SAN14_CombatAI.dll':['AIInitialize','SAN14CombatGetApi'],
+    expected={'dinput8.dll':['DirectInput8Create'],'SAN14_CombatAI.dll':['AIInitialize','SAN14CombatAmbush','SAN14CombatGetApi','SAN14CombatSeasonMobility'],
               'SAN14_Convenience.dll':['AIInitialize','SAN14ConvenienceInitialize'],'SAN14_CCZ.dll':['SAN14CczGetApi'],
               # 2026-11-05 user exception: 5th DLL, loaded first by dinput8; without it the Layout-managed features stay off.
-              'SAN14_Layout.dll':['SAN14LayoutGetApi','SAN14LayoutInitialize','SAN14LayoutPublish']}
+              'SAN14_Layout.dll':['SAN14LayoutGetApi','SAN14LayoutInitialize','SAN14LayoutPublish'],
+              # 2026-11-13 user: 6th DLL, other authors' patches (4계절 패치, wprkfdid12-ux), loaded by the convenience module.
+              'SAN14_ModPack.dll':['SAN14ModPackGetApi']}
     for n,e in expected.items():
         assert exports(binary/n)==e,n
         if n!='dinput8.dll':
@@ -80,6 +82,10 @@ def main():
     m['gui_installer'].update(sha256=sha(stage/gui))
     # The title editor needs the complete lazy-loaded gallery as well as the battle atlas.
     m['ccz_assets']={n:sha(P/n) for n in ('assets/ccz/ccz_units.bin','assets/ccz/ccz_catalog.bin')}
+    # v15.17: SAN14_ModPack.dll / season bake read the 4계절 data (redistribution allowed, research/season_map/DESIGN.md 3.7) and our shaders.
+    season=sorted(q for q in (P/'data/season').iterdir() if q.suffix.lower() in ('.dds','.cso','.dat') and not q.name.startswith(('bake_','season_rain','season_drops')))   # v15.18: rain / drops shaders unused since local133
+    assert any(q.name=='SeasonRules.dat' for q in season),'data/season/SeasonRules.dat missing'
+    m['season_assets']={q.relative_to(P).as_posix():sha(q) for q in season}
     m['feature_switches']['count']=(P/'distribution/FeatureSelect.ps1').read_text(encoding='utf-8-sig').count('@{Group=')
     m['layout_patch'].update(bank_sha256=j['bank_sha256'],json_sha256=sha(stage/'traits9_layout.json'),merge=str(len(j['records']))+' ktid entries')
     m['progress_native']['profile_logging_compiled_out']=True

@@ -407,6 +407,11 @@ int main() {
         check(second.empty() && lines.size()==1,"a body without a table has no bands");
         lines=body_lines(dc,L"항목\t값\n가\t1,200\n나\t-30\n\n• 끝",1048,extent,&second);
         check(second.size()==3 && lines.size()==7 && lines[3].right>0 && lines[5].right==lines[3].right && lines[6].text==L"끝","a numeric second column is right-aligned from the header down");
+        // local130: advice cards (\x1E + title) each get one boxed band; the title is a gold header line; the boxes do not overlap
+        std::vector<TableBand> cards;lines=body_lines(dc,L"\x1E매복기동  ·  준비 2개\n본문 한 줄\n\x1E건물파괴  ·  준비 1개\n본문",1048,extent,&cards);
+        check(cards.size()==2 && cards[0].index==kCardBand && cards[1].index==kCardBand && cards[0].y+cards[0].h<cards[1].y && cards[1].y+cards[1].h<=extent &&
+              lines.size()==4 && lines[0].header && lines[0].text==L"매복기동  ·  준비 2개" && !lines[1].header && lines[1].y>cards[0].y && lines[1].y+32<=cards[0].y+cards[0].h,
+              "each advice card is one box around its title and text");
     }
     DeleteDC(dc);
     check(input(nullptr,WM_KEYUP,VK_ESCAPE,0) && flag(&pending)==2,"Escape closes the bubble without passing through to game");

@@ -5,6 +5,7 @@
 #include <vector>
 #include <cmath>
 #include "terrain_call_profile.h"
+#include <tlhelp32.h>
 namespace terrain_trees {
 #ifndef NO_RUNTIME_LOG
 // Completion counters are sampled/reset by Present, without taking the tree lock.
@@ -57,6 +58,10 @@ static void retain_pending_locked() {
 static void mark(unsigned hex,unsigned terrain,unsigned original) {
     if(hex>=HexCount || terrain>255 || original>255 || !active())return;
     AcquireSRWLockExclusive(&lock);
+    // local142: a change between non-forest terrains (season flood / ice, roads...) has no trees to place or remove, unless
+    // an earlier forest edit of this cell is still pending.
+    const bool forest_side=terrain==5 || terrain==6 || original==5 || original==6;
+    if(!forest_side && !has_goal[hex]) {ReleaseSRWLockExclusive(&lock);return;}
     if(!(world_transition && terrain==original)) {
         goals[hex]={static_cast<unsigned char>(terrain),static_cast<unsigned char>(original)};
         has_goal[hex]=true;InterlockedExchange(&any_goal,1);enqueue_locked(hex);
@@ -183,6 +188,145 @@ static void apply_pending(Obj s) {
     (void)captured;(void)writes;
 #endif
 }
+#ifndef NO_RUNTIME_LOG
+// local145 (user 2026-11-14 "나무 끊김 155 ms 이거 원작을 조사하고 최적화하자"): the 140-155 ms frames are inside the original update
+// (BB3AC0 -> BBA0C0, 15 KB; ours 0.3 ms) about every 110 s. A read-only sampler finds where: once an original call has run
+// 20 ms, a worker suspends the calling thread every millisecond, reads its RIP and the first two EXE return addresses on its stack,
+// and resumes it (no game memory written, no game function called, no allocation while suspended). A call over 50 ms logs its
+// top places as tree_spike_at (army = EXE RVA or 0xF0000000|module-relative for other modules, value = samples, hex = caller RVA).
+namespace spike {
+static HANDLE thread_handle,worker;static volatile LONG active;static volatile LONG64 started;
+static constexpr unsigned Max=400;static uint64_t rip[Max],ret[Max];static volatile LONG count;
+static uintptr_t lo,hi;
+static void bounds() {
+    if(lo)return;
+    const IMAGE_DOS_HEADER *dos=reinterpret_cast<const IMAGE_DOS_HEADER *>(image);
+    const IMAGE_NT_HEADERS64 *nt=reinterpret_cast<const IMAGE_NT_HEADERS64 *>(image+dos->e_lfanew);
+    lo=reinterpret_cast<uintptr_t>(image);hi=lo+nt->OptionalHeader.SizeOfImage;
+}
+// local147: B38C00/B38E60/B390A0 are the original job scheduler's steal/wait loop, so the tree job waits for jobs on other worker
+// threads. During a long call the worker also samples every other thread of the process (opened once per long call, closed after),
+// keeping only samples whose RIP is inside the EXE (idle threads sit in system waits): tree_spike_job army = RIP RVA, value =
+// samples, hex = caller RVA. A main-thread place outside the EXE also logs tree_spike_mod (army = first four letters of the module).
+static constexpr unsigned OMax=4000,TMax=96;static uint64_t orip[OMax],oret[OMax];static volatile LONG ocount;
+static HANDLE others_h[TMax];static unsigned others_n;static bool others_open;
+static void close_others() {for(unsigned i=0;i<others_n;++i)CloseHandle(others_h[i]);others_n=0;others_open=false;}
+static void open_others() {
+    others_open=true;const DWORD pid=GetCurrentProcessId(),self=GetCurrentThreadId(),main=GetThreadId(thread_handle);
+    HANDLE snap=CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD,0);if(snap==INVALID_HANDLE_VALUE)return;
+    THREADENTRY32 te={};te.dwSize=sizeof(te);
+    for(BOOL ok=Thread32First(snap,&te);ok && others_n<TMax;ok=Thread32Next(snap,&te)) {
+        if(te.th32OwnerProcessID!=pid || te.th32ThreadID==self || te.th32ThreadID==main)continue;
+        HANDLE h=OpenThread(THREAD_SUSPEND_RESUME|THREAD_GET_CONTEXT,FALSE,te.th32ThreadID);if(h)others_h[others_n++]=h;
+    }
+    CloseHandle(snap);
+}
+static void others() {
+    if(!others_open)open_others();
+    for(unsigned i=0;i<others_n;++i) {
+        const LONG at=InterlockedCompareExchange(&ocount,0,0);if(at>=static_cast<LONG>(OMax))return;
+        if(SuspendThread(others_h[i])==static_cast<DWORD>(-1))continue;
+        CONTEXT c={};c.ContextFlags=CONTEXT_CONTROL;uint64_t r=0,caller=0;
+        if(GetThreadContext(others_h[i],&c) && c.Rip>lo && c.Rip<hi) {
+            r=c.Rip;MEMORY_BASIC_INFORMATION mbi;const uint64_t *sp=reinterpret_cast<const uint64_t *>(c.Rsp);
+            if(VirtualQuery(sp,&mbi,sizeof(mbi)) && mbi.State==MEM_COMMIT) {
+                const uintptr_t end=reinterpret_cast<uintptr_t>(mbi.BaseAddress)+mbi.RegionSize;
+                for(unsigned k=0;k<64 && reinterpret_cast<uintptr_t>(sp+k+1)<=end;++k)if(sp[k]>lo && sp[k]<hi){caller=sp[k];break;}
+            }
+        }
+        ResumeThread(others_h[i]);
+        if(r){orip[at]=r;oret[at]=caller;InterlockedIncrement(&ocount);}
+    }
+}
+static DWORD WINAPI run(void *) {
+    for(;;) {
+        if(!InterlockedCompareExchange(&active,0,0)){if(others_open)close_others();Sleep(2);continue;}
+        LARGE_INTEGER now;QueryPerformanceCounter(&now);
+        if((now.QuadPart-started)*1000<perf_frequency*20){Sleep(1);continue;}
+        LONG at=InterlockedCompareExchange(&count,0,0);
+        if(at>=static_cast<LONG>(Max)){Sleep(1);continue;}
+        if(SuspendThread(thread_handle)==static_cast<DWORD>(-1)){Sleep(5);continue;}
+        CONTEXT c={};c.ContextFlags=CONTEXT_CONTROL;uint64_t r=0,caller=0;
+        if(GetThreadContext(thread_handle,&c) && InterlockedCompareExchange(&active,0,0)) {
+            r=c.Rip;
+            const uint64_t *sp=reinterpret_cast<const uint64_t *>(c.Rsp);unsigned found=0;
+            for(unsigned i=0;i<96 && found<2;++i) {
+                MEMORY_BASIC_INFORMATION mbi;
+                if(i==0 && (!VirtualQuery(sp,&mbi,sizeof(mbi)) || mbi.State!=MEM_COMMIT))break;
+                const uint64_t v=sp[i];
+                if(v>lo && v<hi) {caller=v;++found;if(r>lo && r<hi)break;}   // inside the EXE: the nearest caller is enough
+            }
+        }
+        ResumeThread(thread_handle);
+        if(r){rip[at]=r;ret[at]=caller;InterlockedIncrement(&count);}
+        others();
+        Sleep(1);
+    }
+}
+static void enter() {
+    if(!thread_handle) {
+        bounds();
+        DuplicateHandle(GetCurrentProcess(),GetCurrentThread(),GetCurrentProcess(),&thread_handle,THREAD_SUSPEND_RESUME|THREAD_GET_CONTEXT|THREAD_QUERY_INFORMATION,FALSE,0);
+        if(thread_handle)worker=CreateThread(nullptr,0,run,nullptr,0,nullptr);
+    }
+    if(!worker)return;
+    LARGE_INTEGER now;QueryPerformanceCounter(&now);started=now.QuadPart;InterlockedExchange(&count,0);InterlockedExchange(&ocount,0);InterlockedExchange(&active,1);
+}
+static uint32_t place(uint64_t a) {
+    if(a>lo && a<hi)return static_cast<uint32_t>(a-lo);
+    HMODULE m=nullptr;
+    if(GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,reinterpret_cast<LPCWSTR>(a),&m) && m)
+        return 0xF0000000u|static_cast<uint32_t>((a-reinterpret_cast<uintptr_t>(m))&0x0FFFFFFFu);
+    return 0xFFFFFFFFu;
+}
+static void leave(LONG64 us) {
+    if(!worker)return;
+    InterlockedExchange(&active,0);
+    if(us<50000)return;
+    const LONG n=InterlockedCompareExchange(&count,0,0);
+    // group by (rip rounded to 64 bytes, caller); log the top six
+    struct Bin {uint32_t at,caller;unsigned n;} bins[Max];unsigned used=0;
+    for(LONG i=0;i<n;++i) {
+        const uint32_t a=place(rip[i])&~0x3Fu,c=ret[i]?place(ret[i]):0;unsigned k=0;
+        for(;k<used;++k)if(bins[k].at==a && bins[k].caller==c){++bins[k].n;break;}
+        if(k==used && used<Max)bins[used++]={a,c,1};
+    }
+    log_event("tree_spike",static_cast<unsigned>(us/1000),static_cast<unsigned>(n),used);
+    for(unsigned t=0;t<6 && used;++t) {
+        unsigned best=0;for(unsigned k=1;k<used;++k)if(bins[k].n>bins[best].n)best=k;
+        if(!bins[best].n)break;
+        log_event("tree_spike_at",bins[best].at,bins[best].n,bins[best].caller);bins[best].n=0;
+    }
+    // modules outside the EXE the main thread sat in (up to two): army = first four letters packed, value = samples, hex = offset
+    HMODULE mods[2]={};unsigned mod_n[2]={};uint32_t mod_off[2]={};
+    for(LONG i=0;i<n;++i) {
+        if(rip[i]>lo && rip[i]<hi)continue;HMODULE m=nullptr;
+        if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,reinterpret_cast<LPCWSTR>(rip[i]),&m) || !m)continue;
+        for(unsigned k=0;k<2;++k){if(!mods[k]){mods[k]=m;mod_off[k]=static_cast<uint32_t>(rip[i]-reinterpret_cast<uintptr_t>(m));}if(mods[k]==m){++mod_n[k];break;}}
+    }
+    for(unsigned k=0;k<2;++k) {
+        if(!mods[k])continue;wchar_t path[MAX_PATH]={};GetModuleFileNameW(mods[k],path,MAX_PATH);
+        const wchar_t *b=path;for(const wchar_t *q=path;*q;++q)if(*q==L'\\' || *q==L'/')b=q+1;
+        uint32_t tag=0;for(unsigned j=0;j<4 && b[j];++j)tag|=static_cast<uint32_t>(static_cast<unsigned char>(b[j]))<<(8*j);
+        log_event("tree_spike_mod",tag,mod_n[k],mod_off[k]);
+    }
+    // other threads' EXE places during the call: the jobs the tree job waits for
+    const LONG on=InterlockedCompareExchange(&ocount,0,0);
+    static Bin obins[OMax];unsigned oused=0;
+    for(LONG i=0;i<on;++i) {
+        const uint32_t a=static_cast<uint32_t>(orip[i]-lo)&~0x3Fu,c=oret[i]?static_cast<uint32_t>(oret[i]-lo):0;unsigned k=0;
+        for(;k<oused;++k)if(obins[k].at==a && obins[k].caller==c){++obins[k].n;break;}
+        if(k==oused && oused<OMax)obins[oused++]={a,c,1};
+    }
+    log_event("tree_spike_jobs",static_cast<unsigned>(on),oused,others_n);
+    for(unsigned t=0;t<10 && oused;++t) {
+        unsigned best=0;for(unsigned k=1;k<oused;++k)if(obins[k].n>obins[best].n)best=k;
+        if(!obins[best].n)break;
+        log_event("tree_spike_job",obins[best].at,obins[best].n,obins[best].caller);obins[best].n=0;
+    }
+}
+}
+#endif
 static uint64_t __fastcall update(Obj s,Obj second,Obj context,Obj view,Obj fifth,unsigned sixth,unsigned seventh,unsigned eighth) { COST_SCOPE("terrain_trees::update");
     TERRAIN_SCOPE(TreesUpdate);
 #ifndef NO_RUNTIME_LOG
@@ -190,7 +334,7 @@ static uint64_t __fastcall update(Obj s,Obj second,Obj context,Obj view,Obj fift
     if(!InterlockedCompareExchange(&thread_logged,1,0))log_event("terrain_trees_thread",GetCurrentThreadId(),0,0);
     LARGE_INTEGER perf_start;QueryPerformanceCounter(&perf_start);
 #endif
-    apply_pending(s);
+    {COST_SCOPE("terrain_trees:apply_pending");apply_pending(s);}   // local144 probe: ours vs the original update below
 #ifndef NO_RUNTIME_LOG
     LARGE_INTEGER perf_end;QueryPerformanceCounter(&perf_end);
     LONG64 perf_us=(perf_end.QuadPart-perf_start.QuadPart)*1000000/perf_frequency;
@@ -199,6 +343,16 @@ static uint64_t __fastcall update(Obj s,Obj second,Obj context,Obj view,Obj fift
     while(perf_us>perf_old){LONG64 seen=InterlockedCompareExchange64(&perf_max_us,perf_us,perf_old);if(seen==perf_old)break;perf_old=seen;}
 #endif
     TERRAIN_SCOPE(TreesNative);
+    COST_SCOPE("terrain_trees:native");
+#ifndef NO_RUNTIME_LOG
+    if(diagnostic_logging) {
+        spike::enter();
+        LARGE_INTEGER a,b;QueryPerformanceCounter(&a);
+        const uint64_t result=fn<Update>(UpdateRva)(s,second,context,view,fifth,sixth,seventh,eighth);
+        QueryPerformanceCounter(&b);spike::leave((b.QuadPart-a.QuadPart)*1000000/perf_frequency);
+        return result;
+    }
+#endif
     return fn<Update>(UpdateRva)(s,second,context,view,fifth,sixth,seventh,eighth);
 }
 }

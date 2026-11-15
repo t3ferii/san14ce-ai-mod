@@ -534,8 +534,8 @@ bool tick(Obj state) {
 }
 // Leave hook (before the original leave): save, then Layout releases popup and toggle with the original destroy sequence while the parent
 // (main layout) still exists, so nothing is orphaned or left in the UI manager's lists. `next` = leave's second argument (7DC200 param_2).
-void leave(Obj state,Obj next) {
-    if(grid_state!=state)return;
+bool leave(Obj state,Obj next) {   // true = this owner's panes (bridge panes included) were released
+    if(grid_state!=state)return false;
     if(pop.open) {layout_client::UiScope scope(kOwner);close_popup(state,ByLeave);}
     {
         layout_client::UiScope scope(kOwner);
@@ -543,6 +543,7 @@ void leave(Obj state,Obj next) {
         log_event("tactic_priority_popup_destroyed",static_cast<unsigned>(released),pop.built?1u:0u,tog.built?1u:0u);
     }
     reset_all();grid_state=nullptr;
+    return true;
 }
 }   // namespace
 }   // namespace grid

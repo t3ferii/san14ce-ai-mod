@@ -134,6 +134,9 @@ static bool publish_merit(MeritCode &code) {
     for(unsigned i=0;i<10;++i)if((mod_features.merit || i>=8) && !publish_link(code.links[i]))return false;
     if(!ROUTE_VT(GA(GA_13E9A30),GA(GA_50DD30),&merit_save_host,&next_merit_save_host) ||
        !ROUTE_VT(GA(GA_13E9188),GA(GA_50BD20),&merit_load_host,&next_merit_load_host))return false;
+    // local166: the game-start holder guard rides with the always-published load host; its own failure is only logged.
+    {const bool start_guard=ROUTE_VT(GA(GA_13EA960),GA(GA_50AE80),&start_state_guard,&next_start_state);
+     log_event("start_guard_published",start_guard?1u:0u);}
     if(!mod_features.merit)return true;
     if(code.dialog_ready) {   // own failure: dialog block off, everything else stays
         code.dialog_ready=publish_link(code.links[10]);
@@ -153,6 +156,7 @@ static void restore_merit(MeritCode &code) {
 #ifndef LAYOUT_ROUTED   // routed: split_rollback cancels the manager registrations
     restore_pointer(GA(GA_13E9A30),GA(GA_50DD30),reinterpret_cast<void *>(&merit_save_host));
     restore_pointer(GA(GA_13E9188),GA(GA_50BD20),reinterpret_cast<void *>(&merit_load_host));
+    restore_pointer(GA(GA_13EA960),GA(GA_50AE80),reinterpret_cast<void *>(&start_state_guard));
     restore_pointer(GA(GA_13A9BF0),GA(GA_23AA60),reinterpret_cast<void *>(&merit_person_read));
     restore_pointer(GA(GA_1416690),GA(GA_90ACC0),reinterpret_cast<void *>(&merit_profile));
     restore_pointer(GA(GA_1416518),GA(GA_87ABC0),reinterpret_cast<void *>(&merit_profile_tick));

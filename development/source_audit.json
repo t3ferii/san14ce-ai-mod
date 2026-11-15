@@ -1,10 +1,17 @@
 {
-  "basis": "v15.14 public build source (2026-11-11)",
+  "basis": "v16 public build source (2026-11-15)",
   "method": "lexical definition candidates; not preprocessed; not full semantic review",
   "files": [
     {
+      "file": "src/advisor_ambush_bridge.h",
+      "sha256": "747f939e54237dd3721104257158fbd014c0645756ef9de3dfccb212f25946db",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": []
+    },
+    {
       "file": "src/advisor_briefing.h",
-      "sha256": "21ea3c64eb1f2e3399f56d6b1060d04763b545619fde38a4e612d0342d2d44b2",
+      "sha256": "35d109a75e7f91ffcc4cd07a11a3737f114d634eea481e25b451cc5ea839f53c",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -122,231 +129,235 @@
         },
         {
           "name": "classify",
-          "line": 250
+          "line": 260
         },
         {
           "name": "passive_notice",
-          "line": 259
-        },
-        {
-          "name": "interactive_state",
-          "line": 265
-        },
-        {
-          "name": "passive_event_state",
           "line": 269
         },
         {
+          "name": "interactive_state",
+          "line": 275
+        },
+        {
+          "name": "passive_event_state",
+          "line": 279
+        },
+        {
           "name": "diplomatic_report",
-          "line": 283
+          "line": 293
         },
         {
           "name": "diplomatic_row",
-          "line": 307
+          "line": 317
         },
         {
           "name": "gold_amount",
-          "line": 315
+          "line": 325
         },
         {
           "name": "compact",
-          "line": 333
+          "line": 343
         },
         {
           "name": "flat_text",
-          "line": 357
-        },
-        {
-          "name": "ends_with",
-          "line": 366
-        },
-        {
-          "name": "starts_with",
           "line": 367
         },
         {
+          "name": "ends_with",
+          "line": 376
+        },
+        {
+          "name": "starts_with",
+          "line": 377
+        },
+        {
           "name": "plain_name",
-          "line": 369
+          "line": 379
         },
         {
           "name": "log_line",
-          "line": 371
+          "line": 381
         },
         {
           "name": "before_suffix",
-          "line": 380
+          "line": 390
         },
         {
           "name": "parse_row",
-          "line": 391
+          "line": 401
         },
         {
           "name": "event_row",
-          "line": 438
+          "line": 448
         },
         {
           "name": "mission_result",
-          "line": 444
+          "line": 454
         },
         {
           "name": "card_body",
-          "line": 462
+          "line": 472
+        },
+        {
+          "name": "topic_of_text",
+          "line": 508
         },
         {
           "name": "reset",
-          "line": 487
+          "line": 541
         },
         {
           "name": "context",
-          "line": 490
+          "line": 544
         },
         {
           "name": "begin",
-          "line": 492
+          "line": 546
         },
         {
           "name": "finish",
-          "line": 495
+          "line": 549
         },
         {
           "name": "append",
-          "line": 496
+          "line": 550
         },
         {
           "name": "cards",
-          "line": 521
+          "line": 575
         },
         {
           "name": "unread",
-          "line": 530
+          "line": 584
         },
         {
           "name": "mark",
-          "line": 531
+          "line": 585
         },
         {
           "name": "erase",
-          "line": 532
+          "line": 586
         },
         {
           "name": "clear",
-          "line": 535
-        },
-        {
-          "name": "ease",
-          "line": 537
-        },
-        {
-          "name": "portrait_sample_from_pixels",
-          "line": 542
-        },
-        {
-          "name": "portrait_samples_stable",
-          "line": 561
-        },
-        {
-          "name": "portrait_rect_matches",
-          "line": 570
-        },
-        {
-          "name": "reset",
-          "line": 576
-        },
-        {
-          "name": "observe",
-          "line": 577
-        },
-        {
-          "name": "portrait_bounds",
           "line": 589
         },
         {
-          "name": "rgb",
-          "line": 607
+          "name": "ease",
+          "line": 591
         },
         {
-          "name": "control",
-          "line": 623
+          "name": "portrait_sample_from_pixels",
+          "line": 596
         },
         {
-          "name": "bounded",
-          "line": 635
+          "name": "portrait_samples_stable",
+          "line": 615
         },
         {
-          "name": "press",
-          "line": 640
-        },
-        {
-          "name": "move",
-          "line": 641
-        },
-        {
-          "name": "release",
-          "line": 648
-        },
-        {
-          "name": "cancel",
-          "line": 653
-        },
-        {
-          "name": "advance",
-          "line": 654
-        },
-        {
-          "name": "panel_rect",
-          "line": 663
-        },
-        {
-          "name": "head_rect",
-          "line": 664
-        },
-        {
-          "name": "body_rect",
-          "line": 665
-        },
-        {
-          "name": "city_cell",
-          "line": 669
-        },
-        {
-          "name": "ease_back",
-          "line": 675
-        },
-        {
-          "name": "panel_transform",
-          "line": 676
+          "name": "portrait_rect_matches",
+          "line": 624
         },
         {
           "name": "reset",
-          "line": 680
+          "line": 630
         },
         {
-          "name": "wheel",
-          "line": 681
+          "name": "observe",
+          "line": 631
         },
         {
-          "name": "press",
-          "line": 682
+          "name": "portrait_bounds",
+          "line": 643
         },
         {
-          "name": "move",
-          "line": 683
+          "name": "rgb",
+          "line": 661
         },
         {
-          "name": "release",
-          "line": 689
+          "name": "control",
+          "line": 677
         },
         {
-          "name": "active",
-          "line": 690
-        },
-        {
-          "name": "advance",
+          "name": "bounded",
           "line": 691
         },
         {
+          "name": "press",
+          "line": 696
+        },
+        {
+          "name": "move",
+          "line": 697
+        },
+        {
+          "name": "release",
+          "line": 704
+        },
+        {
+          "name": "cancel",
+          "line": 709
+        },
+        {
+          "name": "advance",
+          "line": 710
+        },
+        {
+          "name": "panel_rect",
+          "line": 719
+        },
+        {
+          "name": "head_rect",
+          "line": 720
+        },
+        {
+          "name": "body_rect",
+          "line": 721
+        },
+        {
+          "name": "city_cell",
+          "line": 725
+        },
+        {
+          "name": "ease_back",
+          "line": 731
+        },
+        {
+          "name": "panel_transform",
+          "line": 732
+        },
+        {
+          "name": "reset",
+          "line": 736
+        },
+        {
+          "name": "wheel",
+          "line": 737
+        },
+        {
+          "name": "press",
+          "line": 738
+        },
+        {
+          "name": "move",
+          "line": 739
+        },
+        {
+          "name": "release",
+          "line": 745
+        },
+        {
+          "name": "active",
+          "line": 746
+        },
+        {
+          "name": "advance",
+          "line": 747
+        },
+        {
           "name": "client_point",
-          "line": 700
+          "line": 756
         }
       ]
     },
@@ -397,6 +408,13 @@
     {
       "file": "src/ai_trace_nodes.h",
       "sha256": "adcbceb002a55a7ba21f5bff8848c29f866fc672a9f526b12765c7d505623dc1",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": []
+    },
+    {
+      "file": "src/ambush_shared.h",
+      "sha256": "6bc2b373a74a0df7ba24bec8828f47e063f9939e3ee0f984935c2dd7ed2b4cc8",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": []
@@ -571,17 +589,21 @@
     },
     {
       "file": "src/building_destruction_profile.h",
-      "sha256": "1ada239b4600633cc264d18195204d5862df76c7f31602897051fa567bf99b84",
+      "sha256": "2a46193a31f4ee4f3e24b7d21ac6fbe12675585081f42c139beeaadfb439c4be",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
         {
+          "name": "hash_own_calls",
+          "line": 26
+        },
+        {
           "name": "guards_match",
-          "line": 21
+          "line": 43
         },
         {
           "name": "capture_shape_ok",
-          "line": 35
+          "line": 57
         }
       ]
     },
@@ -1086,7 +1108,7 @@
     },
     {
       "file": "src/compat_report.h",
-      "sha256": "3f4a289801223f57a161362d56956d3e57e0a16f21fe1933b75f80c243dcbc13",
+      "sha256": "3057daa0708f7017bb2a365032245f31fc525f871790cf27e9091eeea5f86073",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -1120,19 +1142,59 @@
         },
         {
           "name": "session",
-          "line": 181
+          "line": 183
         },
         {
           "name": "add_text",
-          "line": 192
+          "line": 186
         },
         {
           "name": "add",
-          "line": 207
+          "line": 201
         },
         {
           "name": "add_off",
-          "line": 212
+          "line": 206
+        }
+      ]
+    },
+    {
+      "file": "src/computer_tactics.h",
+      "sha256": "b6af96b906c1b85db74b5b34ff24e3911b34e0d734360f611a3fd148939f76b2",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "unique",
+          "line": 14
+        },
+        {
+          "name": "trade",
+          "line": 15
+        },
+        {
+          "name": "tribe",
+          "line": 16
+        },
+        {
+          "name": "rank",
+          "line": 18
+        },
+        {
+          "name": "spare",
+          "line": 28
+        },
+        {
+          "name": "naval",
+          "line": 32
+        },
+        {
+          "name": "replace",
+          "line": 33
+        },
+        {
+          "name": "pick3",
+          "line": 38
         }
       ]
     },
@@ -1521,14 +1583,14 @@
     },
     {
       "file": "src/game_addresses_data.inl",
-      "sha256": "463c7556c4934462a2f6cfd7b5984be63b4cc5089b99a4046c19b64b25b3e3ff",
+      "sha256": "92fb0648f3e20864c8b8ccac2fea00ba4c14f531cedaa4f339b19b326b5e17e7",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": []
     },
     {
       "file": "src/game_addresses_gates.inl",
-      "sha256": "8930c99f20950c034de9c9387cd0b84b29a68f31676d78ea289815075249233b",
+      "sha256": "4809846ce03ec21db30c42712dee08381d496160c0bea2ff7b942bb65b11b563",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -1550,7 +1612,7 @@
         },
         {
           "name": "combat_address_gates",
-          "line": 82
+          "line": 83
         }
       ]
     },
@@ -1718,6 +1780,30 @@
       ]
     },
     {
+      "file": "src/intercept_policy.h",
+      "sha256": "06e3ff38dfdef686460b5dbe21ec1f07eba6dd426d4b0895f831db0d12d84a7b",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "distance",
+          "line": 10
+        },
+        {
+          "name": "mirror",
+          "line": 17
+        },
+        {
+          "name": "behind",
+          "line": 28
+        },
+        {
+          "name": "pick",
+          "line": 35
+        }
+      ]
+    },
+    {
       "file": "src/layout_api.h",
       "sha256": "1907d59be8f19541d49c532ab2234e490665de15375aee596cef23e039204043",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
@@ -1818,13 +1904,13 @@
     },
     {
       "file": "src/layout_registry.h",
-      "sha256": "cc51897b2bc9de2ff6f6a00377691aadf17a8922dafbc6a84a1a69bbc537e8ca",
+      "sha256": "f87c1bafec7a5cabab166bb41ce29305481f70acfe168ecc09a3c3c5ba56aa46",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
         {
           "name": "layout_build_mediation_relay",
-          "line": 341
+          "line": 353
         }
       ]
     },
@@ -1941,6 +2027,133 @@
       ]
     },
     {
+      "file": "src/modpack_dll.cpp",
+      "sha256": "b9af243a8f6c3edf4188734e40aa7dafc5c373bf97bd2a4d7b85024af4e1203c",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "mp_log",
+          "line": 20
+        },
+        {
+          "name": "fn",
+          "line": 21
+        },
+        {
+          "name": "sr_cost_out",
+          "line": 34
+        },
+        {
+          "name": "damage",
+          "line": 37
+        },
+        {
+          "name": "world",
+          "line": 38
+        },
+        {
+          "name": "army_id",
+          "line": 39
+        },
+        {
+          "name": "morale_to",
+          "line": 44
+        },
+        {
+          "name": "sr_cb_hurt",
+          "line": 52
+        },
+        {
+          "name": "sr_cb_morale",
+          "line": 61
+        },
+        {
+          "name": "sr_cb_durability",
+          "line": 65
+        },
+        {
+          "name": "domestic",
+          "line": 75
+        },
+        {
+          "name": "area_ok",
+          "line": 76
+        },
+        {
+          "name": "sr_cb_order",
+          "line": 78
+        },
+        {
+          "name": "sr_cb_population",
+          "line": 85
+        },
+        {
+          "name": "fire_setter_ok",
+          "line": 93
+        },
+        {
+          "name": "engine_flags",
+          "line": 97
+        },
+        {
+          "name": "season_start",
+          "line": 100
+        },
+        {
+          "name": "season_flags",
+          "line": 109
+        },
+        {
+          "name": "season_day",
+          "line": 110
+        },
+        {
+          "name": "season_params",
+          "line": 111
+        },
+        {
+          "name": "season_speed",
+          "line": 112
+        },
+        {
+          "name": "season_route",
+          "line": 113
+        },
+        {
+          "name": "season_cell",
+          "line": 114
+        },
+        {
+          "name": "season_paint",
+          "line": 115
+        },
+        {
+          "name": "season_flood",
+          "line": 116
+        },
+        {
+          "name": "season_mobility",
+          "line": 117
+        },
+        {
+          "name": "SAN14ModPackGetApi",
+          "line": 120
+        },
+        {
+          "name": "DllMain",
+          "line": 121
+        }
+      ]
+    },
+    {
+      "file": "src/modpack_dll_api.h",
+      "sha256": "46767623be488fb6a99525527c3bc1fdd5d2b5fad77de8447fa667fdbf204a44",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": []
+    },
+    {
       "file": "src/modpack_tables.h",
       "sha256": "04599d428bbf426712af052c3b8c727cce9e293d2e7b8f6d82cdb76b06c1bf73",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
@@ -1949,7 +2162,7 @@
     },
     {
       "file": "src/module_closure.inl",
-      "sha256": "6b21b20e3312ca899f417788c8d544e24f5e983c771f4d1d6ad7aee5b131e37d",
+      "sha256": "4e7045b08bd7fc59803b55aec6a4e5fe3776682934552da26054d2080efe97a2",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -1961,7 +2174,7 @@
     },
     {
       "file": "src/module_flags.h",
-      "sha256": "365aa52ebb025f8cbaa1771642dbb5e4b218aaa8df560d8fc364d21491b1d136",
+      "sha256": "3a47cddf45e45dbfb93803ce263a7bb97a572e57f3a35ba22e6d3cdc9c146d20",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": []
@@ -2015,29 +2228,29 @@
     },
     {
       "file": "src/module_pointers.inl",
-      "sha256": "0430fc2d73ee3328b4db10c0bad61122c91d5d6cd4839250bf1c3973f21d43d8",
+      "sha256": "ac96c853c23b666c1e07e42442f89042684ece33b123ffd8c31f82cbbfdb6f6f",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
         {
           "name": "split_pointer_owner_enabled",
-          "line": 42
+          "line": 44
         },
         {
           "name": "split_pointer_owner_fail",
-          "line": 51
+          "line": 53
         }
       ]
     },
     {
       "file": "src/module_table_convenience.inl",
-      "sha256": "fa2c6c366e1e4a3b79d2c1f49420c72732c683c4efb03a1870b5fbe228d48163",
+      "sha256": "c6591851010678488a4a168c42eb459582ae5975bd1d2852f06074c2853e1f17",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
         {
           "name": "module_subscribe_all",
-          "line": 184
+          "line": 194
         }
       ]
     },
@@ -2050,21 +2263,21 @@
     },
     {
       "file": "src/module_unity_combat.inl",
-      "sha256": "4092f331aac0ffaa43113f5ef5780cd590000e1c91d2430b80b87d9af99e07c0",
+      "sha256": "83fbbd485b0cfb4775e16ad7b4fcef87f3e6641111fc1ab265f99cc7fd0ed48c",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": []
     },
     {
       "file": "src/module_unity_convenience.inl",
-      "sha256": "bb986edf460dc1dc2869b3d576e1905a14e4b934df14fee0bc17243e4ed8117f",
+      "sha256": "b9881340da9154b6c2631af8a5b71a183cf157a5454f16a2c3cb5e414e34772c",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": []
     },
     {
       "file": "src/module_unity_fixture.inl",
-      "sha256": "3c4f6903e4b10ed3ffa24ff17217e162ce3b5ce27e943a4c65b90e615e24c5c4",
+      "sha256": "2ffe5945b0d38e335212cf760305f7795b1c60aab047b7244ebf0698be96db0e",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": []
@@ -2078,7 +2291,7 @@
     },
     {
       "file": "src/native_adapter.cpp",
-      "sha256": "def37d8e0b7bbe5755aaa408d3ee88365daec9b149ebd3c0812c4066832c8ab0",
+      "sha256": "1d7ce9c04219d0bf63c2bc74d1ee0b216c2ee9a1da0dabe495c0a1046a1d0116",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "설정·원작 자료 접근·전투 우선순위·스레드·연결 공통부",
       "definitions": [
@@ -2088,365 +2301,365 @@
         },
         {
           "name": "mod_ini_path",
-          "line": 59
+          "line": 62
         },
         {
           "name": "mod_setting",
-          "line": 66
+          "line": 69
         },
         {
           "name": "dev_group",
-          "line": 74
+          "line": 77
         },
         {
           "name": "load_diagnostic_settings",
-          "line": 81
-        },
-        {
-          "name": "initialize_log_settings",
           "line": 84
         },
         {
           "name": "initialize_log_settings",
-          "line": 94
+          "line": 87
+        },
+        {
+          "name": "initialize_log_settings",
+          "line": 97
         },
         {
           "name": "gpu_profile_crumb",
-          "line": 104
+          "line": 107
         },
         {
           "name": "fn",
-          "line": 110
+          "line": 113
         },
         {
           "name": "fn",
-          "line": 112
+          "line": 115
         },
         {
           "name": "next_or",
-          "line": 121
-        },
-        {
-          "name": "next_pick",
-          "line": 123
-        },
-        {
-          "name": "word",
           "line": 124
         },
         {
-          "name": "dword",
-          "line": 125
-        },
-        {
-          "name": "pointer",
+          "name": "next_pick",
           "line": 126
         },
         {
-          "name": "world",
+          "name": "word",
           "line": 127
         },
         {
+          "name": "dword",
+          "line": 128
+        },
+        {
+          "name": "pointer",
+          "line": 129
+        },
+        {
+          "name": "world",
+          "line": 130
+        },
+        {
           "name": "feature_key",
-          "line": 203
+          "line": 225
         },
         {
           "name": "load_mod_features",
-          "line": 208
+          "line": 230
         },
         {
           "name": "mod_step",
-          "line": 335
+          "line": 392
         },
         {
           "name": "write_log_event",
-          "line": 361
+          "line": 418
         },
         {
           "name": "game_day",
-          "line": 387
-        },
-        {
-          "name": "valid",
-          "line": 395
-        },
-        {
-          "name": "table",
-          "line": 399
-        },
-        {
-          "name": "army_force",
-          "line": 404
-        },
-        {
-          "name": "player_force",
-          "line": 408
-        },
-        {
-          "name": "observer_mode",
-          "line": 420
-        },
-        {
-          "name": "manager_lock",
-          "line": 431
-        },
-        {
-          "name": "manager_unlock",
-          "line": 435
-        },
-        {
-          "name": "list_init",
-          "line": 439
-        },
-        {
-          "name": "list_free",
           "line": 444
         },
         {
+          "name": "valid",
+          "line": 452
+        },
+        {
+          "name": "table",
+          "line": 456
+        },
+        {
+          "name": "army_force",
+          "line": 461
+        },
+        {
+          "name": "player_force",
+          "line": 465
+        },
+        {
+          "name": "observer_mode",
+          "line": 477
+        },
+        {
+          "name": "manager_lock",
+          "line": 488
+        },
+        {
+          "name": "manager_unlock",
+          "line": 492
+        },
+        {
+          "name": "list_init",
+          "line": 496
+        },
+        {
+          "name": "list_free",
+          "line": 501
+        },
+        {
           "name": "list_add",
-          "line": 445
+          "line": 502
         },
         {
           "name": "crc32_run",
-          "line": 476
+          "line": 533
         },
         {
           "name": "crc32",
-          "line": 484
+          "line": 541
         },
         {
           "name": "text_size_now",
-          "line": 498
+          "line": 555
         },
         {
           "name": "text_crc_now",
-          "line": 499
+          "line": 556
         },
         {
           "name": "code_ready",
-          "line": 500
+          "line": 557
         },
         {
           "name": "crc32_text_observed",
-          "line": 511
+          "line": 568
         },
         {
           "name": "make_probe",
-          "line": 542
+          "line": 599
         },
         {
           "name": "decode_matches",
-          "line": 547
-        },
-        {
-          "name": "code_sample_ready",
-          "line": 550
-        },
-        {
-          "name": "ga_unknown_ready",
-          "line": 566
-        },
-        {
-          "name": "code_unpacked_ready",
-          "line": 583
-        },
-        {
-          "name": "patch_pointer",
-          "line": 595
-        },
-        {
-          "name": "restore_pointer",
           "line": 604
         },
         {
+          "name": "code_sample_ready",
+          "line": 607
+        },
+        {
+          "name": "ga_unknown_ready",
+          "line": 623
+        },
+        {
+          "name": "code_unpacked_ready",
+          "line": 640
+        },
+        {
+          "name": "patch_pointer",
+          "line": 652
+        },
+        {
+          "name": "restore_pointer",
+          "line": 661
+        },
+        {
           "name": "other_mod_present",
-          "line": 612
+          "line": 669
         },
         {
           "name": "recruit_ui_guards_match",
-          "line": 628
-        },
-        {
-          "name": "publish_recruit_ui",
-          "line": 634
-        },
-        {
-          "name": "restore_recruit_ui",
-          "line": 638
-        },
-        {
-          "name": "recruit_ai_guards_match",
-          "line": 654
-        },
-        {
-          "name": "publish_recruit_ai",
-          "line": 659
-        },
-        {
-          "name": "restore_recruit_ai",
-          "line": 664
-        },
-        {
-          "name": "replace_code16",
-          "line": 670
-        },
-        {
-          "name": "replace_call",
           "line": 685
         },
         {
+          "name": "publish_recruit_ui",
+          "line": 691
+        },
+        {
+          "name": "restore_recruit_ui",
+          "line": 695
+        },
+        {
+          "name": "recruit_ai_guards_match",
+          "line": 711
+        },
+        {
+          "name": "publish_recruit_ai",
+          "line": 716
+        },
+        {
+          "name": "restore_recruit_ai",
+          "line": 721
+        },
+        {
+          "name": "replace_code16",
+          "line": 727
+        },
+        {
+          "name": "replace_call",
+          "line": 742
+        },
+        {
           "name": "absolute_jump",
-          "line": 693
-        },
-        {
-          "name": "observer_conflict",
-          "line": 699
-        },
-        {
-          "name": "prepare_link",
-          "line": 705
-        },
-        {
-          "name": "prepare_bytes",
-          "line": 714
-        },
-        {
-          "name": "call_prepare",
-          "line": 725
-        },
-        {
-          "name": "call_write",
-          "line": 735
-        },
-        {
-          "name": "call_publish",
-          "line": 741
-        },
-        {
-          "name": "call_restore",
           "line": 750
         },
         {
+          "name": "observer_conflict",
+          "line": 756
+        },
+        {
+          "name": "prepare_link",
+          "line": 762
+        },
+        {
+          "name": "prepare_bytes",
+          "line": 771
+        },
+        {
+          "name": "call_prepare",
+          "line": 782
+        },
+        {
+          "name": "call_write",
+          "line": 792
+        },
+        {
+          "name": "call_publish",
+          "line": 798
+        },
+        {
+          "name": "call_restore",
+          "line": 807
+        },
+        {
           "name": "publish_link",
-          "line": 755
+          "line": 812
         },
         {
           "name": "restore_link",
-          "line": 758
+          "line": 815
         },
         {
           "name": "recruit_alert_guards_match",
-          "line": 770
+          "line": 827
         },
         {
           "name": "prepare_recruit_alert",
-          "line": 775
+          "line": 832
         },
         {
           "name": "publish_recruit_alert",
-          "line": 783
+          "line": 840
         },
         {
           "name": "restore_recruit_alert",
-          "line": 787
+          "line": 844
         },
         {
           "name": "loyalty_guards_match",
-          "line": 794
+          "line": 851
         },
         {
           "name": "personnel_guards_match",
-          "line": 814
+          "line": 871
         },
         {
           "name": "publish_personnel_nodes",
-          "line": 819
+          "line": 876
         },
         {
           "name": "restore_personnel_nodes",
-          "line": 824
+          "line": 881
         },
         {
           "name": "allocate_near",
-          "line": 829
+          "line": 886
         },
         {
           "name": "install",
-          "line": 864
+          "line": 921
         },
         {
           "name": "combat_module_prepare",
-          "line": 892
+          "line": 949
         },
         {
           "name": "combat_departure_scope",
-          "line": 912
+          "line": 969
         },
         {
           "name": "SAN14CombatTraceStep",
-          "line": 919
+          "line": 976
         },
         {
           "name": "SAN14CombatGetApi",
-          "line": 926
+          "line": 983
         },
         {
           "name": "initialize",
-          "line": 932
-        },
-        {
-          "name": "SAN14ConvenienceInitialize",
-          "line": 978
-        },
-        {
-          "name": "split_fixture_prepare",
           "line": 989
         },
         {
+          "name": "SAN14ConvenienceInitialize",
+          "line": 1035
+        },
+        {
+          "name": "split_fixture_prepare",
+          "line": 1046
+        },
+        {
           "name": "split_fixture_scope",
-          "line": 1001
+          "line": 1058
         },
         {
           "name": "split_fixture_departure",
-          "line": 1008
+          "line": 1065
         },
         {
           "name": "split_fixture_failure",
-          "line": 1015
+          "line": 1072
         },
         {
           "name": "SAN14SplitFixtureInstall",
-          "line": 1016
+          "line": 1073
         },
         {
           "name": "SAN14SharedControlsFixture",
-          "line": 1027
+          "line": 1084
         },
         {
           "name": "SAN14SplitFixtureDisable",
-          "line": 1032
+          "line": 1089
         },
         {
           "name": "SAN14SplitFixtureFeatures",
-          "line": 1033
+          "line": 1090
         },
         {
           "name": "SAN14SplitFixtureGetApi",
-          "line": 1039
+          "line": 1096
         },
         {
           "name": "AIInitialize",
-          "line": 1044
+          "line": 1101
         },
         {
           "name": "DllMain",
-          "line": 1046
+          "line": 1103
         }
       ]
     },
     {
       "file": "src/native_adjacency.inl",
-      "sha256": "a36b9ec7ac892e3a6c2a0c2cd188aaa4953d78a3e27cbadd7412f8c2ac1b4622",
+      "sha256": "ea15bd4a68831c53cc015d4bbc3b35d619d2c5e0041a128365de6322933c2be4",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "공방·인접 지역 배율",
       "definitions": [
@@ -2487,574 +2700,646 @@
           "line": 111
         },
         {
-          "name": "contextual_adjacency",
+          "name": "contextual_adjacency_core",
           "line": 118
+        },
+        {
+          "name": "contextual_adjacency",
+          "line": 165
         }
       ]
     },
     {
       "file": "src/native_advisor_briefing.inl",
-      "sha256": "466390eee9456c23c24dc5e79a75bd68704f5464be33b792993d76e3f953e62f",
+      "sha256": "c37daae89aa79a01dc3c64427ec23bb58b6c69d2cee30a0f9a37e7f7052a761c",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
         {
-          "name": "guard_failed",
+          "name": "ambush_tick",
+          "line": 9
+        },
+        {
+          "name": "ambush_badge",
+          "line": 10
+        },
+        {
+          "name": "ambush_offer_pending",
+          "line": 11
+        },
+        {
+          "name": "ambush_offer_shown",
           "line": 12
         },
         {
+          "name": "ambush_answer",
+          "line": 13
+        },
+        {
+          "name": "ambush_tickets",
+          "line": 14
+        },
+        {
+          "name": "ambush_status",
+          "line": 15
+        },
+        {
+          "name": "ambush_offers",
+          "line": 16
+        },
+        {
+          "name": "ambush_offer_kind",
+          "line": 17
+        },
+        {
+          "name": "guard_failed",
+          "line": 22
+        },
+        {
           "name": "guards_match",
-          "line": 20
+          "line": 30
         },
         {
           "name": "hook_called",
-          "line": 62
+          "line": 72
         },
         {
           "name": "wait_condition",
-          "line": 76
+          "line": 86
         },
         {
           "name": "wait_owner_matches",
-          "line": 80
+          "line": 90
         },
         {
           "name": "FrameTiming",
-          "line": 92
-        },
-        {
-          "name": "layout_position",
           "line": 102
         },
         {
+          "name": "layout_position",
+          "line": 112
+        },
+        {
+          "name": "collects",
+          "line": 138
+        },
+        {
+          "name": "topic_gate",
+          "line": 139
+        },
+        {
+          "name": "collect_apply",
+          "line": 140
+        },
+        {
+          "name": "collect_load",
+          "line": 145
+        },
+        {
+          "name": "collect_toggle",
+          "line": 152
+        },
+        {
+          "name": "collect_labels",
+          "line": 162
+        },
+        {
           "name": "diagnostic_cycle",
-          "line": 136
+          "line": 185
         },
         {
           "name": "state_rva",
-          "line": 141
+          "line": 190
         },
         {
           "name": "stall_begin",
-          "line": 150
+          "line": 199
         },
         {
           "name": "stall_end",
-          "line": 155
+          "line": 204
         },
         {
           "name": "collected_state",
-          "line": 163
+          "line": 212
         },
         {
           "name": "manager",
-          "line": 168
+          "line": 217
         },
         {
           "name": "top_state",
-          "line": 169
+          "line": 218
         },
         {
           "name": "interaction",
-          "line": 174
+          "line": 223
         },
         {
           "name": "clean_scene",
-          "line": 188
+          "line": 237
         },
         {
           "name": "diplomatic_stack",
-          "line": 210
-        },
-        {
-          "name": "player_decided",
-          "line": 226
-        },
-        {
-          "name": "diplomatic_scene",
-          "line": 234
-        },
-        {
-          "name": "diplomatic_parent",
-          "line": 242
-        },
-        {
-          "name": "diplomatic_observed",
-          "line": 245
-        },
-        {
-          "name": "force_id",
-          "line": 248
-        },
-        {
-          "name": "city_owned",
-          "line": 252
-        },
-        {
-          "name": "city_name",
           "line": 259
         },
         {
-          "name": "focus_city",
+          "name": "player_decided",
           "line": 275
         },
         {
-          "name": "refresh_cities",
-          "line": 280
+          "name": "diplomatic_scene",
+          "line": 283
         },
         {
-          "name": "open_city_domestic_direct",
-          "line": 293
+          "name": "diplomatic_parent",
+          "line": 291
         },
         {
-          "name": "active",
-          "line": 312
+          "name": "diplomatic_observed",
+          "line": 294
         },
         {
-          "name": "tutorial",
-          "line": 313
+          "name": "force_id",
+          "line": 297
         },
         {
-          "name": "day",
-          "line": 319
+          "name": "city_owned",
+          "line": 301
         },
         {
-          "name": "defer",
-          "line": 323
+          "name": "city_name",
+          "line": 308
         },
         {
-          "name": "dialogue_ready",
+          "name": "focus_city",
           "line": 324
         },
         {
+          "name": "refresh_cities",
+          "line": 329
+        },
+        {
+          "name": "open_city_domestic_direct",
+          "line": 342
+        },
+        {
+          "name": "active",
+          "line": 361
+        },
+        {
+          "name": "tutorial",
+          "line": 362
+        },
+        {
+          "name": "day",
+          "line": 368
+        },
+        {
+          "name": "defer",
+          "line": 372
+        },
+        {
+          "name": "dialogue_ready",
+          "line": 373
+        },
+        {
           "name": "dialogue_observed",
-          "line": 326
+          "line": 375
         },
         {
           "name": "skip_decision",
-          "line": 330
-        },
-        {
-          "name": "picture_show",
-          "line": 345
-        },
-        {
-          "name": "picture_close",
-          "line": 358
-        },
-        {
-          "name": "wait_ready_diagnostic",
-          "line": 369
-        },
-        {
-          "name": "raw_length",
           "line": 379
         },
         {
-          "name": "copy",
-          "line": 385
+          "name": "picture_show",
+          "line": 394
         },
         {
-          "name": "hide_native_hud",
-          "line": 390
-        },
-        {
-          "name": "move",
-          "line": 391
-        },
-        {
-          "name": "bind",
-          "line": 403
-        },
-        {
-          "name": "restore_speech",
+          "name": "picture_close",
           "line": 407
         },
         {
-          "name": "replace_legacy",
-          "line": 416
+          "name": "wait_ready_diagnostic",
+          "line": 418
         },
         {
-          "name": "fallback",
-          "line": 417
-        },
-        {
-          "name": "reset",
+          "name": "raw_length",
           "line": 428
         },
         {
-          "name": "store",
+          "name": "copy",
+          "line": 434
+        },
+        {
+          "name": "hide_native_hud",
           "line": 439
         },
         {
+          "name": "move",
+          "line": 440
+        },
+        {
+          "name": "bind",
+          "line": 452
+        },
+        {
+          "name": "restore_speech",
+          "line": 456
+        },
+        {
+          "name": "replace_legacy",
+          "line": 465
+        },
+        {
+          "name": "fallback",
+          "line": 466
+        },
+        {
+          "name": "reset",
+          "line": 477
+        },
+        {
+          "name": "store",
+          "line": 488
+        },
+        {
           "name": "add_item",
-          "line": 451
+          "line": 500
         },
         {
           "name": "message_gate",
-          "line": 476
+          "line": 525
         },
         {
           "name": "entry_ready",
-          "line": 484
+          "line": 533
         },
         {
           "name": "duel_running",
-          "line": 505
+          "line": 554
         },
         {
           "name": "time_wait",
-          "line": 506
+          "line": 555
         },
         {
           "name": "name_speaker",
-          "line": 518
+          "line": 567
         },
         {
           "name": "capture_message",
-          "line": 523
+          "line": 572
         },
         {
           "name": "message_call",
-          "line": 541
+          "line": 591
         },
         {
           "name": "narration_call",
-          "line": 548
+          "line": 598
         },
         {
           "name": "person_call",
-          "line": 556
+          "line": 606
         },
         {
           "name": "scene_ready",
-          "line": 568
+          "line": 618
         },
         {
           "name": "scene_person",
-          "line": 571
+          "line": 621
         },
         {
           "name": "scene_object_name",
-          "line": 574
+          "line": 624
         },
         {
           "name": "scene_advantage",
-          "line": 577
-        },
-        {
-          "name": "save_scene",
-          "line": 582
-        },
-        {
-          "name": "live_scene_thread",
-          "line": 600
-        },
-        {
-          "name": "live_success_end",
-          "line": 610
-        },
-        {
-          "name": "live_success_active",
-          "line": 622
-        },
-        {
-          "name": "live_success_other_thread",
           "line": 627
         },
         {
-          "name": "live_success_begin",
-          "line": 628
+          "name": "save_scene",
+          "line": 632
         },
         {
-          "name": "live_success_match",
-          "line": 638
+          "name": "live_scene_thread",
+          "line": 650
         },
         {
-          "name": "live_success_pass",
-          "line": 643
-        },
-        {
-          "name": "scene_row_key",
+          "name": "live_success_end",
           "line": 660
         },
         {
+          "name": "live_success_active",
+          "line": 672
+        },
+        {
+          "name": "live_success_other_thread",
+          "line": 677
+        },
+        {
+          "name": "live_success_begin",
+          "line": 678
+        },
+        {
+          "name": "live_success_match",
+          "line": 688
+        },
+        {
+          "name": "live_success_pass",
+          "line": 693
+        },
+        {
+          "name": "scene_row_key",
+          "line": 710
+        },
+        {
           "name": "remember_scene_row",
-          "line": 664
+          "line": 714
         },
         {
           "name": "scene_row_stored",
-          "line": 668
+          "line": 718
         },
         {
           "name": "forget_scene_rows",
-          "line": 674
+          "line": 724
         },
         {
           "name": "capture_employ_scene",
-          "line": 675
+          "line": 725
         },
         {
           "name": "capture_discovery_scene",
-          "line": 684
+          "line": 735
         },
         {
           "name": "capture_scenery_scene",
-          "line": 700
+          "line": 752
         },
         {
           "name": "employ_scene",
-          "line": 706
+          "line": 759
         },
         {
           "name": "discovery_scene",
-          "line": 716
+          "line": 769
         },
         {
           "name": "scenery_scene",
-          "line": 726
+          "line": 779
         },
         {
           "name": "clear_scene_pending",
-          "line": 739
+          "line": 792
         },
         {
           "name": "scene_read",
-          "line": 740
-        },
-        {
-          "name": "scene_call_target",
-          "line": 745
-        },
-        {
-          "name": "scene_call_publish",
-          "line": 754
-        },
-        {
-          "name": "restore_scene_calls",
-          "line": 758
-        },
-        {
-          "name": "destiny_names",
-          "line": 774
-        },
-        {
-          "name": "capture_destiny",
-          "line": 783
-        },
-        {
-          "name": "destiny_call",
           "line": 793
         },
         {
+          "name": "scene_call_target",
+          "line": 798
+        },
+        {
+          "name": "scene_call_publish",
+          "line": 807
+        },
+        {
+          "name": "restore_scene_calls",
+          "line": 811
+        },
+        {
+          "name": "destiny_names",
+          "line": 827
+        },
+        {
+          "name": "capture_destiny",
+          "line": 836
+        },
+        {
+          "name": "destiny_call",
+          "line": 847
+        },
+        {
           "name": "copy_scene_list",
-          "line": 802
+          "line": 856
         },
         {
           "name": "disaster_push",
-          "line": 819
-        },
-        {
-          "name": "disaster_yield",
-          "line": 837
-        },
-        {
-          "name": "prepare_scene_calls",
-          "line": 842
-        },
-        {
-          "name": "publish_scene_calls",
-          "line": 854
-        },
-        {
-          "name": "prepare_message_link",
-          "line": 857
-        },
-        {
-          "name": "prepare_picture_link",
-          "line": 865
-        },
-        {
-          "name": "pop",
-          "line": 871
-        },
-        {
-          "name": "offscreen",
-          "line": 872
-        },
-        {
-          "name": "adviser_name",
           "line": 873
         },
         {
+          "name": "disaster_yield",
+          "line": 891
+        },
+        {
+          "name": "prepare_scene_calls",
+          "line": 896
+        },
+        {
+          "name": "publish_scene_calls",
+          "line": 908
+        },
+        {
+          "name": "prepare_message_link",
+          "line": 911
+        },
+        {
+          "name": "prepare_picture_link",
+          "line": 919
+        },
+        {
+          "name": "pop",
+          "line": 925
+        },
+        {
+          "name": "offscreen",
+          "line": 926
+        },
+        {
+          "name": "adviser_name",
+          "line": 927
+        },
+        {
           "name": "report_facts",
-          "line": 878
+          "line": 932
         },
         {
           "name": "refresh_progress",
-          "line": 900
+          "line": 954
         },
         {
           "name": "hud",
-          "line": 910
+          "line": 964
         },
         {
           "name": "user_enter",
-          "line": 998
+          "line": 1085
         },
         {
           "name": "user_frame",
-          "line": 1003
+          "line": 1090
         },
         {
           "name": "user_leave",
-          "line": 1018
+          "line": 1105
         },
         {
           "name": "game_leave",
-          "line": 1028
+          "line": 1115
         },
         {
           "name": "narration",
-          "line": 1029
+          "line": 1116
         },
         {
           "name": "message_enter",
-          "line": 1035
+          "line": 1122
         },
         {
           "name": "simple_enter",
-          "line": 1071
+          "line": 1159
         },
         {
           "name": "diplomatic_enter",
-          "line": 1072
+          "line": 1160
         },
         {
           "name": "person_notice_enter",
-          "line": 1073
+          "line": 1161
         },
         {
           "name": "simple_frame",
-          "line": 1074
+          "line": 1162
         },
         {
           "name": "record",
-          "line": 1125
+          "line": 1213
         },
         {
           "name": "pending_world_reports",
-          "line": 1131
+          "line": 1219
         },
         {
           "name": "CaptureScope",
-          "line": 1155
+          "line": 1243
         },
         {
           "name": "capture_event",
-          "line": 1167
+          "line": 1255
         },
         {
           "name": "event_speech",
-          "line": 1200
+          "line": 1289
         },
         {
           "name": "set_text",
-          "line": 1212
+          "line": 1301
         },
         {
           "name": "diplomatic_speech",
-          "line": 1228
+          "line": 1317
         },
         {
           "name": "diplomatic_wait",
-          "line": 1274
-        },
-        {
-          "name": "report_results",
-          "line": 1310
-        },
-        {
-          "name": "ReportTiming",
-          "line": 1329
-        },
-        {
-          "name": "ticks",
-          "line": 1333
-        },
-        {
-          "name": "report_districts",
-          "line": 1347
-        },
-        {
-          "name": "headless_income",
           "line": 1364
         },
         {
+          "name": "report_results",
+          "line": 1400
+        },
+        {
+          "name": "ReportTiming",
+          "line": 1419
+        },
+        {
+          "name": "ticks",
+          "line": 1423
+        },
+        {
+          "name": "report_districts",
+          "line": 1437
+        },
+        {
+          "name": "headless_income",
+          "line": 1454
+        },
+        {
           "name": "headless_gate",
-          "line": 1402
+          "line": 1492
         },
         {
           "name": "try_headless_report",
-          "line": 1408
+          "line": 1498
         },
         {
           "name": "report_enter",
-          "line": 1469
+          "line": 1559
         },
         {
           "name": "report_frame",
-          "line": 1491
+          "line": 1581
         },
         {
           "name": "report_leave",
-          "line": 1556
+          "line": 1646
         },
         {
           "name": "report_wait",
-          "line": 1565
+          "line": 1655
         },
         {
           "name": "diagnose_uncollected_top",
-          "line": 1567
+          "line": 1657
         },
         {
           "name": "diagnose_direction",
-          "line": 1586
+          "line": 1676
         },
         {
           "name": "log_frame",
-          "line": 1605
+          "line": 1695
         },
         {
           "name": "log_leave",
-          "line": 1643
+          "line": 1733
         },
         {
           "name": "face_slot",
-          "line": 1679
+          "line": 1769
         },
         {
           "name": "advice_frame",
-          "line": 1702
+          "line": 1792
         },
         {
           "name": "advice_leave",
-          "line": 1745
+          "line": 1835
+        },
+        {
+          "name": "focus",
+          "line": 1848
         },
         {
           "name": "install",
-          "line": 1750
+          "line": 1862
+        },
+        {
+          "name": "install",
+          "line": 1881
         },
         {
           "name": "advisor_briefing_guards_match",
-          "line": 1803
+          "line": 1936
         }
       ]
     },
     {
       "file": "src/native_advisor_overlay.inl",
-      "sha256": "66d268549b879ade52e1732e7b9e7872003d6d79fef5727914aae1fc1dd946c8",
+      "sha256": "b3eee3e22018be933dbc514ae0e0bf76cd8264bc560c931ebd7fc37b37b2a06c",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -3115,178 +3400,202 @@
           "line": 242
         },
         {
+          "name": "button_shown",
+          "line": 274
+        },
+        {
           "name": "enter_model_lock",
-          "line": 273
+          "line": 282
         },
         {
           "name": "leave_model_lock",
-          "line": 280
+          "line": 289
         },
         {
           "name": "set_extended",
-          "line": 334
+          "line": 343
         },
         {
           "name": "toast_ms",
-          "line": 335
+          "line": 345
         },
         {
           "name": "flag",
-          "line": 359
+          "line": 369
         },
         {
           "name": "drop",
-          "line": 360
+          "line": 370
         },
         {
           "name": "release_device",
-          "line": 361
+          "line": 371
         },
         {
           "name": "is_visible",
-          "line": 376
-        },
-        {
-          "name": "mask_report",
-          "line": 377
-        },
-        {
-          "name": "report_window",
-          "line": 378
-        },
-        {
-          "name": "needs_draw",
-          "line": 379
-        },
-        {
-          "name": "progress_flags",
-          "line": 380
-        },
-        {
-          "name": "player_context",
           "line": 386
         },
         {
+          "name": "mask_report",
+          "line": 387
+        },
+        {
+          "name": "report_window",
+          "line": 388
+        },
+        {
+          "name": "needs_draw",
+          "line": 389
+        },
+        {
+          "name": "progress_flags",
+          "line": 390
+        },
+        {
+          "name": "player_context",
+          "line": 396
+        },
+        {
           "name": "available",
-          "line": 400
+          "line": 410
         },
         {
           "name": "publish",
-          "line": 401
+          "line": 411
         },
         {
-          "name": "toast",
-          "line": 428
+          "name": "toast_for",
+          "line": 438
         },
         {
           "name": "request_portrait",
-          "line": 432
+          "line": 443
         },
         {
           "name": "captured",
-          "line": 437
-        },
-        {
-          "name": "offer_face",
-          "line": 442
-        },
-        {
-          "name": "take_face_offer",
           "line": 448
         },
         {
+          "name": "offer_face",
+          "line": 453
+        },
+        {
+          "name": "take_face_offer",
+          "line": 459
+        },
+        {
+          "name": "toast",
+          "line": 490
+        },
+        {
           "name": "forget",
-          "line": 479
+          "line": 491
         },
         {
           "name": "take",
-          "line": 488
+          "line": 500
         },
         {
           "name": "post_input",
-          "line": 501
+          "line": 513
+        },
+        {
+          "name": "offer_box",
+          "line": 523
+        },
+        {
+          "name": "offer_button",
+          "line": 528
+        },
+        {
+          "name": "offer_balloon",
+          "line": 529
         },
         {
           "name": "widget",
-          "line": 508
+          "line": 530
         },
         {
           "name": "input",
-          "line": 521
+          "line": 547
         },
         {
           "name": "initialize",
-          "line": 603
+          "line": 629
         },
         {
           "name": "upload",
-          "line": 616
+          "line": 642
         },
         {
           "name": "serif_font",
-          "line": 622
+          "line": 648
         },
         {
           "name": "cached_font",
-          "line": 630
+          "line": 656
         },
         {
           "name": "raster_toast_wrapped",
-          "line": 643
+          "line": 669
         },
         {
           "name": "raster_toast_line",
-          "line": 672
+          "line": 698
+        },
+        {
+          "name": "raster_offer",
+          "line": 717
         },
         {
           "name": "raster_toast",
-          "line": 691
+          "line": 750
         },
         {
           "name": "wrap_text",
-          "line": 699
+          "line": 760
         },
         {
           "name": "table_layout",
-          "line": 720
+          "line": 781
         },
         {
           "name": "body_lines",
-          "line": 740
+          "line": 801
         },
         {
           "name": "city_lines",
-          "line": 780
+          "line": 853
         },
         {
           "name": "raster",
-          "line": 793
+          "line": 866
         },
         {
           "name": "PipelineState",
-          "line": 922
+          "line": 1014
         },
         {
           "name": "quad",
-          "line": 938
+          "line": 1030
         },
         {
           "name": "poll_portrait",
-          "line": 946
+          "line": 1038
         },
         {
           "name": "capture_portrait",
-          "line": 972
+          "line": 1064
         },
         {
           "name": "draw",
-          "line": 982
+          "line": 1074
         }
       ]
     },
     {
       "file": "src/native_ai_build.inl",
-      "sha256": "796ae3f49ddfa2174a30eb6736a970b00e747b7dd307806a25570459d5a4cefb",
+      "sha256": "bc3106d9f4c63a5c28f970e68329469a7849e4f24058e3856aa6a91ef03564f9",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -3300,125 +3609,137 @@
         },
         {
           "name": "try_other",
-          "line": 177
+          "line": 196
         }
       ]
     },
     {
       "file": "src/native_ai_core.inl",
-      "sha256": "2a1c5d521a8eb20548ac63c66a8c18bbd928538a7e13302237590116ebd584cb",
+      "sha256": "bceabd03356289e6a675a4a4974115cb355902d776d6ce7f218f71bd01645d29",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
         {
           "name": "builder_force",
-          "line": 17
+          "line": 18
         },
         {
           "name": "army_id",
-          "line": 24
+          "line": 25
         },
         {
           "name": "belongs_to_troops",
-          "line": 31
+          "line": 32
         },
         {
           "name": "computer_army",
-          "line": 37
+          "line": 38
         },
         {
           "name": "computer_side_force",
-          "line": 46
+          "line": 47
         },
         {
           "name": "computer_side_army",
-          "line": 51
+          "line": 52
         },
         {
           "name": "campaign_controlled",
-          "line": 58
+          "line": 60
         },
         {
           "name": "cut_player_predicate",
-          "line": 69
+          "line": 72
         },
         {
           "name": "try_cut",
-          "line": 89
+          "line": 93
         },
         {
           "name": "campaign_castle_locked",
-          "line": 183
+          "line": 206
         },
         {
           "name": "campaign_group_marching",
-          "line": 195
+          "line": 218
         },
         {
           "name": "campaign_group_member",
-          "line": 196
+          "line": 219
         },
         {
           "name": "army_area",
-          "line": 198
+          "line": 221
         },
         {
           "name": "distance",
-          "line": 203
+          "line": 226
         },
         {
           "name": "reserved_hex",
-          "line": 303
+          "line": 326
+        },
+        {
+          "name": "military_class",
+          "line": 345
+        },
+        {
+          "name": "military_spacing_blocked",
+          "line": 349
+        },
+        {
+          "name": "military_order_near",
+          "line": 362
         },
         {
           "name": "set_build",
-          "line": 317
+          "line": 373
         },
         {
           "name": "continue_build",
-          "line": 325
+          "line": 381
         },
         {
           "name": "load",
-          "line": 388
+          "line": 448
         },
         {
           "name": "officer",
-          "line": 399
+          "line": 459
         },
         {
           "name": "tracked",
-          "line": 400
+          "line": 460
         },
         {
           "name": "order_of",
-          "line": 406
+          "line": 466
         },
         {
           "name": "troops_of",
-          "line": 407
+          "line": 467
         },
         {
           "name": "goal_of",
-          "line": 411
+          "line": 471
         },
         {
           "name": "image_bytes",
-          "line": 412
+          "line": 472
         },
         {
           "name": "departure",
-          "line": 421
+          "line": 481
         },
         {
           "name": "daily",
-          "line": 447
+          "line": 507
         }
       ]
     },
     {
       "file": "src/native_ai_nodes.inl",
-      "sha256": "4d45825f67a3f7ef85c4df3dea9d253edafe91682f16d703d5844a8d9ea68329",
+      "sha256": "33a0d9a50d89f44964ee144a8cf6c4e2616a48cd4280f23ba7f8ecf4f8038d53",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -3455,68 +3776,172 @@
           "line": 98
         },
         {
-          "name": "bt_condition",
-          "line": 173
+          "name": "retake_first_ring_lost",
+          "line": 197
         },
         {
-          "name": "person_info_node",
-          "line": 191
+          "name": "retake_unit_heading",
+          "line": 205
         },
         {
-          "name": "attack_eval_wanted",
+          "name": "intercept_unit_out",
+          "line": 220
+        },
+        {
+          "name": "gate_intercept_tick",
           "line": 228
         },
         {
-          "name": "foothold10_kind",
-          "line": 230
-        },
-        {
-          "name": "foothold_computer_corps",
-          "line": 239
-        },
-        {
-          "name": "foothold_scale",
-          "line": 245
-        },
-        {
-          "name": "tribe_city",
+          "name": "helm_unit_out",
           "line": 265
         },
         {
+          "name": "helm_ring_out",
+          "line": 273
+        },
+        {
+          "name": "helm_ring_tick",
+          "line": 284
+        },
+        {
+          "name": "helm_intercept_tick",
+          "line": 301
+        },
+        {
+          "name": "garrison_recall_tick",
+          "line": 349
+        },
+        {
+          "name": "retake_adjacent_tick",
+          "line": 380
+        },
+        {
+          "name": "retake_adjacent_tick",
+          "line": 445
+        },
+        {
+          "name": "has_trait",
+          "line": 468
+        },
+        {
+          "name": "stat",
+          "line": 472
+        },
+        {
+          "name": "force_obj",
+          "line": 473
+        },
+        {
+          "name": "city_force",
+          "line": 474
+        },
+        {
+          "name": "computer_force",
+          "line": 478
+        },
+        {
+          "name": "idle_in",
+          "line": 479
+        },
+        {
+          "name": "governor",
+          "line": 485
+        },
+        {
+          "name": "trade_officers",
+          "line": 497
+        },
+        {
+          "name": "issue",
+          "line": 519
+        },
+        {
+          "name": "trade_tick",
+          "line": 566
+        },
+        {
+          "name": "front_city",
+          "line": 578
+        },
+        {
+          "name": "front_trait",
+          "line": 591
+        },
+        {
+          "name": "best_hire",
+          "line": 592
+        },
+        {
+          "name": "hire_node",
+          "line": 604
+        },
+        {
+          "name": "trade_node",
+          "line": 633
+        },
+        {
+          "name": "bt_condition",
+          "line": 649
+        },
+        {
+          "name": "person_info_node",
+          "line": 668
+        },
+        {
+          "name": "attack_eval_wanted",
+          "line": 705
+        },
+        {
+          "name": "foothold10_kind",
+          "line": 707
+        },
+        {
+          "name": "foothold_computer_corps",
+          "line": 716
+        },
+        {
+          "name": "foothold_scale",
+          "line": 722
+        },
+        {
+          "name": "tribe_city",
+          "line": 742
+        },
+        {
           "name": "tribe_target_block",
-          "line": 272
+          "line": 749
         },
         {
           "name": "foothold_strength_node",
-          "line": 283
+          "line": 760
         },
         {
           "name": "attack_threshold_node",
-          "line": 312
+          "line": 789
         },
         {
           "name": "variable_minus_node",
-          "line": 330
+          "line": 807
         },
         {
           "name": "ensure_bt_condition",
-          "line": 347
+          "line": 824
         },
         {
           "name": "first_army_node",
-          "line": 357
+          "line": 835
         },
         {
           "name": "cut_node",
-          "line": 390
+          "line": 873
         },
         {
           "name": "city_node",
-          "line": 442
+          "line": 925
         },
         {
           "name": "retreat_node",
-          "line": 503
+          "line": 986
         }
       ]
     },
@@ -3750,7 +4175,7 @@
     },
     {
       "file": "src/native_ai_wall.inl",
-      "sha256": "f87cfe059d00e970859ee534a688ca5e20adc71309f7c9d5d9243dceb56e3a2d",
+      "sha256": "b8cfba70775e080549eec75170962e09eea63ecdd50ab0066ee7b7b1ca3ea120",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -3775,16 +4200,276 @@
           "line": 90
         },
         {
+          "name": "near_base_footprint",
+          "line": 110
+        },
+        {
+          "name": "strict_build_blocked",
+          "line": 134
+        },
+        {
           "name": "build_permission",
-          "line": 100
+          "line": 153
         },
         {
           "name": "cancel_wall_order",
-          "line": 120
+          "line": 174
         },
         {
           "name": "cancel_catapult_order",
-          "line": 135
+          "line": 189
+        }
+      ]
+    },
+    {
+      "file": "src/native_ambush.inl",
+      "sha256": "09e58dd50dca6575b430a5261568fe3f331d9ca846d9df4a71622b7fa4c33c54",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "log_capped",
+          "line": 36
+        },
+        {
+          "name": "log_capped",
+          "line": 38
+        },
+        {
+          "name": "usable",
+          "line": 40
+        },
+        {
+          "name": "badge",
+          "line": 42
+        },
+        {
+          "name": "destroy_usable",
+          "line": 43
+        },
+        {
+          "name": "ticket_count",
+          "line": 44
+        },
+        {
+          "name": "current_offer_kind",
+          "line": 45
+        },
+        {
+          "name": "refund_cancelled",
+          "line": 50
+        },
+        {
+          "name": "calendar",
+          "line": 66
+        },
+        {
+          "name": "player_regions",
+          "line": 74
+        },
+        {
+          "name": "next_random",
+          "line": 83
+        },
+        {
+          "name": "table_clear",
+          "line": 88
+        },
+        {
+          "name": "table_set",
+          "line": 93
+        },
+        {
+          "name": "expire",
+          "line": 100
+        },
+        {
+          "name": "region_owner",
+          "line": 109
+        },
+        {
+          "name": "home_regions",
+          "line": 116
+        },
+        {
+          "name": "frontline_region",
+          "line": 124
+        },
+        {
+          "name": "frontline_facilities",
+          "line": 136
+        },
+        {
+          "name": "destroy_region",
+          "line": 155
+        },
+        {
+          "name": "destroy_check",
+          "line": 163
+        },
+        {
+          "name": "destroy_use",
+          "line": 164
+        },
+        {
+          "name": "tick",
+          "line": 173
+        },
+        {
+          "name": "offer_pending",
+          "line": 218
+        },
+        {
+          "name": "offer_shown",
+          "line": 219
+        },
+        {
+          "name": "ruler_base",
+          "line": 220
+        },
+        {
+          "name": "answer",
+          "line": 231
+        },
+        {
+          "name": "is_marked",
+          "line": 265
+        },
+        {
+          "name": "current_record",
+          "line": 266
+        },
+        {
+          "name": "record_person",
+          "line": 272
+        },
+        {
+          "name": "toggle_clicked",
+          "line": 273
+        },
+        {
+          "name": "follow",
+          "line": 274
+        },
+        {
+          "name": "build_toggle",
+          "line": 279
+        },
+        {
+          "name": "apply_toggle",
+          "line": 301
+        },
+        {
+          "name": "run_toggle",
+          "line": 318
+        },
+        {
+          "name": "reset_screen",
+          "line": 327
+        },
+        {
+          "name": "on_update",
+          "line": 328
+        },
+        {
+          "name": "on_leave",
+          "line": 345
+        },
+        {
+          "name": "on_depart",
+          "line": 360
+        },
+        {
+          "name": "offer_count",
+          "line": 368
+        },
+        {
+          "name": "status",
+          "line": 370
+        },
+        {
+          "name": "install",
+          "line": 407
+        },
+        {
+          "name": "side_reset",
+          "line": 422
+        },
+        {
+          "name": "put32",
+          "line": 426
+        },
+        {
+          "name": "get32",
+          "line": 427
+        },
+        {
+          "name": "side_snapshot",
+          "line": 428
+        },
+        {
+          "name": "side_write",
+          "line": 441
+        },
+        {
+          "name": "side_restore",
+          "line": 447
+        }
+      ]
+    },
+    {
+      "file": "src/native_ambush_combat.inl",
+      "sha256": "4a986f6b0e55503261ad363d69d01c4af88220563784eb314c93b04d9b8a6f3c",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "active",
+          "line": 22
+        },
+        {
+          "name": "contact",
+          "line": 39
+        },
+        {
+          "name": "slow",
+          "line": 54
+        },
+        {
+          "name": "cond",
+          "line": 60
+        },
+        {
+          "name": "range_force",
+          "line": 89
+        },
+        {
+          "name": "range_hostile",
+          "line": 93
+        },
+        {
+          "name": "call_targets",
+          "line": 105
+        },
+        {
+          "name": "prepare",
+          "line": 114
+        },
+        {
+          "name": "restore",
+          "line": 133
+        },
+        {
+          "name": "publish",
+          "line": 137
+        },
+        {
+          "name": "SAN14CombatSeasonMobility",
+          "line": 157
+        },
+        {
+          "name": "SAN14CombatAmbush",
+          "line": 162
         }
       ]
     },
@@ -3894,7 +4579,7 @@
     },
     {
       "file": "src/native_auto_commands.inl",
-      "sha256": "d851363f1b2b7e5f757965f9e9f94a6f574b6657514dc7bfcea2b5d02dd2107b",
+      "sha256": "eab7bbf9509f2a2addceb807dd8cc2e2b1b750c13b00f3ad9806cb724fe06724",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -3951,106 +4636,110 @@
           "line": 95
         },
         {
+          "name": "set_buttons_visible",
+          "line": 109
+        },
+        {
           "name": "button_clicked",
-          "line": 104
+          "line": 117
         },
         {
           "name": "auto_button_click",
-          "line": 115
+          "line": 128
         },
         {
           "name": "make_button",
-          "line": 119
+          "line": 132
         },
         {
           "name": "build_buttons",
-          "line": 130
+          "line": 143
         },
         {
           "name": "control_site",
-          "line": 148
+          "line": 161
         },
         {
           "name": "layout_setup",
-          "line": 155
+          "line": 168
         },
         {
           "name": "layout_dtor",
-          "line": 171
+          "line": 184
         },
         {
           "name": "install_layout_hooks",
-          "line": 180
+          "line": 193
         },
         {
           "name": "player_ctx",
-          "line": 194
+          "line": 207
         },
         {
           "name": "toggle_search",
-          "line": 198
+          "line": 211
         },
         {
           "name": "toggle_reward",
-          "line": 214
+          "line": 227
         },
         {
           "name": "issue_award",
-          "line": 250
-        },
-        {
-          "name": "reward_turn",
           "line": 263
         },
         {
+          "name": "reward_turn",
+          "line": 276
+        },
+        {
           "name": "reward_site",
-          "line": 340
+          "line": 353
         },
         {
           "name": "call_to",
-          "line": 355
+          "line": 369
         },
         {
           "name": "install_reward",
-          "line": 359
+          "line": 373
         },
         {
           "name": "search_run",
-          "line": 374
+          "line": 388
         },
         {
           "name": "search_site",
-          "line": 476
+          "line": 493
         },
         {
           "name": "install_search",
-          "line": 482
+          "line": 502
         },
         {
           "name": "install",
-          "line": 496
+          "line": 516
         },
         {
           "name": "side_reset",
-          "line": 513
+          "line": 535
         },
         {
           "name": "side_snapshot",
-          "line": 514
+          "line": 536
         },
         {
           "name": "side_write",
-          "line": 518
+          "line": 540
         },
         {
           "name": "side_restore",
-          "line": 524
+          "line": 546
         }
       ]
     },
     {
       "file": "src/native_awards.inl",
-      "sha256": "1a5d83e2612d4c578bce3d1420e977a37986e04e9e78edee4be156d1979e4dab",
+      "sha256": "dc5358e1506cbcd99ed3a7114cad9474d33026659f49303ce75ade7f774a78d5",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "명품 6슬롯·창고·수여·관직·보조 저장",
       "definitions": [
@@ -4092,135 +4781,135 @@
         },
         {
           "name": "award_serving",
-          "line": 72
+          "line": 73
         },
         {
           "name": "award_reset",
-          "line": 75
+          "line": 76
         },
         {
           "name": "award_capture_inputs",
-          "line": 99
+          "line": 100
         },
         {
           "name": "award_full_synchronize",
-          "line": 121
+          "line": 122
         },
         {
           "name": "award_synchronize",
-          "line": 156
+          "line": 157
         },
         {
           "name": "award_owned_items",
-          "line": 175
+          "line": 176
         },
         {
           "name": "award_synchronize_person",
-          "line": 191
+          "line": 192
         },
         {
           "name": "award_allowed",
-          "line": 212
+          "line": 213
         },
         {
           "name": "award_ui_allowed",
-          "line": 218
+          "line": 219
         },
         {
           "name": "award_transfer",
-          "line": 221
+          "line": 222
         },
         {
           "name": "award_equipment_predicate",
-          "line": 248
+          "line": 249
         },
         {
           "name": "award_storage_predicate",
-          "line": 251
+          "line": 252
         },
         {
           "name": "award_filter_iterator",
-          "line": 254
+          "line": 255
         },
         {
           "name": "award_iterator",
-          "line": 262
+          "line": 263
         },
         {
           "name": "award_personal_view",
-          "line": 279
+          "line": 280
         },
         {
           "name": "award_owner_name",
-          "line": 289
+          "line": 290
         },
         {
           "name": "award_warehouse_items",
-          "line": 297
+          "line": 298
         },
         {
           "name": "award_recipients",
-          "line": 310
+          "line": 311
         },
         {
           "name": "award_ui",
-          "line": 323
+          "line": 324
         },
         {
           "name": "award_manual",
-          "line": 345
+          "line": 346
         },
         {
           "name": "award_post_people",
-          "line": 354
+          "line": 355
         },
         {
           "name": "award_post_capacity",
-          "line": 365
+          "line": 366
         },
         {
           "name": "award_post_picker",
-          "line": 374
+          "line": 375
         },
         {
           "name": "award_post_select",
-          "line": 395
+          "line": 396
         },
         {
           "name": "award_guard_post_tree",
-          "line": 406
+          "line": 407
         },
         {
           "name": "award_post_batch",
-          "line": 421
+          "line": 422
         },
         {
           "name": "award_native_ai_command",
-          "line": 425
+          "line": 426
         },
         {
           "name": "award_horse_item",
-          "line": 433
-        },
-        {
-          "name": "award_horse_priority_has",
           "line": 434
         },
         {
+          "name": "award_horse_priority_has",
+          "line": 435
+        },
+        {
           "name": "award_horse_priority",
-          "line": 438
+          "line": 439
         },
         {
           "name": "award_horse_held",
-          "line": 449
+          "line": 450
         },
         {
           "name": "award_horse_select",
-          "line": 455
+          "line": 456
         },
         {
           "name": "award_ai_city",
-          "line": 497
+          "line": 498
         }
       ]
     },
@@ -4350,43 +5039,63 @@
     },
     {
       "file": "src/native_building_destruction.inl",
-      "sha256": "f2bb7818e4ca37acdec056e3af24163dea7dc2a92f083c1ab7e696a81af10633",
+      "sha256": "0f33eca001d54b624735a67bc9b34ba5351f4bf6e8cd1ff40704ef37abef8c5f",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
         {
           "name": "active",
-          "line": 18
+          "line": 21
+        },
+        {
+          "name": "ticket_active",
+          "line": 29
+        },
+        {
+          "name": "ticket_roll",
+          "line": 30
         },
         {
           "name": "hostile",
-          "line": 19
+          "line": 36
         },
         {
           "name": "capture",
-          "line": 28
+          "line": 45
         },
         {
           "name": "apply",
-          "line": 50
+          "line": 69
         },
         {
           "name": "complete",
-          "line": 67
+          "line": 97
         },
         {
           "name": "make_capture_bridge",
-          "line": 80
+          "line": 110
+        },
+        {
+          "name": "advice",
+          "line": 148
+        },
+        {
+          "name": "advice_site_ok",
+          "line": 158
+        },
+        {
+          "name": "ticket_site_ok",
+          "line": 161
         },
         {
           "name": "install",
-          "line": 109
+          "line": 167
         }
       ]
     },
     {
       "file": "src/native_campaign.inl",
-      "sha256": "b2bd5bf03b8a9a23e47b5208f51de1740a6f1f7078576fbee25eacc2cc3d04ea",
+      "sha256": "2c86e6609ad68022c135655156cc67effa9a8d89de3b6a6cc98b778128289c67",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "지역 점령·집결·원군",
       "definitions": [
@@ -4451,68 +5160,212 @@
           "line": 194
         },
         {
+          "name": "retake_hostile_near",
+          "line": 239
+        },
+        {
+          "name": "retake_rings",
+          "line": 268
+        },
+        {
+          "name": "retake_cut_first",
+          "line": 329
+        },
+        {
+          "name": "retake_tower",
+          "line": 344
+        },
+        {
+          "name": "retake_tower_covers",
+          "line": 351
+        },
+        {
+          "name": "retake_path",
+          "line": 358
+        },
+        {
+          "name": "retake_route_order",
+          "line": 442
+        },
+        {
+          "name": "retake_step",
+          "line": 488
+        },
+        {
+          "name": "intercept_base_owner",
+          "line": 528
+        },
+        {
+          "name": "intercept_attackers",
+          "line": 536
+        },
+        {
+          "name": "intercept_open",
+          "line": 546
+        },
+        {
+          "name": "intercept_stand",
+          "line": 554
+        },
+        {
+          "name": "intercept_gate_object",
+          "line": 574
+        },
+        {
+          "name": "helm_water",
+          "line": 591
+        },
+        {
+          "name": "helm_shore",
+          "line": 598
+        },
+        {
+          "name": "helm_hostile_tile",
+          "line": 606
+        },
+        {
+          "name": "helm_goal_ok",
+          "line": 611
+        },
+        {
+          "name": "helm_towers",
+          "line": 616
+        },
+        {
+          "name": "helm_tower_hit",
+          "line": 628
+        },
+        {
+          "name": "helm_area_object",
+          "line": 629
+        },
+        {
+          "name": "helm_pick",
+          "line": 633
+        },
+        {
+          "name": "helm_chain_order",
+          "line": 731
+        },
+        {
+          "name": "helm_delay_pick",
+          "line": 762
+        },
+        {
+          "name": "helm_delay_hostile",
+          "line": 804
+        },
+        {
+          "name": "helm_delay_count",
+          "line": 810
+        },
+        {
+          "name": "helm_delay_step",
+          "line": 814
+        },
+        {
+          "name": "helm_area_water",
+          "line": 857
+        },
+        {
+          "name": "helm_watch_area",
+          "line": 876
+        },
+        {
+          "name": "helm_area_taken",
+          "line": 882
+        },
+        {
+          "name": "helm_next_area",
+          "line": 892
+        },
+        {
+          "name": "helm_ring_lost",
+          "line": 925
+        },
+        {
+          "name": "helm_ring_castle",
+          "line": 939
+        },
+        {
+          "name": "helm_pad_pick",
+          "line": 945
+        },
+        {
+          "name": "helm_switch_again",
+          "line": 967
+        },
+        {
+          "name": "helm_step",
+          "line": 968
+        },
+        {
+          "name": "intercept_step",
+          "line": 1120
+        },
+        {
           "name": "campaign_regional_step",
-          "line": 227
+          "line": 1154
         },
         {
           "name": "next_region",
-          "line": 246
+          "line": 1175
         },
         {
           "name": "prepare_local_build",
-          "line": 270
+          "line": 1199
         },
         {
           "name": "recovery_return",
-          "line": 306
+          "line": 1235
         },
         {
           "name": "native_fort_assault",
-          "line": 341
+          "line": 1270
         },
         {
           "name": "siege_goal_hex",
-          "line": 352
+          "line": 1281
         },
         {
           "name": "siege_tile_distance",
-          "line": 359
+          "line": 1288
         },
         {
           "name": "native_on_mission",
-          "line": 363
+          "line": 1292
         },
         {
           "name": "mission_corridor_distance",
-          "line": 386
+          "line": 1315
         },
         {
           "name": "mission_route_corridor",
-          "line": 400
+          "line": 1329
         },
         {
           "name": "mission_route_waypoint",
-          "line": 429
+          "line": 1358
         },
         {
           "name": "targetless",
-          "line": 449
+          "line": 1378
         },
         {
           "name": "recover_idle",
-          "line": 454
+          "line": 1383
         },
         {
           "name": "pause_assembly",
-          "line": 494
+          "line": 1423
         },
         {
           "name": "campaign_step",
-          "line": 495
+          "line": 1424
         },
         {
           "name": "campaign_individual_priority",
-          "line": 518
+          "line": 1447
         }
       ]
     },
@@ -4546,33 +5399,37 @@
     },
     {
       "file": "src/native_campaign_departures.inl",
-      "sha256": "a39d07dc841eb05d174a450ef2d80eea69f0b1d2ec066d950d8b4c09f749f01b",
+      "sha256": "83f60ce11ed12ae620feff65c1027e4ac36cbfc40d2b9cc373deda4740f96f76",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "지역 점령·집결·원군",
       "definitions": [
         {
+          "name": "helm_person",
+          "line": 11
+        },
+        {
           "name": "campaign_paid_single",
-          "line": 6
+          "line": 17
         },
         {
           "name": "campaign_city_connected",
-          "line": 57
+          "line": 127
         },
         {
           "name": "campaign_frontier_diagnostic",
-          "line": 81
+          "line": 151
         },
         {
           "name": "campaign_frontier_diagnostic",
-          "line": 104
+          "line": 174
         },
         {
           "name": "campaign_saturated_departures",
-          "line": 106
+          "line": 176
         },
         {
           "name": "campaign_proactive_departures",
-          "line": 139
+          "line": 209
         }
       ]
     },
@@ -5102,7 +5959,7 @@
     },
     {
       "file": "src/native_ccz_sprites.inl",
-      "sha256": "3e6aa54e2b4b02cce517a5b6eb402eae87c2e3b940b8beb96fcca54fd049b2ff",
+      "sha256": "1f098763cbeba23c435b8f47d89f4b4e74725124048160198c926fbec8e5c695",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -5184,135 +6041,143 @@
         },
         {
           "name": "drop",
-          "line": 461
+          "line": 474
         },
         {
           "name": "release_resources",
-          "line": 462
+          "line": 475
         },
         {
           "name": "note_dsv",
-          "line": 476
+          "line": 490
+        },
+        {
+          "name": "reset_views",
+          "line": 508
         },
         {
           "name": "rtv_size",
-          "line": 513
+          "line": 533
         },
         {
           "name": "sample_bind",
-          "line": 522
+          "line": 542
         },
         {
           "name": "set_targets",
-          "line": 538
+          "line": 558
         },
         {
           "name": "hook_context",
-          "line": 576
+          "line": 596
         },
         {
           "name": "create_labels",
-          "line": 601
+          "line": 621
         },
         {
           "name": "create_resources",
-          "line": 624
+          "line": 644
         },
         {
           "name": "note_cell_failed",
-          "line": 651
+          "line": 673
         },
         {
           "name": "clip",
-          "line": 686
+          "line": 708
         },
         {
           "name": "effect_visible",
-          "line": 693
+          "line": 715
         },
         {
           "name": "frame_for",
-          "line": 698
+          "line": 720
         },
         {
           "name": "SavedState",
-          "line": 717
-        },
-        {
-          "name": "safe_read",
           "line": 739
         },
         {
-          "name": "far_position",
-          "line": 742
-        },
-        {
-          "name": "needs_present",
-          "line": 750
-        },
-        {
-          "name": "build",
+          "name": "safe_read",
           "line": 761
         },
         {
+          "name": "far_position",
+          "line": 764
+        },
+        {
+          "name": "needs_present",
+          "line": 772
+        },
+        {
+          "name": "build",
+          "line": 783
+        },
+        {
           "name": "linear_target",
-          "line": 864
+          "line": 886
+        },
+        {
+          "name": "poll_visibility",
+          "line": 894
         },
         {
           "name": "draw",
-          "line": 872
-        },
-        {
-          "name": "draw_scene",
           "line": 916
         },
         {
+          "name": "draw_scene",
+          "line": 972
+        },
+        {
           "name": "on_present",
-          "line": 922
+          "line": 978
         },
         {
           "name": "mark",
-          "line": 1018
+          "line": 1084
         },
         {
           "name": "guards_match",
-          "line": 1027
+          "line": 1093
         },
         {
           "name": "install",
-          "line": 1033
+          "line": 1099
         },
         {
           "name": "restore",
-          "line": 1044
+          "line": 1110
         },
         {
           "name": "roll",
-          "line": 1064
+          "line": 1130
         },
         {
           "name": "field_army",
-          "line": 1073
+          "line": 1139
         },
         {
           "name": "war",
-          "line": 1078
+          "line": 1144
         },
         {
           "name": "intel",
-          "line": 1083
+          "line": 1149
         },
         {
           "name": "clamp",
-          "line": 1088
+          "line": 1154
         },
         {
           "name": "fix",
-          "line": 1089
+          "line": 1155
         },
         {
           "name": "configure",
-          "line": 1142
+          "line": 1208
         }
       ]
     },
@@ -5422,55 +6287,67 @@
     },
     {
       "file": "src/native_corps_domestic.inl",
-      "sha256": "17977dcb60b77ef9366d2644e6ef5da23d938df5800637d7651ae5b62094547f",
+      "sha256": "9d165208c5c851e5060d653cfffa22c9f0a60593b46d68d01c081d30c339fa09",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
         {
           "name": "corps_of",
-          "line": 19
+          "line": 20
         },
         {
           "name": "demo_play",
-          "line": 25
-        },
-        {
-          "name": "computer",
           "line": 26
         },
         {
-          "name": "skip_second_search",
+          "name": "computer",
           "line": 27
         },
         {
-          "name": "arm",
-          "line": 43
+          "name": "skip_second_search",
+          "line": 28
         },
         {
-          "name": "progress_check",
+          "name": "learn_usable",
           "line": 50
         },
         {
+          "name": "tactic_entry",
+          "line": 59
+        },
+        {
+          "name": "learn_instead",
+          "line": 60
+        },
+        {
+          "name": "arm",
+          "line": 120
+        },
+        {
+          "name": "progress_check",
+          "line": 127
+        },
+        {
           "name": "wanted",
-          "line": 70
+          "line": 147
         },
         {
           "name": "prepare",
-          "line": 72
+          "line": 149
         },
         {
           "name": "restore",
-          "line": 91
+          "line": 168
         },
         {
           "name": "publish",
-          "line": 98
+          "line": 175
         }
       ]
     },
     {
       "file": "src/native_cost_profile.h",
-      "sha256": "d5f1cf34209f9b42fe5b022b1c3c224f2d85e9aec6535119daf70d0afd995c2a",
+      "sha256": "5984b560f50380ca0cfb4e9399ade03a2cca76427da2a9aef9bde1dd2c474c4b",
       "scope": "진단/조건부 컴파일; 일반 기능과 구분",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -5492,15 +6369,23 @@
         },
         {
           "name": "initialize",
-          "line": 72
+          "line": 75
+        },
+        {
+          "name": "note_child",
+          "line": 96
+        },
+        {
+          "name": "long_root",
+          "line": 103
         },
         {
           "name": "flush",
-          "line": 84
+          "line": 125
         },
         {
           "name": "Scope",
-          "line": 102
+          "line": 143
         }
       ]
     },
@@ -6034,7 +6919,7 @@
     },
     {
       "file": "src/native_expert_links.inl",
-      "sha256": "3f15ad7c5ded2bc444fdb5c7f1e3b1775729dd7456ecf0ff403f3114cb2108d2",
+      "sha256": "7e76be8a0679f5511b9130c20859d65c57c45642571b3e85812f100cb7025082",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "숙련 설정 UI·입력·저장 값·계수 연결",
       "definitions": [
@@ -6047,168 +6932,280 @@
           "line": 30
         },
         {
-          "name": "expert_guards_match",
-          "line": 33
+          "name": "range_link_units",
+          "line": 42
         },
         {
-          "name": "prepare_expert",
+          "name": "range_attack_radius",
           "line": 46
         },
         {
+          "name": "range_emit_stub",
+          "line": 69
+        },
+        {
+          "name": "prepare_range",
+          "line": 83
+        },
+        {
+          "name": "publish_range",
+          "line": 97
+        },
+        {
+          "name": "side_write",
+          "line": 110
+        },
+        {
+          "name": "side_restore",
+          "line": 116
+        },
+        {
+          "name": "restore_range",
+          "line": 142
+        },
+        {
+          "name": "expert_guards_match",
+          "line": 147
+        },
+        {
+          "name": "prepare_expert",
+          "line": 160
+        },
+        {
           "name": "register_expert_routed",
-          "line": 72
+          "line": 187
         },
         {
           "name": "publish_expert",
-          "line": 86
+          "line": 202
         },
         {
           "name": "restore_expert",
-          "line": 96
+          "line": 213
         }
       ]
     },
     {
       "file": "src/native_expert_settings.inl",
-      "sha256": "09948ebc264cb56a81b7bc690f9bc336dcd396c2652716857d1989bdfd472723",
+      "sha256": "b5f203b06853511776531e06aea04a970d7a28078928e5b4b0e2b70d834c9148",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "숙련 설정 UI·입력·저장 값·계수 연결",
       "definitions": [
         {
           "name": "expert_next",
-          "line": 27
-        },
-        {
-          "name": "expert_setting_id",
-          "line": 28
-        },
-        {
-          "name": "expert_base_id",
           "line": 29
         },
         {
-          "name": "expert_force_key",
-          "line": 30
-        },
-        {
-          "name": "expert_in_game",
-          "line": 35
-        },
-        {
-          "name": "expert_write_ui",
+          "name": "clear_pending",
           "line": 39
         },
         {
-          "name": "expert_layout_valid",
+          "name": "commit_pending",
+          "line": 40
+        },
+        {
+          "name": "expert_range_id",
+          "line": 48
+        },
+        {
+          "name": "expert_setting_id",
+          "line": 49
+        },
+        {
+          "name": "expert_range_value",
+          "line": 50
+        },
+        {
+          "name": "expert_range_standard",
+          "line": 55
+        },
+        {
+          "name": "expert_range_store",
+          "line": 56
+        },
+        {
+          "name": "expert_range_position",
           "line": 70
         },
         {
-          "name": "expert_ui_settings",
+          "name": "expert_range_from_position",
           "line": 73
         },
         {
-          "name": "expert_ui_store",
+          "name": "expert_range_from_number",
           "line": 76
         },
         {
+          "name": "expert_base_id",
+          "line": 80
+        },
+        {
+          "name": "expert_force_key",
+          "line": 81
+        },
+        {
+          "name": "expert_in_game",
+          "line": 86
+        },
+        {
+          "name": "expert_write_ui",
+          "line": 90
+        },
+        {
+          "name": "expert_layout_valid",
+          "line": 127
+        },
+        {
+          "name": "expert_ui_settings",
+          "line": 130
+        },
+        {
+          "name": "expert_ui_store",
+          "line": 133
+        },
+        {
           "name": "expert_ui_value",
-          "line": 84
+          "line": 142
         },
         {
           "name": "expert_apply_preset",
-          "line": 88
+          "line": 147
         },
         {
           "name": "expert_create_presets",
-          "line": 98
+          "line": 157
         },
         {
           "name": "expert_number_factory",
-          "line": 123
+          "line": 182
         },
         {
           "name": "expert_preset_controls",
-          "line": 131
+          "line": 190
         },
         {
           "name": "expert_number_current",
-          "line": 162
+          "line": 221
         },
         {
           "name": "expert_project_rows",
-          "line": 166
+          "line": 225
         },
         {
           "name": "expert_populate_after",
-          "line": 195
+          "line": 266
         },
         {
           "name": "expert_populate",
-          "line": 209
+          "line": 280
         },
         {
           "name": "expert_populate_site",
-          "line": 215
+          "line": 286
         },
         {
           "name": "expert_list_bind",
-          "line": 220
+          "line": 291
         },
         {
           "name": "expert_bind_row",
-          "line": 238
+          "line": 309
         },
         {
           "name": "expert_choice_event",
-          "line": 274
+          "line": 349
         },
         {
           "name": "expert_slider_event",
-          "line": 289
+          "line": 364
         },
         {
           "name": "expert_number_event",
-          "line": 299
+          "line": 381
         },
         {
           "name": "expert_number_confirm",
-          "line": 321
+          "line": 404
         },
         {
           "name": "expert_release_panel",
-          "line": 330
+          "line": 414
         },
         {
           "name": "expert_row_leave",
-          "line": 334
+          "line": 418
         },
         {
           "name": "expert_row_destroy",
-          "line": 339
+          "line": 423
         },
         {
           "name": "expert_ingame_commit",
-          "line": 360
+          "line": 444
         },
         {
           "name": "expert_ingame_build",
-          "line": 371
+          "line": 456
         },
         {
           "name": "expert_footer_button",
-          "line": 377
+          "line": 463
         },
         {
           "name": "expert_ingame_frame",
-          "line": 393
+          "line": 479
         },
         {
           "name": "expert_ingame_install",
-          "line": 417
+          "line": 503
         },
         {
           "name": "expert_destroy",
-          "line": 431
+          "line": 517
+        },
+        {
+          "name": "normal_layout",
+          "line": 549
+        },
+        {
+          "name": "normal_editable",
+          "line": 550
+        },
+        {
+          "name": "normal_view",
+          "line": 551
+        },
+        {
+          "name": "normal_rows",
+          "line": 552
+        },
+        {
+          "name": "normal_add_row",
+          "line": 556
+        },
+        {
+          "name": "normal_build",
+          "line": 567
+        },
+        {
+          "name": "normal_bind",
+          "line": 583
+        },
+        {
+          "name": "normal_bind_site",
+          "line": 596
+        },
+        {
+          "name": "normal_footer_button",
+          "line": 600
+        },
+        {
+          "name": "normal_frame",
+          "line": 608
+        },
+        {
+          "name": "normal_install",
+          "line": 632
         }
       ]
     },
@@ -6286,7 +7283,7 @@
     },
     {
       "file": "src/native_face_timing.inl",
-      "sha256": "20ef9a8dece7d70c2b23b841b1c39704ecf14843d00d369ec8eb1a7ffdd9347c",
+      "sha256": "d57fab0b541a1efa5dd49eddb2aa538710c7671e36ec07d87cb25758ed01ae05",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -6319,14 +7316,22 @@
           "line": 19
         },
         {
+          "name": "install_day_sites",
+          "line": 59
+        },
+        {
           "name": "install",
-          "line": 21
+          "line": 78
+        },
+        {
+          "name": "install_face",
+          "line": 79
         }
       ]
     },
     {
       "file": "src/native_facilities.inl",
-      "sha256": "cd2789a70f3356507dda75bad55353f6fb20020d96136d95c74be6e4bd41063f",
+      "sha256": "fec8803a01d5482ac7a58173d6085654a99bb260ef6452a43d4b9f781f6e1bc3",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "시설 건설·파괴·병참 임무 복원",
       "definitions": [
@@ -6376,7 +7381,7 @@
         },
         {
           "name": "cancel_unqualified_neutral_order",
-          "line": 203
+          "line": 204
         }
       ]
     },
@@ -6410,7 +7415,7 @@
     },
     {
       "file": "src/native_injury.inl",
-      "sha256": "b38ea7d683554bc85cb8b8bf8f0ab04296240f76badfcfd4cc999d4167018bc9",
+      "sha256": "ed942be0db54aa1dbbda97ce2e0f0abc14c129477c842bb3911515877203716a",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "부상 임무 제한·담당관 해제·본초학",
       "definitions": [
@@ -6455,42 +7460,50 @@
           "line": 49
         },
         {
-          "name": "injury_government_selection",
-          "line": 81
+          "name": "policy_level_of",
+          "line": 87
         },
         {
-          "name": "injury_rumor_actors",
+          "name": "ai_policy_cap",
           "line": 96
         },
         {
+          "name": "injury_government_selection",
+          "line": 115
+        },
+        {
+          "name": "injury_rumor_actors",
+          "line": 131
+        },
+        {
           "name": "injury_synchronize_city",
-          "line": 101
+          "line": 136
         },
         {
           "name": "injury_departure_create",
-          "line": 143
+          "line": 178
         },
         {
           "name": "injury_dual_destruction",
-          "line": 153
+          "line": 188
         },
         {
           "name": "injury_estrange",
-          "line": 154
+          "line": 189
         },
         {
           "name": "injury_hidden_poison",
-          "line": 155
+          "line": 190
         },
         {
           "name": "injury_spy_away",
-          "line": 157
+          "line": 192
         }
       ]
     },
     {
       "file": "src/native_injury_links.inl",
-      "sha256": "6b03dffa30302cabd39d4242aed9f6773e5e997f1ea458ef564329b239c8f76f",
+      "sha256": "e7b426fd914bfeea5518018cae66ee373146e28ca58564001aedc3102e43afbe",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "부상 임무 제한·담당관 해제·본초학",
       "definitions": [
@@ -7438,7 +8451,7 @@
     },
     {
       "file": "src/native_merit.inl",
-      "sha256": "125753261d0d3a27df781543717302b63600d19b202a30a7d24e822225545766",
+      "sha256": "b9e9d009b16049e8145f19c3d3780d00145797c857ae43929f77921081f80b81",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "무공 병력·논공 친애·열전·보조 저장",
       "definitions": [
@@ -7564,61 +8577,65 @@
         },
         {
           "name": "merit_effect_reject",
-          "line": 463
+          "line": 464
         },
         {
           "name": "merit_troops_known",
-          "line": 466
+          "line": 467
         },
         {
           "name": "merit_effect_dump",
-          "line": 472
+          "line": 473
         },
         {
           "name": "merit_effect_state",
-          "line": 486
+          "line": 487
         },
         {
           "name": "merit_effect_config",
-          "line": 535
+          "line": 547
         },
         {
           "name": "merit_effect_cached_locked",
-          "line": 538
+          "line": 550
         },
         {
           "name": "merit_effect_state_cached",
-          "line": 548
+          "line": 561
+        },
+        {
+          "name": "merit_effect_state_slow",
+          "line": 571
         },
         {
           "name": "merit_effects",
-          "line": 564
+          "line": 586
         },
         {
           "name": "merit_query",
-          "line": 565
+          "line": 587
         },
         {
           "name": "merit_effect_text",
-          "line": 581
+          "line": 603
         },
         {
           "name": "merit_reset",
-          "line": 598
+          "line": 619
         },
         {
           "name": "merit_person_read",
-          "line": 605
+          "line": 626
         },
         {
           "name": "merit_profile",
-          "line": 622
+          "line": 643
         }
       ]
     },
     {
       "file": "src/native_merit_links.inl",
-      "sha256": "ffb8b044b965675646ef8f08c5e00319fda83f12f7471b1c95513e4007e7e791",
+      "sha256": "afb4802aeb15732cae02114b414caebdc538bc8077b425834d07dede74feff6c",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "무공 병력·논공 친애·열전·보조 저장",
       "definitions": [
@@ -7648,13 +8665,13 @@
         },
         {
           "name": "restore_merit",
-          "line": 151
+          "line": 154
         }
       ]
     },
     {
       "file": "src/native_merit_save.inl",
-      "sha256": "82cf68ebdc095ca50540df6a3c86a0b542d41127c0c28f8792c1ad293d3b3f07",
+      "sha256": "83ce644501ae1578d31e95976484d65126399ad6fb9c4dd42798a76aac0adae4",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "무공 병력·논공 친애·열전·보조 저장",
       "definitions": [
@@ -7699,8 +8716,12 @@
           "line": 107
         },
         {
+          "name": "start_state_guard",
+          "line": 145
+        },
+        {
           "name": "merit_load_host",
-          "line": 138
+          "line": 153
         }
       ]
     },
@@ -7770,7 +8791,7 @@
     },
     {
       "file": "src/native_modpack.inl",
-      "sha256": "ad6ac24ac5f55e5bb78a1dffa59aae70b8879cd0c97451e564cd17856ede59d7",
+      "sha256": "34e65d4f172a5b18527b615d02f4199afdf3330d78b36dadbffcb060835c986d",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "능력200·성장·툴팁·콜라보·전사·명승지",
       "definitions": [
@@ -7857,6 +8878,50 @@
       ]
     },
     {
+      "file": "src/native_modpack_dll.inl",
+      "sha256": "5c952c351e18567ef89c7164680204d3c3f158df4f7174cf5a619788f8307644",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "능력200·성장·툴팁·콜라보·전사·명승지",
+      "definitions": [
+        {
+          "name": "log_sink",
+          "line": 16
+        },
+        {
+          "name": "load",
+          "line": 17
+        },
+        {
+          "name": "flags",
+          "line": 31
+        },
+        {
+          "name": "tiles",
+          "line": 43
+        },
+        {
+          "name": "flood",
+          "line": 55
+        },
+        {
+          "name": "probe_player_armies",
+          "line": 68
+        },
+        {
+          "name": "time_step",
+          "line": 84
+        },
+        {
+          "name": "params",
+          "line": 109
+        },
+        {
+          "name": "install",
+          "line": 110
+        }
+      ]
+    },
+    {
       "file": "src/native_name_lookup.inl",
       "sha256": "26856e11f4a7eac02aa9e3b6e40e38d26bab702b65e2f767279296115c2b7ee8",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
@@ -7882,81 +8947,93 @@
     },
     {
       "file": "src/native_obstacles.inl",
-      "sha256": "1fd781b101c2582e2b614331dd0603737ab9fcfbaf275c801d1fcd02b844422c",
+      "sha256": "41dd3f4a87ea686ec1dc3c621db03567a9e1ea10317481b0a5967ad3668d24be",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "피해 관찰·중립 방벽 자격",
       "definitions": [
         {
           "name": "obstacle_between",
-          "line": 17
+          "line": 18
         },
         {
           "name": "player_ranged_army",
-          "line": 22
+          "line": 23
         },
         {
           "name": "combat_apply_damage",
-          "line": 29
+          "line": 30
+        },
+        {
+          "name": "player_firing_facility",
+          "line": 70
         },
         {
           "name": "ranged_hit_ready",
-          "line": 68
+          "line": 77
+        },
+        {
+          "name": "ranged_hit_source",
+          "line": 86
         },
         {
           "name": "ranged_wall",
-          "line": 76
+          "line": 90
+        },
+        {
+          "name": "record_facility_hit",
+          "line": 99
         },
         {
           "name": "campaign_goal_hex",
-          "line": 82
+          "line": 114
         },
         {
           "name": "base",
-          "line": 88
+          "line": 120
         },
         {
           "name": "neighbour",
-          "line": 92
+          "line": 124
         },
         {
           "name": "path_wall_city",
-          "line": 98
+          "line": 130
         },
         {
           "name": "path_wall_city_id",
-          "line": 134
+          "line": 177
         },
         {
           "name": "path_wall_locked",
-          "line": 150
+          "line": 193
         },
         {
           "name": "path_wall_done",
-          "line": 155
+          "line": 198
         },
         {
           "name": "path_wall_release",
-          "line": 161
+          "line": 204
         },
         {
           "name": "refresh_path_wall",
-          "line": 179
+          "line": 222
         },
         {
           "name": "path_wall_fresh",
-          "line": 268
+          "line": 325
         },
         {
           "name": "neutral_wall_reason",
-          "line": 277
+          "line": 334
         },
         {
           "name": "neutral_mission_valid",
-          "line": 291
+          "line": 354
         },
         {
           "name": "observe_obstacle_motion",
-          "line": 300
+          "line": 363
         }
       ]
     },
@@ -7990,7 +9067,7 @@
     },
     {
       "file": "src/native_officer_rotation.inl",
-      "sha256": "46097bf7396ab65251989bdc9ee9cc44e5ec2dc717f2ec814abc4d6890b42dc4",
+      "sha256": "bcce05895ba93d5a71f2e9178b9be95fe96d1bdf2c4aac36f5b48a8db5f5c238",
       "scope": "시험 기능; 설치기 기본 꺼짐",
       "topic": "시험 무장 목록·검색·스냅샷",
       "definitions": [
@@ -8123,20 +9200,28 @@
           "line": 344
         },
         {
+          "name": "helm_trait",
+          "line": 371
+        },
+        {
+          "name": "helm_place",
+          "line": 375
+        },
+        {
           "name": "rotate_force",
-          "line": 365
+          "line": 394
         },
         {
           "name": "demo_play",
-          "line": 412
+          "line": 442
         },
         {
           "name": "player_force",
-          "line": 413
+          "line": 443
         },
         {
           "name": "tick",
-          "line": 422
+          "line": 452
         }
       ]
     },
@@ -8194,7 +9279,7 @@
     },
     {
       "file": "src/native_path_fast.inl",
-      "sha256": "3612220b4a70f12b88ef8107ab6775c6a16db812d3877b28a3847d96247b9c57",
+      "sha256": "d0ecedccb79175c80c84a666dd06ed0d398c39e239df5089c34174b458286b93",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -8215,134 +9300,158 @@
           "line": 86
         },
         {
+          "name": "focus_caller",
+          "line": 115
+        },
+        {
           "name": "caller_ranges",
-          "line": 148
+          "line": 163
         },
         {
           "name": "caller_code",
-          "line": 156
+          "line": 171
         },
         {
           "name": "caller_capture",
-          "line": 164
-        },
-        {
-          "name": "caller_add",
-          "line": 170
-        },
-        {
-          "name": "caller_flush",
           "line": 179
         },
         {
-          "name": "ticks",
+          "name": "caller_add",
+          "line": 185
+        },
+        {
+          "name": "caller_flush",
           "line": 194
         },
         {
-          "name": "microseconds",
-          "line": 195
-        },
-        {
-          "name": "dup_mix",
-          "line": 208
-        },
-        {
-          "name": "dup_flush",
+          "name": "ticks",
           "line": 209
         },
         {
+          "name": "microseconds",
+          "line": 210
+        },
+        {
+          "name": "dup_mix",
+          "line": 223
+        },
+        {
+          "name": "dup_flush",
+          "line": 224
+        },
+        {
           "name": "dup_note",
-          "line": 218
+          "line": 233
+        },
+        {
+          "name": "focus_flush",
+          "line": 267
         },
         {
           "name": "record",
-          "line": 245
+          "line": 279
         },
         {
           "name": "neighbour_fill",
-          "line": 291
+          "line": 325
+        },
+        {
+          "name": "over",
+          "line": 340
         },
         {
           "name": "Native",
-          "line": 317
+          "line": 355
         },
         {
           "name": "prepare",
-          "line": 326
+          "line": 364
         },
         {
           "name": "begin",
-          "line": 360
+          "line": 403
         },
         {
           "name": "neighbour",
-          "line": 381
+          "line": 432
         },
         {
           "name": "tile",
-          "line": 385
+          "line": 436
         },
         {
           "name": "terrain",
-          "line": 386
+          "line": 440
         },
         {
           "name": "allowed",
-          "line": 387
+          "line": 441
+        },
+        {
+          "name": "allowed_raw",
+          "line": 450
         },
         {
           "name": "adjust",
-          "line": 412
+          "line": 479
         },
         {
           "name": "coordinate",
-          "line": 415
+          "line": 486
         },
         {
           "name": "heuristic",
-          "line": 416
+          "line": 487
         },
         {
           "name": "success",
-          "line": 420
+          "line": 492
         },
         {
           "name": "cleanup",
-          "line": 421
+          "line": 493
         },
         {
           "name": "slot_of",
-          "line": 433
+          "line": 505
         },
         {
           "name": "known_slot",
-          "line": 438
+          "line": 510
         },
         {
           "name": "acquire_storage",
-          "line": 439
+          "line": 511
         },
         {
           "name": "path",
-          "line": 529
+          "line": 637
+        },
+        {
+          "name": "bounded_cost",
+          "line": 658
+        },
+        {
+          "name": "bounded_install",
+          "line": 709
         },
         {
           "name": "prepare",
-          "line": 537
+          "line": 727
         },
         {
           "name": "install",
-          "line": 555
+          "line": 745
         },
         {
           "name": "path_fast_guards_match",
-          "line": 583
+          "line": 777
         }
       ]
     },
     {
       "file": "src/native_personnel.inl",
-      "sha256": "0380cab2ed05383b1670c58bc27a4c36b736add0a4b7d0bb02e27609649d22a8",
+      "sha256": "18a30ad0967c6321e2ede797ee9ee9a737df866d347b147b2e77b09370d5e1cf",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "인물 관계·건강 검사·자동등용 실행",
       "definitions": [
@@ -8792,165 +9901,197 @@
     },
     {
       "file": "src/native_route_hook.inl",
-      "sha256": "1eefaf6146ad00150f3ac1bf2e73cfe4c2d13c9726c662496ad8dc6a4dbb7232",
+      "sha256": "6b02ed674949c015f67c7d491ef791eeebceb11a6c537d896ad5832914fb163a",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
         {
           "name": "read",
-          "line": 35
+          "line": 36
         },
         {
           "name": "same",
-          "line": 41
+          "line": 42
         },
         {
           "name": "write",
-          "line": 46
+          "line": 47
         },
         {
           "name": "order",
-          "line": 53
+          "line": 54
         },
         {
           "name": "owns",
-          "line": 68
+          "line": 69
         },
         {
           "name": "finish",
-          "line": 74
+          "line": 75
         },
         {
           "name": "morale_target",
-          "line": 81
+          "line": 82
         },
         {
           "name": "urgent",
-          "line": 86
+          "line": 87
         },
         {
           "name": "find_band",
-          "line": 92
+          "line": 93
         },
         {
           "name": "wait_hex",
-          "line": 107
+          "line": 108
         },
         {
           "name": "morale_member",
-          "line": 120
+          "line": 121
         },
         {
           "name": "neutral_wall",
-          "line": 167
+          "line": 168
         },
         {
           "name": "build_grid",
-          "line": 173
+          "line": 174
         },
         {
           "name": "wall_near",
-          "line": 197
+          "line": 198
+        },
+        {
+          "name": "plain_hexes",
+          "line": 210
+        },
+        {
+          "name": "hit_check",
+          "line": 221
         },
         {
           "name": "breach_group",
-          "line": 209
+          "line": 254
         },
         {
           "name": "assign_fifth",
-          "line": 279
-        },
-        {
-          "name": "wall_standing",
-          "line": 301
-        },
-        {
-          "name": "packed_order",
-          "line": 314
-        },
-        {
-          "name": "tile_at",
           "line": 324
         },
         {
+          "name": "wall_standing",
+          "line": 346
+        },
+        {
+          "name": "packed_order",
+          "line": 359
+        },
+        {
+          "name": "tile_at",
+          "line": 369
+        },
+        {
           "name": "region_at",
-          "line": 325
+          "line": 370
         },
         {
           "name": "region_owner",
-          "line": 329
+          "line": 374
         },
         {
           "name": "hostile",
-          "line": 330
+          "line": 375
         },
         {
           "name": "officer_takes",
-          "line": 333
+          "line": 378
         },
         {
           "name": "last_in_region",
-          "line": 339
+          "line": 384
         },
         {
           "name": "leaving_point",
-          "line": 349
-        },
-        {
-          "name": "behind_tile",
-          "line": 362
-        },
-        {
-          "name": "put_relay",
-          "line": 387
-        },
-        {
-          "name": "supply_check",
           "line": 394
         },
         {
+          "name": "behind_tile",
+          "line": 407
+        },
+        {
+          "name": "put_relay",
+          "line": 432
+        },
+        {
+          "name": "supply_check",
+          "line": 439
+        },
+        {
           "name": "after",
-          "line": 448
+          "line": 494
         },
         {
           "name": "route",
-          "line": 473
+          "line": 525
         },
         {
           "name": "listed",
-          "line": 478
+          "line": 530
         },
         {
           "name": "group_state",
-          "line": 491
+          "line": 543
         },
         {
           "name": "watch_young",
-          "line": 495
+          "line": 547
         },
         {
           "name": "daily",
-          "line": 527
+          "line": 579
         },
         {
           "name": "call_targets",
-          "line": 573
+          "line": 628
+        },
+        {
+          "name": "hit_wanted",
+          "line": 637
         },
         {
           "name": "wanted",
-          "line": 582
+          "line": 638
         },
         {
           "name": "prepare",
-          "line": 584
+          "line": 640
         },
         {
           "name": "restore",
-          "line": 605
+          "line": 661
         },
         {
           "name": "publish",
-          "line": 611
+          "line": 667
+        },
+        {
+          "name": "apply",
+          "line": 695
+        },
+        {
+          "name": "wanted",
+          "line": 704
+        },
+        {
+          "name": "prepare",
+          "line": 705
+        },
+        {
+          "name": "restore",
+          "line": 721
+        },
+        {
+          "name": "publish",
+          "line": 722
         }
       ]
     },
@@ -8979,8 +10120,420 @@
       ]
     },
     {
+      "file": "src/native_season_bake.inl",
+      "sha256": "fdd33be7c344df8fb074ec79ca68bdf789439465eef6762aa56be9e73d3034ca",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "on",
+          "line": 13
+        },
+        {
+          "name": "print",
+          "line": 17
+        },
+        {
+          "name": "drop",
+          "line": 24
+        },
+        {
+          "name": "kind",
+          "line": 49
+        },
+        {
+          "name": "reset_locked",
+          "line": 59
+        },
+        {
+          "name": "map_created",
+          "line": 63
+        },
+        {
+          "name": "source_created",
+          "line": 82
+        },
+        {
+          "name": "read_data",
+          "line": 99
+        },
+        {
+          "name": "block_bytes",
+          "line": 113
+        },
+        {
+          "name": "ground_kind",
+          "line": 173
+        },
+        {
+          "name": "shader_mode",
+          "line": 178
+        },
+        {
+          "name": "lit_kind",
+          "line": 184
+        },
+        {
+          "name": "swap_slot",
+          "line": 189
+        },
+        {
+          "name": "mat_on",
+          "line": 201
+        },
+        {
+          "name": "mat_ready",
+          "line": 203
+        },
+        {
+          "name": "rgb565",
+          "line": 204
+        },
+        {
+          "name": "to565",
+          "line": 205
+        },
+        {
+          "name": "hash2",
+          "line": 209
+        },
+        {
+          "name": "vnoise",
+          "line": 210
+        },
+        {
+          "name": "fbm",
+          "line": 216
+        },
+        {
+          "name": "tfbm",
+          "line": 218
+        },
+        {
+          "name": "crack_edge",
+          "line": 223
+        },
+        {
+          "name": "palette",
+          "line": 234
+        },
+        {
+          "name": "recolor",
+          "line": 258
+        },
+        {
+          "name": "mat_class",
+          "line": 276
+        },
+        {
+          "name": "mat_match",
+          "line": 288
+        },
+        {
+          "name": "mat_extend",
+          "line": 292
+        },
+        {
+          "name": "mat_created",
+          "line": 307
+        },
+        {
+          "name": "table_ok",
+          "line": 316
+        },
+        {
+          "name": "table_patch",
+          "line": 323
+        },
+        {
+          "name": "create_buffer",
+          "line": 347
+        },
+        {
+          "name": "create_srv",
+          "line": 360
+        },
+        {
+          "name": "create_ps",
+          "line": 379
+        },
+        {
+          "name": "swap_ps",
+          "line": 415
+        },
+        {
+          "name": "install_ps",
+          "line": 421
+        },
+        {
+          "name": "restore_ps",
+          "line": 455
+        },
+        {
+          "name": "load_gpu",
+          "line": 464
+        },
+        {
+          "name": "turn_key",
+          "line": 503
+        },
+        {
+          "name": "items_per_map",
+          "line": 510
+        },
+        {
+          "name": "set_params",
+          "line": 511
+        },
+        {
+          "name": "Saved",
+          "line": 527
+        },
+        {
+          "name": "locate",
+          "line": 550
+        },
+        {
+          "name": "bake_item",
+          "line": 555
+        },
+        {
+          "name": "ready_locked",
+          "line": 590
+        },
+        {
+          "name": "wants",
+          "line": 591
+        },
+        {
+          "name": "swap_in",
+          "line": 595
+        },
+        {
+          "name": "load_fx",
+          "line": 629
+        },
+        {
+          "name": "scene_for",
+          "line": 660
+        },
+        {
+          "name": "run_rain",
+          "line": 680
+        },
+        {
+          "name": "cloud_grab",
+          "line": 744
+        },
+        {
+          "name": "cloud_touch",
+          "line": 768
+        },
+        {
+          "name": "run_cloud",
+          "line": 772
+        },
+        {
+          "name": "lit_end",
+          "line": 815
+        },
+        {
+          "name": "after_draw",
+          "line": 822
+        },
+        {
+          "name": "table_buffer",
+          "line": 843
+        },
+        {
+          "name": "hook_map",
+          "line": 849
+        },
+        {
+          "name": "hook_unmap",
+          "line": 856
+        },
+        {
+          "name": "hook_update",
+          "line": 864
+        },
+        {
+          "name": "hook_pss",
+          "line": 872
+        },
+        {
+          "name": "hook_pssrv",
+          "line": 892
+        },
+        {
+          "name": "hook_pscb",
+          "line": 897
+        },
+        {
+          "name": "hook_omsetrt",
+          "line": 901
+        },
+        {
+          "name": "hook_draw",
+          "line": 904
+        },
+        {
+          "name": "hook_drawi",
+          "line": 905
+        },
+        {
+          "name": "hook_drawii",
+          "line": 906
+        },
+        {
+          "name": "hook_drawinst",
+          "line": 907
+        },
+        {
+          "name": "hook_drawiii_b",
+          "line": 908
+        },
+        {
+          "name": "hook_drawiind_b",
+          "line": 909
+        },
+        {
+          "name": "hook_context",
+          "line": 921
+        },
+        {
+          "name": "unhook_context",
+          "line": 937
+        },
+        {
+          "name": "rain_diag",
+          "line": 945
+        },
+        {
+          "name": "fx_fetch",
+          "line": 965
+        },
+        {
+          "name": "fx_frame",
+          "line": 969
+        },
+        {
+          "name": "frame",
+          "line": 986
+        },
+        {
+          "name": "restore",
+          "line": 1055
+        }
+      ]
+    },
+    {
+      "file": "src/native_season_probe.inl",
+      "sha256": "9ca7b134ba8728a4fa9edcc651156239124d14b853c4e89e99343a688d9d8c22",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "bits",
+          "line": 10
+        },
+        {
+          "name": "on",
+          "line": 11
+        },
+        {
+          "name": "now_ms",
+          "line": 15
+        },
+        {
+          "name": "hashes",
+          "line": 22
+        },
+        {
+          "name": "probe_directory",
+          "line": 29
+        },
+        {
+          "name": "dump_shader",
+          "line": 38
+        },
+        {
+          "name": "log_environment",
+          "line": 56
+        },
+        {
+          "name": "large",
+          "line": 73
+        },
+        {
+          "name": "mip_count",
+          "line": 74
+        },
+        {
+          "name": "tint_kind",
+          "line": 80
+        },
+        {
+          "name": "rgb",
+          "line": 92
+        },
+        {
+          "name": "rgb565",
+          "line": 95
+        },
+        {
+          "name": "put_bits",
+          "line": 99
+        },
+        {
+          "name": "bc7_solid",
+          "line": 103
+        },
+        {
+          "name": "fill_block",
+          "line": 109
+        },
+        {
+          "name": "dump_texture",
+          "line": 167
+        },
+        {
+          "name": "texture_created",
+          "line": 202
+        },
+        {
+          "name": "shader_created",
+          "line": 226
+        },
+        {
+          "name": "shader_original",
+          "line": 238
+        },
+        {
+          "name": "create_vs",
+          "line": 245
+        },
+        {
+          "name": "create_ps",
+          "line": 252
+        },
+        {
+          "name": "swap_slot",
+          "line": 259
+        },
+        {
+          "name": "install",
+          "line": 267
+        },
+        {
+          "name": "restore",
+          "line": 291
+        }
+      ]
+    },
+    {
       "file": "src/native_siege_guard.inl",
-      "sha256": "70e731e637be84ac94e67ae39ce4a07af153ab00004b553c0eb062e8d259f6fd",
+      "sha256": "2087c1f059d485ebcd56ef53bbfcd5a64afbf8a8543ca624bdd7b64d0308c104",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -8994,273 +10547,349 @@
         },
         {
           "name": "rebuild",
-          "line": 51
+          "line": 53
         },
         {
           "name": "is_guard",
-          "line": 72
+          "line": 74
+        },
+        {
+          "name": "guard_radius",
+          "line": 82
         },
         {
           "name": "player_near",
-          "line": 79
+          "line": 84
         },
         {
           "name": "tick",
-          "line": 92
+          "line": 97
         },
         {
           "name": "collect",
-          "line": 112
+          "line": 117
         },
         {
           "name": "call_targets",
-          "line": 119
+          "line": 124
         },
         {
           "name": "prepare",
-          "line": 131
+          "line": 136
         },
         {
           "name": "restore",
-          "line": 152
+          "line": 157
         },
         {
           "name": "publish",
-          "line": 158
+          "line": 163
+        },
+        {
+          "name": "pick",
+          "line": 194
+        },
+        {
+          "name": "upgrade",
+          "line": 219
+        },
+        {
+          "name": "start",
+          "line": 241
+        },
+        {
+          "name": "resume",
+          "line": 244
+        },
+        {
+          "name": "prepare",
+          "line": 248
+        },
+        {
+          "name": "restore",
+          "line": 269
+        },
+        {
+          "name": "publish",
+          "line": 273
+        },
+        {
+          "name": "retake_group",
+          "line": 303
+        },
+        {
+          "name": "tree",
+          "line": 318
+        },
+        {
+          "name": "prepare",
+          "line": 343
+        },
+        {
+          "name": "restore",
+          "line": 359
+        },
+        {
+          "name": "publish",
+          "line": 360
+        },
+        {
+          "name": "prepare",
+          "line": 391
+        },
+        {
+          "name": "restore",
+          "line": 409
+        },
+        {
+          "name": "publish",
+          "line": 410
         }
       ]
     },
     {
       "file": "src/native_sortie.inl",
-      "sha256": "fd2e2fa41153b6a602b0a9f49255cb4d2e6357aebc20dff72caa932f50937ae8",
+      "sha256": "c17937aede62113cf803fbce5bbe5d6bb69ade17d33602a8f8cd10a04be1ca85",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "출진 명령·편성·대열·역할·이동속도",
       "definitions": [
         {
           "name": "sortie_search_next",
-          "line": 16
+          "line": 18
         },
         {
           "name": "sortie_search",
-          "line": 44
+          "line": 46
         },
         {
           "name": "sortie_auto_person",
-          "line": 66
+          "line": 68
         },
         {
           "name": "sortie_controlled",
-          "line": 76
+          "line": 78
         },
         {
           "name": "sortie_goal",
-          "line": 80
+          "line": 82
         },
         {
           "name": "sortie_hostile",
-          "line": 85
+          "line": 87
         },
         {
           "name": "sortie_assault",
-          "line": 91
+          "line": 93
         },
         {
           "name": "sortie_recover",
-          "line": 99
+          "line": 101
         },
         {
           "name": "sortie_snapshot",
-          "line": 125
+          "line": 127
         },
         {
           "name": "sortie_member",
-          "line": 143
+          "line": 145
         },
         {
           "name": "sortie_commit",
-          "line": 144
+          "line": 146
         },
         {
           "name": "campaign_group_member",
-          "line": 147
+          "line": 149
         },
         {
           "name": "sortie_rally_arrived",
-          "line": 148
+          "line": 150
         },
         {
           "name": "campaign_group_marching",
-          "line": 156
+          "line": 158
         },
         {
           "name": "sortie_support",
-          "line": 160
+          "line": 162
         },
         {
           "name": "sortie_area_trait",
-          "line": 174
+          "line": 176
         },
         {
           "name": "sortie_female_capped",
-          "line": 183
+          "line": 185
         },
         {
           "name": "sortie_likes",
-          "line": 186
+          "line": 188
         },
         {
           "name": "sortie_command",
-          "line": 190
+          "line": 192
         },
         {
           "name": "sortie_field_formation",
-          "line": 201
+          "line": 203
         },
         {
           "name": "sortie_capture_formation",
-          "line": 206
+          "line": 208
+        },
+        {
+          "name": "computer_tactic_order",
+          "line": 219
         },
         {
           "name": "sortie_dispatch",
-          "line": 213
+          "line": 243
         },
         {
           "name": "sortie_issue",
-          "line": 270
+          "line": 301
         },
         {
           "name": "sortie_departure_from",
-          "line": 274
+          "line": 305
         },
         {
           "name": "sortie_departure",
-          "line": 451
+          "line": 482
         },
         {
           "name": "sortie_escort_clear",
-          "line": 462
+          "line": 493
         },
         {
           "name": "sortie_escort_member",
-          "line": 466
+          "line": 497
         },
         {
           "name": "sortie_support_attach",
-          "line": 488
+          "line": 519
         },
         {
           "name": "sortie_group_count",
-          "line": 543
-        },
-        {
-          "name": "sortie_plan",
-          "line": 546
-        },
-        {
-          "name": "sortie_plan8",
-          "line": 573
-        },
-        {
-          "name": "sortie_plan9",
           "line": 574
         },
         {
-          "name": "sortie_plan10",
-          "line": 575
-        },
-        {
-          "name": "sortie_plan11",
-          "line": 576
-        },
-        {
-          "name": "sortie_plan22",
+          "name": "sortie_plan",
           "line": 577
         },
         {
+          "name": "sortie_plan8",
+          "line": 604
+        },
+        {
+          "name": "sortie_plan9",
+          "line": 605
+        },
+        {
+          "name": "sortie_plan10",
+          "line": 606
+        },
+        {
+          "name": "sortie_plan11",
+          "line": 607
+        },
+        {
+          "name": "sortie_plan22",
+          "line": 608
+        },
+        {
           "name": "sortie_valid_group",
-          "line": 578
+          "line": 609
         },
         {
           "name": "sortie_movement_next",
-          "line": 590
+          "line": 621
+        },
+        {
+          "name": "tile_index",
+          "line": 648
+        },
+        {
+          "name": "apply",
+          "line": 665
         },
         {
           "name": "sortie_movement",
-          "line": 611
+          "line": 674
         },
         {
           "name": "sortie_move",
-          "line": 614
+          "line": 679
         },
         {
           "name": "sortie_order",
-          "line": 625
+          "line": 690
         },
         {
           "name": "sortie_restore",
-          "line": 626
+          "line": 691
         },
         {
           "name": "sortie_trace_path",
-          "line": 627
+          "line": 692
         },
         {
           "name": "sortie_chain_order",
-          "line": 636
+          "line": 701
         },
         {
           "name": "sortie_short_move",
-          "line": 663
+          "line": 728
         },
         {
           "name": "sortie_route_issue",
-          "line": 682
+          "line": 747
         },
         {
           "name": "sortie_route_orders",
-          "line": 688
+          "line": 753
         },
         {
           "name": "sortie_settled",
-          "line": 695
+          "line": 760
         },
         {
           "name": "sortie_facing",
-          "line": 702
+          "line": 767
         },
         {
           "name": "sortie_place",
-          "line": 708
+          "line": 773
         },
         {
           "name": "sortie_hold",
-          "line": 726
+          "line": 791
         },
         {
           "name": "sortie_advance",
-          "line": 730
+          "line": 795
         },
         {
           "name": "sortie_forced_group_march",
-          "line": 750
+          "line": 815
         },
         {
           "name": "sortie_support_step",
-          "line": 768
+          "line": 833
         },
         {
           "name": "sortie_capture_work",
-          "line": 790
+          "line": 855
         },
         {
           "name": "sortie_step",
-          "line": 831
+          "line": 896
         }
       ]
     },
     {
       "file": "src/native_sortie_links.inl",
-      "sha256": "4381bf40eb6e79aa05e07665650ce32bd1afd469e63529a530ead2e9ebc59388",
+      "sha256": "57f6fe1e5678b3bb1afe4392ac89b4519a933cabe80f32316e2a7724498f2a27",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "출진 명령·편성·대열·역할·이동속도",
       "definitions": [
@@ -9269,42 +10898,54 @@
           "line": 39
         },
         {
+          "name": "tribe_path_site",
+          "line": 51
+        },
+        {
+          "name": "tribe_foe_near",
+          "line": 58
+        },
+        {
+          "name": "tribe_path",
+          "line": 73
+        },
+        {
           "name": "sortie_movement_site",
-          "line": 42
+          "line": 85
         },
         {
           "name": "sortie_call_target",
-          "line": 52
+          "line": 99
         },
         {
           "name": "sortie_call_publish",
-          "line": 61
+          "line": 108
         },
         {
           "name": "sortie_call_restore",
-          "line": 65
+          "line": 112
         },
         {
           "name": "sortie_guards_match",
-          "line": 80
+          "line": 127
         },
         {
           "name": "prepare_sortie",
-          "line": 86
+          "line": 133
         },
         {
           "name": "publish_sortie",
-          "line": 120
+          "line": 167
         },
         {
           "name": "restore_sortie",
-          "line": 130
+          "line": 177
         }
       ]
     },
     {
       "file": "src/native_speed_buttons.inl",
-      "sha256": "ebdfa2b223121797a430f6dc2ea10e1942b2c715b4aed57f81b1894405807507",
+      "sha256": "85e55e65597ccb499b67d68cc639882c5de61bf4286ecad286a06d370de15b41",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "×4/×8·호버·진행 프레임",
       "definitions": [
@@ -9366,33 +11007,33 @@
         },
         {
           "name": "frame",
-          "line": 170
+          "line": 171
         },
         {
           "name": "absolute_rect",
-          "line": 227
+          "line": 228
         },
         {
           "name": "cursor_ui",
-          "line": 235
+          "line": 236
         },
         {
           "name": "near_popup",
-          "line": 242
+          "line": 243
         },
         {
           "name": "hover",
-          "line": 249
+          "line": 250
         },
         {
           "name": "install",
-          "line": 267
+          "line": 268
         }
       ]
     },
     {
       "file": "src/native_split_install.inl",
-      "sha256": "da28c22d9a5e8fb000625021e93220d41eb53f83fa423f60e4798ef83651e75e",
+      "sha256": "4e7c7b1dd921639e2a1f328bb8d8bfc39239e08fa3c4bf5f7fe158ba75a7da76",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "DLL별 연결 소유권·검사·게시·복구",
       "definitions": [
@@ -9434,99 +11075,99 @@
         },
         {
           "name": "compat_feature_off",
-          "line": 142
+          "line": 143
         },
         {
           "name": "split_feature_off",
-          "line": 146
+          "line": 147
         },
         {
           "name": "split_disable",
-          "line": 156
+          "line": 157
         },
         {
           "name": "split_terrain_render_guard",
-          "line": 164
+          "line": 165
         },
         {
           "name": "split_layout_yield",
-          "line": 177
+          "line": 178
         },
         {
           "name": "split_feature_guards",
-          "line": 194
+          "line": 195
         },
         {
           "name": "split_pointer_guarded",
-          "line": 262
+          "line": 263
         },
         {
           "name": "split_guards_match",
-          "line": 270
+          "line": 273
         },
         {
           "name": "split_services_reset",
-          "line": 280
+          "line": 283
         },
         {
           "name": "split_rollback",
-          "line": 286
+          "line": 289
         },
         {
           "name": "SAN14TerrainRenderFixture",
-          "line": 330
+          "line": 338
         },
         {
           "name": "split_prepare",
-          "line": 349
+          "line": 357
         },
         {
           "name": "split_core_enabled",
-          "line": 458
+          "line": 476
         },
         {
           "name": "split_pointer_enabled",
-          "line": 471
+          "line": 489
         },
         {
           "name": "split_publish",
-          "line": 483
+          "line": 504
         },
         {
           "name": "split_terrain_profile_init",
-          "line": 589
+          "line": 615
         },
         {
           "name": "split_terrain_diag_log",
-          "line": 597
+          "line": 623
         },
         {
           "name": "split_path_count_install",
-          "line": 610
+          "line": 636
         },
         {
           "name": "path_count::install",
-          "line": 612
+          "line": 638
         },
         {
           "name": "split_timer_1ms",
-          "line": 618
+          "line": 644
         },
         {
           "name": "split_ai_trace_wanted",
-          "line": 624
+          "line": 650
         },
         {
           "name": "split_ai_trace_install",
-          "line": 631
+          "line": 657
         },
         {
           "name": "split_run_modules",
-          "line": 652
+          "line": 678
         },
         {
           "name": "split_activate",
-          "line": 670
+          "line": 696
         }
       ]
     },
@@ -9620,115 +11261,119 @@
     },
     {
       "file": "src/native_tactic_priority.inl",
-      "sha256": "0a63966209b9248556bb012182334bac83055a911e41d4d460385948dddd3999",
+      "sha256": "6bb3891ffbadfff99571c76c6372e992183e7039f985726369299bd621b5e8b6",
       "scope": "시험 기능; 설치기 기본 꺼짐",
       "topic": "시험 플레이어 출진 전법 우선순위",
       "definitions": [
         {
           "name": "catalog",
-          "line": 32
+          "line": 33
         },
         {
           "name": "publish",
-          "line": 37
+          "line": 38
         },
         {
           "name": "load_settings",
-          "line": 40
+          "line": 41
         },
         {
           "name": "reset",
-          "line": 59
-        },
-        {
-          "name": "forget",
           "line": 60
         },
         {
+          "name": "forget",
+          "line": 61
+        },
+        {
           "name": "record_list",
-          "line": 62
+          "line": 63
         },
         {
           "name": "record_person",
-          "line": 66
+          "line": 67
         },
         {
           "name": "current_record",
-          "line": 68
+          "line": 69
         },
         {
           "name": "refresh_tabs",
-          "line": 85
+          "line": 86
         },
         {
           "name": "tactic_name",
-          "line": 92
+          "line": 93
         },
         {
           "name": "tiles_for",
-          "line": 105
-        },
-        {
-          "name": "tp::build_tiles",
           "line": 106
         },
         {
+          "name": "tp::build_tiles",
+          "line": 107
+        },
+        {
           "name": "visible_ranked",
-          "line": 108
+          "line": 109
         },
         {
           "name": "clicked",
-          "line": 115
-        },
-        {
-          "name": "add_button",
           "line": 116
         },
         {
+          "name": "add_button",
+          "line": 117
+        },
+        {
           "name": "set_text",
-          "line": 135
+          "line": 136
         },
         {
           "name": "formation_usable",
-          "line": 139
+          "line": 140
         },
         {
           "name": "eligible_tactics",
-          "line": 143
+          "line": 144
         },
         {
           "name": "log_catalog",
-          "line": 155
+          "line": 156
         },
         {
           "name": "apply",
-          "line": 164
+          "line": 165
         },
         {
           "name": "update",
-          "line": 291
+          "line": 292
         },
         {
           "name": "leave",
-          "line": 314
+          "line": 316
         },
         {
           "name": "depart",
-          "line": 320
+          "line": 323
         },
         {
           "name": "guards_match",
-          "line": 329
+          "line": 333
+        },
+        {
+          "name": "screen_hooks_ready",
+          "line": 343
         },
         {
           "name": "install",
-          "line": 338
+          "line": 344
         }
       ]
     },
     {
       "file": "src/native_tactic_priority_grid.inl",
-      "sha256": "43dabce449f7573b25effde9264d6d88336fd8e0d85677e780c57c54b8c989aa",
+      "sha256": "59c6215b80f891a2ee5f9809f71c15e402be0f9b27cc7404262b10a1766d3bfa",
       "scope": "시험 기능; 설치기 기본 꺼짐",
       "topic": "시험 플레이어 출진 전법 우선순위",
       "definitions": [
@@ -9916,57 +11561,73 @@
     },
     {
       "file": "src/native_terrain_edit.inl",
-      "sha256": "09372d476745155f62f4a55d50e90617ff5c200c81005a498c69696ca72bc19b",
+      "sha256": "93848eaec4235bb83255b78a6b2c87d34381a3b0249994b92ee31f875f9463e0",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
         {
           "name": "reset_highlight_context",
-          "line": 16
+          "line": 23
         },
         {
           "name": "clear_menu_context",
-          "line": 19
+          "line": 26
         },
         {
           "name": "reset_ui_context",
-          "line": 20
+          "line": 27
         },
         {
           "name": "active",
-          "line": 21
+          "line": 28
         },
         {
           "name": "occupied",
-          "line": 29
+          "line": 36
         },
         {
           "name": "clear_cost_cache",
-          "line": 48
+          "line": 55
         },
         {
           "name": "sync_render",
-          "line": 60
+          "line": 67
         },
         {
           "name": "check_world",
-          "line": 82
+          "line": 90
         },
         {
           "name": "apply",
-          "line": 117
+          "line": 125
+        },
+        {
+          "name": "flood_mark",
+          "line": 164
+        },
+        {
+          "name": "flood_release",
+          "line": 174
+        },
+        {
+          "name": "ice_terrain",
+          "line": 188
+        },
+        {
+          "name": "flood_sync",
+          "line": 215
         },
         {
           "name": "tile_hex",
-          "line": 156
+          "line": 290
         },
         {
           "name": "apply_tile",
-          "line": 160
+          "line": 294
         },
         {
           "name": "before_world_change",
-          "line": 168
+          "line": 302
         }
       ]
     },
@@ -10068,7 +11729,7 @@
     },
     {
       "file": "src/native_terrain_foam.inl",
-      "sha256": "d5d13d6b2ac6ccee8583332bde8f9742d4acfe6b86a1bdf2f7e85d47d5f152da",
+      "sha256": "0570ff31869c5724599ac581fa9a48ef82c9f16a62028c9721c8e98677aaee20",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -10098,431 +11759,519 @@
         },
         {
           "name": "before_world_change",
-          "line": 143
+          "line": 147
         },
         {
           "name": "find_locked",
-          "line": 162
+          "line": 166
         },
         {
           "name": "positive",
-          "line": 169
+          "line": 173
         },
         {
           "name": "capture",
-          "line": 170
+          "line": 174
         },
         {
           "name": "create",
-          "line": 186
+          "line": 190
         },
         {
           "name": "complete",
-          "line": 192
+          "line": 196
         },
         {
           "name": "destroy",
-          "line": 210
+          "line": 214
         },
         {
           "name": "plan_locked",
-          "line": 219
+          "line": 223
         },
         {
           "name": "apply_locked",
-          "line": 239
+          "line": 243
         },
         {
           "name": "restoration_pending_locked",
-          "line": 263
-        },
-        {
-          "name": "observe",
           "line": 267
         },
         {
+          "name": "observe",
+          "line": 271
+        },
+        {
           "name": "time_update",
-          "line": 287
+          "line": 291
         },
         {
           "name": "render",
-          "line": 293
+          "line": 297
         },
         {
           "name": "restore",
-          "line": 299
+          "line": 303
         },
         {
           "name": "install",
-          "line": 314
+          "line": 318
         },
         {
           "name": "terrain_foam_guards_match",
-          "line": 329
+          "line": 333
         }
       ]
     },
     {
       "file": "src/native_terrain_render.inl",
-      "sha256": "d3eeced5443ae3b2ce5622c19f37834e5b184baeea51b8e20103e9ab462f2f13",
+      "sha256": "fe03cd6783f813cad812077f245c381e51754827e0aa85bdb31a257012dc170d",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
         {
           "name": "profile_upload",
-          "line": 11
+          "line": 12
         },
         {
           "name": "bc_format",
-          "line": 48
+          "line": 49
         },
         {
           "name": "target",
-          "line": 51
+          "line": 52
         },
         {
           "name": "active",
-          "line": 56
+          "line": 57
         },
         {
           "name": "needs_present",
-          "line": 104
+          "line": 107
         },
         {
           "name": "publish_pending_locked",
-          "line": 105
-        },
-        {
-          "name": "clear_queue_locked",
           "line": 108
         },
         {
+          "name": "clear_queue_locked",
+          "line": 111
+        },
+        {
+          "name": "cell_goal",
+          "line": 119
+        },
+        {
           "name": "clear_targets_locked",
-          "line": 112
+          "line": 120
         },
         {
           "name": "enqueue_locked",
-          "line": 117
+          "line": 126
         },
         {
           "name": "discard_ctrl_locked",
-          "line": 123
+          "line": 132
         },
         {
           "name": "discard_height_locked",
-          "line": 133
+          "line": 142
         },
         {
           "name": "discard_mask_candidate_locked",
-          "line": 139
+          "line": 148
         },
         {
           "name": "discard_masks_locked",
-          "line": 144
+          "line": 153
         },
         {
           "name": "terrain_height",
-          "line": 151
+          "line": 160
         },
         {
           "name": "height_change",
-          "line": 156
+          "line": 165
         },
         {
           "name": "carve",
-          "line": 167
+          "line": 176
         },
         {
           "name": "material",
-          "line": 173
+          "line": 182
+        },
+        {
+          "name": "cpu_or_stamp_locked",
+          "line": 203
         },
         {
           "name": "mark",
-          "line": 192
+          "line": 208
         },
         {
-          "name": "take_ui_work",
-          "line": 219
+          "name": "season_sync",
+          "line": 236
         },
         {
-          "name": "control_desc",
-          "line": 237
-        },
-        {
-          "name": "work_desc",
-          "line": 244
-        },
-        {
-          "name": "height_desc",
-          "line": 250
-        },
-        {
-          "name": "height_work_desc",
-          "line": 256
-        },
-        {
-          "name": "mask_desc",
+          "name": "probe_cell",
           "line": 262
         },
         {
+          "name": "take_ui_work",
+          "line": 271
+        },
+        {
+          "name": "control_desc",
+          "line": 289
+        },
+        {
+          "name": "work_desc",
+          "line": 296
+        },
+        {
+          "name": "height_desc",
+          "line": 302
+        },
+        {
+          "name": "height_work_desc",
+          "line": 308
+        },
+        {
+          "name": "mask_desc",
+          "line": 314
+        },
+        {
           "name": "mask_work_desc",
-          "line": 269
+          "line": 321
         },
         {
           "name": "mask_median",
-          "line": 278
+          "line": 330
         },
         {
           "name": "sample_ground",
-          "line": 287
+          "line": 339
         },
         {
           "name": "mask_acceptable",
-          "line": 295
+          "line": 347
         },
         {
           "name": "use_mask_fit",
-          "line": 298
+          "line": 350
         },
         {
           "name": "fit_mask_locked",
-          "line": 301
+          "line": 353
         },
         {
           "name": "queue_mask_targets_locked",
-          "line": 349
+          "line": 401
         },
         {
           "name": "write_mask_raw",
-          "line": 355
+          "line": 407
         },
         {
           "name": "dump_mask_locked",
-          "line": 364
+          "line": 416
         },
         {
           "name": "confirm_mask",
-          "line": 387
+          "line": 439
         },
         {
           "name": "restore_mask_writes_locked",
-          "line": 402
+          "line": 454
         },
         {
           "name": "confirm_release_masks_locked",
-          "line": 417
+          "line": 469
         },
         {
           "name": "to_rgba",
-          "line": 438
+          "line": 490
         },
         {
           "name": "center",
-          "line": 443
-        },
-        {
-          "name": "pixel_box",
-          "line": 447
-        },
-        {
-          "name": "hex_box",
-          "line": 451
-        },
-        {
-          "name": "owns_point",
-          "line": 455
-        },
-        {
-          "name": "owns_pixel",
-          "line": 467
-        },
-        {
-          "name": "write_cell",
-          "line": 468
-        },
-        {
-          "name": "mirror_cell_locked",
-          "line": 478
-        },
-        {
-          "name": "field_at",
           "line": 495
         },
         {
-          "name": "delta_at",
-          "line": 509
+          "name": "pixel_box",
+          "line": 499
         },
         {
-          "name": "pixel_owner",
-          "line": 512
+          "name": "hex_box",
+          "line": 503
         },
         {
-          "name": "center_pixel",
-          "line": 525
+          "name": "owns_point",
+          "line": 507
         },
         {
-          "name": "cliff_section",
+          "name": "owns_pixel",
+          "line": 519
+        },
+        {
+          "name": "write_cell",
+          "line": 520
+        },
+        {
+          "name": "mirror_cell_locked",
           "line": 530
         },
         {
-          "name": "height_at",
-          "line": 549
+          "name": "field_at",
+          "line": 547
         },
         {
-          "name": "refresh_cliffs_locked",
-          "line": 569
+          "name": "delta_at",
+          "line": 561
         },
         {
-          "name": "log_cliff_locked",
+          "name": "pixel_owner",
+          "line": 564
+        },
+        {
+          "name": "center_pixel",
+          "line": 577
+        },
+        {
+          "name": "cliff_section",
           "line": 582
         },
         {
+          "name": "height_at",
+          "line": 601
+        },
+        {
+          "name": "refresh_cliffs_locked",
+          "line": 621
+        },
+        {
+          "name": "log_cliff_locked",
+          "line": 634
+        },
+        {
           "name": "heightfield_ok",
-          "line": 596
+          "line": 648
         },
         {
           "name": "cpu_cell_locked",
-          "line": 603
+          "line": 655
         },
         {
-          "name": "heightfield_created",
-          "line": 627
+          "name": "cpu_stamp_locked",
+          "line": 678
         },
         {
-          "name": "mask_cell_locked",
-          "line": 649
+          "name": "cpu_pixels_locked",
+          "line": 690
         },
         {
-          "name": "height_cell_locked",
-          "line": 680
+          "name": "begin_batch",
+          "line": 710
         },
         {
-          "name": "readback_locked",
+          "name": "end_batch",
           "line": 711
         },
         {
+          "name": "heightfield_created",
+          "line": 719
+        },
+        {
+          "name": "mask_cell_locked",
+          "line": 741
+        },
+        {
+          "name": "height_cell_locked",
+          "line": 772
+        },
+        {
+          "name": "stamp_upload_locked",
+          "line": 807
+        },
+        {
+          "name": "mask_stamped_locked",
+          "line": 826
+        },
+        {
+          "name": "flush_upload_locked",
+          "line": 856
+        },
+        {
+          "name": "readback_locked",
+          "line": 894
+        },
+        {
           "name": "on_present",
-          "line": 737
+          "line": 924
         },
         {
           "name": "original_site",
-          "line": 774
+          "line": 971
+        },
+        {
+          "name": "season_site",
+          "line": 997
+        },
+        {
+          "name": "probe_on",
+          "line": 998
+        },
+        {
+          "name": "probe_site",
+          "line": 1006
         },
         {
           "name": "create_texture_2d",
-          "line": 798
+          "line": 1008
         },
         {
           "name": "guards_locked",
-          "line": 1013
+          "line": 1251
         },
         {
           "name": "guards_match",
-          "line": 1019
+          "line": 1257
         },
         {
           "name": "hooks_active",
-          "line": 1022
+          "line": 1260
         },
         {
           "name": "install_device",
-          "line": 1027
+          "line": 1265
         },
         {
           "name": "install_early",
-          "line": 1071
+          "line": 1309
         },
         {
           "name": "on_device",
-          "line": 1099
+          "line": 1341
         },
         {
           "name": "before_world_change",
-          "line": 1128
+          "line": 1375
         },
         {
           "name": "restore",
-          "line": 1138
+          "line": 1385
         },
         {
           "name": "terrain_render_guards_match",
-          "line": 1158
+          "line": 1409
         }
       ]
     },
     {
       "file": "src/native_terrain_trees.inl",
-      "sha256": "b933f65dddd0239a1508ee7ab8f4c0b1772b3bb1ea36ac35e76a56a7d2786a9f",
+      "sha256": "e92326047988d7f4571f4693831eae8b186bc4c822ac79692058bf9803308773",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
         {
           "name": "active",
-          "line": 37
-        },
-        {
-          "name": "guards_match",
           "line": 38
         },
         {
-          "name": "clear_queue_locked",
-          "line": 43
+          "name": "guards_match",
+          "line": 39
         },
         {
-          "name": "enqueue_locked",
+          "name": "clear_queue_locked",
           "line": 44
         },
         {
+          "name": "enqueue_locked",
+          "line": 45
+        },
+        {
           "name": "retain_pending_locked",
-          "line": 51
+          "line": 52
         },
         {
           "name": "mark",
-          "line": 57
+          "line": 58
         },
         {
           "name": "before_world_change",
-          "line": 66
+          "line": 71
         },
         {
           "name": "take_ui_work",
-          "line": 73
+          "line": 78
         },
         {
           "name": "center",
-          "line": 85
-        },
-        {
-          "name": "owns_cell",
           "line": 90
         },
         {
+          "name": "owns_cell",
+          "line": 95
+        },
+        {
           "name": "forest",
-          "line": 102
+          "line": 107
         },
         {
           "name": "nearby_value",
-          "line": 103
+          "line": 108
         },
         {
           "name": "readable",
-          "line": 118
+          "line": 123
         },
         {
           "name": "resource",
-          "line": 132
+          "line": 137
         },
         {
           "name": "apply_pending",
-          "line": 143
+          "line": 148
+        },
+        {
+          "name": "bounds",
+          "line": 201
+        },
+        {
+          "name": "close_others",
+          "line": 213
+        },
+        {
+          "name": "open_others",
+          "line": 214
+        },
+        {
+          "name": "others",
+          "line": 224
+        },
+        {
+          "name": "run",
+          "line": 241
+        },
+        {
+          "name": "enter",
+          "line": 266
+        },
+        {
+          "name": "place",
+          "line": 275
+        },
+        {
+          "name": "leave",
+          "line": 282
         },
         {
           "name": "update",
-          "line": 186
+          "line": 330
         },
         {
           "name": "terrain_trees_guards_match",
-          "line": 205
+          "line": 359
         }
       ]
     },
@@ -11268,7 +13017,7 @@
     },
     {
       "file": "src/obstacle_policy.h",
-      "sha256": "1a7149c52f44f8974e068bc89985e6f8d07f9ccfb0425fc9dd54b74240d8f6ab",
+      "sha256": "1cd5aabe4d1afc36351ded2cafd5d17209810eb71b97c2f0ea7a584016669890",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -11297,48 +13046,52 @@
           "line": 73
         },
         {
+          "name": "pick_waypoint",
+          "line": 90
+        },
+        {
           "name": "neighbours",
-          "line": 85
+          "line": 105
         },
         {
           "name": "rank",
-          "line": 114
+          "line": 134
         },
         {
           "name": "clear",
-          "line": 136
+          "line": 156
         },
         {
           "name": "release_reason",
-          "line": 173
+          "line": 193
         },
         {
           "name": "reissue",
-          "line": 182
+          "line": 202
         },
         {
           "name": "after_release",
-          "line": 185
+          "line": 205
         },
         {
           "name": "holds",
-          "line": 189
+          "line": 209
         },
         {
           "name": "search",
-          "line": 203
+          "line": 224
         },
         {
           "name": "plan",
-          "line": 235
+          "line": 257
         },
         {
           "name": "breach",
-          "line": 245
+          "line": 267
         },
         {
           "name": "penalty",
-          "line": 253
+          "line": 275
         }
       ]
     },
@@ -11380,7 +13133,7 @@
     },
     {
       "file": "src/path_fast.h",
-      "sha256": "3d9288f1c25b00abc7ae3923769dfbed8ffb2ecd21146650d255907372c5be6e",
+      "sha256": "6bb0322a2893c7298cda00deb688e0d43dc860dc18fa132291b1ecdee8f3a30e",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -11453,8 +13206,16 @@
           "line": 152
         },
         {
+          "name": "over_limit",
+          "line": 180
+        },
+        {
+          "name": "over_limit",
+          "line": 181
+        },
+        {
           "name": "assemble",
-          "line": 219
+          "line": 224
         }
       ]
     },
@@ -11752,6 +13513,1157 @@
       ]
     },
     {
+      "file": "src/season/season_bake.hlsl",
+      "sha256": "b19db1acbcc8ded579c9e382437fa9e1dbbfd9286d6bbc9f6208b1b3430049b9",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "register",
+          "line": 8
+        }
+      ]
+    },
+    {
+      "file": "src/season/season_bc.hlsl",
+      "sha256": "64333a6569830a66898393b0491f4ad22e7acec90a87c50b8f9bcbbfe3af5bc4",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "register",
+          "line": 6
+        },
+        {
+          "name": "pack565",
+          "line": 7
+        },
+        {
+          "name": "unpack565",
+          "line": 8
+        },
+        {
+          "name": "load_block",
+          "line": 9
+        },
+        {
+          "name": "color_block",
+          "line": 13
+        },
+        {
+          "name": "bc1_main",
+          "line": 32
+        },
+        {
+          "name": "bc3_main",
+          "line": 39
+        }
+      ]
+    },
+    {
+      "file": "src/season/season_cloud_vs.hlsl",
+      "sha256": "2462b14ae893a7ba1d7d6e22cfcd4fb6efa0b6137f8f9560d1696f48694e5466",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "main",
+          "line": 3
+        }
+      ]
+    },
+    {
+      "file": "src/season/season_engine.c",
+      "sha256": "3b465f946d2034cf62ebe6735d41f4052ad5c19f3fa90c8c7df07903d1257654",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "sr_walk_readable",
+          "line": 83
+        },
+        {
+          "name": "GA",
+          "line": 141
+        },
+        {
+          "name": "wcat",
+          "line": 159
+        },
+        {
+          "name": "wlen",
+          "line": 160
+        },
+        {
+          "name": "logs",
+          "line": 172
+        },
+        {
+          "name": "sr_jump_dest",
+          "line": 206
+        },
+        {
+          "name": "sr_veh",
+          "line": 225
+        },
+        {
+          "name": "sr_crash_catcher",
+          "line": 248
+        },
+        {
+          "name": "readable",
+          "line": 251
+        },
+        {
+          "name": "readable",
+          "line": 258
+        },
+        {
+          "name": "rok",
+          "line": 273
+        },
+        {
+          "name": "rnd",
+          "line": 277
+        },
+        {
+          "name": "chance",
+          "line": 278
+        },
+        {
+          "name": "rint",
+          "line": 279
+        },
+        {
+          "name": "load_tables",
+          "line": 285
+        },
+        {
+          "name": "frozen_wanted",
+          "line": 307
+        },
+        {
+          "name": "hex_check",
+          "line": 316
+        },
+        {
+          "name": "te_load",
+          "line": 328
+        },
+        {
+          "name": "te_apply",
+          "line": 340
+        },
+        {
+          "name": "army_known",
+          "line": 353
+        },
+        {
+          "name": "city_take_food",
+          "line": 367
+        },
+        {
+          "name": "wfind",
+          "line": 386
+        },
+        {
+          "name": "vanilla_disaster_recent",
+          "line": 387
+        },
+        {
+          "name": "qnow",
+          "line": 426
+        },
+        {
+          "name": "qus",
+          "line": 427
+        },
+        {
+          "name": "tlog",
+          "line": 429
+        },
+        {
+          "name": "report_ex",
+          "line": 449
+        },
+        {
+          "name": "flush_reports",
+          "line": 454
+        },
+        {
+          "name": "report_now",
+          "line": 463
+        },
+        {
+          "name": "report",
+          "line": 480
+        },
+        {
+          "name": "rset",
+          "line": 481
+        },
+        {
+          "name": "radd",
+          "line": 482
+        },
+        {
+          "name": "raddn",
+          "line": 483
+        },
+        {
+          "name": "raddname",
+          "line": 484
+        },
+        {
+          "name": "today_day",
+          "line": 487
+        },
+        {
+          "name": "radd_when",
+          "line": 488
+        },
+        {
+          "name": "ccol",
+          "line": 496
+        },
+        {
+          "name": "cdist2",
+          "line": 497
+        },
+        {
+          "name": "hurt",
+          "line": 508
+        },
+        {
+          "name": "hurt_pct",
+          "line": 522
+        },
+        {
+          "name": "cover_lvl",
+          "line": 543
+        },
+        {
+          "name": "spd_cell_nr",
+          "line": 549
+        },
+        {
+          "name": "spd_rain",
+          "line": 561
+        },
+        {
+          "name": "spd_cell",
+          "line": 566
+        },
+        {
+          "name": "spd_build",
+          "line": 576
+        },
+        {
+          "name": "speed_apply",
+          "line": 584
+        },
+        {
+          "name": "hq_now",
+          "line": 601
+        },
+        {
+          "name": "SpeedHook",
+          "line": 602
+        },
+        {
+          "name": "RouteCost",
+          "line": 616
+        },
+        {
+          "name": "rc_scale",
+          "line": 633
+        },
+        {
+          "name": "wei_build",
+          "line": 651
+        },
+        {
+          "name": "rivers",
+          "line": 668
+        },
+        {
+          "name": "slot_has_seq",
+          "line": 706
+        },
+        {
+          "name": "seq_shown",
+          "line": 707
+        },
+        {
+          "name": "dl_say",
+          "line": 719
+        },
+        {
+          "name": "dl_check_build",
+          "line": 722
+        },
+        {
+          "name": "dl_epoch_bump",
+          "line": 738
+        },
+        {
+          "name": "dl_write",
+          "line": 739
+        },
+        {
+          "name": "vis_snapshot",
+          "line": 755
+        },
+        {
+          "name": "vis_put",
+          "line": 765
+        },
+        {
+          "name": "vis_add",
+          "line": 766
+        },
+        {
+          "name": "vis_clear",
+          "line": 775
+        },
+        {
+          "name": "vis_turn",
+          "line": 776
+        },
+        {
+          "name": "season_of",
+          "line": 790
+        },
+        {
+          "name": "banned_turn",
+          "line": 792
+        },
+        {
+          "name": "pick_turn",
+          "line": 793
+        },
+        {
+          "name": "add_event",
+          "line": 808
+        },
+        {
+          "name": "roll_season",
+          "line": 814
+        },
+        {
+          "name": "roll_quakes",
+          "line": 826
+        },
+        {
+          "name": "build_near_gate",
+          "line": 833
+        },
+        {
+          "name": "random_cell",
+          "line": 840
+        },
+        {
+          "name": "slide_at",
+          "line": 854
+        },
+        {
+          "name": "start_event0",
+          "line": 861
+        },
+        {
+          "name": "start_event",
+          "line": 1004
+        },
+        {
+          "name": "end_event",
+          "line": 1018
+        },
+        {
+          "name": "land_ok",
+          "line": 1032
+        },
+        {
+          "name": "test_fire_by",
+          "line": 1033
+        },
+        {
+          "name": "test_states",
+          "line": 1059
+        },
+        {
+          "name": "test_busy",
+          "line": 1066
+        },
+        {
+          "name": "test_flood_d2",
+          "line": 1074
+        },
+        {
+          "name": "test_pick_city",
+          "line": 1078
+        },
+        {
+          "name": "test_line",
+          "line": 1087
+        },
+        {
+          "name": "test_ground",
+          "line": 1088
+        },
+        {
+          "name": "test_start",
+          "line": 1133
+        },
+        {
+          "name": "test_day",
+          "line": 1207
+        },
+        {
+          "name": "rpm",
+          "line": 1228
+        },
+        {
+          "name": "dflush",
+          "line": 1229
+        },
+        {
+          "name": "dput",
+          "line": 1230
+        },
+        {
+          "name": "dline",
+          "line": 1231
+        },
+        {
+          "name": "dhex",
+          "line": 1233
+        },
+        {
+          "name": "cell_terrain",
+          "line": 1239
+        },
+        {
+          "name": "rpm_upto",
+          "line": 1240
+        },
+        {
+          "name": "vat",
+          "line": 1242
+        },
+        {
+          "name": "sig_at",
+          "line": 1243
+        },
+        {
+          "name": "str_at",
+          "line": 1258
+        },
+        {
+          "name": "scan_mem",
+          "line": 1266
+        },
+        {
+          "name": "dump_thread",
+          "line": 1295
+        },
+        {
+          "name": "weather_morale",
+          "line": 1362
+        },
+        {
+          "name": "rain_morale",
+          "line": 1369
+        },
+        {
+          "name": "harvest_year",
+          "line": 1378
+        },
+        {
+          "name": "weather_notice_one",
+          "line": 1397
+        },
+        {
+          "name": "weather_notice",
+          "line": 1406
+        },
+        {
+          "name": "stat_val",
+          "line": 1432
+        },
+        {
+          "name": "stat_side",
+          "line": 1448
+        },
+        {
+          "name": "stats_write",
+          "line": 1450
+        },
+        {
+          "name": "stats_turn",
+          "line": 1485
+        },
+        {
+          "name": "per_turn",
+          "line": 1498
+        },
+        {
+          "name": "pc_now",
+          "line": 1552
+        },
+        {
+          "name": "pc_add",
+          "line": 1553
+        },
+        {
+          "name": "pc_flush",
+          "line": 1554
+        },
+        {
+          "name": "on_time",
+          "line": 1562
+        },
+        {
+          "name": "sr_start",
+          "line": 1656
+        },
+        {
+          "name": "sr_set_flags",
+          "line": 1676
+        },
+        {
+          "name": "sr_day",
+          "line": 1678
+        },
+        {
+          "name": "sr_params",
+          "line": 1680
+        },
+        {
+          "name": "sr_speed_factor",
+          "line": 1690
+        },
+        {
+          "name": "sr_route_factor",
+          "line": 1691
+        },
+        {
+          "name": "sr_cell_state",
+          "line": 1692
+        },
+        {
+          "name": "sr_rain_tier",
+          "line": 1693
+        },
+        {
+          "name": "sr_cell_paint",
+          "line": 1696
+        },
+        {
+          "name": "sr_hist",
+          "line": 1722
+        },
+        {
+          "name": "sr_hill",
+          "line": 1732
+        },
+        {
+          "name": "sr_hist_extend",
+          "line": 1733
+        },
+        {
+          "name": "sr_flood_terrain",
+          "line": 1765
+        },
+        {
+          "name": "sr_mobility_delta",
+          "line": 1792
+        },
+        {
+          "name": "sr_ready",
+          "line": 1798
+        }
+      ]
+    },
+    {
+      "file": "src/season/season_rain.hlsl",
+      "sha256": "1a48a2e4f470954fde7f654e7f1982d95e4f9129001f6d2b47569a845925c98c",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "register",
+          "line": 19
+        },
+        {
+          "name": "gridInit",
+          "line": 28
+        },
+        {
+          "name": "sanSH",
+          "line": 34
+        },
+        {
+          "name": "hexIdxAt",
+          "line": 40
+        },
+        {
+          "name": "cellWx",
+          "line": 55
+        },
+        {
+          "name": "wxBits",
+          "line": 62
+        },
+        {
+          "name": "rainCover",
+          "line": 69
+        },
+        {
+          "name": "hash21",
+          "line": 78
+        },
+        {
+          "name": "vnoise",
+          "line": 79
+        },
+        {
+          "name": "fbm2",
+          "line": 85
+        },
+        {
+          "name": "billow",
+          "line": 86
+        },
+        {
+          "name": "rainCellRaw",
+          "line": 87
+        },
+        {
+          "name": "rainAt",
+          "line": 96
+        },
+        {
+          "name": "rainTierRaw",
+          "line": 103
+        },
+        {
+          "name": "rainTierAt",
+          "line": 110
+        },
+        {
+          "name": "wobbleAt",
+          "line": 116
+        },
+        {
+          "name": "worldAt",
+          "line": 117
+        },
+        {
+          "name": "lumOf",
+          "line": 123
+        },
+        {
+          "name": "lumAt",
+          "line": 124
+        },
+        {
+          "name": "sceneRef",
+          "line": 133
+        },
+        {
+          "name": "cloudDens",
+          "line": 145
+        },
+        {
+          "name": "main",
+          "line": 150
+        }
+      ]
+    },
+    {
+      "file": "src/season/season_rain_drops.hlsl",
+      "sha256": "74e9b7b22b70b9f5451a9ec13e807d124d147d68018b851ae5d4ec1d6e8e3eab",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "register",
+          "line": 16
+        },
+        {
+          "name": "register",
+          "line": 18
+        },
+        {
+          "name": "gridInit",
+          "line": 29
+        },
+        {
+          "name": "sanSH",
+          "line": 35
+        },
+        {
+          "name": "hexIdxAt",
+          "line": 41
+        },
+        {
+          "name": "cellWx",
+          "line": 56
+        },
+        {
+          "name": "wxBits",
+          "line": 63
+        },
+        {
+          "name": "hash21",
+          "line": 67
+        },
+        {
+          "name": "vnoise",
+          "line": 68
+        },
+        {
+          "name": "rainCellRaw",
+          "line": 74
+        },
+        {
+          "name": "rainAt",
+          "line": 83
+        },
+        {
+          "name": "worldAt",
+          "line": 90
+        },
+        {
+          "name": "inv4",
+          "line": 95
+        },
+        {
+          "name": "lumOf",
+          "line": 114
+        },
+        {
+          "name": "depthAtPx",
+          "line": 125
+        },
+        {
+          "name": "worldAtPx",
+          "line": 130
+        },
+        {
+          "name": "clipOf",
+          "line": 137
+        },
+        {
+          "name": "pxOf",
+          "line": 138
+        },
+        {
+          "name": "main",
+          "line": 140
+        },
+        {
+          "name": "lumAt",
+          "line": 353
+        },
+        {
+          "name": "splashOf",
+          "line": 361
+        },
+        {
+          "name": "main",
+          "line": 384
+        }
+      ]
+    },
+    {
+      "file": "src/season/season_rain_dropsb.hlsl",
+      "sha256": "823f0c59ad31b52cce4800be36ae1f9663db6fbab0e65e4b21bc353e644ae0b5",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "register",
+          "line": 19
+        },
+        {
+          "name": "register",
+          "line": 21
+        },
+        {
+          "name": "gridInit",
+          "line": 32
+        },
+        {
+          "name": "sanSH",
+          "line": 38
+        },
+        {
+          "name": "hexIdxAt",
+          "line": 44
+        },
+        {
+          "name": "cellWx",
+          "line": 59
+        },
+        {
+          "name": "wxBits",
+          "line": 66
+        },
+        {
+          "name": "hash21",
+          "line": 70
+        },
+        {
+          "name": "vnoise",
+          "line": 71
+        },
+        {
+          "name": "rainCellRaw",
+          "line": 77
+        },
+        {
+          "name": "rainAt",
+          "line": 86
+        },
+        {
+          "name": "worldAt",
+          "line": 93
+        },
+        {
+          "name": "inv4",
+          "line": 98
+        },
+        {
+          "name": "lumOf",
+          "line": 117
+        },
+        {
+          "name": "depthAtPx",
+          "line": 128
+        },
+        {
+          "name": "worldAtPx",
+          "line": 133
+        },
+        {
+          "name": "clipOf",
+          "line": 140
+        },
+        {
+          "name": "pxOf",
+          "line": 141
+        },
+        {
+          "name": "main",
+          "line": 143
+        },
+        {
+          "name": "lumAt",
+          "line": 356
+        },
+        {
+          "name": "splashOf",
+          "line": 364
+        },
+        {
+          "name": "main",
+          "line": 387
+        }
+      ]
+    },
+    {
+      "file": "src/season/season_rainb.hlsl",
+      "sha256": "7ff1755fdb9fada9175b74659ecf9b007b3cbcb9f2586bf52580b6fff5d89fe5",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "register",
+          "line": 22
+        },
+        {
+          "name": "gridInit",
+          "line": 31
+        },
+        {
+          "name": "sanSH",
+          "line": 37
+        },
+        {
+          "name": "hexIdxAt",
+          "line": 43
+        },
+        {
+          "name": "cellWx",
+          "line": 58
+        },
+        {
+          "name": "wxBits",
+          "line": 65
+        },
+        {
+          "name": "rainCover",
+          "line": 72
+        },
+        {
+          "name": "hash21",
+          "line": 81
+        },
+        {
+          "name": "vnoise",
+          "line": 82
+        },
+        {
+          "name": "fbm2",
+          "line": 88
+        },
+        {
+          "name": "billow",
+          "line": 89
+        },
+        {
+          "name": "rainCellRaw",
+          "line": 90
+        },
+        {
+          "name": "rainAt",
+          "line": 99
+        },
+        {
+          "name": "rainTierRaw",
+          "line": 106
+        },
+        {
+          "name": "rainTierAt",
+          "line": 113
+        },
+        {
+          "name": "wobbleAt",
+          "line": 119
+        },
+        {
+          "name": "worldAt",
+          "line": 120
+        },
+        {
+          "name": "lumOf",
+          "line": 126
+        },
+        {
+          "name": "lumAt",
+          "line": 127
+        },
+        {
+          "name": "sceneRef",
+          "line": 136
+        },
+        {
+          "name": "cloudDens",
+          "line": 148
+        },
+        {
+          "name": "main",
+          "line": 153
+        }
+      ]
+    },
+    {
+      "file": "src/season/season_terrain.hlsl",
+      "sha256": "03563dce4bb9b7e47f0ff9beb9b5cb21d0d7d32c25e51e850fb2021d419e933b",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "sanInit",
+          "line": 44
+        },
+        {
+          "name": "landS",
+          "line": 57
+        },
+        {
+          "name": "hash21",
+          "line": 65
+        },
+        {
+          "name": "vnoise",
+          "line": 66
+        },
+        {
+          "name": "fbm",
+          "line": 73
+        },
+        {
+          "name": "fbm2",
+          "line": 74
+        },
+        {
+          "name": "billow",
+          "line": 75
+        },
+        {
+          "name": "lin",
+          "line": 76
+        },
+        {
+          "name": "bell",
+          "line": 77
+        },
+        {
+          "name": "matinfo",
+          "line": 79
+        },
+        {
+          "name": "climAt",
+          "line": 100
+        },
+        {
+          "name": "zoneAt",
+          "line": 109
+        },
+        {
+          "name": "hazAt",
+          "line": 118
+        },
+        {
+          "name": "tdirW",
+          "line": 128
+        },
+        {
+          "name": "mtn0",
+          "line": 129
+        },
+        {
+          "name": "flowercol",
+          "line": 132
+        },
+        {
+          "name": "gridInit",
+          "line": 154
+        },
+        {
+          "name": "hexIdxAt",
+          "line": 161
+        },
+        {
+          "name": "cellWx",
+          "line": 176
+        },
+        {
+          "name": "wxBits",
+          "line": 183
+        },
+        {
+          "name": "rainCover",
+          "line": 185
+        },
+        {
+          "name": "cellState",
+          "line": 193
+        },
+        {
+          "name": "rainCellRaw",
+          "line": 200
+        },
+        {
+          "name": "rainAt",
+          "line": 209
+        },
+        {
+          "name": "nodeAt",
+          "line": 216
+        },
+        {
+          "name": "hazRiverId",
+          "line": 226
+        },
+        {
+          "name": "drawFire",
+          "line": 233
+        },
+        {
+          "name": "drawFlood",
+          "line": 271
+        },
+        {
+          "name": "drawSlide",
+          "line": 320
+        },
+        {
+          "name": "drawShaken",
+          "line": 401
+        },
+        {
+          "name": "drawQuake",
+          "line": 419
+        },
+        {
+          "name": "register",
+          "line": 474
+        },
+        {
+          "name": "eyePos",
+          "line": 475
+        },
+        {
+          "name": "season",
+          "line": 489
+        }
+      ]
+    },
+    {
+      "file": "src/season_dxbc.h",
+      "sha256": "02e926065ea75823389ee43b601b11bd52b6ad38c7aa2ba321dec2a47380b91d",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "rol",
+          "line": 24
+        },
+        {
+          "name": "block",
+          "line": 25
+        },
+        {
+          "name": "checksum",
+          "line": 41
+        },
+        {
+          "name": "opcode",
+          "line": 58
+        },
+        {
+          "name": "op_type",
+          "line": 59
+        },
+        {
+          "name": "dest_token",
+          "line": 60
+        },
+        {
+          "name": "src_token",
+          "line": 61
+        },
+        {
+          "name": "operands",
+          "line": 64
+        },
+        {
+          "name": "patch_ground",
+          "line": 84
+        }
+      ]
+    },
+    {
+      "file": "src/season_mobility_shared.h",
+      "sha256": "fb1696329f30ad1566faec8b9144cb4580914881fd7a2de5f87f2b471bc3a134",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": []
+    },
+    {
       "file": "src/sidecar_cache.h",
       "sha256": "eacc735d3f39fe57698485cc28c3080b283399dd6d6af5e9eb6759b597ede1ec",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
@@ -11777,7 +14689,7 @@
     },
     {
       "file": "src/siege_guard_policy.h",
-      "sha256": "804396ecdf10a56e17f0d0fc6224a08f563c3303cf3f32931636d64757485875",
+      "sha256": "2596a257980db3ce6d443835cd22c2441675627b608edd53ff78f1e64db2f5db",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -11793,7 +14705,7 @@
     },
     {
       "file": "src/sortie_policy.h",
-      "sha256": "c055f99a3184127f17b5d8c54d45cdf8f6f341dc2df14a1c233d6941c557423c",
+      "sha256": "8c34359d540eb3a65e92dbe6da97b9d6fcd0775482f111e6bfd3b2727eb7cc8b",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "정책·자료구조·저장 형식·공통 보조 함수",
       "definitions": [
@@ -11819,21 +14731,28 @@
         },
         {
           "name": "match",
-          "line": 24
+          "line": 25
         },
         {
           "name": "roster",
-          "line": 33
+          "line": 34
         },
         {
           "name": "formation",
-          "line": 52
+          "line": 77
         },
         {
           "name": "allocate",
-          "line": 61
+          "line": 86
         }
       ]
+    },
+    {
+      "file": "src/sortie_screen_bridge.h",
+      "sha256": "c68a2e782d4a7813a1da72c6afef0f8d0950551ec8a9ca8c6c6a6329bde18116",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": []
     },
     {
       "file": "src/split_module_api.h",

@@ -137,6 +137,7 @@ static bool split_pointer_enabled(const SplitPointer &p);
 // 2026-11-05 local3 (user: a refused optional feature switches only itself off): feature_off(feature id, reason).
 // Reasons: 1 imported code is fixed to the reference build, 2 prepare failed, 3 publish failed, 4 imported installer returned 0.
 // 40 siege_guard (combat module only, 2026-11-09): set from split_prepare/split_publish.
+// 91 ambush (combat module only, 2026-11-11): condition-29 CALL C39F4, set from split_prepare/split_publish.
 // (feature_guard_mismatch = original bytes/slots differ, feature gates = addr_unresolved.)
 // The compat log is always on (release builds too); only an actual switch-off is recorded.
 static void compat_feature_off(unsigned id,unsigned reason) {
@@ -226,7 +227,7 @@ static void split_feature_guards() {
     if(f.recruit && (!recruit_ui_guards_match() || !recruit_alert_guards_match()))split_disable(f.recruit,8);
     if(f.recruit_ai && !recruit_ai_guards_match())split_disable(f.recruit_ai,9);
     if(f.injury && !injury_guards_match(true,false))split_disable(f.injury,10);
-    if(f.injury_herbal && !injury_guards_match(false,true))split_disable(f.injury_herbal,11);
+    if((f.injury_herbal || f.ai_policy_cap) && !injury_guards_match(false,true)) {split_disable(f.injury_herbal,11);split_disable(f.ai_policy_cap,11);}
     if(f.awards && !award_guards_match())split_disable(f.awards,12);
     if(f.loyalty && !loyalty_guards_match())split_disable(f.loyalty,13);
     // split_disable code 21 reserved: strategy_batch removed (2026-10-25, screen corruption).
@@ -262,6 +263,8 @@ static void split_feature_guards() {
 [[maybe_unused]] static bool split_pointer_guarded(const SplitPointer &p) {
 #ifdef SPLIT_COMBAT
     if(p.original==GA(GA_922F0))return mod_features.attack_eval70 || mod_features.retreat_eval60;
+    if(p.original==GA(GA_2DAB0))return mod_features.front_hire;
+    if(p.original==GA(GA_54CE0))return mod_features.computer_trade;
 #else
     (void)p;
 #endif
@@ -303,6 +306,11 @@ static void split_rollback() { COST_SCOPE("split_rollback");
     restore_sortie(split_install.sortie);
     route_hook::restore();
     siege_guard_hook::restore();
+    ambush_hook::restore();
+    camp_hook::restore();
+    retake_tree_hook::restore();
+    ranged_facility_hook::restore();
+    facility_hit_hook::restore();
 #else
     terrain_edit::reset_ui_context();
     restore_link(split_install.safety);restore_link(split_install.intercept);
@@ -385,8 +393,18 @@ static bool split_prepare() {
        prepare_link(s.core[2],GA(GA_27AAC0),0xE9,r+96) && prepare_sortie(s.sortie,r);
     // local17 siege_guard: optional, its own relay page; a refused CALL switches only this feature off (id 40).
     if(ok) {unsigned why=siege_guard_hook::prepare();if(why) {mod_features.siege_guard=false;log_event("feature_off",40,why);}}
+    // ambush (docs/AMBUSH.md): condition-29 CALL, its own relay page; a refused CALL switches only this feature off (id 91).
+    if(ok) {unsigned why=ambush_hook::prepare();if(why) {mod_features.ambush=false;log_event("feature_off",91,why);}}
+    // local74 siege_fort_first: the four original camp-build CALLs, its own relay page (id 92).
+    if(ok) {unsigned why=camp_hook::prepare();if(why) {mod_features.siege_fort_first=false;log_event("feature_off",92,why);}}
+    // local88 retake_adjacent: the two CALLs that run a group tree; refused = the retake units ride the original group tree as before (id 93).
+    if(ok) {unsigned why=retake_tree_hook::prepare();if(why)log_event("feature_off",93,why);}
+    // ranged_facility_kill (user 2026-11-13): the damage cap of 2A0750 for facilities hit from range (id 94).
+    if(ok) {unsigned why=ranged_facility_hook::prepare();if(why) {mod_features.ranged_facility_kill=false;log_event("feature_off",94,why);}}
     // U39 route_hook: morale hold / neutral wall breach after the original route writes (id 41).
     if(ok) {unsigned why=route_hook::prepare();if(why) {mod_features.morale=false;mod_features.path_wall=false;mod_features.supply_relay=false;log_event("feature_off",41,why);}}
+    // local108 facility_hit: the facility damage CALL 192FBB; refused = facility fire is not recorded for the hit response (id 95).
+    if(ok) {unsigned why=facility_hit_hook::prepare();if(why)log_event("feature_off",95,why);}
 #else
     // [groups] convenience=0: coordinate the combat module only, publish no own hook.
     const bool trace_only=mod_features.trace_original; // [diagnostics] ai_trace_original: no feature hook
@@ -420,8 +438,8 @@ static bool split_prepare() {
             s.save_ready=false;split_feature_off(m.merit,6,2);split_feature_off(m.awards,12,2);
         }
         if(m.recruit && !prepare_recruit_alert(s.alert,r))split_feature_off(m.recruit,8,2);
-        if((m.injury || m.injury_herbal) && !prepare_injury(s.injury,r)) {
-            split_feature_off(m.injury,10,2);split_feature_off(m.injury_herbal,11,2);
+        if((m.injury || m.injury_herbal || m.ai_policy_cap) && !prepare_injury(s.injury,r)) {
+            split_feature_off(m.injury,10,2);split_feature_off(m.injury_herbal,11,2);split_feature_off(m.ai_policy_cap,11,2);
         }
         if(m.awards && !prepare_awards(s.awards,r)) {split_feature_off(m.awards,12,2);feature_off_closure(m);}
 #ifdef CORPS_DOMESTIC_HOOKS
@@ -473,6 +491,9 @@ static bool split_pointer_enabled(const SplitPointer &p) {
 #ifdef SPLIT_COMBAT
     // local17: N2076 (922F0) is wrapped only while attack_eval70 or retreat_eval60 is on; off = original slot.
     if(p.original==GA(GA_922F0))return mod_features.attack_eval70 || mod_features.retreat_eval60;
+    // local167: the hire / trade nodes are wrapped only while their key is on; off = original slot.
+    if(p.original==GA(GA_2DAB0))return mod_features.front_hire;
+    if(p.original==GA(GA_54CE0))return mod_features.computer_trade;
     return true;
 #else
     if(!mod_features.convenience || mod_features.trace_original)return false;
@@ -513,7 +534,12 @@ static bool split_publish() { COST_SCOPE("split_publish");
 #ifdef SPLIT_COMBAT
     bool ok=publish_sortie(s.sortie);
     if(ok && !siege_guard_hook::publish()) {mod_features.siege_guard=false;log_event("feature_off",40,3);}
+    if(ok && !ambush_hook::publish()) {mod_features.ambush=false;log_event("feature_off",91,3);}
+    if(ok && !camp_hook::publish()) {mod_features.siege_fort_first=false;log_event("feature_off",92,3);}
+    if(ok && !retake_tree_hook::publish())log_event("feature_off",93,3);
+    if(ok && !ranged_facility_hook::publish()) {mod_features.ranged_facility_kill=false;log_event("feature_off",94,3);}
     if(ok && !route_hook::publish()) {mod_features.morale=false;mod_features.path_wall=false;mod_features.supply_relay=false;log_event("feature_off",41,3);}
+    if(ok && !facility_hit_hook::publish())log_event("feature_off",95,3);
 #else
     // 2026-11-05 local3 (user: a refused optional feature switches only itself off). The shared core links and pointers above
     // are the only steps whose failure rolls the whole module back. Every optional feature below publishes on its own:
@@ -539,8 +565,8 @@ static bool split_publish() { COST_SCOPE("split_publish");
         if(f.recruit_ai && !split_publish_step(6,publish_recruit_ai(),0)) {   // v12.8: AI limit shares only pure judgment helpers
             restore_recruit_ai();split_feature_off(f.recruit_ai,9,3);
         }
-        if((f.injury || f.injury_herbal) && !split_publish_step(7,publish_injury(s.injury,f.injury,f.injury_herbal),0)) {
-            restore_injury(s.injury);split_feature_off(f.injury,10,3);split_feature_off(f.injury_herbal,11,3);
+        if((f.injury || f.injury_herbal || f.ai_policy_cap) && !split_publish_step(7,publish_injury(s.injury,f.injury,f.injury_herbal || f.ai_policy_cap),0)) {
+            restore_injury(s.injury);split_feature_off(f.injury,10,3);split_feature_off(f.injury_herbal,11,3);split_feature_off(f.ai_policy_cap,11,3);
         }
 #ifdef CORPS_DOMESTIC_HOOKS
         // local56: after injury (its links already wrap both nodes when it is on); 42 ai_search2, 43 officer_first.

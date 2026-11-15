@@ -75,7 +75,7 @@ static unsigned char *map_exe(const char *path) {
 }
 #define FLAGS(X) X(merit) X(awards) X(recruit) X(injury) X(recruit_ai) X(awards_ai) X(injury_herbal) X(domestic) X(population) \
     X(region_officers) X(domestic_free) X(region_officer_traits) X(domestic_direct) X(battle_rules) X(loyalty) X(terrain_edit) \
-    X(building_destruction_all) X(diplomacy_overinvest) X(diplomacy_counterturn) X(damage_preview) X(traits9) X(tooltip_collab) \
+    X(building_destruction_all) X(building_destruction_boost) X(diplomacy_overinvest) X(diplomacy_counterturn) X(damage_preview) X(traits9) X(tooltip_collab) \
     X(stats200) X(battle_deaths) X(scenery_skip) X(stats200_growth) X(speed_buttons) X(occupy_fast) X(fast_save) \
     X(caravan_stay) X(fast_menu) X(advisor_briefing) X(appear_batch) X(area_index) X(path_fast) X(face_keep) X(face_prefetch) \
     X(stat_exp) X(dispatch_days) X(mediation_plus) X(drag_learn) X(lord_change) X(tactic_priority) X(distance) X(name_lookup) X(layout_keep) \

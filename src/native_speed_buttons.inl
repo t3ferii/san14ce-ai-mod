@@ -159,6 +159,7 @@ static void stage_note(Obj manager,LONGLONG inside) {
 }
 #endif
 static void run_frame(Obj manager) {
+    COST_SCOPE("speed_frame:native");   // local144 probe: the original frame (its self time = what no mod scope inside it covers)
 #ifndef NO_RUNTIME_LOG
     if(stage_on && diagnostic_logging) {
         LARGE_INTEGER a,b;QueryPerformanceCounter(&a);next_pick(next_frame,kFrame)(manager);QueryPerformanceCounter(&b);

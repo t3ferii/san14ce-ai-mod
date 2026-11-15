@@ -103,6 +103,8 @@ static bool apply_priority(Obj army, Obj node, Obj context)
     Progress *p = observe_capture(army);
     if(p) {
         remember_campaign(army,*p);
+        // gate_intercept: the unit behind a gate takes no other order (individual priorities, cuts, builds included).
+        if(p->regional_worker && p->intercept && computer_side_army(army)) {intercept_step(army,*p);return mod_step("ap:intercept"),true;}
         if(campaign_individual_priority(army,*p)) {
 #ifdef SORTIE_FORMATION
             SortieGroup g;unsigned id;
@@ -138,11 +140,18 @@ static bool apply_priority(Obj army, Obj node, Obj context)
     if(p && cancel_unqualified_neutral_order(army,*p))cancelled=true;
     if(p && !p->regional_worker && recover_idle(army,*p))return mod_step("ap:recover_idle"),true;
     if(word(army,0x16)<1000)return cancelled && mod_step("ap:cancel_order");
-    if(p && try_destroy(army,*p,true)) {pause_assembly(*p);return mod_step("ap:destroy_priority"),true;}
+    // local91 (user 2026-11-12 "수복부대는 건설을 off ... 옵션, 기본값 off, 매우 하드코어"): a retake unit builds only with
+    // [combat] retake_build; without it the capture credit and the build chain are dropped and it goes on to the next base.
+    const bool no_build=p && p->regional_worker && p->retake && !mod_features.retake_build && !p->facility;
+    if(no_build) {p->credit=false;p->build_chain=false;}
+    // local92 (user 2026-11-12 "주변에 적 건설물이 있으면 건설물 공격명령이 내려지더라고? 그것도 X"): a retake unit never takes
+    // the facility-attack order; it keeps walking to its base.
+    const bool retake_unit=p && p->regional_worker && p->retake;
+    if(p && !retake_unit && try_destroy(army,*p,true)) {pause_assembly(*p);return mod_step("ap:destroy_priority"),true;}
     if(p && p->facility && continue_build(army,*p)) {pause_assembly(*p);return mod_step("ap:continue_build"),true;}
-    if(p && try_destroy(army,*p)) {pause_assembly(*p);return mod_step("ap:destroy"),true;}
-    if(p && (p->campaign || p->regional_worker))prepare_local_build(army,*p);
-    if (p && try_build(army, *p)) {pause_assembly(*p);return mod_step("ap:build"),true;}
+    if(p && !retake_unit && try_destroy(army,*p)) {pause_assembly(*p);return mod_step("ap:destroy"),true;}
+    if(p && !no_build && (p->campaign || p->regional_worker))prepare_local_build(army,*p);
+    if (p && !no_build && try_build(army, *p)) {pause_assembly(*p);return mod_step("ap:build"),true;}
     // Build policy v2: a blocked build never parks the army (former "build_hold_wait" stood units
     // on open ground for weeks); the mission or the original AI continues instead.
     if(mod_features.mission_v2) {
@@ -170,10 +179,478 @@ static bool apply_priority(Obj army, Obj node, Obj context)
 // corps is turned into success. All other ops go to the original unchanged.
 static bool patch_pointer(unsigned rva, unsigned expected, void *replacement);
 using BtCondition=uint64_t(__fastcall *)(unsigned,unsigned char,Obj,Obj,int *,int);
+// [combat] retake_adjacent (user 2026-11-12, local84: "전투력에 관계없이 1차 인접선은 회복해야 ... 요격군만 전투력을 보면 돼").
+// local80-83 relaxed the original area-occupy departure (condition 84 radius, the two hostile-near-castle checks in 410F0 /
+// 44B60, the power cancel in 29BA0); it still never left, because that departure is built to stay home near an enemy
+// (more gates follow: garrison and resource thresholds, path cost, commander choice). The retake is therefore issued by
+// the mod itself, with one rule: a computer castle sends one unit to each first-ring neighbour region a hostile force
+// holds, unless a hostile army stands within 2 hexes of that base (left to the original interception), a unit of the
+// force already heads there, or a hostile army stands within 2 hexes of the castle (the original defence owns the
+// garrison). No strength comparison. The unit is a home-capture worker of the mission flow (campaign_paid_single: group
+// kind 10, which no original group branch runs), so the original trees never order it and the interception stays
+// entirely the original's. Runs once per force and game day at the first condition of that force's AI thread.
+// local85: the unit keeps that base and walks around hostile armies (retake_step in native_campaign.inl).
+// local88: the original group tree is not run for a retake group (retake_tree_hook in native_siege_guard.inl) and a
+// retake unit lets the original supply-cut node go first (first army node above).
+// local86: a first-ring base still held gets the same unit as a guard once a hostile army is within 8 hexes of it; the
+// departure command carries the relay points of the way around hostile armies, so the unit comes out on that side.
+static bool retake_first_ring_lost(unsigned own,unsigned hex) { COST_SCOPE("ai_nodes:retake_first_ring_lost");
+    if(!own || own>51 || hex>=48400)return false;
+    Obj tile=table(0xE270,hex,48399);if(!valid(tile))return false;
+    const unsigned holder=tile[0x14];
+    return holder && holder!=own && fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,holder)!=0;
+}
+#ifdef SORTIE_FORMATION
+static constexpr unsigned kRetakeSoldiers=2000,kRetakeGarrison=6000;
+static bool retake_unit_heading(unsigned own,unsigned hex) {
+    for(unsigned i=1;i<=500;++i) {
+        Obj a=table(0x7E838,i,500);if(!valid(a) || army_force(a)!=own)continue;
+        if(a[0x37]==1 && a[0x38]==9 && word(a,0x3A)==hex)return true;
+        const Progress &p=progress[i];
+        if(p.army==a && p.commander==word(a,0x12) && p.region_target==hex)return true;
+    }
+    return false;
+}
+// gate_intercept (native_campaign.inl intercept_step): once per force and day, each gate of the force with a hostile army
+// within kInterceptAlert hexes of its center and no intercept unit of its own yet sends one. The gate itself leaves when
+// it keeps kInterceptKeep soldiers after the 2,000; otherwise the own castles within kInterceptReach hexes, nearest
+// first, that hold kRetakeGarrison. No stand behind the gate (all hexes taken, walled or next to an attacker) = not sent.
+static constexpr unsigned kInterceptSoldiers=2000,kInterceptKeep=2000;
+static constexpr int kInterceptReach=30;
+static bool intercept_unit_out(unsigned own,unsigned gate) {
+    for(unsigned i=1;i<=500;++i) {
+        Obj a=table(0x7E838,i,500);if(!valid(a) || army_force(a)!=own)continue;
+        const Progress &p=progress[i];
+        if(p.army==a && p.root==world() && p.commander==word(a,0x12) && p.intercept && p.intercept_gate==gate && !p.returning)return true;
+    }
+    return false;
+}
+static void gate_intercept_tick(unsigned own) { COST_SCOPE("ai_nodes:gate_intercept_tick");
+    for(unsigned gid=52;gid<=61;++gid) {
+        Obj gate=intercept_gate_object(gid);if(!gate || intercept_base_owner(gate)!=own)continue;
+        const unsigned center=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(gate);if(center>=48400)continue;
+        unsigned attackers[1];
+        if(!intercept_attackers(own,center,kInterceptAlert,attackers,1))continue;
+        if(intercept_unit_out(own,gid))continue;
+        const unsigned stand=intercept_stand(own,center,nullptr);
+        if(stand>=48400) {log_event("intercept_no_stand",gid,attackers[0],center);continue;}
+        std::vector<std::pair<int,Obj>> sources;
+        if(dword(gate,0x3C)>=kInterceptSoldiers+kInterceptKeep)sources.push_back({-1,gate});
+        for(unsigned id=1;id<=51;++id) {
+            Obj city=campaign_goal(id);if(!city || intercept_base_owner(city)!=own || dword(city,0x3C)<kRetakeGarrison)continue;
+            const int range=distance(fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(city),center);
+            if(range<=kInterceptReach)sources.push_back({range,city});
+        }
+        std::sort(sources.begin(),sources.end(),[](const std::pair<int,Obj> &a,const std::pair<int,Obj> &b){return a.first<b.first;});
+        Obj army=nullptr;Obj from=nullptr;
+        for(const auto &s:sources) {
+            army=campaign_paid_single(s.second,s.second,stand,kInterceptSoldiers,true,false,0,true);
+            if(valid(army)) {from=s.second;break;}
+        }
+        Progress *p=valid(army)?observe_capture(army):nullptr;
+        if(p) {p->intercept_gate=static_cast<unsigned short>(gid);p->intercept_seen_day=game_day();}
+        // value = army | source base << 16 (52..61 = the gate itself), hex = stand
+        log_event(p?"intercept_departed":"intercept_failed",gid,p?(army_id(army)|(static_cast<unsigned>(word(from,0x4E))<<16)):static_cast<unsigned>(sources.size()),stand);
+    }
+}
+// helm_intercept (native_campaign.inl helm_step): once per force and day. For each of the six river castles (여강 13 since local172, 건업 25,
+// 시상 28, 강하 32, 장사 36, 무릉 37) held by the force while its ship tier (force +0x15E, KB structs 3.9) is 몽충 (12) or
+// better: every port of that castle (a region whose city is the castle, area +0x35, and whose base hex is a port, terrain 18,
+// still held) is watched by its occupancy (area +0x68 owned tiles); when it falls since the day before, one 조타 ship sails
+// out from the castle to paint that port region back, however far it is (local149, user 2026-11-14 "성 주변 몇칸 적군부대
+// 몇칸 이러면 안돼 ... 소속된 항구의 점령률을 체크하고 있다가 떨어지면 거리 상관없이 출진해서 색칠"), unless one is out for it.
+// local169: 강릉 (35) added (user 2026-11-15 "시상이나 강하 강릉에 있는 장수들도").
+static constexpr unsigned kHelmCities[7]={17,25,28,32,35,36,37};
+static constexpr unsigned kHelmSoldiers=3000;
+static bool helm_unit_out(unsigned own,unsigned area) {
+    for(unsigned i=1;i<=500;++i) {
+        Obj a=table(0x7E838,i,500);if(!valid(a) || army_force(a)!=own)continue;
+        const Progress &p=progress[i];
+        if(p.army==a && p.root==world() && p.commander==word(a,0x12) && p.helm && p.helm_area==area && !p.returning)return true;
+    }
+    return false;
+}
+static bool helm_ring_out(unsigned own,unsigned city_id) {
+    for(unsigned i=1;i<=500;++i) {
+        Obj a=table(0x7E838,i,500);if(!valid(a) || army_force(a)!=own)continue;
+        const Progress &p=progress[i];
+        if(p.army==a && p.root==world() && p.commander==word(a,0x12) && p.helm && p.helm_ring==city_id && !p.returning)return true;
+    }
+    return false;
+}
+// local169: the river ring (helm_ring_of: 대하·격류 within max(15, nearest + 10) hexes of the castle); when the force holds
+// fewer of its hexes than the day before and some are lost to a hostile force, one 조타 ship sails out for the region with
+// the most lost ring hexes and keeps painting ring regions until none is lost (helm_step).
+static void helm_ring_tick(unsigned own,unsigned id,Obj city,unsigned castle,int day) {
+    static Obj seen_root;static unsigned short held_was[52];static int held_day[52];
+    if(seen_root!=world()) {seen_root=world();memset(held_was,0,sizeof(held_was));for(int &d:held_day)d=-1;}
+    if(id>=52)return;
+    unsigned held=0,ring_area=0;const unsigned lost=helm_ring_lost(own,id,&held,&ring_area);
+    const bool fell=held_day[id]>=0 && held_day[id]!=day && held<held_was[id];
+    if(held_day[id]!=day) {held_was[id]=static_cast<unsigned short>((std::min)(held,65535u));held_day[id]=day;}
+    if(!fell || !lost || !ring_area || helm_ring_out(own,id))return;
+    const unsigned goal=helm_pick(own,ring_area,castle,nullptr);
+    if(goal>=48400) {log_event("helm_ring_no_target",id,lost,ring_area);return;}
+    unsigned why=0;Obj army=campaign_paid_single(city,city,goal,kHelmSoldiers,true,false,0,true,true,&why);
+    Progress *p=valid(army)?observe_capture(army):nullptr;
+    if(p) {p->helm=true;p->helm_area=static_cast<unsigned short>(ring_area);p->helm_ring=static_cast<unsigned char>(id);p->helm_stuck=0;
+           p->intercept_gate=0;p->intercept_seen_day=day;p->helm_pick_day=-1;}
+    // departed: army = ring area, value = army | castle << 16; failed: value = castle | reason << 8; hex = goal
+    log_event(p?"helm_ring_departed":"helm_ring_failed",ring_area,p?(army_id(army)|(id<<16)):(id|(why<<8)),goal);
+}
+static void helm_intercept_tick(unsigned own) { COST_SCOPE("ai_nodes:helm_intercept_tick");
+    static Obj seen_root;static unsigned short last[501];static int last_day[501];
+    if(seen_root!=world()) {seen_root=world();memset(last,0,sizeof(last));for(int &d:last_day)d=-1;}
+    Obj force=pointer(world(),0xDF30+(own<0x34?own:0u)*8);
+    if(!valid(force) || force[0x15E]<12 || force[0x15E]>13)return;
+    const int day=game_day();
+    for(unsigned id:kHelmCities) {
+        Obj city=campaign_goal(id);if(!city || intercept_base_owner(city)!=own || dword(city,0x3C)<kRetakeGarrison)continue;
+        const unsigned castle=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(city);if(castle>=48400)continue;
+        helm_ring_tick(own,id,city,castle,day);
+        for(unsigned n=1;n<=500;++n) {
+            // local169: the castle's river regions too (helm_watch_area), not only its ports
+            Obj area=table(0x6CAF0,n,500);if(!valid(area) || area[0x35]!=id || !helm_watch_area(own,id,n))continue;
+            const unsigned base=word(area,0x3A);
+            const unsigned now=word(area,0x68);
+            const bool fell=last_day[n]>=0 && last_day[n]!=day && now<last[n];
+            if(last_day[n]!=day) {last[n]=static_cast<unsigned short>(now);last_day[n]=day;}
+            if(!fell || helm_unit_out(own,n))continue;
+            unsigned goal=helm_pick(own,n,castle,nullptr);
+            if(goal>=48400) {log_event("helm_no_target",n,now,base);continue;}
+            // local166 (user 2026-11-15 "조타 실패22건은 뭐지 ... 둘다 고쳐"): half the failures were a way blocked by the attackers
+            // (retake_path refuses; the same goal sailed fine days later). Then try up to two more goals, each picked again
+            // with the failed ones (and 3 hexes around them) left out; any other reason (no idle 조타 officer, soldiers, gold)
+            // does not change with the goal and stops at once.
+            unsigned why=0,tried[3]={goal},ntried=1;Obj army=nullptr;
+            for(;;) {
+                army=campaign_paid_single(city,city,goal,kHelmSoldiers,true,false,0,true,true,&why);
+                if(valid(army) || why!=3 || ntried>=3)break;
+                const unsigned next=helm_pick(own,n,castle,nullptr,nullptr,nullptr,kHelmSweep,tried,ntried);
+                if(next>=48400)break;
+                log_event("helm_goal_retry",n,goal,next);
+                goal=next;tried[ntried++]=next;
+            }
+            Progress *p=valid(army)?observe_capture(army):nullptr;
+            if(p) {p->helm=true;p->helm_area=static_cast<unsigned short>(n);p->intercept_gate=0;p->intercept_seen_day=day;p->helm_pick_day=-1;}
+            // departed: value = army | castle << 16; failed: value = castle | reason << 8 | goals tried << 16; hex = goal
+            log_event(p?"helm_departed":"helm_failed",n,p?(army_id(army)|(id<<16)):(id|(why<<8)|(ntried<<16)),goal);
+        }
+    }
+}
+// garrison_recall (local148, user 2026-11-14 "성에서 수비 요격군이나 수복군이 나갔어. 그런데 우리 성이 공격받는중이야 내구도보다 병사가
+// 작으면 주변 가까운부대를 퇴각시켜서 내구도보다 병사가 많게 유지 ... 원작 요격부대에도"): once per force and day, a castle of the
+// force with a hostile army within 3 hexes whose soldiers (+0x3C) are fewer than its durability (its building, facility table
+// id = castle id, +0x14) calls home its own armies from that castle - mod units (retake / intercept / 조타) and original
+// ones (interceptions included) alike - nearest first within kRecallReach hexes, until the soldiers on their way home
+// lift it above the durability. A called army takes the mod's forced return (recovery_return, kept by
+// campaign_individual_priority), so no original order turns it round.
+static constexpr int kRecallReach=20;
+static void garrison_recall_tick(unsigned own) { COST_SCOPE("ai_nodes:garrison_recall_tick");
+    for(unsigned id=1;id<=51;++id) {
+        Obj city=campaign_goal(id);if(!city || intercept_base_owner(city)!=own)continue;
+        const unsigned castle=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(city);if(castle>=48400)continue;
+        Obj building=table(0x6DA98,id,3000);
+        if(!valid(building) || word(building,0x10)!=castle)continue;
+        const unsigned durability=word(building,0x14),soldiers=dword(city,0x3C);
+        if(!durability || soldiers>durability)continue;
+        unsigned foes[1];if(!intercept_attackers(own,castle,3,foes,1))continue;
+        unsigned coming=0;std::vector<std::pair<int,Obj>> out;
+        for(unsigned i=1;i<=500;++i) {
+            Obj a=table(0x7E838,i,500);if(!valid(a) || army_force(a)!=own || !computer_side_army(a))continue;
+            Obj origin=fn<Obj(__fastcall *)(Obj)>(GA(GA_22BFE0))(a);if(origin!=city)continue;
+            const unsigned at=word(a,0x2A);if(at>=48400 || at==castle)continue;
+            const Progress &q=progress[i];
+            if((q.army==a && q.root==world() && (q.forced_return || q.returning)) || a[0x37]==11) {coming+=word(a,0x16);continue;}
+            const int range=distance(at,castle);if(range<=kRecallReach)out.push_back({range,a});
+        }
+        std::sort(out.begin(),out.end(),[](const std::pair<int,Obj> &x,const std::pair<int,Obj> &y){return x.first<y.first;});
+        for(const auto &e:out) {
+            if(soldiers+coming>durability)break;
+            Progress *p=observe_capture(e.second);if(!p)continue;
+            p->forced_return=true;p->guard_beneficiary=0;p->combat_target=0;p->combat_city=0;
+            if(!recovery_return(e.second,*p)) {p->forced_return=false;continue;}
+            coming+=word(e.second,0x16);
+            // value = army | soldiers << 16 (capped), hex = castle; third = garrison | durability << 16
+            log_event("garrison_recall",army_id(e.second)|((std::min)(static_cast<unsigned>(word(e.second,0x16)),65535u)<<16),castle,(soldiers&0xFFFF)|(durability<<16));
+        }
+    }
+}
+namespace trade_hire {static void trade_tick(unsigned own);}
+static void retake_adjacent_tick(Obj context) { COST_SCOPE("ai_nodes:retake_adjacent_tick");
+    static thread_local int seen_day=-1;
+    const int day=game_day();
+    if(seen_day==day)return;
+    seen_day=day;
+    // local167: the monthly computer trade rides on the same per-force daily tick, independent of mission_v2.
+    const bool v2=(mod_features.retake_adjacent || mod_features.gate_intercept || mod_features.helm_intercept || mod_features.garrison_recall) && mod_features.mission_v2;
+    if((!v2 && !mod_features.computer_trade) || !enabled || in_policy)return;
+    Obj blackboard=fn<Obj(__fastcall *)(Obj)>(GA(GA_1137FF0))(context),corps=nullptr;
+    if(!blackboard || !fn<char(__fastcall *)(Obj,unsigned,Obj *,int)>(GA(GA_B28D20))(blackboard,0xD6A5EAAEu,&corps,0) || !valid(corps))
+        {seen_day=-1;return;}   // not a corps tree yet: try again at a later condition of this thread
+    if(fn<int(__fastcall *)(Obj)>(GA(GA_2350F0))(corps))return;   // corps of the player force
+    const unsigned own=corps[0x10];
+    if(!own || own>51 || own==player_force())return;
+    static Obj tick_root;static int tick_day[52];
+    if(tick_root!=world()) {tick_root=world();for(int &d:tick_day)d=-1;}
+    if(tick_day[own]==day)return;
+    tick_day[own]=day;
+    ++in_policy;
+    AcquireSRWLockExclusive(&policy_lock);
+    if(mod_features.computer_trade)trade_hire::trade_tick(own);
+    if(v2 && mod_features.gate_intercept)gate_intercept_tick(own);
+    if(v2 && mod_features.helm_intercept)helm_intercept_tick(own);
+    if(v2 && mod_features.garrison_recall)garrison_recall_tick(own);
+    for(unsigned id=1;v2 && mod_features.retake_adjacent && id<=51;++id) {
+        Obj city=campaign_goal(id);if(!city)continue;
+        Obj lord=fn<Obj(__fastcall *)(Obj)>(GA(GA_22E3E0))(city);
+        if(!valid(lord) || (*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(lord,0)+0x60))(lord)!=own)continue;
+        const unsigned castle=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(city);
+        Obj home=table(0x6CAF0,campaign_area_id(castle),500);if(castle>=48400 || !valid(home))continue;
+        bool reviewed=false;
+        const RetakeRings rings=retake_rings(own,id);   // local89: the largest threat is left out and walked around
+        for(unsigned i=0;i<8;++i) {
+            const unsigned n=word(home,0x56+i*2);if(!(home[0x66]&(1u<<i)) || !n || n>500)continue;
+            Obj area=table(0x6CAF0,n,500);if(!valid(area))continue;
+            const unsigned base=word(area,0x3A);
+            if(campaign_transit_region(n))continue;   // a port or another castle is not a base to walk onto
+            // local86: a base still ours gets its unit before it falls, once a hostile army is within kRetakeThreat hexes.
+            const bool lost=retake_first_ring_lost(own,base);
+            Obj kept=base<48400?table(0xE270,base,48399):nullptr;
+            const bool threatened=!lost && valid(kept) && kept[0x14]==own && retake_hostile_near(own,base,kRetakeThreat);
+            if(!lost && !threatened)continue;
+            if(n==rings.threat) {log_event("retake_max_threat",id,n,base);continue;}
+            if(!reviewed) {
+                reviewed=true;
+                if(retake_hostile_near(own,castle,2)) {log_event("retake_castle_attacked",id,0,castle);break;}
+            }
+            if(retake_hostile_near(own,base,2)) {log_event("retake_left_to_interception",id,0,base);continue;}
+            if(retake_unit_heading(own,base)) {log_event("retake_already_sent",id,0,base);continue;}
+            // local92 (user 2026-11-12 "성에 남은 병력 6000명 미만이면 출진 X"): no unit leaves a castle holding fewer than 6,000.
+            if(dword(city,0x3C)<kRetakeGarrison || campaign::available(dword(city,0x3C))<1000) {log_event("retake_no_spare",id,dword(city,0x3C),base);break;}
+            // local85: no way that stays clear of hostile armies = not sent (asked again next turn).
+            std::vector<unsigned> way;
+            if(!retake_path(own,castle,base,way,rings.threat)) {log_event("retake_no_safe_way",id,0,base);continue;}
+            // local88: the units ran into the player's armies because the original group tree re-purposed their group
+            // (retake_tree_hook), not because they left; the "reaches the base first" rule of local87 is gone, so a unit
+            // is out before the base falls and can cut the supply of the armies that come for it.
+            Obj army=campaign_paid_single(city,city,base,kRetakeSoldiers,true,true,rings.threat);
+            log_event(valid(army)?(lost?"retake_departed":"retake_guard_departed"):"retake_failed",id,valid(army)?army_id(army):0,base);
+        }
+    }
+    ReleaseSRWLockExclusive(&policy_lock);
+    --in_policy;
+}
+#else
+static void retake_adjacent_tick(Obj) {}
+#endif
+// [combat] computer_trade / front_hire (local167, user 2026-11-15 "컴퓨터군단 교역을 왜 안가지 .. 통솔 50미만중에 정치 높거나 특사개성
+// 있는 애들 교역 보내게 해줘. 우호도 1000이면 1명만 보내고 / 고용무장 ... 전선도시에 응원 악주 조타 모집 개성만 고용하게 해줘").
+// Trade: the original tree (CCommandExecutionTradeNode 54CE0) only trades from a capital with gold >= 9000, food >= 30000,
+// soldiers >= 6000, an empty caution list and 8+ city officers, so computer forces almost never do. Here, once a month in
+// 상순 (the first day of 상순 that works), a computer force sends a trade (command 0x30 bytes: person list, +0x10 trade nation
+// index 22F740, +0x20 gold, +0x24 food, +0x28 soldiers; issued by 1EBC60 as 54CE0 does) to the trade nation (교역국, table 36:
+// 대진국·안식 etc., world +0x85A20, opened through a region benefit = 2C8530(force,2,index), not trading now = 711BE0) it is
+// least friendly with (6E01F0 candidates, 우호도 force +0x184 + index*2, 0..1000): officers idle in the capital, not the lord or a corps
+// governor, 통솔 < 50, 특사 (185) first, then 정치 descending; three of them, one when the intimacy is already 1000.
+// The original trade node, when it fires, issues the same pick for its own target instead of its officer list.
+// Hire: CCommandExecutionHireNode (2DAB0) hires every person of the list in blackboard var node+0x3C for the city in var
+// node+0x38. In a frontline city (a region borders a hostile regular force) of a computer force, a listed person without
+// 응원 96 / 악주 23 / 조타 154 / 모집 117 is replaced by the force's hire pool (force +0x250) holder of one of them with the
+// highest 통솔; none = no hire this time (the pool's traits change every 상순).
+namespace trade_hire {
+static constexpr unsigned kTradeGold=5000,kTradeSoldiers=2000,kMinGold=8000,kMinSoldiers=5000,kFoodSpare=10000;
+static constexpr int kLeadBelow=50,kLeadMax=70;   // local171: 통솔 below 70 may go, below 50 first
+static constexpr unsigned kEnvoy=185,kMaxOfficers=3,kIntimacyMax=1000;
+static constexpr unsigned kFrontTraits[4]={96,23,154,117};
+struct TradeCommand {Obj vtable;unsigned *handle;unsigned tribe,pad0;unsigned long long zero;unsigned gold,food,soldiers,pad1;};
+static_assert(sizeof(TradeCommand)==0x30,"trade command layout (54CE0 locals)");
+static bool has_trait(Obj p,unsigned t) {
+    for(unsigned s=0;s<9;++s)if(fn<unsigned(__fastcall *)(Obj,unsigned)>(GA(GA_232030))(p,s)==t)return true;
+    return false;
+}
+static int stat(Obj p,unsigned i) {return fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(p,i,0xFFF);}
+static Obj force_obj(unsigned own) {return own && own<0x34?pointer(world(),0xDF30+own*8):nullptr;}
+static unsigned city_force(Obj city) {
+    Obj f=valid(city)?fn<Obj(__fastcall *)(Obj)>(GA(GA_22E3E0))(city):nullptr;
+    return valid(f)?(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(f,0)+0x60))(f):0;
+}
+static bool computer_force(unsigned own) {return own && own<=45 && own!=player_force();}
+static bool idle_in(Obj p,unsigned city) {
+    if(word(p,0xE2)!=city || word(p,0xE4)!=city || (word(p,0x15E)&0x4001))return false;
+    if(fn<int(__fastcall *)(Obj)>(GA(GA_233BE0))(p)!=0 || fn<int(__fastcall *)(Obj,int)>(GA(GA_234AB0))(p,0)!=0)return false;
+    if(valid(fn<Obj(__fastcall *)(Obj)>(GA(GA_22C4B0))(p)))return false;           // already on a job
+    return !valid(fn<Obj(__fastcall *)(Obj,int)>(GA(GA_22BAB0))(p,1));            // not commanding an army
+}
+static bool governor(unsigned own,Obj p) {
+    for(unsigned i=0;i<0x34;++i) {
+        Obj c=table(0xE0D0,i,51);
+        if(valid(c) && c[0x10]==own && word(c,0x12)==word(p,0x10))return true;
+    }
+    return false;
+}
+static bool front_city(unsigned id,unsigned own);
+// Trade officers from every non-front city of the force (user 2026-11-15): idle in their own city, 통솔 below kLeadBelow,
+// not the lord or a governor; 특사 first, then 정치 descending. The original 1F5870 departs from the first officer's location
+// (+0xE2) and takes gold/food/soldiers from the force capital. local171 (user 2026-11-15 "교역무장은 같이 보낼 무장이 꼭 같은
+// 도시에 없어도 보낼수있어(원작)"): companions come from any city; 통솔 below kLeadMax qualifies, below kLeadBelow sorted first.
+static std::vector<Obj> trade_officers(unsigned own,Obj force,unsigned count) {
+    struct Pick {Obj p;bool envoy;bool low;int politics;unsigned city;};
+    std::vector<Pick> picks;
+    signed char front[0x34];for(auto &f:front)f=-1;
+    Obj lord=table(0x158,word(force,0x52),6000);
+    for(unsigned id=1;id<=6000;++id) {
+        Obj p=table(0x158,id,6000);
+        if(!valid(p) || p==lord || fn<unsigned(__fastcall *)(Obj)>(GA(GA_22E870))(p)!=own)continue;
+        const unsigned city=word(p,0xE2);
+        if(!city || city>=0x34 || !idle_in(p,city) || city_force(table(0xE0D0,city,51))!=own)continue;
+        const int lead=stat(p,0);
+        if(lead>=kLeadMax || governor(own,p))continue;
+        if(front[city]<0)front[city]=front_city(city,own)?1:0;
+        if(front[city])continue;
+        picks.push_back({p,has_trait(p,kEnvoy),lead<kLeadBelow,stat(p,3),city});
+    }
+    std::stable_sort(picks.begin(),picks.end(),[](const Pick &a,const Pick &b){return a.envoy!=b.envoy?a.envoy:a.low!=b.low?a.low:a.politics>b.politics;});
+    std::vector<Obj> out;
+    for(const Pick &k:picks) {if(out.size()>=count)break;out.push_back(k.p);}
+    return out;
+}
+// One trade for force `own` to `want` (null = the least friendly candidate). Returns true once the command reached 1EBC60.
+static bool issue(unsigned own,Obj want,bool log_fail) { COST_SCOPE("trade_hire:issue");
+    auto fail=[&](unsigned why,unsigned detail) {if(log_fail)log_event("trade_skipped",own,why,detail);return false;};
+    Obj force=force_obj(own);if(!valid(force))return false;
+    Obj capital=fn<Obj(__fastcall *)(Obj)>(GA(GA_230350))(force);
+    Obj corps=fn<Obj(__fastcall *)(Obj)>(GA(GA_230270))(force);
+    if(!valid(capital) || !valid(corps))return fail(1,0);
+    unsigned code=0;
+    if(!fn<unsigned char(__fastcall *)(Obj,unsigned *,unsigned)>(GA(GA_70F210))(corps,&code,0))return fail(2,code);
+    GameList candidates;list_init(candidates,GA(GA_134F6D8));
+    if(!candidates.handle)return fail(3,0);
+    fn<int(__fastcall *)(Obj,GameList *,int)>(GA(GA_6E01F0))(corps,&candidates,0);
+    Obj target=nullptr;unsigned tribe=0,intimacy=~0u;
+    for(Link *l=list_first(candidates);l;l=l->next) {
+        Obj c=l->value;if(!valid(c) || (want && c!=want))continue;
+        const unsigned idx=static_cast<unsigned>(fn<long long(__fastcall *)(Obj)>(GA(GA_22F740))(c));
+        if(!idx || idx>4)continue;
+        const unsigned v=word(force,0x184+idx*2);
+        if(v<intimacy) {intimacy=v;target=c;tribe=idx;}
+    }
+    list_free(candidates);
+    if(!target)return fail(4,0);
+    const std::vector<Obj> officers=trade_officers(own,force,intimacy>=kIntimacyMax?1u:kMaxOfficers);
+    if(officers.empty())return fail(5,0);
+    GameList copy;list_init(copy,GA(GA_13466B0));
+    if(!copy.handle)return fail(3,1);
+    for(Obj p:officers)list_add(copy,p);
+    const int food=fn<int(__fastcall *)(Obj,int,GameList *)>(GA(GA_32F080))(target,static_cast<int>(kTradeSoldiers),&copy);   // frees the copy
+    Obj vt=*reinterpret_cast<Obj *>(capital);
+    const int gold_have=reinterpret_cast<int(__fastcall *)(Obj)>(*reinterpret_cast<void **>(vt+0x90))(capital);
+    const int food_have=reinterpret_cast<int(__fastcall *)(Obj)>(*reinterpret_cast<void **>(vt+0xA0))(capital);
+    const int soldiers_have=static_cast<int>(dword(capital,0x3C));
+    if(gold_have<static_cast<int>(kMinGold) || soldiers_have<static_cast<int>(kMinSoldiers))return fail(6,static_cast<unsigned>(gold_have>0?gold_have:0)|(static_cast<unsigned>(soldiers_have>0?(std::min)(soldiers_have,65535):0)<<16));
+    if(food<0 || food_have<food+static_cast<int>(kFoodSpare))return fail(7,static_cast<unsigned>(food_have>0?food_have:0));
+    TradeCommand cmd{image+GA(GA_13466B0),nullptr,tribe,0,0,kTradeGold,static_cast<unsigned>(food),kTradeSoldiers,0};
+    fn<void(__fastcall *)(void *)>(GA(GA_1AC60))(&cmd);
+    if(!cmd.handle)return fail(3,2);
+    for(Obj p:officers)list_add(*reinterpret_cast<GameList *>(&cmd),p);
+    fn<void(__fastcall *)(void *,int)>(GA(GA_1EBC60))(&cmd,0);
+    fn<void(__fastcall *)(void *)>(GA(GA_1BFFF0))(&cmd);
+    // 1EBC60 validates and may drop it; either way the month counts as done (no second trade from a job flag read too early).
+    const bool ok=valid(fn<Obj(__fastcall *)(Obj)>(GA(GA_22C4B0))(officers.front()));
+    // value = tribe | officers << 8 | intimacy << 16, hex = first officer id
+    log_event(ok?"trade_issued":"trade_unconfirmed",own,tribe|(static_cast<unsigned>(officers.size())<<8)|((intimacy&0xFFFF)<<16),word(officers.front(),0x10));
+    return true;
+}
+// Once per force and month, on the 상순 days (1..10) until one trade is sent; the reason of the first failed try of the month
+// is logged (the tick may only run on some days of 상순).
+static void trade_tick(unsigned own) { COST_SCOPE("trade_hire:trade_tick");
+    if(!computer_force(own))return;
+    Obj ctx=pointer(world(),0x871E8);if(!ctx)return;
+    const unsigned day=ctx[0x37];if(day<1 || day>10)return;
+    const int month=static_cast<int>(word(ctx,0x34))*12+ctx[0x36];
+    static Obj root;static int done[46],logged[46];
+    if(root!=world()) {root=world();for(int &d:done)d=-1;for(int &d:logged)d=-1;}
+    if(done[own]==month)return;
+    const bool log_fail=logged[own]!=month;logged[own]=month;
+    if(issue(own,nullptr,log_fail) || day==10)done[own]=month;
+}
+// A region of city `id` borders a region held by another hostile regular force (1..45), as officer_rotation::front_cities.
+static bool front_city(unsigned id,unsigned own) {
+    for(unsigned n=1;n<=500;++n) {
+        Obj a=table(0x6CAF0,n,500);if(!valid(a) || a[0x35]!=id)continue;
+        for(unsigned i=0;i<8;++i) {
+            const unsigned m=word(a,0x56+i*2);if(!(a[0x66]&(1u<<i)) || !m || m>500)continue;
+            Obj b=table(0x6CAF0,m,500);
+            Obj tile=valid(b)?table(0xE270,word(b,0x3A),48399):nullptr;
+            const unsigned owner=valid(tile)?tile[0x14]:0;
+            if(owner && owner<=45 && owner!=own && fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(owner,own)!=0)return true;
+        }
+    }
+    return false;
+}
+static bool front_trait(Obj p) {for(unsigned t:kFrontTraits)if(has_trait(p,t))return true;return false;}
+static Obj best_hire(Obj force,GameList &listed) {
+    GameList pool{nullptr,*reinterpret_cast<unsigned **>(force+0x250)};
+    Obj best=nullptr;int best_lead=-1;
+    for(Link *l=list_first(pool);l;l=l->next) {
+        Obj p=l->value;if(!valid(p) || !front_trait(p))continue;
+        bool taken=false;for(Link *k=list_first(listed);k;k=k->next)if(k->value==p) {taken=true;break;}
+        if(taken)continue;
+        const int lead=stat(p,0);if(lead>best_lead) {best_lead=lead;best=p;}
+    }
+    return best;
+}
+}   // namespace trade_hire
+static uint64_t __fastcall hire_node(Obj node,Obj context,Obj entity) { COST_SCOPE("hire_node");
+    auto original=fn<Execute>(GA(GA_2DAB0));
+    if(!mod_features.front_hire || !enabled || !node || !context)return original(node,context,entity);
+    Obj blackboard=fn<Obj(__fastcall *)(Obj)>(GA(GA_1137FF0))(context),city=nullptr,people=nullptr;
+    auto read=fn<char(__fastcall *)(Obj,unsigned,Obj *,int)>(GA(GA_B28D20));
+    if(!blackboard || !read(blackboard,dword(node,0x38),&city,0) || !valid(city) || !read(blackboard,dword(node,0x3C),&people,0) || !people)
+        return original(node,context,entity);
+    const unsigned own=trade_hire::city_force(city),id=word(city,0x4E);
+    if(!trade_hire::computer_force(own) || !trade_hire::front_city(id,own))return original(node,context,entity);
+    Obj force=trade_hire::force_obj(own);if(!valid(force))return original(node,context,entity);
+    GameList &listed=*reinterpret_cast<GameList *>(people);
+    unsigned swapped=0,kept=0;
+    for(Link *l=list_first(listed);l;l=l->next) {
+        if(valid(l->value) && trade_hire::front_trait(l->value)) {++kept;continue;}
+        Obj pick=trade_hire::best_hire(force,listed);
+        if(!pick) {
+            static Obj root;static int logged[52];
+            if(root!=world()) {root=world();for(int &d:logged)d=-1;}
+            if(id<52 && logged[id]!=game_day()) {logged[id]=game_day();log_event("front_hire_none",id,own,valid(l->value)?word(l->value,0x10):0);}
+            return 2;
+        }
+        // value = replaced id | hired id << 16, hex = force
+        log_event("front_hire_swap",id,(valid(l->value)?word(l->value,0x10):0)|(static_cast<unsigned>(word(pick,0x10))<<16),own);
+        l->value=pick;++swapped;
+    }
+    const uint64_t result=original(node,context,entity);
+    log_event("front_hire",id,swapped|(kept<<8)|(own<<16),static_cast<unsigned>(result));
+    return result;
+}
+static uint64_t __fastcall trade_node(Obj node,Obj context,Obj entity) { COST_SCOPE("trade_node");
+    auto original=fn<Execute>(GA(GA_54CE0));
+    if(!mod_features.computer_trade || !enabled || in_policy || !node || !context)return original(node,context,entity);
+    Obj blackboard=fn<Obj(__fastcall *)(Obj)>(GA(GA_1137FF0))(context),city=nullptr;
+    if(!blackboard || !fn<char(__fastcall *)(Obj,unsigned,Obj *,int)>(GA(GA_B28D20))(blackboard,dword(node,0x38),&city,0) || !valid(city))
+        return original(node,context,entity);
+    Obj force=fn<Obj(__fastcall *)(Obj,Obj)>(GA(GA_B7210))(context,entity);
+    const unsigned own=valid(force)?(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(force,0)+0x60))(force):0;
+    if(!trade_hire::computer_force(own))return original(node,context,entity);
+    ++in_policy;
+    AcquireSRWLockExclusive(&policy_lock);
+    const bool ok=trade_hire::issue(own,city,true);
+    ReleaseSRWLockExclusive(&policy_lock);
+    --in_policy;
+    return ok?1u:2u;
+}
 static uint64_t __fastcall bt_condition(unsigned op,unsigned char negate,Obj context,Obj entity,int *args,int count)
 { COST_SCOPE("bt_condition");
     if(mod_features.ai_max_aggression && op==0x73 && args)return args[0]==4?1u:0u;
     auto original=fn<BtCondition>(GA(GA_C36A0));
+    if(context)retake_adjacent_tick(context);
     uint64_t result=original(op,negate,context,entity,args,count);
     if(!mod_features.ai_max_aggression)return result;
     if(op==0x74 && !(result&0xFF) && args && context) {
@@ -346,7 +823,8 @@ static uint64_t __fastcall variable_minus_node(Obj node,Obj context,Obj entity)
 static volatile LONG bt_condition_state; // 0 pending, 1 installed, 2 unexpected pointer
 static void ensure_bt_condition()
 { COST_SCOPE("ai_nodes:ensure_bt_condition");
-    if(!mod_features.ai_max_aggression || bt_condition_state)return;
+    if((!mod_features.ai_max_aggression && !mod_features.retake_adjacent && !mod_features.gate_intercept && !mod_features.helm_intercept &&
+        !mod_features.garrison_recall && !mod_features.computer_trade) || bt_condition_state)return;
     void *current=*reinterpret_cast<void **>(image+GA(GA_1B98D10));
     if(!current)return; // AI not initialised yet
     if(patch_pointer(GA(GA_1B98D10),GA(GA_C36A0),reinterpret_cast<void *>(&bt_condition))) {
@@ -378,7 +856,12 @@ static uint64_t __fastcall first_army_node(Obj node, Obj context, Obj entity)
     if(!changed && !urgent && p && !p->credit && !p->build_chain && !p->facility && !campaign_group_member(army) && !p->regional_worker && node && context && fn<Execute>(GA(GA_20040))(node,context,army)==1) {
         log_event("native_supply_restore",army_id(army),0,word(army,0x2A));changed=true;
     }
-    if(!changed)changed=apply_priority(army,node,context);
+    // local88 (user 2026-11-12 "점령하기전에 나와서 적의 거점 점령부대 병참을 짜르길 원해"): a retake unit does not claim the
+    // turn at this first node, so the original chain goes on to its supply-cut node (cut_node below: the original
+    // plans the cut, the mod narrows the victims to player armies). No cut = the retake step there.
+    // local89: only where the target region holds more of our hexes than hostile ones (retake_cut_first).
+    const bool cutter=p && p->regional_worker && p->retake && mod_features.combat_cut && !p->forced_return && !p->returning && retake_cut_first(army,*p);
+    if(!changed && !cutter)changed=apply_priority(army,node,context);
     ReleaseSRWLockExclusive(&policy_lock);
     --in_policy;
     mod_step(changed?"army_node:mod":"army_node:native");

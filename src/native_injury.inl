@@ -78,9 +78,44 @@ static bool injury_plan_herb(Obj force,GameList &list,Obj advisor) {
     log_event("injury_herb_planned",word(force,0x10),word(selected,0x10),41);
     return true;
 }
+// local156 (user 2026-11-14 "Ai자체가 건설 금지 내리는 옵션 ... 투석대 금지면 지세연구 Lv을 7이상 10미만까지만, 요새금지면 7미만 4이상까지만
+// ... AI들 시정이 낭비되면 안되니까 ... 5 8이럴수도있으니"): the computer's automatic government plan (263520, before its rows are
+// applied) keeps the 지세연구 level (effect 24, the 산천시설 unlock) at 7..9 when 투석대 is excluded (siege_no_catapult). An officer's
+// level is the one 25A730 adds: min(10, 2ABF60(officer,3) + officer+0x182) when his policy (+0x14D, table world+0x78D50) carries
+// the effect; the ruler (+0x10) and the advisor always count. Walking the rows in order, an officer is dropped once the level is
+// already at the stop (7) or when he would lift it to the cap (10); his slot stays free (its order is not spent).
+static unsigned policy_level_of(Obj person,unsigned effect) {
+    if(!valid(person))return 0;
+    const unsigned id=person[0x14D];Obj policy=table(0x78D50,id<0x79?id:0,0x78);
+    if(!valid(policy))return 0;
+    bool has=false;for(unsigned i=0;i<8;++i)if(policy[0x98+i]==effect)has=true;
+    if(!has)return 0;
+    const int level=fn<int(__fastcall *)(Obj,int)>(GA(GA_2ABF60))(person,3)+person[0x182];
+    return level<0?0u:level>10?10u:static_cast<unsigned>(level);
+}
+static void ai_policy_cap(Obj force,Obj advisor,GameList *lists) {
+    if(!mod_features.ai_policy_cap || !lists || !valid(force) || injury_player_force(force))return;
+    const unsigned stop=7u,cap=10u;   // local158 (user "요새금지옵션은 만들면 안돼 투석대만 시정 제한"): 투석대 제외 only
+    Obj ruler=table(0x158,word(force,0x10),6000),adv=advisor?advisor:table(0x158,word(force,0x52),6000);
+    unsigned level=policy_level_of(ruler,24)+(adv!=ruler?policy_level_of(adv,24):0u),dropped=0;
+    for(unsigned row=0;row<5;++row) {
+        Obj drop[16];unsigned n=0;
+        for(Link *l=list_first(lists[row]);l;l=l->next) {
+            if(l->value==ruler || l->value==adv)continue;
+            const unsigned add=policy_level_of(l->value,24);if(!add)continue;
+            if(level>=stop || level+add>=cap) {if(n<16)drop[n++]=l->value;}
+            else level+=add;
+        }
+        for(unsigned i=0;i<n;++i){personnel_remove(lists[row],drop[i]);++dropped;}
+    }
+#ifndef NO_RUNTIME_LOG
+    if(dropped)log_event("ai_policy_cap",dropped,level,stop);
+#endif
+}
 static Obj __fastcall injury_government_selection(Obj force,Obj layout,GameList *lists) { COST_SCOPE("injury_injury_government_selection");
     Obj advisor=fn<Obj(__fastcall *)(Obj,Obj,GameList *)>(GA(GA_263520))(force,layout,lists);
-    if(enabled && lists && valid(force) && injury_force_needs_herb(force)) {
+    ai_policy_cap(force,advisor,lists);
+    if(enabled && mod_features.injury_herbal && lists && valid(force) && injury_force_needs_herb(force)) {
         for(unsigned i=0;i<7;++i) {
             Obj p=table(0x158,word(force,0xCC+i*2),6000);
             if(p==advisor && injury_protected_policy(p)) {

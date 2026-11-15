@@ -115,7 +115,7 @@ static int adjacency_native_rate(unsigned force) {
     int level=static_cast<int>(dword(cfg,0xE58)==0?dword(cfg,0x134):dword(cfg,0x28));
     return level==3?16:level>3?24:4;
 }
-static float __fastcall contextual_adjacency(Obj tile,int force,int *occupation_score) { COST_SCOPE("battle_contextual_adjacency");
+static float contextual_adjacency_core(Obj tile,int force,int *occupation_score) { COST_SCOPE("battle_contextual_adjacency");
     // Native code retains unit/officer/formation stats and exact occupation.
     float native=original_adjacency(tile,force,occupation_score);
     if(!enabled || !occupation_score || !valid(tile))return native;
@@ -156,4 +156,31 @@ static float __fastcall contextual_adjacency(Obj tile,int force,int *occupation_
     if(InterlockedIncrement(counter)<=12)
         log_bonus(pair?"adjacency_native_pair_preserved":"adjacency_outside_pair_preserved",static_cast<unsigned>(force),opponent,score,native,native);
     return native;
+}
+// local100 diagnostics (user 2026-11-12: 장포 on 저산 shows 공군 1114 -> 2168, x1.946, where the original term for
+// 지세활용 gives x1.05 with the data value 5). Read only. For a unit of the player force whose common multiplier is being
+// computed: the doctrine value the original terrain term reads (22DB30(force, 0x30)), the terrain category of the tile
+// the unit stands on (2 = mountain, 4 = river: the term applies), the occupation score, and the regional multiplier the
+// original returned and the one the mod returned. One pair of lines per unit and tile, 300 pairs at most.
+static float __fastcall contextual_adjacency(Obj tile,int force,int *occupation_score) {
+    const float used=contextual_adjacency_core(tile,force,occupation_score);
+#ifndef NO_RUNTIME_LOG
+    if(diagnostic_logging && expert_unit_scope.active && valid(expert_unit_scope.army) && static_cast<unsigned>(force)==player_force()) {
+        static volatile LONG lines;static unsigned last_army,last_hex;
+        Obj army=expert_unit_scope.army;const unsigned hex=word(army,0x2A);unsigned id=0;
+        for(unsigned i=1;i<=500 && !id;++i)if(table(0x7E838,i,500)==army)id=i;
+        if((id!=last_army || hex!=last_hex) && InterlockedIncrement(&lines)<=300) {
+            last_army=id;last_hex=hex;
+            Obj owner=table(0xDF30,static_cast<unsigned>(force),51);
+            const int doctrine=valid(owner)?fn<int(__fastcall *)(Obj,unsigned)>(GA(GA_22DB30))(owner,0x30):-1;
+            Obj here=hex<48400?table(0xE270,hex,48399):nullptr;
+            Obj terrain=valid(here) && here[0x10]<0x1F?pointer(world(),0x73860+here[0x10]*8):nullptr;
+            const unsigned category=valid(terrain)?terrain[0x42]:255u,kind=valid(here)?here[0x10]:255u;
+            log_event("terrain_probe",id,static_cast<unsigned>(doctrine),(kind<<8)|category);   // value = 지세활용 값, hex = 지형 종류<<8 | 분류
+            log_event("terrain_probe_adj",static_cast<unsigned>(occupation_score?*occupation_score:-1),
+                      static_cast<unsigned>(original_adjacency(tile,force,occupation_score)*10000.0f),static_cast<unsigned>(used*10000.0f));   // army = 점령 점수, value = 원작 배율 x10000, hex = 모드 배율 x10000
+        }
+    }
+#endif
+    return used;
 }

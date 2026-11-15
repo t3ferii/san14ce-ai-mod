@@ -175,6 +175,10 @@ template<class Emit,class Neighbour> void mismatch_detail(std::uint64_t ordinal,
 }
 #endif
 
+// Optional S::over(g): true drops a candidate whose accumulated cost is above the caller's limit (1861E0 keeps such cells
+// out of the open list). Searches without the member are unchanged.
+template<class S> auto over_limit(S &s,std::int32_t g,int)->decltype(s.over(g)) {return s.over(g);}
+template<class S> bool over_limit(S &,std::int32_t,long) {return false;}
 template<class S> Node *search(Storage &storage,unsigned start,unsigned goal,unsigned flags,S &s) {
     storage.begin();
     Node *seed=&storage.touch(goal);
@@ -199,6 +203,7 @@ template<class S> Node *search(Storage &storage,unsigned start,unsigned goal,uns
             if(id!=start && !s.allowed(id,tile,cost))continue;
             Node *node=&storage.touch(id);
             const std::int32_t candidate=add(current->g,s.adjust(cost,tile));
+            if(over_limit(s,candidate,0))continue;
             if((node->state&3) && candidate>=node->g)continue;
             node->cell=id;node->parent=current;node->state&=0xFD;
             s.coordinate(current->cell); // 1841E5, including already-open improvements

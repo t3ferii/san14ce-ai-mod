@@ -1,5 +1,7 @@
 #include "game_addresses.h"
 #include "sortie_policy.h"
+#include "season_mobility_shared.h"
+#include "computer_tactics.h"
 using SortiePlanner=uint64_t(__fastcall *)(Obj,Obj,Obj);
 using SortieDispatch=Obj(__fastcall *)(unsigned *,int);
 // Fifth argument is a TILE POINTER (R15 from entry RSP+28), not an int.
@@ -72,7 +74,7 @@ static bool sortie_auto_person(Obj person) { COST_SCOPE("sortie:sortie_auto_pers
 // local18 delegated_exclude (user 2026-11-10 "플레이어 위임군단이랑 플레이어 직할 군대는 컴퓨터 위임군단에 적용되는 규칙에서
 // 반드시 빼줘"): with the key on, an automated corps of the player force (a delegated corps) is no longer taken by the
 // sortie formation and, through campaign_controlled, by the campaign/siege/support/obstacle rules; computer forces are
-// unchanged. Off = v15.7.1 (every automated corps).
+// unchanged. local94: always on (the installer option is gone; the flag is kept for the unit-test shells only).
 static bool sortie_controlled(Obj army) { COST_SCOPE("sortie:sortie_controlled");
     if(mod_features.delegated_exclude && valid(army) && !computer_side_force(army_force(army)))return false;
     return valid(army) && !army[0x140] && sortie_auto_person(table(0x158,word(army,0x12),6000));
@@ -179,9 +181,9 @@ static bool sortie_area_trait(Obj p) {
     return false;
 }
 // 1,000-soldier units (user 2026-11-11 "여무장은 1000명으로 해 통솔 60이하면 그냥 1000명으로 지원나가는게 좋아"): every female
-// officer and every officer with 통솔 60 or less leaves with at most 1,000 soldiers.
+// officer leaves with at most 1,000 soldiers (the 통솔 60 part was dropped in local139).
 static bool sortie_female_capped(Obj p) {
-    return p[0xA9]==1 || fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(p,0,0xFFF)<=60;
+    return p[0xA9]==1;   // local139 (user 2026-11-14 "통솔 60이하 1000명제한 코드 풀자 오작동하네"): female officers only
 }
 static bool sortie_likes(Obj a,Obj b) {
     const auto liked=fn<int(__fastcall *)(Obj,Obj)>(GA(GA_234880));
@@ -210,11 +212,40 @@ static unsigned sortie_capture_formation(Obj person) { COST_SCOPE("sortie:sortie
 static void sortie_escort_clear(unsigned id);
 // v12.17: corps policy is judged here when this module is loaded; without it the
 // convenience module hooks 1EC890 itself (native_district_intercept*.inl).
+// local150 ai_tactic_order (computer_tactics.h): a computer departure (the person's corps is not the player's, direct or
+// delegated, 2350F0; demo play counts as computer) carries the three tactics of the officer that its formation can use
+// (tactic +0x6C formation bit, the native command builder's rule) in the computer order: unique, trade, tribe, then the
+// martial or intellect list. command = the native departure struct (1EDC30): [0] person, [3] formation, [5..7] tactics.
+static void computer_tactic_order(unsigned *command) { COST_SCOPE("sortie:computer_tactic_order");
+    if(!mod_features.ai_tactic_order || !command || !command[0] || command[0]>=6000 || command[3]>20)return;
+    Obj person=table(0x158,command[0],6000);if(!valid(person))return;
+    Obj corps=table(0xE0D0,person[0xE0],51);if(!valid(corps))return;
+    Obj root=world();Obj ctx=root?pointer(root,0x871E8):nullptr;
+    const bool demo=ctx && ctx[0x3A]==0;
+    if(!demo && fn<int(__fastcall *)(Obj)>(GA(GA_2350F0))(corps)!=0)return;
+    unsigned have[10]={};unsigned n=0;
+    for(unsigned i=0;i<10;++i) {
+        const unsigned t=fn<unsigned(__fastcall *)(Obj,unsigned)>(GA(GA_22BD60))(person,i);
+        Obj entry=t && t<=200?table(0x774D0,t,200):nullptr;
+        if(valid(entry) && (dword(entry,0x6C)&(1u<<command[3])))have[n++]=t;
+    }
+    if(!n)return;   // nothing usable: the original choice stays
+    const bool martial=fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(person,1,0xFFF)>=fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(person,2,0xFFF);
+    unsigned chosen[3];ctac::pick3(have,n,martial,chosen);
+#ifndef NO_RUNTIME_LOG
+    static volatile LONG lines;
+    if(InterlockedIncrement(&lines)<=2000 && (chosen[0]!=command[5] || chosen[1]!=command[6] || chosen[2]!=command[7]))
+        log_event("ai_tactic_order",command[0]|(command[3]<<16)|((martial?1u:0u)<<24),(command[5]&0xFF)|((command[6]&0xFF)<<8)|((command[7]&0xFF)<<16),
+            chosen[0]|(chosen[1]<<8)|(chosen[2]<<16));
+#endif
+    command[5]=chosen[0];command[6]=chosen[1];command[7]=chosen[2];
+}
 static Obj __fastcall sortie_dispatch(unsigned *command,int spend) {
     COST_SCOPE("sortie_dispatch");
     NativePhase phase("sortie_dispatch");
     // Player corps policy (지원: transport only, 내정: no military departure) first.
     if(district_intercept::blocked(command))return nullptr;
+    if(!sortie_probe)computer_tactic_order(command);
     if(sortie_probe) {
         if(command && command[0]) {
             ++sortie_probe->calls;sortie_probe->soldiers+=command[2];
@@ -608,8 +639,42 @@ static float sortie_movement_next(SortieMovement next,Obj army,Obj formation,int
     // Impassable terrain still returns native zero before this branch.
     return slowest>0?slowest:native;
 }
+namespace ambush_hook {static bool active(Obj army);static void contact(Obj army);static bool slow(Obj army);}   // native_ambush_combat.inl (links slot, later in this unit)
+// local135 (season_mobility_shared.h): the season rules' fixed mobility change (river ice -3, lying snow -1) on the cell the native
+// getter weighs - its tile argument, or the army's own cell when none. Never below 1; native zero (impassable) stays zero.
+namespace season_mobility {
+static SeasonMobility volatile source;
+// Tile pointer -> hex: the tile table is checked once per world for one fixed stride (sampled); otherwise tile calls get no change.
+static unsigned tile_index(Obj tile) {
+    struct Layout {Obj world=nullptr,first=nullptr;intptr_t stride=0;bool ok=false;};
+    static Layout cur;static SRWLOCK lock=SRWLOCK_INIT;
+    Obj w=world();AcquireSRWLockShared(&lock);Layout l=cur;ReleaseSRWLockShared(&lock);
+    if(l.world!=w) {
+        Layout n;n.world=w;Obj a=table(0xE270,0,48399),b=table(0xE270,1,48399);
+        if(valid(a) && valid(b) && b>a) {
+            n.first=a;n.stride=b-a;n.ok=true;
+            for(unsigned h=2;n.ok && h<48400;h+=(h<48300?97:1))if(table(0xE270,h,48399)!=a+static_cast<intptr_t>(h)*n.stride)n.ok=false;
+        }
+        AcquireSRWLockExclusive(&lock);cur=n;ReleaseSRWLockExclusive(&lock);l=n;
+        log_event("season_mobility_tiles",n.ok?1u:0u,static_cast<unsigned>(n.stride),0);
+    }
+    if(!l.ok || tile<l.first)return 48400;
+    const intptr_t d=tile-l.first;if(d%l.stride)return 48400;
+    const intptr_t h=d/l.stride;return h<48400?static_cast<unsigned>(h):48400u;
+}
+static float apply(float value,Obj army,Obj tile) {
+    const SeasonMobility f=reinterpret_cast<SeasonMobility>(InterlockedCompareExchangePointer(reinterpret_cast<PVOID volatile *>(&source),nullptr,nullptr));
+    if(!f || !(value>0))return value;
+    const unsigned hex=tile?tile_index(tile):(valid(army)?word(army,0x2A):48400u);
+    if(hex>=48400)return value;
+    const int delta=f(static_cast<int>(hex));if(!delta)return value;
+    const float v=value+static_cast<float>(delta);return v<1.0f?1.0f:v;
+}
+}
 static float __fastcall sortie_movement(Obj army,Obj formation,int preview,int modifier,Obj tile) { COST_SCOPE_HOT("sortie_movement");
-    return sortie_movement_next(original_sortie_movement?original_sortie_movement:fn<SortieMovement>(GA(GA_2B2550)),army,formation,preview,modifier,tile);
+    const float value=sortie_movement_next(original_sortie_movement?original_sortie_movement:fn<SortieMovement>(GA(GA_2B2550)),army,formation,preview,modifier,tile);
+    // [game_flow] ambush (docs/AMBUSH.md): a hidden player army moves at half its formation mobility.
+    return season_mobility::apply(value>0 && ambush_hook::slow(army)?value*0.5f:value,army,tile);   // local135: season snow / ice
 }
 static void sortie_move(Obj army,unsigned hex) { COST_SCOPE("sortie:sortie_move");
     if(campaign_castle_locked(army))return;

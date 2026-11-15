@@ -4,6 +4,7 @@
 #include "tactics_policy.h"
 #include "obstacle_policy.h"
 #include "sortie_policy.h"
+#include "intercept_policy.h"
 #include "campaign_policy.h"
 static SRWLOCK policy_lock = SRWLOCK_INIT;
 static __declspec(thread) int in_cut;
@@ -52,6 +53,7 @@ static bool computer_side_army(Obj army) { return computer_army(army); }
 // U39 route_hook (native_route_hook.inl) publishes these while its CALLs are live; the older per-army morale and
 // neutral wall code steps aside. route_hook_owns(army) = the army holds at a band or breaches a wall right now.
 static bool route_hook_morale, route_hook_breach;
+static bool route_hook_hit;   // local108: the hit response (obstacle reason 2) is a route_hook breach entry
 namespace route_hook { static bool assign_fifth(Obj a, unsigned wall_hex); }   // local55, native_route_hook.inl
 static bool (*route_hook_owns)(Obj army);
 
@@ -66,6 +68,7 @@ static bool campaign_controlled(Obj army) { COST_SCOPE("ai_core:campaign_control
 /* This wrapper is installed at the one CALL inside D06D0. Restricting its
  * candidate list before the native predicate prevents choosing an AI victim
  * and avoids calling the predicate twice after it temporarily changes owners. */
+namespace ambush_hook {static bool active(Obj army);}   // native_ambush_combat.inl
 static int __fastcall cut_player_predicate(unsigned owner, GameList *tiles, GameList *enemies, Obj *target)
 { COST_SCOPE("cut_player_predicate");
     auto original = fn<int(__fastcall *)(unsigned, GameList *, GameList *, Obj *)>(GA(GA_C1D10));
@@ -75,7 +78,8 @@ static int __fastcall cut_player_predicate(unsigned owner, GameList *tiles, Game
     GameList filtered; list_init(filtered, GA(GA_13453D0));
     bool have = false;
     for (Link *item = list_first(*enemies); item; item = item->next) {
-        if (valid(item->value) && army_force(item->value) == player) {
+        // local66: a hidden (ambush) army is not a cut victim either.
+        if (valid(item->value) && army_force(item->value) == player && !ambush_hook::active(item->value)) {
             have = list_add(filtered, item->value) || have;
         }
     }
@@ -166,6 +170,25 @@ struct Progress {
     unsigned short operation_leader,operation_city;
     int operation_retry_day;
     bool regional_worker;
+    // local85 retake_adjacent: a retake unit keeps the base it was sent to and walks around hostile armies.
+    bool retake;
+    int retake_day;
+    // gate_intercept (user 2026-11-13): a 안행 unit that stands behind an attacked gate of its force; mod steered only.
+    bool intercept;
+    unsigned short intercept_gate;
+    int intercept_seen_day;
+    // helm_intercept (local148, user 2026-11-14): a 조타 officer's ship that paints the water around hostile armies near an
+    // own port; rides the intercept plumbing (intercept = true, intercept_gate = 0) and is steered by helm_step.
+    bool helm;
+    unsigned short helm_area;
+    int helm_pick_day;
+    // local167 (user 2026-11-15 "퇴각하는상황이 될때 지연 퇴각 ... 2턴동안 적타일 뒤집다가 퇴각"): set when helm_step first finds a
+    // reason to go home; until helm_delay_until the ship paints hostile tiles around it, then it goes home.
+    bool helm_delay;
+    int helm_delay_until;
+    unsigned helm_delay_left;   // hostile hexes of the port region when the delay (or its last extension) began
+    unsigned char helm_ring;    // local169: castle id when sent out by the river ring (대하·격류 near the castle), else 0
+    unsigned char helm_stuck;   // local169: days in a row with no reachable hex to paint
     unsigned short work_source,work_reviewed_center,near_capture_hex;
     unsigned char near_capture_owner;
     int near_capture_day;
@@ -314,6 +337,39 @@ static bool campaign_build_order(Obj army,unsigned facility,unsigned hex);
 static Obj campaign_goal(unsigned city);
 static bool hostile_city(Obj army, unsigned city);
 static bool tribe_goal(unsigned city);
+// Military spacing (user 2026-11-12 "간격 검사 넣기", report: two catapults side by side, one unfinished): the original
+// 27AAC0 -> 27DAF0 ring finds neighbours through the tile's building id, and an unfinished site next to the chosen hex was
+// not seen. A military facility (definition class +0x2C == 2) is never ordered within 2 hexes of another military
+// facility of any force that already stands on the map, finished or not (fixdata interval 2). Armies only on their way
+// to build are not counted (user: "건설하러 가는건 막으면 안돼").
+static bool military_class(unsigned facility) {
+    Obj d = facility && facility < 31 ? table(0x73958, facility, 30) : nullptr;
+    return valid(d) && d[0x2C] == 2;
+}
+static bool military_spacing_blocked(Obj, unsigned facility, unsigned hex)
+{ COST_SCOPE("ai_core:military_spacing_blocked");
+    if (hex >= 48400 || !military_class(facility)) return false;
+    for (unsigned i = 1; i <= 3000; ++i) {
+        Obj b = table(0x6DA98, i, 3000);
+        if (!valid(b) || b[0x12] >= 31 || word(b, 0x10) >= 48400 || word(b, 0x10) == hex || !military_class(b[0x12])) continue;
+        if (distance(word(b, 0x10), hex) <= 2) return true;
+    }
+    return false;
+}
+// local166 (user 2026-11-15 "군사시설은 군사시설끼리 2헥스의 빈공간", "투석대를 연속해서 짓거나"): a new site is also not picked
+// within 2 hexes of another army's pending military build order (action 8/9, Army+0x46 kind, +0x42 hex). Orders that are
+// already on their way are left alone; the same hex (a group building one site together) does not count.
+static bool military_order_near(Obj self, unsigned facility, unsigned hex)
+{ COST_SCOPE("ai_core:military_order_near");
+    if (hex >= 48400 || !military_class(facility)) return false;
+    for (unsigned i = 1; i <= 500; ++i) {
+        Obj other = table(0x7E838, i, 500);
+        if (!valid(other) || other == self || (other[0x37] != 8 && other[0x37] != 9) || !military_class(other[0x46])) continue;
+        const unsigned h = word(other, 0x42);
+        if (h < 48400 && h != hex && distance(h, hex) <= 2) return true;
+    }
+    return false;
+}
 static bool set_build(Obj army, unsigned facility, unsigned hex)
 { COST_SCOPE("ai_core:set_build");
     if(campaign_castle_locked(army))return false;
@@ -365,6 +421,10 @@ static bool continue_build(Obj army, Progress &p)
     int possible = fn<int(__fastcall *)(GameList *, Obj, Obj)>(GA(GA_27A8D0))(&people, tile, definition);
     list_free(people);
     if (!possible) { p.facility = 0; return false; }
+    if (military_spacing_blocked(army, p.facility, p.construction_hex)) {   // a neighbour started meanwhile: give the site up
+        log_event("build_spacing_released", army_id(army), p.facility, p.construction_hex);
+        p.facility = 0; return false;
+    }
     return set_build(army, p.facility, p.construction_hex);
 }
 

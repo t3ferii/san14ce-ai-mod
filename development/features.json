@@ -619,6 +619,27 @@
         "src/native_terrain_foam.inl",
         "src/native_terrain_render.inl",
         "src/native_terrain_trees.inl",
+        "src/native_season_bake.inl",
+        "src/native_season_probe.inl",
+        "src/season_dxbc.h",
+        "src/season/season_bake.hlsl",
+        "src/season/season_bc.hlsl",
+        "src/season/season_rain.hlsl",
+        "src/season/season_rain_drops.hlsl",
+        "src/season/season_rain_dropsb.hlsl",
+        "src/season/season_rainb.hlsl",
+        "src/season/season_cloud_vs.hlsl",
+        "src/season/season_terrain.hlsl",
+        "tests/season_bake_fixture.cpp",
+        "tests/season_dxbc_fixture.cpp",
+        "src/modpack_dll.cpp",
+        "src/modpack_dll_api.h",
+        "src/season_mobility_shared.h",
+        "src/native_modpack_dll.inl",
+        "src/season/season_engine.c",
+        "src/season/season_engine_v26.inc",
+        "tools/vendor_season_rules.py",
+        "tools/build_season_shaders.ps1",
         "src/native_water_diag.inl",
         "src/terrain_edit_policy.h",
         "tests/build_terrain_edit_fixture.ps1",
@@ -658,6 +679,22 @@
         "src/terrain_edit_policy.h",
         "src/native_terrain_edit.inl",
         "src/native_terrain_render.inl",
+        "src/native_season_bake.inl",
+        "src/native_season_probe.inl",
+        "src/season_dxbc.h",
+        "src/season/season_bake.hlsl",
+        "src/season/season_bc.hlsl",
+        "src/season/season_terrain.hlsl",
+        "tests/season_bake_fixture.cpp",
+        "tests/season_dxbc_fixture.cpp",
+        "src/modpack_dll.cpp",
+        "src/modpack_dll_api.h",
+        "src/season_mobility_shared.h",
+        "src/native_modpack_dll.inl",
+        "src/season/season_engine.c",
+        "src/season/season_engine_v26.inc",
+        "tools/vendor_season_rules.py",
+        "tools/build_season_shaders.ps1",
         "src/native_water_diag.inl",
         "tests/water_diag_fixture.cpp",
         "tests/water_diag_build.ps1",
@@ -716,6 +753,7 @@
         "src/advisor_briefing_profile.h",
         "src/advisor_ps.h",
         "src/advisor_terrain_bridge.h",
+        "src/advisor_ambush_bridge.h",
         "src/advisor_vs.h",
         "src/native_advisor_briefing.inl",
         "tests/advisor_briefing_fixture.cpp",
@@ -730,6 +768,7 @@
         "src/advisor_briefing.h",
         "src/advisor_briefing_profile.h",
         "src/advisor_terrain_bridge.h",
+        "src/advisor_ambush_bridge.h",
         "src/native_advisor_briefing.inl",
         "src/native_advisor_overlay.inl",
         "src/advisor_briefing.hlsl",
@@ -1365,7 +1404,8 @@
       "hook_owners": [
         "merit",
         "merit_save",
-        "merit_prisoner"
+        "merit_prisoner",
+        "start_guard"
       ],
       "owns": [
         "src/merit_bond.h",
@@ -1395,7 +1435,9 @@
       "status": "active",
       "dll": "combat",
       "build": "split",
-      "depends": [],
+      "depends": [
+        "ambush-combat"
+      ],
       "hook_owners": [
         "kPointerShared"
       ],
@@ -1422,6 +1464,7 @@
         "src/siege_guard_policy.h",
         "src/obstacle_policy.h",
         "src/sortie_policy.h",
+        "src/intercept_policy.h",
         "src/tactics_policy.c",
         "src/tactics_policy.h",
         "tests/campaign_departure_fixture.inl",
@@ -1561,10 +1604,12 @@
       ],
       "hook_owners": [],
       "owns": [
-        "src/native_corps_domestic.inl"
+        "src/native_corps_domestic.inl",
+        "src/computer_tactics.h"
       ],
       "sources": [
         "src/native_corps_domestic.inl",
+        "src/computer_tactics.h",
         "src/native_personnel.inl",
         "src/native_split_install.inl"
       ],
@@ -1612,6 +1657,7 @@
         "src/native_sortie.inl",
         "src/native_sortie_links.inl",
         "src/sortie_policy.h",
+        "src/computer_tactics.h",
         "src/native_campaign_departures.inl"
       ],
       "tests": [
@@ -2197,6 +2243,7 @@
         "tactic_priority"
       ],
       "owns": [
+        "src/sortie_screen_bridge.h",
         "tools/check_log_side_effects.py",
         "src/native_tactic_memory_save.inl",
         "src/native_tactic_priority.inl",
@@ -2210,6 +2257,7 @@
         "tools/build_tactic_priority_fixture.ps1"
       ],
       "sources": [
+        "src/sortie_screen_bridge.h",
         "tools/check_log_side_effects.py",
         "src/tactic_priority_profile.h",
         "src/native_tactic_priority.inl",
@@ -2624,6 +2672,46 @@
         "src/native_auto_commands.inl",
         "src/auto_commands_policy.h",
         "tests/auto_commands_fixture.inl"
+      ],
+      "tests": [
+        "split-module"
+      ]
+    },
+    "ambush": {
+      "status": "active",
+      "dll": "convenience",
+      "build": "split",
+      "depends": [
+        "advisor-briefing",
+        "ambush-combat",
+        "tactic-priority"
+      ],
+      "hook_owners": [],
+      "owns": [
+        "src/native_ambush.inl"
+      ],
+      "sources": [
+        "src/native_ambush.inl"
+      ],
+      "tests": [
+        "split-module"
+      ]
+    },
+    "ambush-combat": {
+      "status": "active",
+      "dll": "combat",
+      "build": "split",
+      "depends": [
+        "advisor-briefing"
+      ],
+      "hook_owners": [],
+      "owns": [
+        "src/native_ambush_combat.inl",
+        "src/ambush_shared.h"
+      ],
+      "sources": [
+        "src/native_ambush_combat.inl",
+        "src/ambush_shared.h"
       ],
       "tests": [
         "split-module"

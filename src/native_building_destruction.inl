@@ -5,9 +5,12 @@
 namespace building_destruction {
 using Complete=int(__fastcall *)(Obj);
 struct Target {Obj object;unsigned id,hex,type,owner;};
+// local92 (user 2026-11-12 "계략 > 건물파괴 데미지를 1.5배로"): [stratagem] building_destruction_boost. A successful roll
+// counts 1.5 times: the original applies its own damage to the chosen building, the missing half is taken off that
+// building afterwards (the same original durability setter / removal), and the area option spreads the 1.5 value.
 struct Context {
-    Obj command,region;
-    unsigned force,count;
+    Obj command,region,primary;
+    unsigned force,count,primary_id,primary_hex,primary_type,primary_owner;
     int damage;
     bool captured;
     Target targets[3000];
@@ -15,7 +18,21 @@ struct Context {
 // AI-CONTRACT [nested calls]: This pointer is a borrowed per-call context, not persistent target ownership. Preserve restoration on nested/failed calls, native failure semantics and expansion only after successful primary completion; targets exclude cities/gates.
 static thread_local Context *current;
 static volatile LONG installed;
-static bool active() {return enabled && mod_features.convenience && mod_features.building_destruction_all;}
+static bool active() {return enabled && mod_features.convenience && (mod_features.building_destruction_all || mod_features.building_destruction_boost);}
+// [game_flow] destruction_ticket (user 2026-11-13 "플레이어 1차 인접선에는 계략 건물파괴를 무조건 성공하는 티켓을 군사제안에 넣자
+// 원작에선 자기땅이 아니면 실패해"). The effect function 1FB170 asks its result grade at CALL 1FB293 -> 1ECD20(caster person,
+// target region, cost): 0 failure, 1 success, 2 great success. A failure (0) of a player officer against a region next to
+// the player's land becomes a success (1) when the ambush module hands over one ticket (ticket_use, set by
+// ambush::install). Every other answer, caster and region keeps the original grade; the roll itself is the original's.
+static bool (*ticket_use)(Obj person,Obj region);
+static bool (*ticket_ready)(Obj person,Obj region);   // same test as ticket_use, nothing spent (local128)
+static bool ticket_active() {return enabled && mod_features.convenience && mod_features.destruction_ticket;}
+static int __fastcall ticket_roll(Obj person,Obj region,unsigned cost) { COST_SCOPE("building_destruction::ticket_roll");
+    const int grade=static_cast<int>(static_cast<unsigned char>(fn<char(__fastcall *)(Obj,Obj,unsigned)>(GA(GA_1ECD20))(person,region,cost)));
+    if(grade!=0 || !ticket_active() || !ticket_use || !ticket_use(person,region))return grade;
+    log_event("destruction_ticket_success",valid(person)?word(person,0x10):0u,cost,0);
+    return 1;
+}
 static bool hostile(Obj b,unsigned force,Obj region) {
     if(!valid(b) || !word(b,0x14) || !b[0x13] || b[0x13]>51 || b[0x13]==force || b[0x12]>30)return false;
     Obj definition=table(0x73958,b[0x12],30);
@@ -40,7 +57,9 @@ static void __fastcall capture(Obj command,Obj primary,Obj region,int damage,Obj
         log_event("building_destruction_capture_mismatch",own,primary[0x13]);return;
     }
     c->captured=true;c->region=region;c->force=own;c->damage=damage;
-    for(unsigned id=1;id<=3000;++id) {
+    c->primary=primary;c->primary_hex=word(primary,0x10);c->primary_type=primary[0x12];c->primary_owner=primary[0x13];
+    for(unsigned id=1;id<=3000;++id)if(table(0x6DA98,id,3000)==primary) {c->primary_id=id;break;}
+    for(unsigned id=1;mod_features.building_destruction_all && id<=3000;++id) {
         Obj b=table(0x6DA98,id,3000);
         if(b==primary || !hostile(b,own,region))continue;
         c->targets[c->count++]={b,id,word(b,0x10),b[0x12],b[0x13]};
@@ -50,6 +69,17 @@ static void __fastcall capture(Obj command,Obj primary,Obj region,int damage,Obj
 static void apply(const Context &c) {
     if(!active() || !c.captured || !valid(c.region) || !valid(table(0xDF30,c.force,51)))return;
     unsigned hits=0;
+    const bool boost=mod_features.building_destruction_boost;
+    const int spread=boost?c.damage+c.damage/2:c.damage;
+    if(boost && c.primary_id) {   // the half the original did not apply
+        Obj b=table(0x6DA98,c.primary_id,3000);
+        if(b==c.primary && valid(b) && word(b,0x14) && word(b,0x10)==c.primary_hex && b[0x12]==c.primary_type && b[0x13]==c.primary_owner) {
+            const int remaining=static_cast<int>(word(b,0x14))-c.damage/2;
+            if(remaining<=0)fn<void(__fastcall *)(Obj,Obj,int)>(GA(GA_296AA0))(b,nullptr,0);
+            else fn<void(__fastcall *)(Obj,int)>(GA(GA_1F5680))(b,remaining);
+            log_event("building_destruction_boost",c.force,static_cast<unsigned>(c.damage/2),c.primary_id);
+        }
+    }
     for(unsigned i=0;i<c.count;++i) {
         const Target &t=c.targets[i];
         Obj b=table(0x6DA98,t.id,3000);
@@ -57,12 +87,12 @@ static void apply(const Context &c) {
         // damage a replacement, newly friendly object, or another region.
         if(b!=t.object || !valid(b) || word(b,0x10)!=t.hex || b[0x12]!=t.type || b[0x13]!=t.owner ||
            !hostile(b,c.force,c.region))continue;
-        const int remaining=static_cast<int>(word(b,0x14))-c.damage;
+        const int remaining=static_cast<int>(word(b,0x14))-spread;
         if(remaining<=0)fn<void(__fastcall *)(Obj,Obj,int)>(GA(GA_296AA0))(b,nullptr,0);
         else fn<void(__fastcall *)(Obj,int)>(GA(GA_1F5680))(b,remaining);
         ++hits;
     }
-    log_event("building_destruction_area",c.force,hits,static_cast<unsigned>(c.damage));
+    if(mod_features.building_destruction_all)log_event("building_destruction_area",c.force,hits,static_cast<unsigned>(spread));
 }
 static int __fastcall complete(Obj command) { COST_SCOPE("building_destruction::complete");
     if(!active() || current)return fn<Complete>(GA(GA_1FB170))(command);
@@ -106,30 +136,78 @@ static unsigned make_capture_bridge(Obj at) {
     return n;
 }
 #include "building_destruction_profile.h"
+// local128 (user 2026-11-13 "그냥 조언을 바꾸자 미리 준비한 책략으로 성공한다고" / "원작 조언함수"): the stratagem window's advisor line comes
+// from the original advice function 2F5AA0(strategist ctx, action, *recommend, *grade, params, person id, target id, ...): it
+// formats one message into a UTF-16 buffer and returns it (callers measure it with AC4B30, short*). Action 0x14 (건물파괴) asks
+// the same grade function 1ECD20 as the effect, with the region id (< 0x1F5, area table) as the target. Entry hook: the first
+// instruction is exactly five bytes (4C 89 4C 24 20, mov [rsp+20],r9), copied to the gate. The original runs first; only when the
+// ticket would be spent on that officer and region (ticket_ready) the returned line is replaced and the advisor recommends.
+static const unsigned char kAdviceEntry[16]={0x4C,0x89,0x4C,0x24,0x20,0x55,0x56,0x57,0x41,0x54,0x41,0x55,0x41,0x56,0x41,0x57};
+using Advice=Obj(__fastcall *)(Obj,int,unsigned *,int *,void *,int,int,int,unsigned long long,int);
+static Advice original_advice;
+static Obj __fastcall advice(Obj strategist,int action,unsigned *recommend,int *grade,void *params,int person,int target,int p8,unsigned long long p9,int p10) { COST_SCOPE("building_destruction::advice");
+    Obj text=original_advice(strategist,action,recommend,grade,params,person,target,p8,p9,p10);
+    if(action!=0x14 || !text || !ticket_active() || !ticket_ready || person<=0 || person>6000 || target<=0 || target>500)return text;
+    Obj who=table(0x158,static_cast<unsigned>(person),6000),area=table(0x6CAF0,static_cast<unsigned>(target),500);
+    if(!valid(who) || !valid(area) || !ticket_ready(who,area))return text;
+    wcscpy_s(reinterpret_cast<wchar_t *>(text),128,L"이번에는 미리 준비해 둔 책략이 있으니 반드시 성공할 것입니다.");
+    if(recommend)*recommend=1;
+    static unsigned logged;if(logged<20){++logged;log_event("destruction_ticket_advice",static_cast<unsigned>(person),static_cast<unsigned>(target),0);}
+    return text;
+}
+static bool advice_site_ok() {return GA(GA_2F5AA0) && !ga::mcmp(image,GA_2F5AA0,0,kAdviceEntry,sizeof(kAdviceEntry));}
+// The ticket CALL (GA_1FB293, E8 rel32 -> 1ECD20; 1FB170 is pinned whole by the guard) is a plain call replacement: the
+// stub at relay+2048 jumps to ticket_roll with the original three arguments; the caller reads EAX.
+static bool ticket_site_ok() {
+    const unsigned site=GA(GA_1FB293),target=GA(GA_1ECD20);
+    if(!site || !target || image[site]!=0xE8)return false;
+    int delta=0;memcpy(&delta,image+site+1,4);
+    return site+5+static_cast<unsigned>(delta)==target;
+}
 static bool install() {
     if(InterlockedCompareExchange(&installed,0,0))return true;
+    const bool spread=active(),ticket=ticket_active();
+    if(!spread && !ticket)return false;
     if(!guards_match()) {log_event("building_destruction_guard_rejected");log_event("building_destruction_guard_failed",guard_failed_row);return false;}
-    const bool shape=capture_shape_ok();
-    log_event("building_destruction_form",shape?2u:0u);
-    if(!shape)return false;
+    const bool shape=!spread || capture_shape_ok(),site=!ticket || ticket_site_ok(),advise=ticket && advice_site_ok();
+    log_event("building_destruction_form",(shape?2u:0u)|(site?4u:0u)|(advise?8u:0u));
+    if(!shape || !site)return false;
     Obj relay=allocate_near(image+GA(GA_1FA581));if(!relay)return false;
     absolute_jump(relay,reinterpret_cast<void *>(&complete));
     const unsigned length=make_capture_bridge(relay+64);
-    CodeLink capture_link,complete_link;DWORD old;
-    if(!prepare_link(capture_link,GA(GA_1FB9E6),0xE8,relay+64) ||
-       !prepare_link(complete_link,GA(GA_1FA581),0xE8,relay) ||
+    absolute_jump(relay+2048,reinterpret_cast<void *>(&ticket_roll));
+    if(advise) {   // stub at +2304 -> advice; gate at +2560 = the five displaced bytes + jump back to 2F5AA5
+        absolute_jump(relay+2304,reinterpret_cast<void *>(&advice));
+        memcpy(relay+2560,image+GA(GA_2F5AA0),5);absolute_jump(relay+2565,image+GA(GA_2F5AA0)+5);
+        original_advice=reinterpret_cast<Advice>(relay+2560);
+    }
+    CodeLink capture_link{},complete_link{},ticket_link{},advice_link{};DWORD old;
+    const bool advice_ready=advise && prepare_link(advice_link,GA(GA_2F5AA0),0xE9,relay+2304);
+    if((spread && (!prepare_link(capture_link,GA(GA_1FB9E6),0xE8,relay+64) ||
+                   !prepare_link(complete_link,GA(GA_1FA581),0xE8,relay))) ||
+       (ticket && !prepare_link(ticket_link,GA(GA_1FB293),0xE8,relay+2048)) ||
        !VirtualProtect(relay,4096,PAGE_EXECUTE_READ,&old) ||
-       !FlushInstructionCache(GetCurrentProcess(),relay,64+length)) {VirtualFree(relay,0,MEM_RELEASE);return false;}
-    {   // the CALL covers five bytes of the displaced code; the sixth byte becomes a NOP
+       !FlushInstructionCache(GetCurrentProcess(),relay,4096)) {VirtualFree(relay,0,MEM_RELEASE);return false;}
+    (void)length;
+    if(spread) {   // the CALL covers five bytes of the displaced code; the sixth byte becomes a NOP
         const unsigned off=GA(GA_1FB9E6)-capture_link.block;
         memset(capture_link.modified+off+5,0x90,1);
     }
-    if(!publish_link(capture_link)) {VirtualFree(relay,0,MEM_RELEASE);return false;}
-    if(!publish_link(complete_link)) {
-        restore_link(capture_link);
-        // Retain executable memory: another caller may already be in the stub.
-        log_event("building_destruction_publish_rejected");return false;
+    if(ticket && !publish_link(ticket_link)) {VirtualFree(relay,0,MEM_RELEASE);log_event("destruction_ticket_publish_rejected");return false;}
+    // The advisor line is optional: a failed publish keeps the ticket itself (logged, original advice stays).
+    if(advice_ready && !publish_link(advice_link))log_event("destruction_ticket_advice_rejected");
+    else if(advice_ready)log_event("destruction_ticket_advice_installed");
+    if(spread) {
+        if(!publish_link(capture_link)) {
+            restore_link(ticket_link);   // retain the relay: a caller may already be in the ticket stub
+            return false;
+        }
+        if(!publish_link(complete_link)) {
+            restore_link(capture_link);restore_link(ticket_link);
+            // Retain executable memory: another caller may already be in the stub.
+            log_event("building_destruction_publish_rejected");return false;
+        }
     }
-    InterlockedExchange(&installed,1);log_event("building_destruction_installed");return true;
+    InterlockedExchange(&installed,1);log_event("building_destruction_installed",spread?1u:0u,ticket?1u:0u);return true;
 }
 }

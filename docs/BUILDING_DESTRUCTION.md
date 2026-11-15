@@ -23,3 +23,11 @@ building_destruction_all=1
 검사 경로: `tools/check_feature.ps1 -Feature building-destruction -Build`. 결과·빌드·소스 해시는 `build/development/building_destruction/verification.json`에 기록한다. 실패/OFF/중복/낮은 주 대상 내구/전체 적 분류/동맹·중립·거점 제외/콜백 변경/재진입/실제 기계어 브리지/지문 변조·게시 원복을 검사한다. 자동 검사는 실게임에서 건물 내구를 대조한 결과와 구별한다. 현재 설치 여부는 CURRENT를 따른다.
 
 세력 식별은 군주 무장 번호와 분리한다. Force+10은 군주 Person 번호이므로 세력 번호로 사용하지 않고, 월드 세력 표의 객체 일치로 식별한다. 군주 번호850인 세력이 번호1인 경우를 포함하여 검사하며, 진단 로그의 `building_destruction_capture`와 `building_destruction_area`로 대상 수와 실제 추가 적용 수를 구별한다.
+
+## 피해 1.5배 (local92, 2026-11-12)
+
+사용자 요청 "계략 > 건물파괴 데미지를 1.5배로". `[stratagem] building_destruction_boost`(기본 1). 성공했을 때만, 원작이 선택된 건물에 피해를 준 뒤 그 절반을 같은 건물에 한 번 더 적용한다(원작 내구 설정 `1F5680` / 철거 `296AA0`). 지역 전체 피해를 함께 켜면 다른 건물에는 1.5배 값을 적용한다. 두 옵션 중 하나만 켜도 같은 두 연결(종류 20 CALL, 성공 피해 계산)을 쓴다. 로그 `building_destruction_boost`(세력, 추가 피해, 건물 번호). 끄면 원작 피해량.
+
+## 성공 판정 연결 (destruction_ticket, local103, 2026-11-13)
+
+효과 함수 `1FB170`은 `1FB293`에서 결과 등급 `1ECD20(시전 무장 r14, 대상 지역 r13, 비용 [rdi+78])`을 부르고 EAX를 쓴다(0 실패, 1 성공, 2 대성공). `[game_flow] destruction_ticket`이 켜져 있으면 이 CALL을 모드 함수로 바꾼다. 원작 함수를 그대로 부른 뒤 결과가 0이고 매복기동 모듈이 준비를 내주면(`AMBUSH.md`) 1을 돌려준다. 그 밖에는 원작 결과 그대로다. `1FB170` 전체 지문(기존 guard)과 CALL 대상이 `1ECD20`인지 확인한 뒤에만 연결한다. 두 기존 옵션(지역 전체·1.5배)이 꺼져 있어도 이 연결만 따로 설치된다. 로그 `destruction_ticket_success`, `building_destruction_form` 값 4 = 판정 CALL 확인.

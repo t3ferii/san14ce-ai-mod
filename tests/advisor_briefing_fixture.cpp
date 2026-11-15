@@ -3,13 +3,14 @@
 #include "../src/advisor_briefing.h"
 namespace briefing_overlay {
 using advisor_briefing_core::Rect;
-struct Model {std::wstring adviser=L"군사",title=L"열흘 보고",body;unsigned unread=0,page=0,pages=0,generation=0;bool collecting=false,open=false,city_list=false;std::vector<std::wstring> names,cities;};
+struct Model {std::wstring adviser=L"군사",title=L"열흘 보고",body,note;unsigned unread=0,page=0,pages=0,generation=0,tickets=0,offers=0,offer_kind=0;bool collecting=false,open=false,city_list=false,offer=false,advice=false,settings=false;std::vector<std::wstring> names,cities;};
 static bool gpu_ready=true,shown=false;static unsigned action=0,ticket=0;static Model displayed;
 static bool available(){return gpu_ready;}
 static bool is_visible(){return gpu_ready && shown;}
 static unsigned take(unsigned &g){g=ticket;unsigned a=action;action=0;return a;}
 static void publish(const Model &m,bool show,bool=false){displayed=m;shown=show;}
 static void toast(const std::wstring &){}
+static void toast_for(const std::wstring &,unsigned){}
 static void forget(){action=0;}
 static int captured_serial=-1,requested_serial=-1;static unsigned portrait_requests;
 static bool captured(int serial){return captured_serial==serial;}

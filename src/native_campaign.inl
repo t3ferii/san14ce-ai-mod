@@ -224,10 +224,939 @@ static bool campaign_near_capture(Obj army,Progress &p) {
     }
     return false;
 }
+// [combat] retake_adjacent, the unit's own steering (local85, user 2026-11-12 "관평 요화 장비 모두 제일 부대가 많은 곳으로
+// 바로 돌격", earlier "적부대를 회피기동하면서 스마트하게 이동경로를 짜서 점령 수복"). Replay 17:47: the two retake units
+// left for 지강 and 화용, then the home-capture worker step picked its base again every turn (nearest hostile base, and
+// the first hostile region on the way) and turned them to 장판, where the player's armies stood. A retake unit now
+//   1. keeps the base it was sent to until that base is taken back; then it takes the next lost first-ring base of its
+//      castle that has no hostile army within 2 hexes, or goes home when there is none;
+//   2. walks around hostile armies: when the original path comes within 2 hexes of a hostile army, a terrain-cost
+//      search (original terrain costs BF1B0, blocking facilities as the original path search) that never enters a
+//      hex next to a hostile army and pays extra 2 and 3 hexes away gives the way, written as the original move
+//      order with up to five relay points (2F05A0); the original path search still makes every step;
+//   3. goes home when no such way exists (a hostile army stands on or next to the base: the interception's business).
+// Decided once per turn; nothing in the save.
+static bool retake_hostile_near(unsigned own,unsigned hex,int range) { COST_SCOPE("campaign:retake_hostile_near");
+    for(unsigned i=1;i<=500;++i) {
+        Obj a=table(0x7E838,i,500);if(!valid(a))continue;
+        const unsigned force=army_force(a);
+        if(!force || force==own || word(a,0x2A)>=48400 || distance(word(a,0x2A),hex)>range)continue;
+        if(fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,force))return true;
+    }
+    return false;
+}
+// local86 (user 2026-11-12 "출진 첫번째 중계 위치 자체가 적하고 만날수밖에 없는곳 ... 첫 중계 지점이 적쪽이니까 가장 가까운
+// 북쪽으로 나가는거지", "뺏기기전부터 나오지"). Replay 18:00: the three units of 강릉 appeared two hexes north of the
+// castle, on the player's side, and stood there in contact. A unit leaves its castle toward its first relay point, so
+// the way around hostile armies is now part of the departure itself: its relay points go into the departure command
+// and into the first order, and the unit comes out on that side.
+static constexpr int kRetakeThreat=8;   // a hostile army this near an own first-ring base = the base gets a guard
+static constexpr int kRetakePortReach=16;   // a second-ring port farther than this from the castle is left out (first-ring p90 17)
+static constexpr unsigned char kRetakePortTerrain=18;   // port center tile (KB rules_movement: 16 castle, 17 gate, 18 port)
+// local89 (user 2026-11-12 "적부대가 제일 많이 서있는 거점 1개를 최대 위협으로 설정하고 나머지 지역은 수복대상 ... 최대 위협지역을
+// 우회하는 인접거점을 전부 점령하면서 거점 점령을 역으로 뒤집고 ... 1차 인접선과 이어진 다른 지역도 ... 아군 점령률이 높은
+// 지역은 적이 점령한 타일을 뒤집으려고(병참차단) 시도하고 지역버프를 그 이후에 수복").
+//   rings   the castle's first-ring regions and the regions next to those (castle/gate regions left out; second ring:
+//           no region next to another castle's region, ports only within kRetakePortReach hexes, local143);
+//   threat  the one ring region with the most hostile armies within 8 hexes of its base: no unit is sent there, no
+//           unit takes it, and no way crosses it (local90);
+//   targets every other ring region whose base is not ours: a unit takes its base, then the nearest next one (first
+//           ring before the second), and goes home only when none is left;
+//   cut     a unit whose target region holds more of our hexes than hostile ones lets the original supply-cut node go
+//           first (retake_cut_first); otherwise it walks to the base at once.
+struct RetakeRings {unsigned home,threat;std::vector<unsigned> ring1,ring2;};
+static RetakeRings retake_rings(unsigned own,unsigned city_id) { COST_SCOPE("campaign:retake_rings");
+    RetakeRings r{0,0,{},{}};
+    Obj city=campaign_goal(city_id);if(!city)return r;
+    r.home=campaign_area_id(fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(city));
+    Obj home=table(0x6CAF0,r.home,500);if(!r.home || !valid(home))return r;
+    bool seen[501]={};seen[r.home]=true;
+    auto spread=[&](Obj from,std::vector<unsigned> &ring) {
+        for(unsigned i=0;i<8;++i) {
+            const unsigned n=word(from,0x56+i*2);if(!(from[0x66]&(1u<<i)) || !n || n>500 || seen[n])continue;
+            seen[n]=true;
+            if(!valid(table(0x6CAF0,n,500)) || campaign_transit_region(n))continue;
+            ring.push_back(n);
+        }
+    };
+    spread(home,r.ring1);
+    // local143 (user 2026-11-14 "지역수복 2차링을 부활 ... 다른성의 1차인접지역이 아닌 지역을 필터링 걸고, 항구도 2차 링에 포함 ...
+    // 우리 성에서 가까운 항구여야하는데 너무 먼 항구로 가는건 곤란해"): the second ring is back (local139 had dropped it because
+    // 신야 units walked on to 극양, a first-ring region of 완). A region next to a first-ring region joins it only when no
+    // neighbour of it is the castle region of another castle (234020, any owner), so no unit walks into another castle's
+    // first line; a port region (center terrain 18, never a castle region) joins only within kRetakePortReach hexes of
+    // this castle. Units are still sent only for first-ring bases (retake_adjacent_tick); the second ring is where a unit
+    // goes on after its base, 6 hexes of penalty behind the first ring (retake_step).
+    const unsigned castle_hex=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(city);
+    auto other_castle_line=[&](Obj area) {
+        for(unsigned i=0;i<8;++i) {
+            const unsigned k=word(area,0x56+i*2);if(!(area[0x66]&(1u<<i)) || !k || k>500 || k==r.home)continue;
+            Obj a=table(0x6CAF0,k,500);
+            if(valid(a) && fn<int(__fastcall *)(Obj)>(GA(GA_234020))(a))return true;
+        }
+        return false;
+    };
+    const std::vector<unsigned> first=r.ring1;
+    for(unsigned n1:first) {
+        Obj from=table(0x6CAF0,n1,500);if(!valid(from))continue;
+        for(unsigned i=0;i<8;++i) {
+            const unsigned n=word(from,0x56+i*2);if(!(from[0x66]&(1u<<i)) || !n || n>500 || seen[n])continue;
+            seen[n]=true;
+            Obj area=table(0x6CAF0,n,500);if(!valid(area) || campaign_transit_region(n) || other_castle_line(area))continue;
+            const unsigned base=word(area,0x3A);Obj tile=base<48400?table(0xE270,base,48399):nullptr;if(!valid(tile))continue;
+            if(tile[0x10]==kRetakePortTerrain && (castle_hex>=48400 || distance(castle_hex,base)>kRetakePortReach))continue;
+            r.ring2.push_back(n);
+        }
+    }
+    // local90 (user 2026-11-12 "첫번째 출진은 그냥 바로 직행 ... 그 거점 타일 자체를 우회하길"; replay 19:02: the first unit
+    // left while the player's armies were still one region away from 장판, so 장판 was no threat yet and the unit walked
+    // across its base into them). An army counts for every ring base it is within kRetakeThreat hexes of, standing
+    // in the region or still coming; the first ring wins a tie.
+    unsigned most=0;
+    for(const std::vector<unsigned> *ring:{&r.ring1,&r.ring2})for(unsigned n:*ring) {
+        const unsigned base=word(table(0x6CAF0,n,500),0x3A);if(base>=48400)continue;
+        unsigned count=0;
+        for(unsigned i=1;i<=500;++i) {
+            Obj a=table(0x7E838,i,500);if(!valid(a))continue;
+            const unsigned force=army_force(a);
+            if(!force || force==own || word(a,0x2A)>=48400 || distance(word(a,0x2A),base)>kRetakeThreat)continue;
+            if(fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,force))++count;
+        }
+        if(count>most) {most=count;r.threat=n;}
+    }
+    return r;
+}
+static bool retake_cut_first(Obj army,const Progress &p) { COST_SCOPE("campaign:retake_cut_first");
+    const unsigned target=p.region_target,own=army_force(army);if(target>=48400)return false;
+    const unsigned area=campaign_area_id(target);if(!area)return false;
+    unsigned mine=0,theirs=0;
+    for(unsigned h=0;h<48400;++h) {
+        Obj tile=table(0xE270,h,48399);if(!valid(tile) || word(tile,0x12)!=area)continue;
+        const unsigned holder=tile[0x14];
+        if(holder==own)++mine;
+        else if(holder && fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,holder))++theirs;
+    }
+    return theirs && mine>theirs;
+}
+// local92 (user 2026-11-12 "적의 투석대(3헥스 사정거리) 망루(2헥스 사정거리)에 벌점 ... 그러나 그 때문에 거점 점령이 포기되어선
+// 안 됨"): a hex inside the range of a hostile catapult (kind 6, 3 hexes) or watchtower (kind 5, 2 hexes) costs 3 extra
+// hexes in the way search; it is never closed. One still under construction does not count (local93).
+static bool retake_tower(Obj b,unsigned own,unsigned &reach) {
+    if(!valid(b) || !word(b,0x14) || word(b,0x10)>=48400 || (b[0x12]!=5 && b[0x12]!=6))return false;
+    if(!(b[0x16]&1))return false;   // local93 (user: "건설중인 망루랑 투석대는 벌점을 먹이면 안되지"): +0x16 bit0 = completed (2DAE00)
+    const unsigned holder=b[0x13];
+    if(!holder || holder==own || !fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,holder))return false;
+    reach=b[0x12]==6?3u:2u;return true;
+}
+static bool retake_tower_covers(unsigned own,unsigned hex) { COST_SCOPE("campaign:retake_tower_covers");
+    for(unsigned id=62;id<=3000;++id) {
+        Obj b=table(0x6DA98,id,3000);unsigned reach=0;
+        if(retake_tower(b,own,reach) && distance(word(b,0x10),hex)<=static_cast<int>(reach))return true;
+    }
+    return false;
+}
+static bool retake_path(unsigned own,unsigned from,unsigned target,std::vector<unsigned> &cells,unsigned avoid_area=0) { COST_SCOPE("campaign:retake_path");
+    cells.clear();
+    if(from>=48400 || target>=48400)return false;
+    if(from==target) {cells.push_back(from);return true;}
+    const int x0=static_cast<int>(from%220),y0=static_cast<int>(from/220),x1=static_cast<int>(target%220),y1=static_cast<int>(target/220);
+    if(distance(from,target)>40)return false;
+    const int lx=(std::max)(0,(std::min)(x0,x1)-12),hx=(std::min)(219,(std::max)(x0,x1)+12);
+    const int ly=(std::max)(0,(std::min)(y0,y1)-12),hy=(std::min)(219,(std::max)(y0,y1)+12);
+    const int w=hx-lx+1,h=hy-ly+1;
+    auto index=[&](unsigned hex)->int {
+        if(hex>=48400)return -1;
+        const int x=static_cast<int>(hex%220),y=static_cast<int>(hex/220);
+        return x<lx || x>hx || y<ly || y>hy?-1:(y-ly)*w+(x-lx);
+    };
+    std::vector<unsigned> cost(static_cast<size_t>(w)*h,0),best(static_cast<size_t>(w)*h,0xFFFFFFFFu);
+    std::vector<int> back(static_cast<size_t>(w)*h,-1);
+    std::vector<unsigned char> danger(static_cast<size_t>(w)*h,255),heavy(static_cast<size_t>(w)*h,0),tower(static_cast<size_t>(w)*h,0);
+    for(int y=ly;y<=hy;++y)for(int x=lx;x<=hx;++x) {
+        Obj tile=table(0xE270,static_cast<unsigned>(y*220+x),48399);
+        Obj terrain=valid(tile)?fn<Obj(__fastcall *)(Obj)>(GA(GA_233310))(tile):nullptr;
+        const int c=valid(terrain)?fn<int(__fastcall *)(Obj)>(GA(GA_BF1B0))(terrain):0;
+        cost[static_cast<size_t>((y-ly)*w+(x-lx))]=c>0?static_cast<unsigned>(c):0u;
+        if(avoid_area && valid(tile) && word(tile,0x12)==avoid_area)heavy[static_cast<size_t>((y-ly)*w+(x-lx))]=1;
+    }
+    for(unsigned id=62;id<=3000;++id) {   // facilities the original path search never crosses
+        Obj b=table(0x6DA98,id,3000);if(!valid(b) || !word(b,0x14))continue;
+        unsigned reach=0;
+        if(retake_tower(b,own,reach)) {   // catapult / watchtower range: extra cost only
+            const unsigned at=word(b,0x10);const int bx=static_cast<int>(at%220),by=static_cast<int>(at/220);
+            for(int y=(std::max)(ly,by-4);y<=(std::min)(hy,by+4);++y)for(int x=(std::max)(lx,bx-4);x<=(std::min)(hx,bx+4);++x)
+                if(distance(at,static_cast<unsigned>(y*220+x))<=static_cast<int>(reach))tower[static_cast<size_t>((y-ly)*w+(x-lx))]=1;
+        }
+        if(word(b,0x10)==from || word(b,0x10)==target)continue;
+        const int k=index(word(b,0x10));if(k<0)continue;
+        Obj type=fn<Obj(__fastcall *)(Obj)>(GA(GA_EDF0))(b);
+        if(valid(type) && (type[0x2C]==2 || type[0x2C]==3))cost[static_cast<size_t>(k)]=0;
+    }
+    for(unsigned i=1;i<=500;++i) {   // rings 0..3 around every hostile army
+        Obj a=table(0x7E838,i,500);if(!valid(a))continue;
+        const unsigned force=army_force(a),at=word(a,0x2A);
+        if(!force || force==own || at>=48400 || !fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,force))continue;
+        const int ax=static_cast<int>(at%220),ay=static_cast<int>(at/220);
+        if(ax<lx-4 || ax>hx+4 || ay<ly-4 || ay>hy+4)continue;
+        unsigned ring[64],count=0;ring[count++]=at;
+        for(unsigned depth=0,first=0;depth<=3;++depth) {
+            const unsigned last=count;
+            for(unsigned k=first;k<last;++k) {
+                const int cell=index(ring[k]);
+                if(cell>=0 && danger[static_cast<size_t>(cell)]>depth)danger[static_cast<size_t>(cell)]=static_cast<unsigned char>(depth);
+                if(depth==3)continue;
+                for(unsigned d=0;d<6;++d) {
+                    const unsigned next=sortie::neighbor(ring[k],d);if(next>=48400 || count>=64)continue;
+                    bool seen=false;for(unsigned s=0;s<count && !seen;++s)seen=ring[s]==next;
+                    if(!seen)ring[count++]=next;
+                }
+            }
+            first=last;
+        }
+    }
+    const int start=index(from),goal=index(target);
+    if(start<0 || goal<0)return false;
+    // local90: the largest threat region is not entered at all; a unit already inside it pays the 10 hexes instead.
+    const bool leaving=heavy[static_cast<size_t>(start)]!=0;
+    using Node=std::pair<unsigned,int>;
+    std::priority_queue<Node,std::vector<Node>,std::greater<Node>> open;
+    best[static_cast<size_t>(start)]=0;open.push({0u,start});
+    while(!open.empty()) {
+        const Node now=open.top();open.pop();
+        if(now.first!=best[static_cast<size_t>(now.second)])continue;
+        if(now.second==goal)break;
+        const unsigned hex=static_cast<unsigned>((now.second/w+ly)*220+(now.second%w+lx));
+        for(unsigned d=0;d<6;++d) {
+            const int next=index(sortie::neighbor(hex,d));if(next<0)continue;
+            const unsigned step=cost[static_cast<size_t>(next)],risk=danger[static_cast<size_t>(next)];
+            if(!step || risk<=1 || (heavy[static_cast<size_t>(next)] && !leaving))continue;
+            const unsigned total=now.first+step+(risk==2?960u:risk==3?480u:0u)+(heavy[static_cast<size_t>(next)]?2400u:0u)+(tower[static_cast<size_t>(next)]?720u:0u);
+            if(total<best[static_cast<size_t>(next)]) {best[static_cast<size_t>(next)]=total;back[static_cast<size_t>(next)]=now.second;open.push({total,next});}
+        }
+    }
+    if(best[static_cast<size_t>(goal)]==0xFFFFFFFFu)return false;
+    for(int k=goal;k>=0;k=back[static_cast<size_t>(k)])cells.push_back(static_cast<unsigned>((k/w+ly)*220+(k%w+lx)));
+    std::reverse(cells.begin(),cells.end());
+    return cells.size()>=2 && cells.front()==from;
+}
+static bool retake_route_order(Obj army,Progress &p,unsigned target,unsigned avoid_area=0) { COST_SCOPE("campaign:retake_route_order");
+    if(campaign_castle_locked(army) || native_search_depth || target>=48400)return false;
+    const int day=game_day();const unsigned own=army_force(army),here=word(army,0x2A);
+    if(p.retake_day==day && army[0x37]==1 && army[0x38]==9 && word(army,0x3A)==target && word(army,0x48)<48400)return true;
+    if(here==target)return true;
+    // local87: still inside its castle = the departure order stands. The original departure (1EDC30) searches the way
+    // from the castle to the first relay and stores the first hex outside the castle (army +0x48); rewriting the order
+    // before the unit is out replaced that hex and the unit came out on the default side (replays 17:47 - 18:16: always
+    // two hexes north of 강릉, whatever the base).
+    Obj origin=fn<Obj(__fastcall *)(Obj)>(GA(GA_22BFE0))(army);
+    const bool inside=valid(origin) && fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(origin)==here;
+    if(inside && army[0x37]==1 && army[0x38]==9 && word(army,0x3A)==target && word(army,0x48)<48400)return true;
+    // The original way first: kept as it is when it stays 3 or more hexes away from every hostile army.
+    CampaignRoute plain=campaign_safe_route(army,target,false,true);
+    bool clear=!plain.cells.empty();
+    for(size_t i=1;clear && i<plain.cells.size();++i)
+        clear=!retake_hostile_near(own,plain.cells[i],2) && !(avoid_area && campaign_area_id(plain.cells[i])==avoid_area) &&
+              !retake_tower_covers(own,plain.cells[i]);
+    unsigned length=static_cast<unsigned>(plain.cells.size()),mode=1;
+    bool ordered=clear && campaign_route_order(army,plain);
+    if(!ordered) {
+        std::vector<unsigned> cells;
+        if(!retake_path(own,here,target,cells,avoid_area))return false;
+        unsigned points[5];const unsigned count=campaign_relay_points(cells,static_cast<unsigned>(cells.size()-1),points);
+        if(!count)return false;
+        unsigned char saved[0x34];memcpy(saved,army+0x2C,sizeof(saved));
+        const unsigned flags=dword(army,0x1F0);const unsigned short future=word(army,0x1F8);
+        fn<void(__fastcall *)(Obj)>(GA(GA_A3370))(army);
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_2ECEA0))(army,1);
+        fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2ECF00))(army,9,static_cast<int>(target));
+        for(unsigned i=0;i<count;++i)fn<void(__fastcall *)(Obj,int,unsigned)>(GA(GA_2F05A0))(army,static_cast<int>(i),points[i]);
+        fn<void(__fastcall *)(Obj)>(GA(GA_26E260))(army);
+        if(word(army,0x48)>=48400 || distance(here,word(army,0x48))!=1) {
+            memcpy(army+0x2C,saved,sizeof(saved));*reinterpret_cast<unsigned *>(army+0x1F0)=flags;
+            *reinterpret_cast<unsigned short *>(army+0x1F8)=future;
+            return false;
+        }
+        length=static_cast<unsigned>(cells.size());mode=2;
+    }
+    *reinterpret_cast<unsigned *>(army+0x1F0)|=2;
+    p.region_target=static_cast<unsigned short>(target);p.region_owner=table(0xE270,target,48399)[0x14];
+    p.retake_day=day;p.returning=false;
+    // value = cells of the way | straight distance << 8 | (1 original way, 2 way around hostile armies) << 16
+    log_event("retake_route",army_id(army),(length&0xFF)|((static_cast<unsigned>(distance(here,target))&0xFF)<<8)|(mode<<16),target);
+    return true;
+}
+static bool retake_step(Obj army,Progress &p) { COST_SCOPE("campaign:retake_step");
+    const unsigned own=army_force(army),here=word(army,0x2A);
+    const RetakeRings rings=retake_rings(own,p.work_source);
+    // A base worth walking to now: not ours, outside the largest threat, no hostile army within 2 hexes of it.
+    auto open=[&](unsigned base) {
+        const unsigned area=base<48400?campaign_area_id(base):0;
+        return area && area!=rings.threat && campaign_region_hostile(army,area) && !retake_hostile_near(own,base,2);
+    };
+    const unsigned target=p.region_target;
+    if(open(target) && retake_route_order(army,p,target,rings.threat))return true;
+    // The next base: nearest first, the first ring before the second.
+    std::vector<std::pair<int,unsigned>> next;
+    for(const std::vector<unsigned> *ring:{&rings.ring1,&rings.ring2})for(unsigned n:*ring) {
+        const unsigned base=word(table(0x6CAF0,n,500),0x3A);
+        if(base==target || !open(base) || region_reserved(base,army))continue;
+        next.push_back({distance(here,base)+(ring==&rings.ring2?6:0),base});
+    }
+    std::sort(next.begin(),next.end());
+    for(const auto &entry:next)if(retake_route_order(army,p,entry.second,rings.threat)) {
+        log_event("retake_next",army_id(army),target,entry.second);
+        return true;
+    }
+    // Nothing left to take: a base of ours with a hostile army within kRetakeThreat hexes is held, otherwise home.
+    Obj kept=target<48400?table(0xE270,target,48399):nullptr;
+    if(valid(kept) && kept[0x14]==own && campaign_area_id(target)!=rings.threat && retake_hostile_near(own,target,kRetakeThreat)) {
+        p.motion_day=game_day();   // standing on the base is the mission, not a stall
+        if(here==target || retake_route_order(army,p,target,rings.threat))return true;
+    }
+    if(!p.returning)log_event("retake_done_return",army_id(army),word(army,0x16),here);
+    return recovery_return(army,p);
+}
+// [combat] gate_intercept (user 2026-11-13 "아군의 관문이 공격당하면 관문소속성이나 관문에서 안행진이 2000명으로 나와서 적이 관문
+// 공격하는 반대방향에서 세워놔야해. 적 - 관문 - 안행진 ... 다른 원작의 명령을 받으면 안되겠지"). A gate of a computer force with a
+// hostile army within kInterceptAlert hexes of its center gets one 2,000-soldier 안행 unit (from the gate when it can
+// spare it, else from the nearest own castle). The unit is a home-capture worker like the retake units (group kind 10,
+// group tree skipped by retake_tree_hook, first army node answered here), so no original order reaches it. It walks
+// to the stand behind the gate (intercept::pick: a free hex touching the gate's own tiles, on the far side from the
+// nearest attacker and as near it as possible, never next to an attacker), waits there and fights whatever comes in range, follows the stand when the
+// attackers move, and goes home after kInterceptQuiet days without a hostile army near the gate, when the gate is lost,
+// or under kInterceptMinimum soldiers.
+static unsigned intercept_base_owner(Obj base) {   // as campaign_city_owner (some fixtures build this file without it)
+    Obj force=valid(base)?fn<Obj(__fastcall *)(Obj)>(GA(GA_22E3E0))(base):nullptr;if(!valid(force))return 0;
+    return (*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(force,0)+0x60))(force);
+}
+// local104: the step runs on the 10-day ticks (live log 2026-11-13: both units went home on the first empty tick before reaching
+// the stand); two empty ticks are needed before going home.
+static constexpr int kInterceptAlert=3,kInterceptQuiet=20;
+static constexpr unsigned kInterceptMinimum=500;
+static unsigned intercept_attackers(unsigned own,unsigned center,int range,unsigned *out,unsigned limit) { COST_SCOPE("campaign:intercept_attackers");
+    unsigned count=0;
+    for(unsigned i=1;i<=500 && count<limit;++i) {
+        Obj a=table(0x7E838,i,500);if(!valid(a))continue;
+        const unsigned force=army_force(a),at=word(a,0x2A);
+        if(!force || force==own || at>=48400 || distance(at,center)>range)continue;
+        if(fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,force))out[count++]=at;
+    }
+    return count;
+}
+static bool intercept_open(unsigned hex,Obj self) {   // walkable, no building, nobody standing there
+    Obj tile=hex<48400?table(0xE270,hex,48399):nullptr;
+    if(!valid(tile) || word(tile,0x1A))return false;
+    Obj terrain=fn<Obj(__fastcall *)(Obj)>(GA(GA_233310))(tile);
+    if(!valid(terrain) || fn<int(__fastcall *)(Obj)>(GA(GA_BF1B0))(terrain)<=0)return false;
+    for(unsigned i=1;i<=500;++i) {Obj a=table(0x7E838,i,500);if(a!=self && valid(a) && word(a,0x2A)==hex)return false;}
+    return true;
+}
+static unsigned intercept_stand(unsigned own,unsigned center,Obj self) { COST_SCOPE("campaign:intercept_stand");
+    unsigned attackers[64];const unsigned n=intercept_attackers(own,center,kInterceptAlert+1,attackers,64);
+    if(!n || center>=48400)return 48400;
+    // The gate's own tiles carry its building id (+0x1A, KB structs.md: center and the six around it); the stand
+    // touches one of them (user: "관문 1헥스 범위에 딱붙여야돼").
+    Obj middle=table(0xE270,center,48399);const unsigned gate_id=valid(middle)?word(middle,0x1A):0;
+    auto own_tile=[&](unsigned h) {Obj t=h<48400?table(0xE270,h,48399):nullptr;return h==center || (gate_id && valid(t) && word(t,0x1A)==gate_id);};
+    std::vector<unsigned> body,open;
+    const int cx=static_cast<int>(center%220),cy=static_cast<int>(center/220);
+    for(int y=(std::max)(0,cy-3);y<=(std::min)(219,cy+3);++y)for(int x=(std::max)(0,cx-3);x<=(std::min)(219,cx+3);++x) {
+        const unsigned h=static_cast<unsigned>(y*220+x);
+        if(intercept::distance(h,center)<=2 && own_tile(h))body.push_back(h);
+    }
+    for(unsigned b:body)for(unsigned d=0;d<6;++d) {
+        const unsigned h=sortie::neighbor(b,d);
+        if(h>=48400 || own_tile(h) || std::find(open.begin(),open.end(),h)!=open.end() || !intercept_open(h,self))continue;
+        open.push_back(h);
+    }
+    return intercept::pick(center,attackers,n,open.data(),static_cast<unsigned>(open.size()));
+}
+static Obj intercept_gate_object(unsigned gate) {
+    if(gate<52 || gate>61)return nullptr;
+    Obj g=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32E3B0))(world(),gate);
+    return valid(g) && word(g,0x4E)==gate?g:nullptr;
+}
+// [combat] helm_intercept (local148, user 2026-11-14 "건업 시상 강하 여남 장사 무릉에 있는 조타 개성 장수들은 시정이 수군육성 Lv 5 이상
+// (몽충, 누선) 일때 바다에서 적극적으로 요격 ... 원작 명령을 안받고 바다에 나가서 적부대 인근 3칸에 벌점을 주고 적 주변 타일을 뒤집는데
+// 큰 점수 ... 아군 항구의 점령률이 떨어지면 출진"; local149 "거리 상관없이 출진해서 색칠"). The ship rides the intercept plumbing (no
+// original order) and is steered here: it paints the hexes of its port region (area id) that the force lost - no distance
+// limit to the castle or to the attackers; hexes within 3 of a hostile army are penalised hard. It re-picks daily, and goes
+// home when the whole port region is the force's again or under 1,000 soldiers; a lost port is retaken first (nearest to the castle).
+static constexpr int kHelmScan=20;   // half side of the box searched for the port region's hexes around its base
+static constexpr unsigned kHelmMinimum=1000;
+static constexpr int kHelmNear=15;   // local152: the attackers' penalty applies only once the ship is this close to one
+static constexpr int kHelmSweep=12;  // local161: farthest target (hexes); the way there is what the ship paints
+static constexpr int kHelmRingBonus=3;      // enemy tile 4..6 hexes from the attackers: counts 3+3 on the way (local162)
+static constexpr int kHelmRingGoal=40;       // goal on that ring (local162)
+static bool helm_water(unsigned hex) {
+    Obj tile=hex<48400?table(0xE270,hex,48399):nullptr;
+    return valid(tile) && (tile[0x10]==13 || tile[0x10]==14 || tile[0x10]==24);
+}
+// local169 (user 2026-11-15 "조타 장수들은 출진할때 육지에서 바다로 나가고 바다에서 다시 적 육지로 가는거 자제 ... 장강을 계속 색칠해서
+// 보급선을 유지"): the ship's goals are river water or the bank beside it (a land hex with a water neighbour); inland hexes are
+// neither picked nor counted as left to paint.
+static bool helm_shore(unsigned hex) {
+    if(helm_water(hex))return true;
+    if(hex>=48400)return false;
+    for(unsigned d=0;d<6;++d)if(helm_water(sortie::neighbor(hex,d)))return true;
+    return false;
+}
+// local170 (user 2026-11-15 "몽충,누선 상태에서 적 타일로 색칠된 육지로 올라가는걸 자제하고 장강 임무를 계속"): a ship's goal is
+// river water, or a bank hex not held by a hostile force; hostile land is turned only by the footprint from the water.
+static bool helm_hostile_tile(unsigned own,unsigned hex) {
+    Obj t=hex<48400?table(0xE270,hex,48399):nullptr;if(!valid(t))return false;
+    const unsigned holder=t[0x14];
+    return holder && holder!=own && fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,holder)!=0;
+}
+static bool helm_goal_ok(unsigned own,unsigned hex) {return helm_water(hex) || (helm_shore(hex) && !helm_hostile_tile(own,hex));}
+// local170 (user 2026-11-15 "육지의 투석대나 망루 범위에 반응 못하는 문제 ... 그걸 회피해야하는데"): hostile finished 투석대 (6,
+// range 3) and 망루 (5, range 2) (buildings world+0x6DA98: +0x10 hex, +0x12 kind, +0x13 force, +0x16 bit0 finished); goals in
+// their range are skipped and each step of the way in range costs. Siege missions are not helm ships and still land to break them.
+struct HelmTower {unsigned short hex;unsigned char range;};
+static unsigned helm_towers(unsigned own,unsigned centre,int box,HelmTower *out,unsigned cap) {
+    unsigned n=0;if(centre>=48400)return 0;
+    for(unsigned i=1;i<=3000 && n<cap;++i) {
+        Obj b=table(0x6DA98,i,3000);
+        if(!valid(b) || (b[0x12]!=5 && b[0x12]!=6) || !(b[0x16]&1))continue;
+        const unsigned hex=word(b,0x10),holder=b[0x13];
+        if(hex>=48400 || !holder || holder==own || distance(hex,centre)>box)continue;
+        if(fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,holder)==0)continue;
+        out[n++]=HelmTower{static_cast<unsigned short>(hex),static_cast<unsigned char>(b[0x12]==6?3:2)};
+    }
+    return n;
+}
+static bool helm_tower_hit(const HelmTower *t,unsigned n,unsigned hex) {for(unsigned i=0;i<n;++i)if(distance(hex,t[i].hex)<=t[i].range)return true;return false;}
+static Obj helm_area_object(unsigned area) {Obj a=area && area<=500?table(0x6CAF0,area,500):nullptr;return valid(a)?a:nullptr;}
+// The best hex of the port region to paint: a hex of the region not held by the force (hostile 30, neutral 10), +6 for each
+// hostile neighbour, +10 on water (the 조타 ship ignores ZOC there), -200 within 3 hexes of a hostile army, minus 2 per hex
+// of the way. left = hexes of the region still to paint (0 = the region is whole again).
+static unsigned helm_pick(unsigned own,unsigned area_id,unsigned here,Obj self,int *best_score=nullptr,unsigned *left=nullptr,
+                          int reach=12,const unsigned *avoid=nullptr,unsigned navoid=0,bool allow_far=true) { COST_SCOPE("campaign:helm_pick");
+    if(left)*left=0;
+    Obj area=helm_area_object(area_id);
+    const unsigned port=area?word(area,0x3A):48400;
+    if(port>=48400)return 48400;
+    unsigned foes[64];const unsigned nf=intercept_attackers(own,port,kHelmScan+4,foes,64);
+    HelmTower towers[64];const unsigned nt=helm_towers(own,port,kHelmScan+kHelmSweep+3,towers,64);
+    auto hostile=[&](unsigned q) {
+        Obj t=q<48400?table(0xE270,q,48399):nullptr;if(!valid(t))return false;
+        const unsigned holder=t[0x14];
+        return holder && holder!=own && fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,holder)!=0;
+    };
+    const int px=static_cast<int>(port%220),py=static_cast<int>(port/220);
+    // local152 (user 2026-11-14 "점령률 낮아졌는데 출진 안하는건 문제 ... 일단 적방향으로 출진하고 적하고 15칸 안으로 들어왔을때
+    // 벌점을 부여"): the best hex always wins whatever its score (before, a score <= 0 was never picked: far ports and hexes near
+    // the attackers left no target, helm_no_target). The ship (or the castle, at departure) more than kHelmNear hexes from every
+    // attacker heads toward them (+1 per hex closer to the nearest one, no penalty); within kHelmNear the hexes within 3 of an
+    // attacker are penalised.
+    int foe_gap=99;if(here<48400)for(unsigned i=0;i<nf;++i)foe_gap=(std::min)(foe_gap,distance(here,foes[i]));
+    const bool foe_close=foe_gap<=kHelmNear;
+    // local161 (user 2026-11-15 "조타 장수들 1cm씩 움직이는거 뭐야 목표지점을 중계점으로 찍어서 매턴 최대 기동력을 쓰면서 미점령 or
+    // 적타일을 최대한 많이 뒤집어야지"): before, -2 per hex of the way made the nearest unpainted hex win, one hex a day. Now a hex
+    // up to kHelmSweep hexes away is scored by what the ship paints on the way there: every hex of the straight walk (each step to
+    // the neighbour nearest the target) and its six neighbours (the footprint), counted once, not held by the force: neutral 2,
+    // hostile 3. The target is kept until it is reached or no longer worth it (helm_step), so the ship sails the whole way.
+    auto holder_value=[&](unsigned q)->int {
+        Obj t=q<48400?table(0xE270,q,48399):nullptr;if(!valid(t))return 0;
+        const unsigned holder=t[0x14];
+        if(!holder)return 2;
+        if(holder==own)return 0;
+        return fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,holder)!=0?3:0;
+    };
+    // local162 (user 2026-11-15 "적부대를 감싸는 4헥스부터 6헥스 사이에 and 적타일에 포상 ... 원으로 감싸서 병참단절을 유도"): an enemy
+    // tile 4..6 hexes from the nearest attacker (a ring around the whole group, outside the 3-hex penalty) counts double on the way,
+    // and a goal on that ring gets +kHelmRingGoal, so the ship circles the attackers and turns the tiles their supply runs over.
+    auto in_ring=[&](unsigned q)->bool {
+        int m=99;for(unsigned i=0;i<nf;++i)m=(std::min)(m,distance(q,foes[i]));
+        return m>=4 && m<=6;
+    };
+    auto sweep=[&](unsigned to,int &near_foes,int &tower_steps)->int {
+        near_foes=0;tower_steps=0;
+        if(here>=48400)return 0;
+        unsigned seen[(kHelmSweep+1)*7];unsigned ns=0;int gain=0;
+        auto add=[&](unsigned q) {
+            if(q>=48400)return;
+            for(unsigned i=0;i<ns;++i)if(seen[i]==q)return;
+            if(ns<sizeof(seen)/sizeof(seen[0]))seen[ns++]=q;
+            const int v=holder_value(q);
+            gain+=v;
+            if(v==3 && in_ring(q))gain+=kHelmRingBonus;
+        };
+        unsigned c=here;
+        for(int step=0;step<reach && step<kHelmSweep && c!=to;++step) {
+            unsigned next=c;int nd=distance(c,to);
+            for(unsigned d=0;d<6;++d) {const unsigned n=sortie::neighbor(c,d);if(n<48400 && distance(n,to)<nd) {nd=distance(n,to);next=n;}}
+            if(next==c)break;
+            c=next;add(c);for(unsigned d=0;d<6;++d)add(sortie::neighbor(c,d));
+            if(foe_close)for(unsigned i=0;i<nf;++i)if(distance(c,foes[i])<=3) {++near_foes;break;}
+            if(helm_tower_hit(towers,nt,c))++tower_steps;
+        }
+        return gain;
+    };
+    unsigned best=48400,count=0,far_best=48400;int top=-(1<<30),far_top=-(1<<30);
+    for(int y=(std::max)(0,py-kHelmScan);y<=(std::min)(219,py+kHelmScan);++y)
+        for(int x=(std::max)(0,px-kHelmScan);x<=(std::min)(219,px+kHelmScan);++x) {
+            const unsigned h=static_cast<unsigned>(y*220+x);
+            Obj t=table(0xE270,h,48399);
+            if(!valid(t) || word(t,0x12)!=area_id || t[0x14]==own || !helm_goal_ok(own,h) || helm_tower_hit(towers,nt,h))continue;   // local170
+            ++count;
+            if(!intercept_open(h,self))continue;
+            if(here<48400 && distance(here,h)>reach) {   // out of one sweep (e.g. the castle at departure): nearest first
+                const int far_score=-1000+(hostile(h)?30:10)-2*distance(here,h);
+                if(allow_far && far_score>far_top) {far_top=far_score;far_best=h;}
+                continue;
+            }
+            {bool near_avoid=false;for(unsigned i=0;i<navoid;++i)if(distance(h,avoid[i])<=3)near_avoid=true;if(near_avoid)continue;}
+            int closest=99;for(unsigned i=0;i<nf;++i)closest=(std::min)(closest,distance(h,foes[i]));
+            int near_foes=0,tower_steps=0;
+            int score=100+(hostile(h)?30:10)+10*sweep(h,near_foes,tower_steps);
+            score-=40*tower_steps;   // local170: each step in a 투석대/망루 range
+            if(helm_water(h))score+=10;
+            if(hostile(h) && closest>=4 && closest<=6)score+=kHelmRingGoal;
+            if(foe_close) {if(closest<=3)score-=200;score-=40*near_foes;}
+            else if(nf)score+=kHelmScan+4-(std::min)(closest,kHelmScan+4);
+            if(score>top) {top=score;best=h;}
+        }
+    if(best>=48400 && far_best<48400) {best=far_best;top=far_top;}
+    if(best_score)*best_score=top;
+    if(left)*left=count;
+    return best;
+}
+// local161 (user 2026-11-15 "목표지점을 중계점으로 찍어서 ... 중계점 5개 찍는거지?"): one order through five relay points and a goal,
+// each leg (at most kHelmLeg hexes) picked from the end of the previous one by helm_pick (what the ship paints on the way), never
+// within 3 hexes of an earlier point. Written as retake_route_order's own relay branch writes it (A3370, 2ECEA0 1, 2ECF00 9 goal,
+// 2F05A0 per relay, 26E260); a refused order (no first step) is restored and the plain way to the goal is taken instead.
+static constexpr int kHelmLeg=6;
+static constexpr unsigned kHelmRelays=5;
+static bool helm_chain_order(Obj army,Progress &p,const unsigned *chain,unsigned n) { COST_SCOPE("campaign:helm_chain_order");
+    const unsigned goal=chain[n-1];
+    if(n<2 || campaign_castle_locked(army) || native_search_depth)return retake_route_order(army,p,goal);
+    const unsigned here=word(army,0x2A);
+    Obj origin=fn<Obj(__fastcall *)(Obj)>(GA(GA_22BFE0))(army);
+    if(valid(origin) && fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(origin)==here)return retake_route_order(army,p,goal);   // local87: departure stands
+    unsigned char saved[0x34];memcpy(saved,army+0x2C,sizeof(saved));
+    const unsigned flags=dword(army,0x1F0);const unsigned short future=word(army,0x1F8);
+    fn<void(__fastcall *)(Obj)>(GA(GA_A3370))(army);
+    fn<void(__fastcall *)(Obj,int)>(GA(GA_2ECEA0))(army,1);
+    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2ECF00))(army,9,static_cast<int>(goal));
+    for(unsigned i=0;i+1<n;++i)fn<void(__fastcall *)(Obj,int,unsigned)>(GA(GA_2F05A0))(army,static_cast<int>(i),chain[i]);
+    fn<void(__fastcall *)(Obj)>(GA(GA_26E260))(army);
+    if(word(army,0x48)>=48400 || distance(here,word(army,0x48))!=1) {
+        memcpy(army+0x2C,saved,sizeof(saved));*reinterpret_cast<unsigned *>(army+0x1F0)=flags;
+        *reinterpret_cast<unsigned short *>(army+0x1F8)=future;
+        return retake_route_order(army,p,goal);
+    }
+    *reinterpret_cast<unsigned *>(army+0x1F0)|=2;
+    p.region_target=static_cast<unsigned short>(goal);p.region_owner=table(0xE270,goal,48399)[0x14];
+    p.retake_day=game_day();p.returning=false;
+    log_event("helm_chain",army_id(army),n-1,goal);
+    return true;
+}
+// local167 delayed retreat (user 2026-11-15 "우리 조타 요격나가는거 퇴각하는상황이 될때 지연 퇴각하게해 플래그 달아서 2턴동안
+// 적타일 뒤집다가 퇴각하게 해줘"): the first reason to go home (worn, port lost, region whole) sets p.helm_delay for
+// kHelmDelayDays (2 turns); meanwhile the ship sails to the hostile tile within kHelmLeg hexes whose straight way turns the
+// most hostile tiles (each step and its six neighbours, +10 on water), never a tile within 3 hexes of a hostile army, and
+// waits in place when there is none. At the end it goes home as before. The garrison recall (castle under attack) still
+// calls it home at once.
+static constexpr int kHelmDelayDays=20;
+static unsigned helm_delay_pick(unsigned own,unsigned here,Obj self,int *best_score) { COST_SCOPE("campaign:helm_delay_pick");
+    if(best_score)*best_score=0;
+    if(here>=48400)return 48400;
+    auto hostile=[&](unsigned q) {
+        Obj t=q<48400?table(0xE270,q,48399):nullptr;if(!valid(t))return false;
+        const unsigned holder=t[0x14];
+        return holder && holder!=own && fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,holder)!=0;
+    };
+    const int cx=static_cast<int>(here%220),cy=static_cast<int>(here/220);
+    unsigned best=48400;int top=0;
+    HelmTower towers[64];const unsigned nt=helm_towers(own,here,kHelmLeg+3,towers,64);   // local170
+    for(int y=(std::max)(0,cy-kHelmLeg);y<=(std::min)(219,cy+kHelmLeg);++y)
+        for(int x=(std::max)(0,cx-kHelmLeg);x<=(std::min)(219,cx+kHelmLeg);++x) {
+            const unsigned h=static_cast<unsigned>(y*220+x);
+            // local170: hostile tiles on the water only (no landing on hostile ground), never in a 투석대/망루 range
+            if(h==here || distance(here,h)>kHelmLeg || !hostile(h) || !helm_water(h) || helm_tower_hit(towers,nt,h) || !intercept_open(h,self) || retake_hostile_near(own,h,3))continue;
+            unsigned seen[(kHelmLeg+1)*7];unsigned ns=0;int gain=0;
+            auto add=[&](unsigned q) {
+                if(q>=48400)return;
+                for(unsigned i=0;i<ns;++i)if(seen[i]==q)return;
+                if(ns<sizeof(seen)/sizeof(seen[0]))seen[ns++]=q;
+                if(hostile(q))++gain;
+            };
+            unsigned c=here;int tower_steps=0;
+            for(int step=0;step<kHelmLeg && c!=h;++step) {
+                unsigned next=c;int nd=distance(c,h);
+                for(unsigned d=0;d<6;++d) {const unsigned n=sortie::neighbor(c,d);if(n<48400 && distance(n,h)<nd) {nd=distance(n,h);next=n;}}
+                if(next==c)break;
+                c=next;add(c);for(unsigned d=0;d<6;++d)add(sortie::neighbor(c,d));
+                if(helm_tower_hit(towers,nt,c))++tower_steps;
+            }
+            const int score=10*gain+(helm_water(h)?10:0)-distance(here,h)-20*tower_steps;
+            if(score>top) {top=score;best=h;}
+        }
+    if(best_score)*best_score=top;
+    return best;
+}
+// local168 (user 2026-11-15 "2턴 지난다음에 퇴각 명령 내리기직전에 또 항구 점령률이 떨어지고 적부대가 있으면 새목표 잡아서 계속
+// 타일을 뒤집었으면"): the hostile hexes of the port region counted when the delay began; at its end, when there are more of
+// them now and a hostile army is within kHelmExtendNear hexes of the port base, the delay runs another kHelmDelayDays with a
+// new target. Not for a worn ship (below kHelmMinimum soldiers).
+static constexpr int kHelmExtendNear=6;
+static unsigned helm_delay_hostile(unsigned own,Progress &p,unsigned here,Obj army) {
+    unsigned left=0;helm_pick(own,p.helm_area,here,army,nullptr,&left,kHelmLeg);return left;
+}
+static unsigned helm_ring_lost(unsigned own,unsigned city_id,unsigned *held,unsigned *area);
+struct HelmRing;static const HelmRing *helm_ring_of(unsigned city_id);static unsigned helm_ring_castle(unsigned city_id);
+// local169: a ship of the river ring counts the ring's lost hexes and looks for attackers near the castle instead.
+static unsigned helm_delay_count(unsigned own,Progress &p,unsigned here,Obj army) {
+    if(p.helm_ring)return helm_ring_lost(own,p.helm_ring,nullptr,nullptr);
+    return helm_area_object(p.helm_area)?helm_delay_hostile(own,p,here,army):0;
+}
+static bool helm_delay_step(Obj army,Progress &p,int day) { COST_SCOPE("campaign:helm_delay_step");
+    const unsigned own=army_force(army),here=word(army,0x2A);
+    if(day>=p.helm_delay_until) {
+        Obj area=helm_area_object(p.helm_area);
+        const unsigned port=p.helm_ring?helm_ring_castle(p.helm_ring):area?word(area,0x3A):48400;
+        const unsigned left=helm_delay_count(own,p,here,army);
+        if(word(army,0x16)>=kHelmMinimum && port<48400 && left>p.helm_delay_left && retake_hostile_near(own,port,kHelmExtendNear)) {
+            log_event("helm_delay_extend",army_id(army),p.helm_delay_left|((std::min)(left,65535u)<<16),port);
+            p.helm_delay_until=day+kHelmDelayDays;p.helm_delay_left=left;p.region_target=48400;
+        }
+        else {
+            log_event("helm_delay_return",army_id(army),word(army,0x16),p.helm_area);
+            recovery_return(army,p);return true;
+        }
+    }
+    unsigned target=p.region_target;
+    Obj t=target<48400?table(0xE270,target,48399):nullptr;
+    HelmTower towers[64];const unsigned nt=valid(t)?helm_towers(own,target,4,towers,64):0;   // local170
+    const bool keep=valid(t) && target!=here && t[0x14] && t[0x14]!=own &&
+                    fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,t[0x14])!=0 &&
+                    helm_water(target) && !helm_tower_hit(towers,nt,target) &&
+                    intercept_open(target,army) && !retake_hostile_near(own,target,3);
+    if(!keep) {
+        int score=0;target=helm_delay_pick(own,here,army,&score);
+        p.region_target=static_cast<unsigned short>(target<48400?target:48400);
+        if(target<48400)log_event("helm_delay_target",army_id(army),static_cast<unsigned>(score),target);
+    }
+    if(target<48400 && here!=target) {
+        if(army[0x37]==1 && army[0x38]==9 && word(army,0x3A)==target)return true;   // already sailing there
+        if(retake_route_order(army,p,target))return true;
+        p.region_target=48400;
+    }
+    if(army[0x37]!=13) {   // nothing safe to turn here: wait; the original combat fights in range
+        fn<void(__fastcall *)(Obj)>(GA(GA_A3370))(army);
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_2ECEA0))(army,13);
+        fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2ECF00))(army,255,0);
+    }
+    return true;
+}
+// local169 (user 2026-11-15 "건업은 이 위에 해릉항이 짧아서 그런지 잘 반응을 못하네"): besides the castle's ports, the castle's
+// other regions with at least kHelmRiverHexes river hexes (the castle's own region on the 장강 included) are watched and
+// painted. Water hexes per region are counted once a day.
+static constexpr unsigned kHelmRiverHexes=3;
+static unsigned helm_area_water(unsigned n) {
+    static Obj root;static int day_of[501];static unsigned short water[501];
+    if(root!=world()) {root=world();for(int &d:day_of)d=-1;}
+    if(n<1 || n>500)return 0;
+    const int day=game_day();
+    if(day_of[n]==day)return water[n];
+    day_of[n]=day;water[n]=0;
+    Obj area=helm_area_object(n);const unsigned base=area?word(area,0x3A):48400;if(base>=48400)return 0;
+    const int px=static_cast<int>(base%220),py=static_cast<int>(base/220);unsigned w=0;
+    for(int y=(std::max)(0,py-kHelmScan);y<=(std::min)(219,py+kHelmScan);++y)
+        for(int x=(std::max)(0,px-kHelmScan);x<=(std::min)(219,px+kHelmScan);++x) {
+            const unsigned h=static_cast<unsigned>(y*220+x);Obj t=table(0xE270,h,48399);
+            if(valid(t) && word(t,0x12)==n && helm_water(h))++w;
+        }
+    water[n]=static_cast<unsigned short>((std::min)(w,65535u));
+    return water[n];
+}
+// A region the 조타 ship watches for castle `city_id`: the castle's region, its base still held by the force, and either a port
+// (base terrain kRetakePortTerrain) or one with river water.
+static bool helm_watch_area(unsigned own,unsigned city_id,unsigned n) {
+    Obj area=helm_area_object(n);if(!area || area[0x35]!=city_id)return false;
+    const unsigned base=word(area,0x3A);Obj tile=base<48400?table(0xE270,base,48399):nullptr;
+    if(!valid(tile) || tile[0x14]!=own)return false;
+    return tile[0x10]==kRetakePortTerrain || helm_area_water(n)>=kHelmRiverHexes;
+}
+static bool helm_area_taken(unsigned own,unsigned n,Obj self) {
+    for(unsigned i=1;i<=500;++i) {
+        Obj a=table(0x7E838,i,500);if(!valid(a) || a==self || army_force(a)!=own)continue;
+        const Progress &q=progress[i];
+        if(q.army==a && q.root==world() && q.commander==word(a,0x12) && q.helm && q.helm_area==n && !q.returning)return true;
+    }
+    return false;
+}
+// When the ship's region is whole again: the castle's other watched region with the most hexes left to paint, not taken by
+// another ship (0 = none, go home).
+static unsigned helm_next_area(unsigned own,unsigned cur,unsigned here,Obj self) {
+    Obj area=helm_area_object(cur);const unsigned city_id=area?area[0x35]:0;if(!city_id)return 0;
+    unsigned best=0,most=0;
+    for(unsigned n=1;n<=500;++n) {
+        if(n==cur || !helm_watch_area(own,city_id,n) || helm_area_taken(own,n,self))continue;
+        unsigned left=0;helm_pick(own,n,here,self,nullptr,&left,kHelmLeg);
+        if(left>most) {most=left;best=n;}
+    }
+    return best;
+}
+// local169 (user 2026-11-15 "조타 장수들의 반응 범위를 현행 조건에 추가로 성주변의 장강 타일 ... 대하 격류 타일 ... 15칸으로하자 ...
+// 장강에 충분히 멀어도 반응했으면"): the river ring of a 조타 castle = the 대하 (14) and 격류 (24) hexes within
+// max(15, nearest such hex + 10) hexes of the castle (무릉 lies far from the 장강), listed once per world.
+static constexpr int kHelmRingMin=15,kHelmRingExtra=10,kHelmStuckDays=3,kHelmRingFoeNear=6;
+struct HelmRing {Obj root=nullptr;unsigned castle=48400;int radius=0;std::vector<unsigned short> cells;};
+static HelmRing helm_rings[52];
+static const HelmRing *helm_ring_of(unsigned city_id) {
+    if(!city_id || city_id>=52)return nullptr;
+    HelmRing &r=helm_rings[city_id];
+    if(r.root==world())return r.castle<48400?&r:nullptr;
+    r=HelmRing{};r.root=world();
+    Obj city=campaign_goal(city_id);
+    const unsigned castle=city?fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(city):48400;
+    if(castle>=48400) {r.root=nullptr;return nullptr;}
+    auto river=[](unsigned h){Obj t=table(0xE270,h,48399);return valid(t) && (t[0x10]==14 || t[0x10]==24);};
+    int nearest=99;
+    for(unsigned h=0;h<48400;++h)if(river(h))nearest=(std::min)(nearest,distance(castle,h));
+    r.castle=castle;r.radius=(std::max)(kHelmRingMin,nearest+kHelmRingExtra);
+    for(unsigned h=0;h<48400;++h)if(river(h) && distance(castle,h)<=r.radius)r.cells.push_back(static_cast<unsigned short>(h));
+    log_event("helm_ring_built",city_id,static_cast<unsigned>(r.radius)|(static_cast<unsigned>(r.cells.size())<<8),castle);
+    return &r;
+}
+// Ring hexes held by the force (*held) and lost to a hostile force (return); *area = the region with the most lost ones.
+static unsigned helm_ring_lost(unsigned own,unsigned city_id,unsigned *held,unsigned *area) {
+    if(held)*held=0;if(area)*area=0;
+    const HelmRing *r=helm_ring_of(city_id);if(!r)return 0;
+    unsigned lost=0;unsigned short by[501]={};
+    for(unsigned short h:r->cells) {
+        Obj t=table(0xE270,h,48399);if(!valid(t))continue;
+        const unsigned holder=t[0x14];
+        if(holder==own) {if(held)++*held;continue;}
+        if(!holder || fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,holder)==0)continue;
+        ++lost;const unsigned a=word(t,0x12);if(a<=500)++by[a];
+    }
+    if(area) {unsigned most=0;for(unsigned a=1;a<=500;++a)if(by[a]>most) {most=by[a];*area=a;}}
+    return lost;
+}
+static unsigned helm_ring_castle(unsigned city_id) {const HelmRing *r=helm_ring_of(city_id);return r?r->castle:48400;}
+// local171 (user 2026-11-15 "목표 이동거리가 짧으면 그 목표 주면 아군 타일을 찍어서라도 더 진행했으면"): when the relay chain adds
+// up to fewer than kHelmPadTotal hexes, more relays are added from its end: a free water hex (or bank not held by a hostile
+// force) 3..kHelmLeg hexes on, also one already ours, outside 투석대/망루 ranges and 3 hexes of hostile armies, away from the
+// earlier points; scored by the unheld hexes of its footprint and by the distance from the ship.
+static constexpr int kHelmPadTotal=15;
+static unsigned helm_pad_pick(unsigned own,unsigned from,unsigned here,Obj self,const unsigned *avoid,unsigned navoid,const HelmTower *tw,unsigned ntw) {
+    if(from>=48400)return 48400;
+    const int cx=static_cast<int>(from%220),cy=static_cast<int>(from/220);
+    unsigned best=48400;int top=-(1<<30);
+    for(int y=(std::max)(0,cy-kHelmLeg);y<=(std::min)(219,cy+kHelmLeg);++y)
+        for(int x=(std::max)(0,cx-kHelmLeg);x<=(std::min)(219,cx+kHelmLeg);++x) {
+            const unsigned h=static_cast<unsigned>(y*220+x);const int d=distance(from,h);
+            if(d<3 || d>kHelmLeg || !helm_goal_ok(own,h) || helm_tower_hit(tw,ntw,h) || !intercept_open(h,self))continue;
+            bool close_to=false;for(unsigned i=0;i<navoid && !close_to;++i)close_to=distance(h,avoid[i])<=2;
+            if(close_to)continue;
+            int gain=0;
+            auto value=[&](unsigned q) {Obj t=q<48400?table(0xE270,q,48399):nullptr;if(valid(t) && t[0x14]!=own)gain+=helm_hostile_tile(own,q)?3:2;};
+            value(h);for(unsigned k=0;k<6;++k)value(sortie::neighbor(h,k));
+            const int score=10*gain+3*distance(here,h)+d+(helm_water(h)?5:0);
+            if(score<=top)continue;
+            if(retake_hostile_near(own,h,3))continue;
+            top=score;best=h;
+        }
+    return best;
+}
+static bool helm_step(Obj army,Progress &p);
+// local170: after a region switch the ship picks and sails the same day (before, the day of the switch was spent waiting).
+static bool helm_switch_again(Obj army,Progress &p) {static int depth;if(depth>=2)return true;++depth;const bool r=helm_step(army,p);--depth;return r;}
+static bool helm_step(Obj army,Progress &p) { COST_SCOPE("campaign:helm_step");
+    const unsigned own=army_force(army),here=word(army,0x2A);const int day=game_day();
+    if(p.returning) {recovery_return(army,p);return true;}
+    if(p.helm_delay)return helm_delay_step(army,p,day);
+    Obj area=helm_area_object(p.helm_area);
+    const unsigned port=area?word(area,0x3A):48400;
+    Obj port_tile=port<48400?table(0xE270,port,48399):nullptr;
+    const char *why=nullptr;
+    p.motion_day=day;   // sailing to the port region is the mission, not a stall
+    if(word(army,0x16)<kHelmMinimum)why="helm_worn_return";
+    else if(!p.helm_ring && (!valid(port_tile) || port_tile[0x14]!=own)) {   // local169: a river-ring ship has no port to retake
+        // local150 (user 2026-11-14 "항구를 잃었을 때 -> 바로 퇴각하지 말고 성하고 가장 가까운 (거리조건)으로 수복해야지"): the ship
+        // retakes the castle's lost port nearest to the castle (a port region of the same city, area +0x35, held by a hostile
+        // force) by standing on its base, then paints that port region; home only when the castle has no lost port left.
+        const unsigned city_id=area?area[0x35]:0;Obj city=city_id?campaign_goal(city_id):nullptr;
+        const unsigned castle=city && intercept_base_owner(city)==own?fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(city):48400;
+        unsigned lost_area=0,lost_base=48400;int closest=1<<30;
+        if(castle<48400)for(unsigned n=1;n<=500;++n) {
+            Obj a=table(0x6CAF0,n,500);if(!valid(a) || a[0x35]!=city_id)continue;
+            const unsigned base=word(a,0x3A);Obj t=base<48400?table(0xE270,base,48399):nullptr;
+            if(!valid(t) || t[0x10]!=kRetakePortTerrain)continue;
+            const unsigned holder=t[0x14];
+            if(!holder || holder==own || fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,holder)==0)continue;
+            const int d=distance(castle,base);
+            if(d<closest) {closest=d;lost_area=n;lost_base=base;}
+        }
+        if(!lost_area)why="helm_port_lost";
+        else {
+            if(p.helm_area!=lost_area) {log_event("helm_port_retake",army_id(army),p.helm_area|(lost_area<<16),lost_base);p.helm_area=static_cast<unsigned short>(lost_area);}
+            p.region_target=static_cast<unsigned short>(lost_base);
+            if(here!=lost_base && retake_route_order(army,p,lost_base))return true;
+            if(army[0x37]!=13) {   // on the base or no way there today: wait and fight in range
+                fn<void(__fastcall *)(Obj)>(GA(GA_A3370))(army);
+                fn<void(__fastcall *)(Obj,int)>(GA(GA_2ECEA0))(army,13);
+                fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2ECF00))(army,255,0);
+            }
+            return true;
+        }
+    }
+    unsigned target=p.region_target;
+    if(!why && p.helm_pick_day!=day) {
+        p.helm_pick_day=day;
+        int score=0;unsigned left=0;const unsigned best=helm_pick(own,p.helm_area,here,army,&score,&left,kHelmLeg);
+        Obj t=target<48400?table(0xE270,target,48399):nullptr;
+        // local170: a goal is kept while the relay order still sails to it, also one in the next region (chain extension);
+        // never hostile land or a hex in a 투석대/망루 range.
+        const bool sailing=army[0x37]==1 && army[0x38]==9 && word(army,0x3A)==target;
+        HelmTower towers[64];const unsigned nt=valid(t)?helm_towers(own,target,4,towers,64):0;
+        // local172 (user 2026-11-15 "추가 이동력을 낭비하지 않기위한 아군타일 목표니까 다음순(기동력회복)에서는 또 적 타일을 우선"):
+        // a goal on our own tile (a padded chain) is kept only within the 순 (10 days) it was ordered in; in the next one the
+        // ship picks unheld tiles first again.
+        const bool same_period=p.retake_day/10==day/10;
+        const bool keep=valid(t) && target!=here && (word(t,0x12)==p.helm_area || sailing) && (t[0x14]!=own || (sailing && same_period)) && intercept_open(target,army) &&
+                        helm_goal_ok(own,target) && !helm_tower_hit(towers,nt,target) &&
+                        !retake_hostile_near(own,target,3);   // local161: a kept target is dropped once attackers come near it
+        if(p.helm_ring && !left) {   // local169: a river-ring ship works until no ring hex is lost, region by region
+            unsigned ring_area=0;const unsigned lost=helm_ring_lost(own,p.helm_ring,nullptr,&ring_area);
+            if(lost && ring_area && ring_area!=p.helm_area) {log_event("helm_area_switch",army_id(army),p.helm_area|(ring_area<<16),here);p.helm_area=static_cast<unsigned short>(ring_area);p.region_target=48400;p.helm_pick_day=-1;p.helm_stuck=0;return helm_switch_again(army,p);}
+            if(!lost)why="helm_done_return";
+            else why="helm_ring_unreachable";
+        }
+        else if(!left) {   // every hex of the port region is ours again: another watched region of the castle, else home
+            const unsigned next=helm_next_area(own,p.helm_area,here,army);
+            if(next) {log_event("helm_area_switch",army_id(army),p.helm_area|(next<<16),here);p.helm_area=static_cast<unsigned short>(next);p.region_target=48400;p.helm_pick_day=-1;return helm_switch_again(army,p);}
+            // local170 (user 2026-11-15 "장강 임무를 계속 부여받았으면"): the port ship takes on the castle's river ring when a
+            // ring hex is lost, instead of going home.
+            const unsigned city_id=area?area[0x35]:0;unsigned ring_area=0;
+            if(city_id && city_id<52 && helm_ring_lost(own,city_id,nullptr,&ring_area) && ring_area && ring_area!=p.helm_area && !helm_area_taken(own,ring_area,army)) {
+                log_event("helm_ring_join",army_id(army),p.helm_area|(ring_area<<16),city_id);
+                p.helm_ring=static_cast<unsigned char>(city_id);p.helm_area=static_cast<unsigned short>(ring_area);
+                p.region_target=48400;p.helm_pick_day=-1;p.helm_stuck=0;return helm_switch_again(army,p);
+            }
+            why="helm_done_return";
+        }
+        else if(best>=48400) {   // only hexes next to the attackers left: wait (local169: home after kHelmStuckDays days)
+            target=48400;
+            if(p.helm_ring && ++p.helm_stuck>=kHelmStuckDays)why="helm_stuck_return";
+        }
+        else if(!keep) {   // local161: a target is sailed to the end (re-picked only when reached, ours already or blocked)
+            log_event("helm_target",army_id(army),static_cast<unsigned>(score)|((std::min)(left,65535u)<<16),best);
+            target=best;p.region_target=static_cast<unsigned short>(best);
+            // local161: the relay chain from best on (five relays and a goal when the region has room for them).
+            unsigned chain[kHelmRelays+1]={best},n=1,avoid[kHelmRelays+2]={here,best},navoid=2;
+            if(distance(here,best)<=kHelmLeg) {
+                while(n<kHelmRelays+1) {
+                    const unsigned next=helm_pick(own,p.helm_area,chain[n-1],army,nullptr,nullptr,kHelmLeg,avoid,navoid,false);
+                    if(next>=48400)break;
+                    chain[n++]=next;avoid[navoid++]=next;
+                }
+                // local170 (user 2026-11-15 "한턴 이동량을 다 못쓰는 경우 ... 다음 미점령지역을 찍어서 추가로 이동"): a chain cut short by
+                // its region goes on through the castle's other watched regions (and the ring's most lost one) not taken by
+                // another ship; each relay is the best of their picks.
+                if(n<kHelmRelays+1) {
+                    unsigned ext[4],ne=0;
+                    const unsigned city_id=p.helm_ring?p.helm_ring:area?area[0x35]:0;
+                    if(p.helm_ring) {unsigned ra=0;if(helm_ring_lost(own,p.helm_ring,nullptr,&ra) && ra && ra!=p.helm_area && !helm_area_taken(own,ra,army))ext[ne++]=ra;}
+                    for(unsigned a=1;a<=500 && ne<4 && city_id;++a)
+                        if(a!=p.helm_area && (ne==0 || ext[0]!=a) && helm_watch_area(own,city_id,a) && !helm_area_taken(own,a,army))ext[ne++]=a;
+                    const unsigned before=n;
+                    while(ne && n<kHelmRelays+1) {
+                        unsigned next=48400;int top=-(1<<30);
+                        for(unsigned i=0;i<ne;++i) {
+                            int sc=0;const unsigned h=helm_pick(own,ext[i],chain[n-1],army,&sc,nullptr,kHelmLeg,avoid,navoid,false);
+                            if(h<48400 && sc>top) {top=sc;next=h;}
+                        }
+                        if(next>=48400)break;
+                        chain[n++]=next;avoid[navoid++]=next;
+                    }
+                    if(n>before)log_event("helm_chain_extend",army_id(army),before|(n<<8),chain[n-1]);
+                }
+                int total=0;for(unsigned i=0;i<n;++i)total+=distance(i?chain[i-1]:here,chain[i]);
+                if(total<kHelmPadTotal && n<kHelmRelays+1) {   // local171: a short chain goes on over our own water
+                    HelmTower tw[64];const unsigned ntw=helm_towers(own,chain[n-1],kHelmLeg*3,tw,64);
+                    const unsigned before=n;
+                    while(n<kHelmRelays+1 && total<kHelmPadTotal) {
+                        const unsigned next=helm_pad_pick(own,chain[n-1],here,army,avoid,navoid,tw,ntw);
+                        if(next>=48400)break;
+                        total+=distance(chain[n-1],next);chain[n++]=next;avoid[navoid++]=next;
+                    }
+                    if(n>before)log_event("helm_chain_pad",army_id(army),before|(n<<8)|(static_cast<unsigned>(total)<<16),chain[n-1]);
+                }
+            }
+            if(!why && helm_chain_order(army,p,chain,n)) {p.helm_stuck=0;return true;}
+            target=p.region_target;
+        }
+    }
+    // local161: the relay order already sails to this goal: leave it (re-ordering would drop the relays).
+    if(!why && target<48400 && here!=target && army[0x37]==1 && army[0x38]==9 && word(army,0x3A)==target && word(army,0x48)<48400) {p.helm_stuck=0;return true;}
+    if(why && (!strcmp(why,"helm_stuck_return") || !strcmp(why,"helm_ring_unreachable"))) {   // local169: nothing reachable: home now
+        log_event(why,army_id(army),word(army,0x16),p.helm_area);
+        recovery_return(army,p);return true;
+    }
+    if(why) {   // local167: the reason is logged now, the ship goes home after the delay
+        log_event(why,army_id(army),word(army,0x16),p.helm_area);
+        p.helm_delay=true;p.helm_delay_until=day+kHelmDelayDays;p.region_target=48400;
+        p.helm_delay_left=helm_delay_count(own,p,here,army);
+        log_event("helm_delay_start",army_id(army),word(army,0x16),static_cast<unsigned>(p.helm_delay_until));
+        return helm_delay_step(army,p,day);
+    }
+    if(target<48400 && here!=target && retake_route_order(army,p,target)) {p.helm_stuck=0;return true;}
+    if(target<48400 && here!=target) {   // local161: no way there today: pick again tomorrow (local169: counts as a stuck day)
+        p.region_target=48400;
+        if(p.helm_ring && p.helm_pick_day==day && ++p.helm_stuck>=kHelmStuckDays) {log_event("helm_stuck_return",army_id(army),word(army,0x16),p.helm_area);recovery_return(army,p);return true;}
+    }
+    if(army[0x37]!=13) {   // nothing safe to paint now: wait; the original combat fights in range
+        fn<void(__fastcall *)(Obj)>(GA(GA_A3370))(army);
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_2ECEA0))(army,13);
+        fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2ECF00))(army,255,0);
+        log_event("helm_hold",army_id(army),here,p.helm_area);
+    }
+    return true;
+}
+static bool intercept_step(Obj army,Progress &p) { COST_SCOPE("campaign:intercept_step");
+    if(p.helm)return helm_step(army,p);
+    const unsigned own=army_force(army),here=word(army,0x2A);const int day=game_day();
+    if(p.returning) {recovery_return(army,p);return true;}
+    Obj gate=intercept_gate_object(p.intercept_gate);
+    const unsigned center=gate?fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(gate):48400;
+    const char *why=nullptr;
+    if(!gate || center>=48400 || intercept_base_owner(gate)!=own)why="intercept_gate_lost";
+    else if(word(army,0x16)<kInterceptMinimum)why="intercept_worn_return";
+    else {
+        unsigned seen[1];
+        if(intercept_attackers(own,center,kInterceptAlert+1,seen,1))p.intercept_seen_day=day;
+        else if(day-p.intercept_seen_day>=kInterceptQuiet)why="intercept_done_return";
+    }
+    if(why) {log_event(why,army_id(army),word(army,0x16),p.intercept_gate);recovery_return(army,p);return true;}
+    // The stand follows the attackers; a stand that is still behind the gate and free is kept.
+    unsigned target=p.region_target;
+    const unsigned best=intercept_stand(own,center,army);
+    if(best<48400 && best!=target) {
+        unsigned attackers[64];const unsigned n=intercept_attackers(own,center,kInterceptAlert+1,attackers,64);
+        const unsigned both[2]={target,best};   // kept while it is as good a stand as the new one
+        const bool keep=target<48400 && intercept_open(target,army) && intercept::pick(center,attackers,n,both,2)==target;
+        if(!keep) {log_event("intercept_stand",army_id(army),target,best);target=best;p.region_target=static_cast<unsigned short>(best);}
+    }
+    p.motion_day=day;   // standing behind the gate is the mission, not a stall
+    if(target<48400 && here!=target && retake_route_order(army,p,target))return true;
+    if(army[0x37]!=13) {   // at the stand (or no way to it today): wait there; the original combat fights in range
+        fn<void(__fastcall *)(Obj)>(GA(GA_A3370))(army);
+        fn<void(__fastcall *)(Obj,int)>(GA(GA_2ECEA0))(army,13);
+        fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2ECF00))(army,255,0);
+        log_event("intercept_hold",army_id(army),here,p.intercept_gate);
+    }
+    return true;
+}
 static bool campaign_regional_step(Obj army,Progress &p) {
     COST_SCOPE("campaign_regional_step");
     if(!p.regional_worker)return false;
+    if(p.intercept)return intercept_step(army,p);
     if(p.credit || p.build_chain || p.facility)return true;
+    if(p.retake)return retake_step(army,p);
     for(unsigned h:campaign_home_bases(army,p.work_source))if(campaign_assign_safe(army,p,h,true))return true;
     if(p.region_target<48400 && campaign_region_hostile(army,campaign_area_id(p.region_target)) &&
         campaign_assign_safe(army,p,p.region_target,true))return true;

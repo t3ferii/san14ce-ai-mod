@@ -84,6 +84,7 @@
 #include "native_sortie_links.inl"
 #endif
 #include "native_siege_guard.inl"
+#include "native_ambush_combat.inl"
 #include "native_route_hook.inl"
 #endif
 #ifdef UNITY_SLOT_MODULES
@@ -142,5 +143,7 @@
 #include "native_ccz_title.inl"
 #include "native_tactic_priority.inl"
 #include "native_advisor_briefing.inl"
+#include "native_ambush.inl"
+#include "native_modpack_dll.inl"
 #endif
 #endif

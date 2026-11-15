@@ -234,6 +234,7 @@ static unsigned __fastcall mock_catapult_base_hex(Obj base) {return word(base,0x
 static void catapult_policy_tests(Obj army) {
     auto saved_features=mod_features;auto saved_cache=catapult_ground_cache;auto saved_tile_areas=tile_areas;
     int saved_day=fixture_day;unsigned saved_lookups=catapult_base_lookups;
+    const bool saved_strict=strict_build_rules;strict_build_rules=false;   // local166 base cache would add its own lookups
     auto saved_goal=functions[0x32E3B0],saved_owner=functions[0x22E3E0],saved_hex=functions[0x22F190];
     BIND(0x32E3B0,mock_catapult_base);BIND(0x22E3E0,mock_catapult_base_owner);BIND(0x22F190,mock_catapult_base_hex);
     Obj areas[10],tiles[10],old_areas[10],old_tiles[10];
@@ -318,10 +319,33 @@ static void catapult_policy_tests(Obj army) {
     check(!allows(0) && !allows(5),"last castle and gate IDs included in forbidden region set");
     lookups=catapult_base_lookups;mod_features.ai_catapult_block=false;++fixture_day;
     check(allows(0) && catapult_base_lookups==lookups,"option off skips refresh even after key change");
+    {   // local166 strict build rules (user 2026-11-15): computer force only, after the original permission accepts.
+        strict_build_rules=true;mod_features.ai_catapult_block=false;mod_features.ai_wall_block=false;++fixture_day;
+        Obj cat_def=table(0x73958,6,30),plain_def=table(0x73958,4,30);const unsigned char saved_class=cat_def[0x2C];cat_def[0x2C]=2;
+        Obj t_near=object(47000),t_touch=object(47003),t_clear=object(47005),t_site=object(47002);t_site[0x12]=6;
+        Obj saved_building=table(0x6DA98,2999,3000);slot(0x6DA98,2999,t_site);
+        check(!build_permission(force,t_near,cat_def,7),"local166: military site two hexes from an unfinished military facility refused");
+        check(!build_permission(force,t_touch,cat_def,7),"local166: military site next to a military facility refused");
+        check(build_permission(force,t_clear,cat_def,7),"local166: military site three hexes away allowed");
+        check(build_permission(force,t_near,plain_def,7),"local166: non-military facility not held to the military spacing");
+        check(build_permission(player,t_near,cat_def,7),"local166: player force keeps the original check only");
+        check(!build_permission(force,t_clear,cat_def,0),"local166: original rejection still wins");
+        Obj t_inside=object(48011),t_outside=object(48012);
+        check(!build_permission(force,t_inside,plain_def,7),"local166: any facility within 3 hexes of a castle footprint refused");
+        check(build_permission(force,t_outside,plain_def,7),"local166: castle centre distance 5 allowed");
+        Obj other=object(9001),saved_army=table(0x7E838,499,500);other[0x37]=8;other[0x46]=6;put16(other,0x42,47100);slot(0x7E838,499,other);
+        check(military_order_near(nullptr,6,47101) && military_order_near(nullptr,6,47102),"local166: pending military order within 2 hexes blocks a new pick");
+        check(!military_order_near(nullptr,6,47100) && !military_order_near(nullptr,6,47103) && !military_order_near(nullptr,4,47101),
+              "local166: same hex, 3 hexes and non-military picks pass");
+        check(!military_order_near(other,6,47101),"local166: an army's own order does not block it");
+        enabled=0;check(build_permission(force,t_near,cat_def,7),"local166: combat AI off = original");enabled=1;
+        slot(0x7E838,499,saved_army);slot(0x6DA98,2999,saved_building);cat_def[0x2C]=saved_class;
+        free(t_near);free(t_touch);free(t_clear);free(t_site);free(t_inside);free(t_outside);free(other);
+    }
     for(unsigned i=0;i<10;++i) {slot(0x6CAF0,450+i,old_areas[i]);slot(0xE270,48000+i,old_tiles[i]);}
     slot(0x6CAF0,499,missing_area);tile_areas=saved_tile_areas;catapult_bases.clear();catapult_base_lookups=saved_lookups;
     functions[0x32E3B0]=saved_goal;functions[0x22E3E0]=saved_owner;functions[0x22F190]=saved_hex;
-    fixture_day=saved_day;catapult_ground_cache=saved_cache;mod_features=saved_features;
+    fixture_day=saved_day;catapult_ground_cache=saved_cache;mod_features=saved_features;strict_build_rules=saved_strict;
 }
 #include "domestic_fixture.inl"
 #include "obstacle_fixture.inl"
@@ -458,11 +482,12 @@ int main() {
         };
         check(hostile_city(army,9),"siege-ground fixture goal is hostile");
         check(!attempt(107),"mission_v2: a site two hexes from the castle is inside its attack range");
-        check(attempt(108) && p->facility && word(army,0x42)==105,"mission_v2: a site three hexes from the castle builds");
+        check(!attempt(108) && !attempt(109),"local166: sites three and four hexes from the castle centre stay inside the footprint rule");
+        check(attempt(110) && p->facility && word(army,0x42)==105,"mission_v2: a site five hexes from the castle builds");
         check(attempt(111) && p->facility,"mission_v2: a site six hexes from the castle builds");
         check(!attempt(112) && !p->facility,"mission_v2: a site seven hexes from the castle is beyond siege ground");
         Obj saved_owner=goal_owner,own=object(2);putptr(own,0,pointer(force,0));put16(own,0x10,2);goal_owner=own;
-        check(!attempt(108),"mission_v2: without a hostile goal castle the army builds nothing");goal_owner=saved_owner;
+        check(!attempt(110),"mission_v2: without a hostile goal castle the army builds nothing");goal_owner=saved_owner;
         *reinterpret_cast<short *>(ruler+0x180)=20;
         check(!attempt(107),"builder_ruler_fill off: a 건설 5 ruler keeps the siege-ground range");
         mod_features.builder_ruler_fill=true;

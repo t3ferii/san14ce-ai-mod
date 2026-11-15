@@ -40,6 +40,8 @@ static const char *const kModuleNames[]={
     "trait_hover",
     "face_timing",
     "auto_commands",
+    "ambush",
+    "season_rules",
     "ai_trace",
 };
 // Service subscriptions (service, owner, order, gate order); the fixture proves the call order for every registration order.
@@ -62,6 +64,8 @@ static const ModuleSubscription kSubscriptions[]={
     {"sidecars","merit",30,0},
     {"sidecars","awards",40,0},
     {"sidecars","auto_commands",50,0},
+    {"sidecars","ambush",60,0},
+    {"sidecars","expert_links",70,0},
 };
 #ifndef MODULE_TABLE_NAMES_ONLY
 // {name, feature id for feature_off logs (0 none), wanted, install (false = refused), refused}
@@ -138,7 +142,7 @@ static const ModuleDesc kModules[]={
     {"lord_change",36,[]{return mod_features.lord_change;},[]{return lord_change::install();},[]{split_feature_off(mod_features.lord_change,36,5);}},
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
-    {"tactic_priority",39,[]{return mod_features.tactic_priority;},[]{return tactic_priority::install();},[]{split_feature_off(mod_features.tactic_priority,39,5);}},
+    {"tactic_priority",39,[]{return mod_features.tactic_priority || mod_features.ambush;},[]{return tactic_priority::install();},[]{split_feature_off(mod_features.tactic_priority,39,5);}},
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
     {"region_officers",37,[]{return mod_features.region_officers;},[]{return region_officers::install();},[]{split_feature_off(mod_features.region_officers,37,5);}},
@@ -156,7 +160,7 @@ static const ModuleDesc kModules[]={
     {"ccz_combat",33,[]{return mod_features.ccz_block || mod_features.ccz_critical;},[]{return ccz_combat::install(mod_features.ccz_block,mod_features.ccz_critical);},[]{split_disable(mod_features.ccz_block,33);split_disable(mod_features.ccz_critical,33);}},
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
-    {"building_destruction",0,[]{return mod_features.building_destruction_all;},[]{return (building_destruction::install(),true);},[]{}},
+    {"building_destruction",0,[]{return mod_features.building_destruction_all || mod_features.building_destruction_boost || mod_features.destruction_ticket;},[]{return (building_destruction::install(),true);},[]{}},
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
     {"damage_preview",0,[]{return mod_features.damage_preview;},[]{return (damage_forecast::install(),true);},[]{}},
@@ -175,6 +179,12 @@ static const ModuleDesc kModules[]={
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
     {"auto_commands",0,[]{return mod_features.auto_search || mod_features.auto_reward;},[]{return (auto_commands::install(),true);},[]{}},
+#endif
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+    {"ambush",91,[]{return mod_features.ambush;},[]{return ambush::install();},[]{split_feature_off(mod_features.ambush,91,5);}},
+#endif
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+    {"season_rules",0,[]{return mod_features.season_weather;},[]{return (season_rules::install(),true);},[]{}},
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
     {"ai_trace",0,[]{return split_ai_trace_wanted();},[]{return (split_ai_trace_install(),true);},[]{}},
@@ -235,6 +245,12 @@ static void module_subscribe_all() {
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
     merit_sidecars.add(&auto_commands::sidecar_plugin,50);
+#endif
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+    merit_sidecars.add(&ambush::sidecar_plugin,60);
+#endif
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+    merit_sidecars.add(&range_rules::sidecar_plugin,70);
 #endif
     // svc_install: service id, subscriber count, hash of the owners in call order (tests/core_services_fixture.cpp prints the expected ones)
     log_event("svc_install",1,services::map_tick.count,services::map_tick.order_hash());

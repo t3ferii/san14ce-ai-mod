@@ -28,7 +28,7 @@ reg=(src/'layout_registry.h').read_text(encoding='utf-8')
 body=reg[reg.index('static const LayoutRow layout_rows[]'):reg.index('static const unsigned layout_row_count')]
 rows=[(m.group(1),m.group(2),int(m.group(3),16),int(m.group(4),16),m.group(5)) for m in
       re.finditer(r'\{"(\w+)",(LR_\w+),\s*0x([0-9A-Fa-f]+),\s*0x([0-9A-Fa-f]+),\s*([\w|]+)\}',body)]
-ok(len(rows)==274,'274 registry rows parsed (got %d)'%len(rows))   # User 2026-11-10 U35: +4 face_keep_portrait; local27 +1 layout_keep_wrap; prior rows unchanged.
+ok(len(rows)==287,'287 registry rows parsed (got %d)'%len(rows))   # local166 +1 merit_save game-start guard (13EA960); User 2026-11-10 U35: +4 face_keep_portrait; local27 +1 layout_keep_wrap; local102 +10 normal-mode 설정3 rows; local105 +2 normal-mode frame and 확인; prior rows unchanged.
 # 1. exe
 for owner,kind,rva,orig,flags in rows:
     if kind=='LR_VT':

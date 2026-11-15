@@ -134,3 +134,8 @@ jobs:
 ## UI 자료만 수정하는 배포
 - 사용자 요청으로 DLL을 유지하면 네이티브 소스·DLL 해시 동일성을 확인하고 설치기/리소스 관련 검사만 실행한다. DLL 재빌드나 전체 회귀를 했다고 보고하지 않는다.
 - [UI 리소스 복원 기준](UI_RESOURCE_LIFECYCLE.md)에 따라 소유 리소스·원본 참조·OFF/해제를 검증한다.
+
+## v15.15 절차 보완 (2026-11-12)
+- 작업 트리(`AI_TacticsMod_wt-rules`)에서 배포할 때 `build/input_package`는 본 폴더로 가는 연결(junction)이라 `prepare_public_release.py --layout build/input_package`가 경로 검사에서 멈춘다. 작업 트리 안의 실제 폴더(예: `build/layout_v15_11`, 같은 bank 해시)를 넘긴다.
+- 릴리스 워크플로는 초안 생성 → 자산 2개 업로드(로컬 크기·SHA-256과 대조) → 공개(PATCH) 순서의 한 파일로 성공했다. 초안은 `/releases/tags/<tag>`로 안 보이므로 `/releases` 목록에서 찾는다.
+

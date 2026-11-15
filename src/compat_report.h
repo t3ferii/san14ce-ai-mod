@@ -178,15 +178,9 @@ inline void write_header() {
     write_line(line);
 }
 
-inline void session() {
-    State &s=state();
-    AcquireSRWLockExclusive(&s.lock);
-    if(!s.header_done) {
-        if(claim_session())write_header();
-        s.header_done=true;
-    }
-    ReleaseSRWLockExclusive(&s.lock);
-}
+// local105 (user 2026-11-13 "호환실패할때만 로그 기록하도록"): nothing is written at start; the header comes with the
+// first refusal/yield line of the process (add_text).
+inline void session() {}
 
 // add_text: why is the already resolved text, yield selects 양보 (otherwise 거부).
 inline void add_text(const wchar_t *what,unsigned rva,const wchar_t *why,const wchar_t *other_module,bool yield) {

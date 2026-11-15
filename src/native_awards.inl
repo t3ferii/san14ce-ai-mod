@@ -69,7 +69,8 @@ static bool award_active(Obj p) { COST_SCOPE("awards:award_active");
     return award_deployed(p) || fn<int(__fastcall *)(Obj,int)>(GA(GA_234AB0))(p,0)!=0 ||
         fn<int(__fastcall *)(Obj)>(GA(GA_233BE0))(p)!=0 || (word(p,0x15E)&0x4001)!=0 || dword(p,0x1E8)!=0;
 }
-static bool award_serving(Obj p,unsigned force) { COST_SCOPE("awards:award_serving");
+// local165: no COST_SCOPE here - it runs up to 36,000 times per force a day and the scope itself was most of its cost.
+static bool award_serving(Obj p,unsigned force) {
     return valid(p) && p[0xE6]>=1 && p[0xE6]<=4 && award_force_id(p)==force;
 }
 static void award_reset(bool initialized=false) { COST_SCOPE("awards:award_reset");
@@ -540,14 +541,23 @@ static void award_ai_city(Obj city) {
         horse_priority=award_horse_priority(force);
         award_horse_select(force,items,horse_priority);
     }
+    // local165 (user 2026-11-15 "포상처리도 줄여보자"): the passes below only hand out this force's warehouse items, so a
+    // force without one stops here (before, six 6,000-officer scans ran anyway). The serving list is built once, and each
+    // officer's ability is read once per slot instead of inside the sort comparator. Same order and result as before.
+    bool any_stored=false;
+    for(Obj item:items)
+        if(award_stored(item) && (item[0x4F]&1) && award_force_id(table(0x158,word(item,0x4A),6000))==force) {any_stored=true;break;}
+    if(!any_stored) {award_ai_days[force]=day;return;}
+    std::vector<Obj> serving;
+    for(unsigned id=1;id<=6000;++id) {Obj p=table(0x158,id,6000);if(award_serving(p,force))serving.push_back(p);}
     for(unsigned slot=0;slot<6;++slot) {
-        std::vector<Obj> people;
-        for(unsigned id=1;id<=6000;++id) {Obj p=table(0x158,id,6000);if(award_serving(p,force))people.push_back(p);}
         unsigned ability=slot<4?slot:0;
-        std::sort(people.begin(),people.end(),[ability](Obj a,Obj b) {
-            int sa=fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(a,ability,0xFFD),sb=fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(b,ability,0xFFD);
-            return sa!=sb?sa>sb:word(a,0x10)<word(b,0x10);
-        });
+        struct Ranked {int score;unsigned id;Obj p;};
+        std::vector<Ranked> ranked;ranked.reserve(serving.size());
+        for(Obj p:serving)ranked.push_back({fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(p,ability,0xFFD),word(p,0x10),p});
+        std::sort(ranked.begin(),ranked.end(),[](const Ranked &a,const Ranked &b) {return a.score!=b.score?a.score>b.score:a.id<b.id;});
+        std::vector<Obj> people;people.reserve(ranked.size());
+        for(const Ranked &r:ranked)people.push_back(r.p);
         if(people.size()>people_count)people_count=static_cast<unsigned>(people.size());
         size_t next=0;
         for(Obj item:items) {

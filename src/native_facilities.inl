@@ -168,7 +168,8 @@ static bool try_destroy(Obj army, Progress &p, bool emergency_only=false) { COST
             p.finished_demolition=true;p.return_deadline_day=day+10;
             log_event("facility_destroyed_resume",army_id(army),p.destroy_id,p.destroy_hex);
         } else failed=p.destroy_id;
-        if(!p.destroy_owner && army[0x37]==6 && army[0x38]==11 && word(army,0x3A)==p.destroy_id) {
+        if(!p.destroy_owner && army[0x37]==6 && army[0x38]==11 && word(army,0x3A)==p.destroy_id &&
+           !(route_hook_owns && route_hook_owns(army))) {   // local107: never cancel a route_hook order on the same wall
             fn<void(__fastcall *)(Obj)>(GA(GA_A3370))(army);
             fn<void(__fastcall *)(Obj,int)>(GA(GA_2ECEA0))(army,13);
             fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2ECF00))(army,255,0);

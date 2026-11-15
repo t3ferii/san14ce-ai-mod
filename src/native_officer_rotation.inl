@@ -362,6 +362,35 @@ static void drain(Pass &s) {
         }
     }
 }
+// local149 helm pin (user 2026-11-14 "조타 개성을 가진 무장들은 우리 도시 swap 에서 해당 성이 아군소속이면 그쪽으로 보내고 다른데로
+// 이동못하게 묶자"), with helm_intercept on: a 조타 officer (trait 154) of a force holding one of the six river castles of
+// helm_intercept (여강 13 since local172, 건업 25, 시상 28, 강하 32, 장사 36, 무릉 37) is never swapped or drained away from such a castle, and one
+// based elsewhere goes there one way (to the held river castle with the fewest 조타 officers, kind 6), then stays.
+static constexpr unsigned kHelmTrait=154;
+static constexpr unsigned kHelmCastles[7]={17,25,28,32,35,36,37};   // local169: 강릉 35 added
+static bool helm_trait(Obj p) {
+    for(unsigned slot=0;slot<9;++slot)if(fn<unsigned(__fastcall *)(Obj,unsigned)>(GA(GA_232030))(p,slot)==kHelmTrait)return true;
+    return false;
+}
+static void helm_place(Pass &s) { COST_SCOPE("officer_rotation:helm_place");
+    if(!mod_features.helm_intercept)return;
+    unsigned crew[kMaxCity+1]={};bool held[kMaxCity+1]={};bool any=false;
+    unsigned mine=0;
+    for(unsigned c:kHelmCastles)if(force_of_city(city_of(c))==s.force) {held[c]=true;any=true;++mine;}
+    // local153 (user 2026-11-14 "장강 도시를 다른 세력이 점령하지 않고 한세력이 모두 점령하고 있으면 고정할필요 없지 않아? ... 장강에 다른세력이
+    // 있으면 조타가 대기해야해"): the force holding all six river castles has no rival on the river - no pin, the swap is free again
+    // (the pin lives only in this pass's entries, so it lifts by itself).
+    if(!any || mine==sizeof(kHelmCastles)/sizeof(*kHelmCastles))return;
+    std::vector<Entry *> helms;
+    for(Entry &e:s.all)if(helm_trait(e.p)) {helms.push_back(&e);if(held[e.city])++crew[e.city];}
+    for(Entry *e:helms) {
+        if(held[e->city]) {e->movable=false;continue;}   // pinned at his river castle
+        if(!e->movable || s.used(e->p))continue;
+        unsigned to=0;
+        for(unsigned c:kHelmCastles)if(held[c] && (!to || crew[c]<crew[to]))to=c;
+        if(to && move_one(s,*e,to,6)) {++crew[to];e->movable=false;}
+    }
+}
 static unsigned rotate_force(unsigned force,const bool *front,const unsigned *threat,int month,bool start) { COST_SCOPE("officer_rotation:rotate_force");
     Pass s;s.force=force;s.month=month;s.front=front;s.limit=start?kStartMoves:kPairs;
     like_cache.clear();
@@ -388,8 +417,9 @@ static unsigned rotate_force(unsigned force,const bool *front,const unsigned *th
         for(const Entry &q:s.all)if(!e.keep && &q!=&e && q.city==e.city && q.lead>=static_cast<int>(kAnchorLead) && likes(q.p,e.p))e.keep=true;
         kept+=e.keep && e.movable?1u:0u;
     }
-    for(const Entry &e:s.all)if(e.movable)(front[e.city]?idle_front:idle_rear)+=1;
     for(unsigned c=1;c<=kMaxCity;++c)rescore(s,c);
+    helm_place(s);
+    for(const Entry &e:s.all)if(e.movable)(front[e.city]?idle_front:idle_rear)+=1;
     if(!start)drain(s);
     if(start)start_pass(s,threat); else monthly(s);
 #ifndef NO_RUNTIME_LOG

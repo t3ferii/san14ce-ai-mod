@@ -36,7 +36,7 @@ static bool injury_guards_match(bool protection=true,bool herbal=true) {
 static bool prepare_injury(InjuryCode &code,Obj relay) {
     bool protection=true,herbal=true;
 #ifdef SPLIT_BASE
-    protection=mod_features.injury;herbal=mod_features.injury_herbal;
+    protection=mod_features.injury;herbal=mod_features.injury_herbal || mod_features.ai_policy_cap;   // local156: the policy cap shares the call
 #endif
     if(!injury_guards_match(protection,herbal))return false;
     absolute_jump(relay+1600,reinterpret_cast<void *>(&injury_government_selection));

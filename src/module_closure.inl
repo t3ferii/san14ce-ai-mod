@@ -10,14 +10,14 @@ static const FeatureRequire kFeatureRequires[]={
     {"domestic_free","domestic",&ModFeatures::domestic_free,&ModFeatures::domestic,13,10},
     {"domestic_direct","domestic",&ModFeatures::domestic_direct,&ModFeatures::domestic,15,10},
     {"awards_ai","awards",&ModFeatures::awards_ai,&ModFeatures::awards,8,3},
-    {"stats200_growth","stats200",&ModFeatures::stats200_growth,&ModFeatures::stats200,30,27},
-    {"awards_horse","awards_ai",&ModFeatures::awards_horse,&ModFeatures::awards_ai,86,8},
-    {"awards_v16","awards_ai",&ModFeatures::awards_v16,&ModFeatures::awards_ai,87,8},
-    {"merit_bond16","merit",&ModFeatures::merit_bond16,&ModFeatures::merit,88,2},
-    {"briefing16","advisor_briefing",&ModFeatures::briefing16,&ModFeatures::advisor_briefing,89,36},
-    {"expert_ingame","battle_rules",&ModFeatures::expert_ingame,&ModFeatures::battle_rules,90,18},
-    {"drag_learn_multi","drag_learn",&ModFeatures::drag_learn_multi,&ModFeatures::drag_learn,91,45},
-    {"sprite_fallback","ccz_sprites",&ModFeatures::sprite_fallback,&ModFeatures::ccz_sprites,92,69},
+    {"stats200_growth","stats200",&ModFeatures::stats200_growth,&ModFeatures::stats200,31,28},
+    {"awards_horse","awards_ai",&ModFeatures::awards_horse,&ModFeatures::awards_ai,98,8},
+    {"awards_v16","awards_ai",&ModFeatures::awards_v16,&ModFeatures::awards_ai,99,8},
+    {"merit_bond16","merit",&ModFeatures::merit_bond16,&ModFeatures::merit,100,2},
+    {"briefing16","advisor_briefing",&ModFeatures::briefing16,&ModFeatures::advisor_briefing,101,37},
+    {"expert_ingame","battle_rules",&ModFeatures::expert_ingame,&ModFeatures::battle_rules,102,18},
+    {"drag_learn_multi","drag_learn",&ModFeatures::drag_learn_multi,&ModFeatures::drag_learn,103,46},
+    {"sprite_fallback","ccz_sprites",&ModFeatures::sprite_fallback,&ModFeatures::ccz_sprites,104,70},
 };
 // Transitive; returns the number of flags switched off. feature_off(100+flag index, reason 6 = parent off, 100+parent index) is
 // logged for each (reasons 1-5 are the install-time ones).

@@ -11,6 +11,7 @@
 | 탭 | 섹션.키 | 기본값 | 묶음 / 필요 기능 | 기능 |
 |---|---|---:|---|---|
 | 편의성 | game_flow.advisor_briefing | 1 | groups.convenience | 군사의 열흘 보고(시험, v14부터 기본 ON). 통지·보고를 알림함에 모음. 선택 창 유지, 다음 진행 때 초기화. 설명 |
+| 편의성 | game_flow.ambush | 0 | groups.convenience + game_flow.advisor_briefing | 매복기동: 매달 상순 군사 제안(5%+잃은 지역×10%) → 금 1000으로 티켓. 출진 화면 「군사제안수행」 토글(티켓 수만큼) → 60일 동안 컴퓨터 군단이 퇴각중으로 보고 무시, 기동력 절반. 근접 교전은 원작. 자세히는 docs/AMBUSH.md |
 | 편의성 | real_estate.terrain_edit | 1 | groups.convenience + game_flow.advisor_briefing | 부동산 개발: 군사의 열흘 보고 창의 「부동산 개발」 버튼 → 보유 성 목록 → 성 선택 → 그 성의 지역내정에서 땅을 클릭해 지형 변경(무료·무제한). 일반 지역내정의 땅클릭은 원작 그대로. 바닥 재질·높이·부대 높이·나무·절벽·수면 즉시 반영, `.terrain` 보조 저장. 격류 흰 물살 미반영, 급류 이동불가 테두리는 재로드 후 표시 |
 | 숨김·사용 중지 | diplomacy.diplomacy_overinvest | 0 | groups.convenience | v15.3: 원작 한도·표식 복원. 이전 값 1도 적용하지 않음 |
 | 게임성 | diplomacy.diplomacy_counterturn | 1 | groups.convenience | 컴퓨터의 마지막 응답 뒤 플레이어 추가 군정 대응 1회 |
@@ -84,7 +85,7 @@
 | 기타(개발용) | diagnostics.ai_trace_original | 0 | groups.diagnostics + diagnostics.ai_trace | 원작만 추적 (모드 훅 연결 안 함) |
 | 기타(개발용) | diagnostics.layout_wait | 0 | groups.diagnostics | 화면 레이아웃 대기 기록 |
 | 기타(개발용) | diagnostics.day_stage | 0 | groups.diagnostics | 하루 처리 단계 기록: 하루 처리 단계별 머문 시간·계산 시간(day_stage), 진단판·진행 속도 버튼 필요 (2026-10-25) |
-| 기타(개발용) | diagnostics.cost_profile | 0 | groups.diagnostics | 함수 시간 측정 (CSV): function_cost_*.csv(모드 함수), node_cost_*.csv(원작 판단 노드), 부대 깃발 얼굴 지정 1B91E0 호출 지점 7곳(face_1B91E0_*, 2026-10-25), 진단판에서만 동작 |
+| 기타(개발용) | diagnostics.cost_profile | 0 | groups.diagnostics | 함수 시간 측정 (CSV): function_cost_*.csv(모드 함수), node_cost_*.csv(원작 판단 노드), 부대 깃발 얼굴 지정 1B91E0 호출 지점 7곳(face_1B91E0_*, 2026-10-25), 원작 하루 진행 44DEE0의 단계 호출 33곳·순/월 처리 7곳(day_c*/xun_*/month_*, local159), 50ms 이상 걸린 최상위 범위의 자식별 시간(function_stall_*.csv, local159), 진단판에서만 동작 |
 | 기타(개발용) | diagnostics.area_index_verify | 0 | groups.diagnostics | 진단판 매 호출 원작 결과 대조, 불일치 기록 후 원작 결과 반환 (2026-10-25) |
 | 기타(개발용) | diagnostics.path_count | 0 | groups.diagnostics | 경로 탐색 호출 횟수 기록: 진단 로그 ON 및 기존 세력 AI 시간 래퍼 필요(cost_profile=1), 원작 경로·결과 변경 없음 (2026-10-25) |
 | 기타(개발용) | diagnostics.gpu_profile | 0 | groups.diagnostics | GPU 시간 기록 |

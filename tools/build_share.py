@@ -38,7 +38,7 @@ for name,source in (('관리.ps1','Manage.ps1'),('진단.ps1','Diagnose.ps1'),
                     ('SplitManage.ps1','SplitManage.ps1'),('FeatureSelect.ps1','FeatureSelect.ps1')):
     files['AI_TacticsMod/'+name]=windows_text(PROJECT/'distribution'/source,True)
 for name,digest in manifest['split_modules']['files'].items():
-    assert name in ('dinput8.dll','SAN14_CombatAI.dll','SAN14_Convenience.dll','SAN14_CCZ.dll','SAN14_Layout.dll')
+    assert name in ('dinput8.dll','SAN14_CombatAI.dll','SAN14_Convenience.dll','SAN14_CCZ.dll','SAN14_Layout.dll','SAN14_ModPack.dll')
     data=(PAYLOAD/name).read_bytes();assert hashlib.sha256(data).hexdigest()==digest
     files['AI_TacticsMod/build/input_package/'+name]=data
 files['AI_TacticsMod/build/input_package/manifest.json']=(PAYLOAD/'manifest.json').read_bytes()
@@ -47,6 +47,12 @@ for name,digest in manifest.get('ccz_assets',{}).items():
     data=(PROJECT/name).read_bytes();assert hashlib.sha256(data).hexdigest()==digest,name
     files['AI_TacticsMod/'+name]=data
 assert 'SAN14_CCZ.dll' not in manifest['split_modules']['files'] or manifest.get('ccz_assets'),'SAN14_CCZ.dll needs its asset'
+# v15.17: SAN14_ModPack.dll and the season bake read AI_TacticsMod/data/season (4계절 패치 data, wprkfdid12-ux; our compiled shaders).
+for name,digest in manifest.get('season_assets',{}).items():
+    assert name.startswith('data/season/') and name.lower().endswith(('.dds','.cso','.dat')),name
+    data=(PROJECT/name).read_bytes();assert hashlib.sha256(data).hexdigest()==digest,name
+    files['AI_TacticsMod/'+name]=data
+assert 'SAN14_ModPack.dll' not in manifest['split_modules']['files'] or 'data/season/SeasonRules.dat' in manifest.get('season_assets',{}),'SAN14_ModPack.dll needs data/season'
 # Installer update/rollback (v15): per-release feature catalogue for the changed-feature colours.
 if (PAYLOAD/'release_features.json').exists():
     files['AI_TacticsMod/release_features.json']=(PAYLOAD/'release_features.json').read_bytes()

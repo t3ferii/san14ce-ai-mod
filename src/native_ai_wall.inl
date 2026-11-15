@@ -97,6 +97,59 @@ static void log_catapult_allowed(Obj force,Obj tile,Obj definition) { COST_SCOPE
     unsigned flags=(region && catapult_player_ground(tile)?1u:0u)|(id==player?2u:0u);
     log_event("ai_catapult_build_allowed",0,(id<<8)|flags,(region<<16)|(valid(tile)?fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F830))(tile)&0xFFFF:0xFFFF));
 }
+// local166 strict build rules (user 2026-11-15 "건설 유효성을 엄격하게 해야해 / 군사시설은 군사시설끼리 2헥스의 빈공간이
+// 있어야해(원작규칙) / 성이나 관문의 3헥스 내엔 못짓게"): after the original 27AAC0 accepts, a computer force is also refused
+// (1) a military facility (class 2) within 2 hexes of any military facility on the map, finished or not: the original ring
+// 27DAF0 reads the tile's building id and misses unfinished sites, so the arrival re-check in 28A200 let a second catapult
+// start next to the first; (2) any facility within 3 hexes of a city or gate footprint (centre + 6 neighbours, i.e. centre
+// distance <= 4; fixdata base interval 3). Every caller of 27AAC0 (original AI, our orders, the arrival re-check) gets it.
+// The player's force (direct and delegated corps) keeps the original check only. Combat AI off or DLL absent = original.
+struct BaseHexCache { Obj root=nullptr; int day=-1; unsigned count=0; unsigned short hex[61]={}; };
+static BaseHexCache base_hex_cache;
+static SRWLOCK base_hex_lock=SRWLOCK_INIT;
+static bool near_base_footprint(unsigned hex) { COST_SCOPE("ai_wall:near_base_footprint");
+    Obj root=world();
+    if(!root)return false;
+    const int day=game_day();
+    BaseHexCache local;
+    AcquireSRWLockShared(&base_hex_lock);
+    const bool fresh=base_hex_cache.root==root && base_hex_cache.day==day;
+    if(fresh)local=base_hex_cache;
+    ReleaseSRWLockShared(&base_hex_lock);
+    if(!fresh) {
+        local.root=root;local.day=day;local.count=0;
+        for(unsigned id=1;id<=61;++id) {
+            Obj base=fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32E3B0))(root,id);
+            if(!valid(base) || word(base,0x4E)!=id)continue;
+            const unsigned h=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(base);
+            if(h<48400)local.hex[local.count++]=static_cast<unsigned short>(h);
+        }
+        AcquireSRWLockExclusive(&base_hex_lock);base_hex_cache=local;ReleaseSRWLockExclusive(&base_hex_lock);
+    }
+    for(unsigned i=0;i<local.count;++i)if(distance(local.hex[i],hex)<=4)return true;
+    return false;
+}
+static volatile LONG strict_build_log_day[52][2];
+static bool strict_build_rules=true;   // fixture switch only
+static bool strict_build_blocked(Obj force,Obj tile,Obj definition) { COST_SCOPE("ai_wall:strict_build_blocked");
+    if(!enabled || !strict_build_rules || !force || !valid(tile) || !valid(definition))return false;
+    unsigned id=0;
+    for(unsigned i=1;i<52;++i)if(force==table(0xDF30,i,51)){id=i;break;}
+    if(!id || id==player_force())return false;
+    const unsigned hex=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F830))(tile);
+    if(hex>=48400)return false;
+    unsigned kind=0;
+    for(unsigned k=1;k<31;++k)if(table(0x73958,k,30)==definition){kind=k;break;}
+    unsigned reason=0;
+    if(military_spacing_blocked(nullptr,kind,hex))reason=1;
+    else if(near_base_footprint(hex))reason=2;
+    if(!reason)return false;
+    // a = force, b = reason<<8 | facility kind (reason 1 military spacing, 2 castle/gate footprint), c = hex; once per force, reason and day.
+    const LONG stamp=static_cast<LONG>(game_day()+1);
+    if(InterlockedExchange(&strict_build_log_day[id][reason-1],stamp)!=stamp)
+        log_event("build_rule_blocked",id,(reason<<8)|kind,hex);
+    return true;
+}
 static bool __fastcall build_permission(Obj force, Obj tile, Obj definition, int check_policy) { COST_SCOPE("build_permission");
     unsigned owner = enabled && mod_features.ai_wall_block ? blocked_wall_force(force,definition) : 0;
     if (owner) {
@@ -115,7 +168,8 @@ static bool __fastcall build_permission(Obj force, Obj tile, Obj definition, int
         return false;
     }
     if(enabled && mod_features.ai_catapult_block)log_catapult_allowed(force,tile,definition);
-    return original_build_permission(force,tile,definition,check_policy);
+    if(!original_build_permission(force,tile,definition,check_policy))return false;
+    return !strict_build_blocked(force,tile,definition);
 }
 static bool cancel_wall_order(Obj army, Progress &p) { COST_SCOPE("ai_wall:cancel_wall_order");
     if (!computer_army(army) || (army[0x37] != 8 && army[0x37] != 9) ||

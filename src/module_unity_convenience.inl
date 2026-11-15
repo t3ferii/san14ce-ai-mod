@@ -119,5 +119,7 @@
 #include "native_ccz_title.inl"
 #include "native_tactic_priority.inl"
 #include "native_advisor_briefing.inl"
+#include "native_ambush.inl"
+#include "native_modpack_dll.inl"
 #endif
 #endif

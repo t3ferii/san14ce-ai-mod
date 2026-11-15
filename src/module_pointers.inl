@@ -19,6 +19,8 @@ static const SplitPointer split_pointers[]={
     {GA(GA_1350268),GA(GA_7EBA0),reinterpret_cast<void *>(&foothold_strength_node)},   // attack_recheck_fix #10114
     {GA(GA_13547C8),GA(GA_92080),reinterpret_cast<void *>(&variable_minus_node)},   // attack_recheck_fix #10115
     {GA(GA_1354D80),GA(GA_922F0),reinterpret_cast<void *>(&attack_threshold_node)},   // attack_eval70/retreat_eval60 N2076, published only when one is on
+    {GA(GA_134B390),GA(GA_2DAB0),reinterpret_cast<void *>(&hire_node)},   // front_hire local167, published only when on
+    {GA(GA_134CC78),GA(GA_54CE0),reinterpret_cast<void *>(&trade_node)},   // computer_trade local167, published only when on
 #else
     {terrain_trees::Slot,terrain_trees::UpdateRva,reinterpret_cast<void *>(&terrain_trees::update),kPointerTerrain},
     {GA(GA_14503D8),GA(GA_7A9D40),reinterpret_cast<void *>(&terrain_edit::domestic_click),kPointerTerrain},

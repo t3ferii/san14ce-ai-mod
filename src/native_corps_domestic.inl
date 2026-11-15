@@ -14,6 +14,7 @@
 //    corps the next two condition-116 checks after N2507 (exactly those two gates; the decorator links its subtrees inline) pass,
 //    so the two officer bundles run every turn. Gold, troop and allowance rules of the bundles stay original.
 #include "game_addresses.h"
+#include "computer_tactics.h"
 namespace corps_domestic {
 static constexpr unsigned kPhaseVar=0xED5CAFE8u,kCorpsVar=0xD6A5EAAEu;
 static Obj corps_of(Obj context,unsigned var) {
@@ -35,6 +36,82 @@ static bool skip_second_search(Obj context) { COST_SCOPE("corps_domestic:skip_se
     if(InterlockedIncrement(&lines)<=300)log_event("ai_search2_skipped",word(corps,0x10),static_cast<unsigned>(phase),0);
 #endif
     return true;
+}
+// local150 ai_learn (user 2026-11-14 "남는 명령서를 컴퓨터 군단들이 전법 배우는데 썼으면 ... 원래 2차 탐색할 함수 호출경로에
+// 컴퓨터군단 (플레이어, 플레이어위임군단 제외)이 전법배우는 경로를 넣는거지 ... 이미 10개를 배운 무장들도 ... 남은 전법은 계속 지우고
+// 새로 배워서 경험치 올려야해"): where ai_search2 refuses the second search of a computer corps officer, that officer learns
+// one tactic instead, through the original learning function the original AI learn node uses (CCommandExecutionLearnNode
+// 54330 -> 1F18E0 args {officer, book, 0, 22E450(officer)}): it takes one book of the force's stock (+0x120[book index],
+// book table world+0x79118, book +0x52 = tactic id), one 명령서 (cost 1A4B5CC) and adds the force's 주의 experience. The
+// book is the best one by computer_tactics.h for his type that he does not know and one of his formations can use (the
+// native learn-window grey-out rule). An officer with 10 tactics first drops his worst tactic when ctac::replace allows
+// it (never a unique one; the free "rest" ones churn for the experience); the slot bytes (+0x130[10]) are shifted and
+// restored if the original call refuses.
+static bool learn_usable(Obj person,Obj tactic) {
+    for(unsigned at=0x77428;at<0x774D0;at+=8) {
+        Obj form=pointer(world(),at);if(!valid(form))continue;
+        const unsigned f=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F7A0))(form);
+        if(f>20 || !(dword(tactic,0x6C)>>f&1))continue;
+        if(form[0x7E]==2?fn<unsigned(__fastcall *)(Obj)>(GA(GA_43660))(person)==f:fn<int(__fastcall *)(Obj,unsigned)>(GA(GA_233CF0))(person,f)!=0)return true;
+    }
+    return false;
+}
+static Obj tactic_entry(unsigned t) {Obj e=t && t<=200?pointer(world(),0x774D0+t*8):nullptr;return valid(e)?e:nullptr;}
+static void learn_instead(Obj officer) { COST_SCOPE("corps_domestic:learn_instead");
+    if(!mod_features.ai_learn || !valid(officer))return;
+    const unsigned pid=word(officer,0x10);
+    if(pid-5101u<100u || pid-4101u<100u)return;   // the special officer ranges 22BD60 treats apart
+    Obj source=fn<Obj(__fastcall *)(Obj)>(GA(GA_22E450))(officer);if(!valid(source))return;
+    Obj orders=fn<Obj(__fastcall *)(Obj)>(GA(GA_230270))(source);
+    const unsigned cost=(std::max)(1u,dword(image,GA(GA_1A4B5CC)));
+    if(!valid(orders) || orders[0x14]<cost)return;
+    const bool martial=fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(officer,1,0xFFF)>=fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(officer,2,0xFFF);
+    unsigned char before[10];memcpy(before,officer+0x130,10);
+    unsigned used=0;bool known[201]={};
+    for(unsigned i=0;i<10;++i) {const unsigned t=before[i];if(tactic_entry(t)) {++used;known[t]=true;}}
+    // local153 (user 2026-11-14 "군주가 시정 칸을 확장하는 주의의 시정 레벨이 10레벨 최대면 전법은 10개 배운 무장은 더이상 습득하는거
+    // 멈추고 덜배운 무장만 습득"): the learning's force experience (1F18E0 -> 259F80, force +0x164) only raises the force's level
+    // (22D8E0, 10 = top); at 10 an officer with a full list no longer churns his spare tactics, one with free slots still learns.
+    if(used>=10 && fn<int(__fastcall *)(Obj)>(GA(GA_22D8E0))(source)>=10)return;
+    Obj best_book=nullptr;unsigned best=0,best_index=0;
+    for(unsigned i=0;i<31;++i) {
+        Obj book=pointer(world(),0x79118+i*8);if(!valid(book))continue;
+        const unsigned index=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F800))(book);
+        if(index<1 || index>30 || !word(source,0x120+index*2))continue;
+        const unsigned t=book[0x52];Obj tactic=tactic_entry(t);
+        if(!tactic || known[t] || !learn_usable(officer,tactic))continue;
+        if(!best || ctac::rank(t,martial)<ctac::rank(best,martial)) {best=t;best_book=book;best_index=index;}
+    }
+    if(!best_book)return;
+    unsigned dropped=0;
+    if(used>=10) {
+        unsigned worst_slot=10;
+        for(unsigned i=0;i<10;++i) {
+            const unsigned t=before[i];if(!tactic_entry(t) || ctac::naval(t) || ctac::unique(t))continue;   // local171: kept for good
+            if(worst_slot==10 || ctac::rank(t,martial)>=ctac::rank(before[worst_slot],martial))worst_slot=i;
+        }
+        if(worst_slot==10 || !ctac::replace(before[worst_slot],best,martial))return;
+        dropped=before[worst_slot];
+        for(unsigned i=worst_slot;i<9;++i)officer[0x130+i]=officer[0x131+i];
+        officer[0x139]=0;
+    }
+    const unsigned stock0=word(source,0x120+best_index*2),orders0=orders[0x14];
+    Obj args[4]={officer,best_book,nullptr,source};
+    const bool ok=fn<int(__fastcall *)(Obj *)>(GA(GA_1F18E0))(args)!=0;
+    if(!ok)memcpy(officer+0x130,before,10);
+    else {   // the original call takes the book and the order itself; make sure, as drag_learn_multi does
+        if(word(source,0x120+best_index*2)>=stock0 && stock0)*reinterpret_cast<unsigned short *>(source+0x120+best_index*2)=static_cast<unsigned short>(stock0-1);
+        if(orders[0x14]+cost>orders0)orders[0x14]=static_cast<unsigned char>(orders0>=cost?orders0-cost:0);
+    }
+#ifndef NO_RUNTIME_LOG
+    static volatile LONG lines;
+    // value = officer | learned tactic << 16 | ok << 24 | martial << 25 ; hex = dropped tactic | slots before << 8 | orders left << 16
+    if(InterlockedIncrement(&lines)<=3000)
+        log_event("ai_learn",pid|(best<<16)|((ok?1u:0u)<<24)|((martial?1u:0u)<<25),dropped|(used<<8)|(static_cast<unsigned>(orders[0x14])<<16),
+            static_cast<unsigned>(word(source,0x120+best_index*2)));
+#else
+    (void)dropped;
+#endif
 }
 // officer_first: armed by 담당관후보선정 for the corps under review; the next two condition-116 checks of that corps pass.
 struct Armed {Obj world,corps;unsigned left;};
