@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot
 $taskBuild=Join-Path $taskProject 'build\development\water_diag'
 [void][IO.Directory]::CreateDirectory($taskBuild)

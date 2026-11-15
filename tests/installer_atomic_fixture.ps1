@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot
 $taskTokens=$null;$taskErrors=$null
 $taskSource=[IO.File]::ReadAllText((Join-Path $taskProject 'distribution/Manage.ps1'),[Text.Encoding]::UTF8)

@@ -1,4 +1,4 @@
-param([switch]$Bindings,[switch]$Merit,[switch]$RecruitmentUI,[switch]$Awards)
+﻿param([switch]$Bindings,[switch]$Merit,[switch]$RecruitmentUI,[switch]$Awards)
 $ErrorActionPreference = 'Stop'
 $taskProject = Split-Path -Parent $PSScriptRoot
 $taskVc = 'C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231'

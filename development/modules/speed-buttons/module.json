@@ -1,0 +1,77 @@
+{
+ "schema": 1,
+ "id": "speed-buttons",
+ "title": "speed-buttons",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "layout"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_speed_buttons.inl",
+  "tests/verify_speed_buttons.py"
+ ],
+ "sources": [
+  "src/native_speed_buttons.inl",
+  "tests/verify_speed_buttons.py"
+ ],
+ "tests": [
+  "speed-buttons",
+  "layout-registry",
+  "split-module"
+ ],
+ "hook_owners": [
+  "speed_buttons",
+  "fps120_note"
+ ],
+ "checks": [
+  "speed-buttons",
+  "layout-registry",
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "diagnostics",
+   "key": "day_stage"
+  },
+  {
+   "section": "game_flow",
+   "key": "speed_buttons"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "game_flow",
+    "key": "speed_buttons"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "speed_buttons",
+    "module": "speed-buttons",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 35,
+    "wanted": "mod_features.speed_buttons",
+    "install": "speed_buttons::install()",
+    "refused": "split_feature_off(mod_features.speed_buttons,35,5)",
+    "after": [],
+    "seq": 80
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

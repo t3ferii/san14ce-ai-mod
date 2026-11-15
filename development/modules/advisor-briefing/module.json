@@ -1,0 +1,121 @@
+{
+ "schema": 1,
+ "id": "advisor-briefing",
+ "title": "advisor-briefing",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "shared-overlay"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/advisor_briefing.h",
+  "src/advisor_briefing.hlsl",
+  "src/advisor_briefing_profile.h",
+  "src/advisor_ps.h",
+  "src/advisor_terrain_bridge.h",
+  "src/advisor_ambush_bridge.h",
+  "src/advisor_vs.h",
+  "src/native_advisor_briefing.inl",
+  "tests/advisor_briefing_fixture.cpp",
+  "tests/advisor_overlay_fixture.cpp",
+  "tests/verify_advisor_briefing.py",
+  "tests/verify_local_install_rollback.py",
+  "tools/build_advisor_briefing_fixture.ps1",
+  "tools/build_advisor_shaders.ps1",
+  "tools/generate_handoff.py"
+ ],
+ "sources": [
+  "src/advisor_briefing.h",
+  "src/advisor_briefing_profile.h",
+  "src/advisor_terrain_bridge.h",
+  "src/advisor_ambush_bridge.h",
+  "src/native_advisor_briefing.inl",
+  "src/native_advisor_overlay.inl",
+  "src/advisor_briefing.hlsl",
+  "src/advisor_vs.h",
+  "src/advisor_ps.h",
+  "src/native_adapter.cpp",
+  "src/native_split_install.inl",
+  "src/native_unified_overlay.inl",
+  "tests/advisor_briefing_fixture.cpp",
+  "tests/advisor_overlay_fixture.cpp",
+  "tests/verify_advisor_briefing.py",
+  "tools/build_advisor_briefing_fixture.ps1",
+  "tools/build_advisor_shaders.ps1",
+  "tools/inspect_advisor_briefing.py",
+  "tools/install_local.py",
+  "tests/verify_local_install_rollback.py",
+  "tools/generate_handoff.py",
+  "installer/InstallerGui.cs",
+  "distribution/FeatureSelect.ps1",
+  "FeatureSelect.ps1",
+  "tests/shared_overlay_fixture.cpp",
+  "tools/build_shared_overlay_fixture.ps1"
+ ],
+ "tests": [
+  "advisor-briefing",
+  "shared-overlay"
+ ],
+ "hook_owners": [
+  "advisor_hud",
+  "scene_yield",
+  "kPointerHud"
+ ],
+ "checks": [
+  "advisor-briefing",
+  "shared-overlay"
+ ],
+ "ini": [
+  {
+   "section": "advisor_briefing",
+   "key": "collect"
+  },
+  {
+   "section": "game_flow",
+   "key": "advisor_briefing"
+  },
+  {
+   "section": "game_flow",
+   "key": "briefing16"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "game_flow",
+    "key": "advisor_briefing"
+   },
+   {
+    "section": "game_flow",
+    "key": "briefing16"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "advisor_briefing",
+    "module": "advisor-briefing",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 26,
+    "wanted": "mod_features.advisor_briefing",
+    "install": "advisor_briefing::install()",
+    "refused": "split_disable(mod_features.advisor_briefing,26)",
+    "after": [],
+    "seq": 230
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

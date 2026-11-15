@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot
 & (Join-Path $PSScriptRoot 'build_advisor_shaders.ps1')
 & python -B -X utf8 (Join-Path $taskProject 'tests/verify_advisor_briefing.py')

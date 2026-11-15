@@ -1,0 +1,25 @@
+{
+ "compat_aliases": 20,
+ "compat_files": [
+  "src/native_tactic_priority.inl",
+  "src/native_tactic_priority_grid.inl",
+  "src/tactic_priority_profile.h",
+  "src/tactic_memory_store.h",
+  "src/native_tactic_memory_save.inl",
+  "src/tactic_priority_io.h"
+ ],
+ "denied_kept": 2,
+ "dropped": 14,
+ "exe_timestamp": "6AD06F53",
+ "frm": "1fbe6be7",
+ "hash_pairs": 273,
+ "hash_rewrites": 236,
+ "id_token_rewrites": 3785,
+ "ids_after": 2057,
+ "ids_before": 2071,
+ "literal_rewrites": 1778,
+ "merged_groups": 0,
+ "to": "1a4a447d",
+ "unknown_tokens": 0,
+ "wild_changed": 13
+}

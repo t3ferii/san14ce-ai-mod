@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "doc": "Decisions about hook overlaps that tools/hook_map.py would otherwise report as errors (check redesign package A, docs/HISTORY.md section 4). Entry: rule (R1..R14 or a list), sites (GA ids / site keys the finding involves), owners (finding owners must be a subset), kind (mutex: never both active; alias: same hook seen twice; accepted: known and accepted), reason, decided (date), evidence (source lines / docs), optional downgrade:'warn' (report as warning instead of suppressing). An entry that matches no finding is reported as stale. Every entry needs reason, decided and evidence.",
+  "entries": [
+    {
+      "rule": ["R2", "R3", "R10"],
+      "sites": ["GA_1EDC30"],
+      "owners": ["sortie", "district_intercept"],
+      "kind": "mutex",
+      "reason": "Both patch the 1EC890 entry (E9 + NOP, six bytes). sortie belongs to SAN14_CombatAI.dll; district_intercept (SAN14_Convenience.dll) installs only when SAN14_CombatAI.dll is not loaded, so the entry has exactly one writer at run time. (The sortie code is also compiled into the convenience DLL but prepare_sortie runs only under SPLIT_COMBAT.) tactic_priority's CALL row at 7EBBC4 only calls this entry; it has no byte overlap with either patch.",
+      "decided": "2026-11-06",
+      "evidence": "src/native_district_intercept_link.inl:1-2,16-18 (combat_module_loaded() check, entry_hook_skipped_combat_module_loaded); src/native_split_install.inl CodeLink intercept comment '1EC890 entry -> district_intercept::dispatch (only without the combat module)'; src/native_sortie_links.inl:107-116"
+    },
+    {
+      "rule": ["R2", "R3", "R10"],
+      "sites": ["GA_1B4823"],
+      "owners": ["face_timing", "face_keep"],
+      "kind": "mutex",
+      "reason": "face_timing (diagnostic cost profile) skips the 1B3523 CALL site when face_keep is installed, so the CALL has one writer: face_keep.",
+      "decided": "2026-11-06",
+      "evidence": "src/native_face_timing.inl:22-23 (count = face_keep::installed ? 6 : 7); src/native_face_keep.inl:13 comment 'Owns CALL 1B3523 (face_timing skips that site when on)'"
+    },
+    {
+      "rule": ["R2", "R3", "R10"],
+      "sites": ["GA_184D60"],
+      "owners": ["path_fast", "path_count"],
+      "kind": "mutex",
+      "reason": "path_count (diagnostic observation, not in NO_RUNTIME_LOG builds) is skipped when path_fast is active ('sole 183A30 owner if installed'); both also pin the original entry with the same function hash, so the second installer would fail its guard.",
+      "decided": "2026-11-06",
+      "evidence": "src/native_split_install.inl:619-622 (path_count_skipped_path_fast); src/native_path_fast.inl:385-398, src/native_path_count.inl:75-90 (same GH 0x11cbf08ff66c9feb entry guard)"
+    },
+    {
+      "rule": "R5",
+      "sites": ["GA_1F1E90", "GA_1F1DA0", "GA_1F2190", "GA_6C6B10", "GA_6C6DD0", "GA_306A30", "GA_9332B0", "GA_843B60"],
+      "owners": ["advisor_briefing"],
+      "kind": "accepted",
+      "reason": "advisor_briefing is an uninstalled candidate (development/advisor_briefing_candidate.json) that patches these entries with E9 jumps on purpose; the Layout blocklist only keeps Layout rows off them. Other mods keep fingerprints of these entries (compat design 1.5), so the candidate must be re-judged (relations in foreign_hooks.json) before it is ever installed. 6C43B0/6C4670 already yield to SceneSkip (scene_yield).",
+      "decided": "2026-11-06",
+      "evidence": "docs/LAYOUT_DLL_COMPAT_DESIGN.md section 1.5 table ('advisor (candidate, not installed)'), 8.5 C2; src/native_advisor_briefing.inl:1336-1355; development/advisor_briefing_candidate.json"
+    },
+    {
+      "rule": "R5",
+      "sites": ["GA_304D70"],
+      "owners": ["adapter"],
+      "kind": "accepted",
+      "reason": "The Convenience core E9 on 302980 (population link) predates Layout; the Layout blocklist keeps Layout rows off the entry, but IC keeps the original entry bytes as a fingerprint and may fail to find the function. Known, documented risk (hypothesis, not game-tested).",
+      "decided": "2026-11-06",
+      "evidence": "docs/LAYOUT_DLL_COMPAT_DESIGN.md section 1.5 ('302980 | convenience core E9 | IC'); src/native_split_install.inl:400, src/native_adapter.cpp:2024 (prepare_link GA_304D70 E9)"
+    },
+    {
+      "rule": "R1",
+      "sites": ["GA_134C580", "GA_1355B18"],
+      "owners": ["corps_domestic", "injury"],
+      "kind": "mutex",
+      "reason": "Both slots get the same replacement functions (personnel_search_command, personnel_officer_candidates). corps_domestic writes them only when injury is off (injury links already wrap both nodes when it is on), so each slot has one writer at run time.",
+      "decided": "2026-11-11",
+      "evidence": "src/native_corps_domestic.inl publish() (wrapped=mod_features.injury); src/native_injury_links.inl:7-8; src/native_split_install.inl corps_domestic::publish after publish_injury"
+    }
+  ]
+}

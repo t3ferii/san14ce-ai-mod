@@ -1,4 +1,4 @@
-# Builds the GUI installer (WinForms, .NET Framework 4.x) into build\development\installer.
+﻿# Builds the GUI installer (WinForms, .NET Framework 4.x) into build\development\installer.
 # Writes nothing outside build\development; release tools copy the result into a package.
 $ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot

@@ -1,0 +1,66 @@
+{
+ "schema": 1,
+ "id": "address-table",
+ "title": "address-table",
+ "host": "tool",
+ "build": "none",
+ "status": "active",
+ "hub": true,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/game_addresses.h",
+  "src/game_addresses_data.inl",
+  "src/game_addresses_gates.inl",
+  "tests/addr_resolver_fixture.cpp",
+  "tests/address_guard_fixture.cpp",
+  "tests/ga_equiv_dump.cpp",
+  "tests/ga_expand.py",
+  "tests/native_search_callgraph.py",
+  "tools/addr_promote.py",
+  "tools/addrlib.py",
+  "tools/build_addr_fixtures.ps1",
+  "tools/build_ga_equiv_dump.ps1",
+  "tools/check_addresses.py",
+  "tools/ga_equiv_compare.py",
+  "tools/ga_table.py",
+  "tools/make_fixture_image.py"
+ ],
+ "sources": [
+  "src/game_addresses.h",
+  "src/game_addresses_data.inl",
+  "src/game_addresses_gates.inl",
+  "tools/gen_signatures.py",
+  "tools/gen_emit.py",
+  "tools/addrlib.py",
+  "tools/check_addresses.py",
+  "tools/build_addr_fixtures.ps1",
+  "tests/addr_resolver_fixture.cpp",
+  "tests/address_guard_fixture.cpp",
+  "tests/ga_expand.py",
+  "docs/PATCH_RESILIENCE.md"
+ ],
+ "tests": [
+  "address-table"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "address-table"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

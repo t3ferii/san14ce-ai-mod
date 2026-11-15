@@ -1,4 +1,4 @@
-param()
+﻿param()
 $ErrorActionPreference='Stop'
 $rebuildProject=Split-Path -Parent $PSScriptRoot
 $rebuildOutput=Join-Path $rebuildProject 'build\development\combat_v2'

@@ -1,0 +1,80 @@
+{
+ "schema": 1,
+ "id": "area-index",
+ "title": "area-index",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/area_index.h",
+  "src/native_area_index.inl",
+  "tests/area_index_fixture.cpp",
+  "tests/verify_area_index.py",
+  "tools/build_area_index_fixture.ps1"
+ ],
+ "sources": [
+  "src/native_area_index.inl",
+  "src/area_index.h",
+  "src/native_adapter.cpp",
+  "src/native_split_install.inl",
+  "tests/area_index_fixture.cpp",
+  "tests/verify_area_index.py",
+  "tests/split_module_fixture.cpp",
+  "tools/build_area_index_fixture.ps1",
+  "installer/InstallerGui.cs",
+  "distribution/FeatureSelect.ps1",
+  "FeatureSelect.ps1"
+ ],
+ "tests": [
+  "area-index"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "area-index"
+ ],
+ "ini": [
+  {
+   "section": "diagnostics",
+   "key": "area_index_verify"
+  },
+  {
+   "section": "performance",
+   "key": "area_index"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "performance",
+    "key": "area_index"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "area_index",
+    "module": "area-index",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.area_index",
+    "install": "(area_index::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 160
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

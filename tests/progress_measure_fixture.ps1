@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot
 Import-Module (Join-Path $taskProject 'distribution\ProgressMetrics.psm1') -Force
 $script:taskChecks=0

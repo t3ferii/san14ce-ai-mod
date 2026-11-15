@@ -205,6 +205,7 @@ static void __fastcall recruit_selector_close(Obj dialog,unsigned code) { COST_S
             } else if(next.count==1)next={};
             // Empty output is cancellation: retain the previous confirmed selection.
             if(first) {recruit_multi=next;++recruit_multi_revision;}
+            log_event("recruit_multi_pick",next.count,scanned,next.count?word(next.people[0],0x10):65535u);
         }
     }
     next_or<void(__fastcall *)(Obj,unsigned)>(next_recruit_selector_close,GA(GA_6C1040))(dialog,code);
@@ -298,6 +299,20 @@ static void recruit_multi_preview(Obj layout,Obj district) {
         text(widget+0x130,node,label,1);
     }
 }
+// local175 (user 2026-11-15 "다중선택 상태에서 무장들 또 다시 고르면 외 N명도 안뜨고
+// 마지막 한명만"): on a second multi-pick the native picker reopens with the
+// current target pre-checked, and the target it keeps at +0x188 need not be the
+// swapped first output. Follow the native choice inside the fresh snapshot so
+// the preview, 「외 N명」 and the batch still match; a target outside the
+// snapshot leaves it unmatched (native single recruitment).
+static void recruit_multi_align(Obj layout,Obj district) {
+    if(recruit_multi.count<2 || recruit_multi.layout!=layout || recruit_multi.district!=district)return;
+    Obj target=pointer(layout,0x188);unsigned at=recruit_multi.count;
+    for(unsigned i=0;i<recruit_multi.count;++i)if(recruit_multi.people[i]==target) {at=i;break;}
+    log_event("recruit_multi_align",recruit_multi.count,at,valid(target)?word(target,0x10):65535u);
+    if(at==0 || at==recruit_multi.count)return;
+    Obj person=recruit_multi.people[0];recruit_multi.people[0]=recruit_multi.people[at];recruit_multi.people[at]=person;
+}
 static void __fastcall recruit_state_update(Obj state) { COST_SCOPE("recruit_ui_recruit_state_update");
     Obj layout=pointer(state,0x478),district=pointer(state,0x470);
     auto original=next_or<void(__fastcall *)(Obj)>(next_recruit_state_update,GA(GA_735F60));
@@ -351,6 +366,7 @@ static void __fastcall recruit_state_update(Obj state) { COST_SCOPE("recruit_ui_
         original(state);
     }
     if(operation==3)return; // Never read a potentially closed layout.
+    if(operation==2 && recruit_multi_revision!=revision)recruit_multi_align(layout,district);
     if((operation!=0 || recruit_multi_revision!=revision) && recruit_multi_matches(layout,district))
         recruit_multi_preview(layout,district);
 }

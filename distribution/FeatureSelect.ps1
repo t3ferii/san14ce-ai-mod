@@ -1,4 +1,4 @@
-# Feature selection for AI_TacticsMod\기능설정.ini (UTF-16, read by the DLLs at game start).
+﻿# Feature selection for AI_TacticsMod\기능설정.ini (UTF-16, read by the DLLs at game start).
 # Dot-sourced by 관리.ps1. Each DLL reads [section] key, then the legacy [features] key,
 # then its default, so files written by older installers keep their values.
 # Items that share game code are one switch (see each note); they cannot be split.
@@ -12,7 +12,7 @@ $taskFeatureCatalog = @(
     @{Group='convenience'; Section='diplomacy'; Key='diplomacy_overinvest'; Default=0; Requires=''; Inherit=''; Tab='게임성'; Retired=$true; Label='외교 군정 100% 초과 투입'; Note='컴퓨터가 시작한 친선·동맹·포로반환·공격요청 교섭에서 보유 군정까지 투입합니다. 100%를 넘긴 방어 효과는 상대의 추가 투입 후에도 유지됩니다.'}
     @{Group='convenience'; Section='diplomacy'; Key='diplomacy_counterturn'; Default=1; Requires=''; Inherit=''; Tab='게임성'; Label='외교 군정 마지막 추가 대응'; Note='원작: 외교에서 컴퓨터가 마지막으로 군정을 넣으면 바로 판정합니다. / 변경: 그 뒤에 플레이어가 군정을 한 번 더 넣을 수 있습니다. 넣고 나면 바로 판정합니다. / 효과: 마지막 한 수를 내가 둡니다. / 필요: 편의·게임성 기능 전체'}
     @{Group=''; Section='groups'; Key='combat'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='전투 AI 교정 전체 (SAN14_CombatAI.dll)'; Note='원작: 컴퓨터의 출진·공성·퇴각을 원작 AI만 정합니다. / 변경: 전투 DLL을 불러와, 이 탭의 기능이 원작 AI 판단 앞뒤에 끼어들 수 있게 합니다. / 효과: 끄면 이 탭 전체가 꺼지고 컴퓨터는 원작대로 싸웁니다.'}
-    @{Group='combat'; Section='combat'; Key='sortie_formation'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='컴퓨터 출진 편성 (병력에 맞춘 2~7부대)'; Note='원작: 컴퓨터가 성을 치러 나갈 때 부대 수·장수·진형을 원작 방식으로 고릅니다. / 변경: 병력에 맞춰 2~7부대로 나눕니다. 본대는 공성 진형, 여무장은 1,000명 지원 부대로 붙입니다. 주장과 친애인 장수, 범위 개성(효장·독려 등) 장수를 먼저 뽑습니다. 성에 4,000명은 남깁니다. / 효과: 컴퓨터 군세가 대열을 갖춰 나오고, 성을 비우지 않습니다. / 필요: 전투 AI 교정 전체'}
+    @{Group='combat'; Section='combat'; Key='sortie_formation'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='컴퓨터 출진 편성 (병력에 맞춘 2~7부대)'; Note='원작: 컴퓨터가 성을 치러 나갈 때 부대 수·장수·진형을 원작 방식으로 고릅니다. / 변경: 병력에 맞춰 2~7부대로 나눕니다. 본대는 공성 진형으로 짭니다. 응원·악주 개성을 가진 통솔 60 미만 여무장만 1,000명 지원 부대로 붙고, 다른 장수는 병력 제한 없이 나갑니다. 주장과 친애인 장수, 범위 개성(효장·독려 등) 장수를 먼저 뽑습니다. 성에 4,000명은 남깁니다. / 효과: 컴퓨터 군세가 대열을 갖춰 나오고, 성을 비우지 않습니다. / 필요: 전투 AI 교정 전체'}
     @{Group='combat'; Section='combat'; Key='departures'; Default=1; Requires=''; Inherit=''; Tab='전투'; Retired=$true; Label='정기 선제 출진 검토 (10일마다)'; Note='임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.'}
     @{Group='combat'; Section='combat'; Key='group_advance'; Default=1; Requires=''; Inherit=''; Tab='전투'; Retired=$true; Label='집결 후 30일 정지 군세의 집단 진군'; Note='임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.'}
     @{Group='combat'; Section='combat'; Key='stationary_retreat'; Default=1; Requires=''; Inherit=''; Tab='전투'; Label='같은 자리 40일 정지 부대 퇴각'; Note='원작: 길이 막힌 부대가 같은 자리에 계속 서 있습니다. / 변경: 4턴(40일) 동안 한 칸도 못 움직인 부대를 성으로 돌려보냅니다. 성을 치는 중인 부대, 사기 회복 대기·방벽 돌파 중인 부대는 제외합니다. / 효과: 길에 멈춰 선 컴퓨터 부대가 사라지고, 그 병력이 다시 쓰입니다. / 필요: 전투 AI 교정 전체'}

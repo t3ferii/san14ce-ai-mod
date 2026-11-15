@@ -1,11 +1,10 @@
-# 개성·툴팁·능력치·연출 확장
+﻿# 개성·툴팁·능력치·연출 확장
 
 모두 `SAN14_Convenience.dll` 소유이며 별도 참고 모드 DLL을 설치하지 않는다. 각 기능은 편의 묶음과 해당 `[extensions]` 키로 선택한다.
 
 | 키 | 동작 |
 |---|---|
 | traits9 | 기존 u16×9 저장칸을 사용해 개성 판정·선택·무장 상세·일람을 9칸으로 확장. 끄면 효과 판정은 5칸으로 돌아가지만 추가 값은 보존 |
-| captive_dialog | 포로 또는 포획 측이 플레이어이면 원작 포획 대화 표시. 포획 확률은 바꾸지 않음. 옛 설정의 누락 키는 traits9를 상속하지만 독립 선택 가능 |
 | tooltip_collab | 개성·전법 마우스오버 설명과 콜라보 개성/전법 해금. 최초 해금 경로가 같아 한 스위치 |
 | stats200 | 다섯 능력치의 편집·실효 상한 200 |
 | stats200_growth | 100 이후 자연 성장, 원작 99→100 필요 경험치 증가폭 유지. stats200에 종속 |
@@ -16,4 +15,6 @@
 
 v12.20부터 전법 설명 TXT는 배포하지 않는다. 설명 툴팁은 DLL 안에 연결되어 있어 이 파일이 필요 없다. 구버전에서 설치한 참고문의 소유 기록은 업데이트 시 해제하고, 사용자가 수정한 파일은 자동 삭제하지 않는다.
 
-코드: `src/native_modpack.inl`, `src/native_traits9.inl`, `src/stat_growth.h`, `tools/import_modpack_objects.py`, `tools/prepare_traits9.py`. 검사 경로 `modpack-v16` / `traits9-captive`와 설치/저장 회귀. 이전 UI·연출·새/기존 저장의 모든 실게임 조합을 확인한 것은 아니다.
+포로 대화(`captive_dialog`)는 2026-11-06 사용자 결정으로 삭제했다(새 패치 원작이 양쪽 세력 판정을 이미 한다). 옛 설정 파일에 키가 남아 있어도 읽지 않고 무시한다.
+
+코드: `src/native_modpack.inl`, `src/native_traits9.inl`, `src/stat_growth.h`, `tools/import_modpack_objects.py`, 고정 생성물 `src/traits9_payloads.h`. 검사 경로 `modpack-v16` / `traits9-captive`와 설치/저장 회귀. 이전 UI·연출·새/기존 저장의 모든 실게임 조합을 확인한 것은 아니다.

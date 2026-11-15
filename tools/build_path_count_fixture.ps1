@@ -1,4 +1,4 @@
-param()
+﻿param()
 # User/Claude decision 2026-10-25: diagnostic-only original path search counts.
 $ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot

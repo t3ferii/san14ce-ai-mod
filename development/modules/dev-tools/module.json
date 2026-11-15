@@ -1,0 +1,60 @@
+{
+ "schema": 1,
+ "id": "dev-tools",
+ "title": "dev-tools",
+ "host": "tool",
+ "build": "none",
+ "status": "tooling",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "tools/inspect_*",
+  "tools/ghidra_*",
+  "tools/ghidra_scripts/**",
+  "tools/audit_*",
+  "tools/mission_*",
+  "tools/analyze_progress_samples.py",
+  "tools/army_option_probe.py",
+  "tools/decomp_cache.py",
+  "tools/export_source_snapshot.py",
+  "tools/make_progress_kernel.py",
+  "tools/merge_combat_trace.py",
+  "tools/cpu_trace.ps1",
+  "tools/cpu_scope_report.py",
+  "tests/cpu_trace_fixture.ps1",
+  "tests/test_cpu_scope_report.py",
+  "tools/name_lookup_trace.ps1",
+  "tools/reference_index.py",
+  "tools/worktree.ps1",
+  "tools/install_damage_preview.py",
+  "tools/package_input.py",
+  "tools/package_mod.py",
+  "tools/prepare_public_release.py",
+  "tools/rollback_progress_native.py"
+ ],
+ "sources": [],
+ "tests": [
+  "cpu-trace"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "cpu-trace"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

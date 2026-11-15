@@ -1,0 +1,45 @@
+{
+ "schema": 1,
+ "id": "progress-study",
+ "title": "progress-study",
+ "host": "tool",
+ "build": "none",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "distribution/ProgressMeasure.ps1",
+  "distribution/ProgressMetrics.psm1",
+  "tests/verify_progress_samples.py"
+ ],
+ "sources": [
+  "distribution/ProgressMeasure.ps1",
+  "distribution/ProgressMetrics.psm1"
+ ],
+ "tests": [
+  "progress",
+  "progress-samples"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "progress",
+  "progress-samples"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

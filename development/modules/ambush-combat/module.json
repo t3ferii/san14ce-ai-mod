@@ -1,0 +1,62 @@
+{
+ "schema": 1,
+ "id": "ambush-combat",
+ "title": "ambush-combat",
+ "host": "combat",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "advisor-briefing"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_ambush_combat.inl",
+  "src/ambush_shared.h"
+ ],
+ "sources": [
+  "src/native_ambush_combat.inl",
+  "src/ambush_shared.h"
+ ],
+ "tests": [
+  "split-module"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "game_flow",
+   "key": "ambush"
+  },
+  {
+   "section": "game_flow",
+   "key": "destruction_ticket"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "game_flow",
+    "key": "ambush"
+   },
+   {
+    "section": "game_flow",
+    "key": "destruction_ticket"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

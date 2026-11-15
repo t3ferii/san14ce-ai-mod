@@ -1,4 +1,4 @@
-param([switch]$Sortie)
+﻿param([switch]$Sortie)
 # Unit-test shells of native_adapter.cpp (TACTICS_FIXTURE: every module in one translation unit). Since plan decision D-1 (user 2026-11-07,
 # "split build, retire the old way") this is NOT a DLL build: the integrated DLL, the candidate DLLs and the old input-loader/graphics-proxy
 # builds are retired. DLLs come only from tools/build_split.ps1.

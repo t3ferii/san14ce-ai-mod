@@ -1,0 +1,9 @@
+{
+  "reference_indexed_files": 958,
+  "reference_changes": [],
+  "runtime_excluded": 996,
+  "scope": "Indexed reference hashes, documentation links, bounded literal/symbol queries; no reference binaries/tests executed.",
+  "installed_dll_unchanged": true,
+  "share_zip_unchanged": true,
+  "indexed_declarations": 2360
+}

@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "doc": "Hook-site bindings for tools/hookmap_extract.py (check redesign package A, 2026-11-06, docs/HISTORY.md section 4). A patch call whose address argument is not GA(GA_X)/constant/constant-array is resolved here: bindings name the table (and struct field) that holds the addresses, ignore_calls lists calls that are deliberately not sites (reason required). Unmatched entries are reported as warnings by tools/hook_map.py (stale).",
+  "owner_aliases": {
+    "sortie": "sortie",
+    "district_intercept_link": "district_intercept",
+    "merit_links": "merit",
+    "awards_links": "awards",
+    "injury_links": "injury"
+  },
+  "wrappers": [
+    {"name": "prepare_message_link", "site_arg": 1, "len_arg": 3, "kind": "jmp5", "why": "advisor entry JMP + NOP padding over the displaced instructions (native_advisor_briefing.inl)"},
+    {"name": "prepare_picture_link", "site_arg": 1, "len_arg": 3, "kind": "jmp5", "why": "advisor picture hook, E9 + NOP padding (native_advisor_briefing.inl)"},
+    {"name": "jump_patch", "site_arg": 1, "len_arg": 2, "kind": "jmp5", "why": "drag_learn E9 + NOP padding over `length` bytes (native_drag_learn.inl)"}
+  ],
+  "bindings": [
+    {"file": "native_adapter.cpp", "call": "ROUTE_VT", "arg": "link.slot", "in_function": "publish_recruit_ui", "table": "recruit_ui_links", "field": "slot", "owner": "recruit_ui"},
+    {"file": "native_adapter.cpp", "call": "patch_pointer", "arg": "link.slot", "in_function": "publish_recruit_ai", "table": "recruit_ai_links", "field": "slot", "owner": "recruit_ai"},
+    {"file": "native_adapter.cpp", "call": "patch_pointer", "arg": "link.slot", "in_function": "publish_personnel_nodes", "table": "personnel_links", "field": "slot", "owner": "personnel"},
+    {"file": "native_adapter.cpp", "call": "prepare_link", "arg": "recruit_alert_entries[i].rva", "table": "recruit_alert_entries", "field": "rva", "owner": "recruit_alert"},
+    {"file": "native_advisor_briefing.inl", "call": "call_prepare", "arg": "scene_sites[i].rva", "table": "scene_sites", "table_file": "advisor_briefing_profile.h", "field": "rva"},
+    {"file": "native_advisor_briefing.inl", "call": "patch_pointer", "arg": "slots[n].rva", "table": "slots", "table_file": "advisor_briefing_profile.h", "field": "rva"},
+    {"file": "native_awards_links.inl", "call": "prepare_link", "arg": "entry.rva", "table": "award_entries", "field": "rva"},
+    {"file": "native_battle_deaths.inl", "call": "layout_client::call", "arg": "battle_deaths_sites[i].site_rva", "table": "battle_deaths_sites", "table_file": "battle_deaths_profile.h", "field": "site_rva"},
+    {"file": "native_diplomacy_intel.inl", "call": "call_prepare", "arg": "sites[i].rva", "table": "sites", "table_file": "diplomacy_intel_profile.h", "field": "rva"},
+    {"file": "native_diplomacy_intel.inl", "call": "patch_pointer", "arg": "slots[np].rva", "table": "slots", "table_file": "diplomacy_intel_profile.h", "field": "rva"},
+    {"file": "native_expert_links.inl", "call": "prepare_link", "arg": "expert_calls[i].site", "table": "expert_calls", "field": "site", "kind": "call5", "rows": [0, 3, 4], "why": "rows 1, 2, 5 (6566E0, 6362DB, 5F14DA) are skipped by expert_routed_site() in the production LAYOUT_ROUTED build; they are Layout registry rows"},
+    {"file": "native_expert_links.inl", "call": "layout_client::vt", "arg": "e.slot", "table": "expert_pointers", "field": "slot"},
+    {"file": "native_expert_links.inl", "call": "patch_pointer", "arg": "e.slot", "table": "expert_pointers", "field": "slot"},
+    {"file": "native_face_timing.inl", "call": "call_prepare", "arg": "kSites[i]", "table": "kSites", "field": 0},
+    {"file": "native_injury_links.inl", "call": "patch_pointer", "arg": "l.slot", "table": "injury_links", "field": "slot"},
+    {"file": "native_merit_links.inl", "call": "prepare_link", "arg": "entry.rva", "table": "merit_entries", "field": "rva"},
+    {"file": "native_modpack.inl", "call": "layout_client::bytes", "arg": "p.rva", "in_function": "register_stats200_code", "table": "modpack_bytes", "table_file": "modpack_tables.h", "field": "rva", "kind": "bytes"},
+    {"file": "native_modpack.inl", "call": "layout_client::bytes", "arg": "p.rva", "in_function": "register_stats200_data", "table": "modpack_data_bytes", "table_file": "modpack_tables.h", "field": "rva", "kind": "bytes"},
+    {"file": "native_modpack.inl", "call": "layout_client::vt", "arg": "p.slot", "table": "modpack_pointers", "field": 0},
+    {"file": "native_progress.inl", "call": "prepare_link", "arg": "calls[phase]", "table": "calls", "field": 0},
+    {"file": "native_region_officers.inl", "call": "layout_client::vt", "arg": "h.slot", "table": "hooks", "field": "slot"},
+    {"file": "native_sortie_links.inl", "call": "prepare_link", "arg": "e.rva", "table": "sortie_entries", "field": "rva", "rows": [5]},
+    {"file": "native_sortie_links.inl", "call": "call_prepare", "arg": "site", "tables": ["sortie_plan_sites", "sortie_search_sites", "sortie_movement_sites"], "field": 0, "owner": "sortie", "why": "site = k<5 ? plan : k<search_end ? search : movement (three constant arrays)"}
+  ],
+  "len_overrides": [
+    {"file": "native_sortie_links.inl", "ga": "GA_1EDC30", "len": 6, "why": "entry JMP plus the NOP of the sixth displaced byte (link.modified[..+5]=0x90)"},
+    {"file": "native_district_intercept_link.inl", "ga": "GA_1EDC30", "len": 6, "why": "same six-byte entry gate as the combat sortie gate"},
+    {"file": "native_path_fast.inl", "ga": "GA_184D60", "len": 7, "why": "E9 + two NOPs (memset(link.modified+5,0x90,2))"},
+    {"file": "native_path_count.inl", "ga": "GA_184D60", "len": 7, "why": "E9 + two NOPs (memset(link.modified+5,0x90,2))"}
+  ],
+  "com_sites": [
+    {"file": "native_layout_present.inl", "owner": "layout_present", "com": "IDXGISwapChain#8"},
+    {"file": "native_layout_present.inl", "owner": "layout_present1", "com": "IDXGISwapChain#22"},
+    {"file": "native_split_install.inl", "symbol": "split_terrain_render_slot", "owner": "terrain_render", "com": "ID3D11Device#5"}
+  ],
+  "ignore_calls": [
+    {"file": "native_adapter.cpp", "call": "prepare_link", "arg": "site", "reason": "body of the call_prepare() helper itself (its callers are the sites)"},
+    {"file": "native_advisor_briefing.inl", "call": "prepare_link", "arg": "rva", "reason": "bodies of prepare_message_link/prepare_picture_link (declared as wrappers)"},
+    {"file": "native_drag_learn.inl", "call": "prepare_bytes", "arg": "rva", "reason": "body of jump_patch (declared as wrapper)"},
+    {"file": "native_split_install.inl", "call": "layout_client::vt", "arg": "p.slot", "reason": "rows of split_pointers; extracted as a table by hookmap_extract.parse_split_pointers"},
+    {"file": "native_split_install.inl", "call": "patch_pointer", "arg": "p.slot", "reason": "rows of split_pointers; extracted as a table by hookmap_extract.parse_split_pointers"},
+    {"file": "native_stat_exp.inl", "call": "layout_client::call", "arg": "stat_sites[I]", "loop_owner": "stat_exp", "reason": "sites are found at runtime by scanning the 907xxx/7F5xxx windows; each must be a registry row (row_for), so the registry rows are the source"},
+    {"file": "native_stat_exp.inl", "call": "layout_client::call", "arg": "chart_sites[I]", "loop_owner": "stat_exp", "reason": "see stat_sites; chart half of the pairs"},
+    {"file": "native_modpack.inl", "call": "layout_client::span", "arg": "modpack_clamp_rva", "reason": "dynamic site: branch target of the GA_231AFB short form (stats200 clamp), derived from the bytes at runtime, address not static"}
+  ]
+}

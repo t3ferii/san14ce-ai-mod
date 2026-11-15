@@ -1,0 +1,365 @@
+{
+ "schema": 1,
+ "id": "ai",
+ "title": "ai",
+ "host": "combat",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "ambush-combat"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/campaign_policy.h",
+  "src/native_ai_build.inl",
+  "src/native_ai_core.inl",
+  "src/native_ai_nodes.inl",
+  "src/native_ai_wall.inl",
+  "src/native_campaign.inl",
+  "src/native_campaign_assault.inl",
+  "src/native_campaign_logistics.inl",
+  "src/native_campaign_operations.inl",
+  "src/native_campaign_reinforcements.inl",
+  "src/native_campaign_routes.inl",
+  "src/native_campaign_support.inl",
+  "src/native_facilities.inl",
+  "src/native_obstacles.inl",
+  "src/native_campaign_departures.inl",
+  "src/native_sortie.inl",
+  "src/native_sortie_links.inl",
+  "src/native_siege_guard.inl",
+  "src/native_route_hook.inl",
+  "src/siege_guard_policy.h",
+  "src/obstacle_policy.h",
+  "src/sortie_policy.h",
+  "src/intercept_policy.h",
+  "src/tactics_policy.c",
+  "src/tactics_policy.h",
+  "tests/campaign_departure_fixture.inl",
+  "tests/campaign_priority_fixture.inl",
+  "tests/sortie_fixture.inl",
+  "tests/campaign_operation_fixture.inl",
+  "tests/campaign_reinforcement_fixture.inl",
+  "tests/campaign_support_fixture.inl",
+  "tests/obstacle_fixture.inl"
+ ],
+ "sources": [
+  "src/native_campaign.inl",
+  "src/native_facilities.inl",
+  "src/native_adjacency.inl",
+  "src/tactics_policy.c",
+  "src/tactics_policy.h",
+  "src/native_obstacles.inl",
+  "src/obstacle_policy.h",
+  "src/native_campaign_routes.inl",
+  "src/native_campaign_support.inl",
+  "src/native_campaign_logistics.inl",
+  "src/native_campaign_reinforcements.inl",
+  "src/campaign_policy.h",
+  "src/native_campaign_operations.inl"
+ ],
+ "tests": [
+  "native"
+ ],
+ "hook_owners": [
+  "kPointerShared"
+ ],
+ "checks": [
+  "native"
+ ],
+ "ini": [
+  {
+   "section": "combat",
+   "key": "ai_catapult_block"
+  },
+  {
+   "section": "combat",
+   "key": "ai_max_aggression"
+  },
+  {
+   "section": "combat",
+   "key": "ai_tactic_order"
+  },
+  {
+   "section": "combat",
+   "key": "ai_wall_block"
+  },
+  {
+   "section": "combat",
+   "key": "builder_ruler_fill"
+  },
+  {
+   "section": "combat",
+   "key": "combat_cut"
+  },
+  {
+   "section": "combat",
+   "key": "computer_trade"
+  },
+  {
+   "section": "combat",
+   "key": "departures"
+  },
+  {
+   "section": "combat",
+   "key": "front_hire"
+  },
+  {
+   "section": "combat",
+   "key": "garrison_recall"
+  },
+  {
+   "section": "combat",
+   "key": "gate_intercept"
+  },
+  {
+   "section": "combat",
+   "key": "group_advance"
+  },
+  {
+   "section": "combat",
+   "key": "helm_intercept"
+  },
+  {
+   "section": "combat",
+   "key": "hit_response"
+  },
+  {
+   "section": "combat",
+   "key": "mission_v2"
+  },
+  {
+   "section": "combat",
+   "key": "morale"
+  },
+  {
+   "section": "combat",
+   "key": "no_tribe_target"
+  },
+  {
+   "section": "combat",
+   "key": "obstacle"
+  },
+  {
+   "section": "combat",
+   "key": "path_wall"
+  },
+  {
+   "section": "combat",
+   "key": "ranged_facility_kill"
+  },
+  {
+   "section": "combat",
+   "key": "recall_veto"
+  },
+  {
+   "section": "combat",
+   "key": "retake_adjacent"
+  },
+  {
+   "section": "combat",
+   "key": "retake_build"
+  },
+  {
+   "section": "combat",
+   "key": "siege_fort_first"
+  },
+  {
+   "section": "combat",
+   "key": "siege_native"
+  },
+  {
+   "section": "combat",
+   "key": "siege_no_catapult"
+  },
+  {
+   "section": "combat",
+   "key": "siege_no_trap"
+  },
+  {
+   "section": "combat",
+   "key": "siege_no_watchtower"
+  },
+  {
+   "section": "combat",
+   "key": "siege_ring10"
+  },
+  {
+   "section": "combat",
+   "key": "siege_stall_near"
+  },
+  {
+   "section": "combat",
+   "key": "stationary_retreat"
+  },
+  {
+   "section": "combat",
+   "key": "supply_relay"
+  },
+  {
+   "section": "combat",
+   "key": "support"
+  },
+  {
+   "section": "combat",
+   "key": "tribe_terrain_path"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "combat",
+    "key": "departures",
+    "retired": true
+   },
+   {
+    "section": "combat",
+    "key": "group_advance",
+    "retired": true
+   },
+   {
+    "section": "combat",
+    "key": "stationary_retreat"
+   },
+   {
+    "section": "combat",
+    "key": "morale"
+   },
+   {
+    "section": "combat",
+    "key": "support",
+    "retired": true
+   },
+   {
+    "section": "combat",
+    "key": "mission_v2"
+   },
+   {
+    "section": "combat",
+    "key": "siege_stall_near"
+   },
+   {
+    "section": "combat",
+    "key": "siege_native",
+    "retired": true
+   },
+   {
+    "section": "combat",
+    "key": "siege_ring10"
+   },
+   {
+    "section": "combat",
+    "key": "siege_no_catapult"
+   },
+   {
+    "section": "combat",
+    "key": "siege_no_watchtower"
+   },
+   {
+    "section": "combat",
+    "key": "siege_no_trap"
+   },
+   {
+    "section": "combat",
+    "key": "siege_fort_first"
+   },
+   {
+    "section": "combat",
+    "key": "retake_adjacent"
+   },
+   {
+    "section": "combat",
+    "key": "retake_build"
+   },
+   {
+    "section": "combat",
+    "key": "gate_intercept"
+   },
+   {
+    "section": "combat",
+    "key": "helm_intercept"
+   },
+   {
+    "section": "combat",
+    "key": "garrison_recall"
+   },
+   {
+    "section": "combat",
+    "key": "computer_trade"
+   },
+   {
+    "section": "combat",
+    "key": "front_hire"
+   },
+   {
+    "section": "combat",
+    "key": "ranged_facility_kill"
+   },
+   {
+    "section": "combat",
+    "key": "builder_ruler_fill"
+   },
+   {
+    "section": "combat",
+    "key": "ai_max_aggression"
+   },
+   {
+    "section": "combat",
+    "key": "ai_wall_block"
+   },
+   {
+    "section": "combat",
+    "key": "ai_catapult_block"
+   },
+   {
+    "section": "combat",
+    "key": "combat_cut"
+   },
+   {
+    "section": "combat",
+    "key": "hit_response"
+   },
+   {
+    "section": "combat",
+    "key": "obstacle"
+   },
+   {
+    "section": "combat",
+    "key": "path_wall"
+   },
+   {
+    "section": "combat",
+    "key": "supply_relay"
+   },
+   {
+    "section": "combat",
+    "key": "no_tribe_target"
+   },
+   {
+    "section": "combat",
+    "key": "tribe_terrain_path"
+   },
+   {
+    "section": "combat",
+    "key": "ai_tactic_order"
+   },
+   {
+    "section": "combat",
+    "key": "recall_veto"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

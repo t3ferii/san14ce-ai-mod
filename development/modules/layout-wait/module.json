@@ -1,0 +1,76 @@
+{
+ "schema": 1,
+ "id": "layout-wait",
+ "title": "layout-wait",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "layout"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_layout_wait.inl",
+  "src/layout_keep_policy.h"
+ ],
+ "sources": [
+  "src/native_layout_wait.inl",
+  "src/layout_keep_policy.h"
+ ],
+ "tests": [
+  "layout-registry",
+  "split-module"
+ ],
+ "hook_owners": [
+  "layout_wait",
+  "layout_keep",
+  "layout_keep_wrap"
+ ],
+ "checks": [
+  "layout-registry",
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "diagnostics",
+   "key": "layout_wait"
+  },
+  {
+   "section": "performance",
+   "key": "layout_keep"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "performance",
+    "key": "layout_keep"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "layout_wait",
+    "module": "layout-wait",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "true",
+    "install": "(layout_wait::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 300
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

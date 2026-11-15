@@ -1,4 +1,4 @@
-param([string]$Manager, [string]$Report)
+﻿param([string]$Manager, [string]$Report)
 $ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot
 if(-not $Manager){$Manager=Join-Path $taskProject 'distribution/SplitManage.ps1'}

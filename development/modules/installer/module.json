@@ -1,0 +1,63 @@
+{
+ "schema": 1,
+ "id": "installer",
+ "title": "installer",
+ "host": "tool",
+ "build": "none",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "distribution/Diagnose.ps1",
+  "distribution/Manage.ps1",
+  "distribution/SAN14CpuSample.wprp",
+  "distribution/기능설정.ini",
+  "distribution/읽어주세요.txt",
+  "tests/installer_atomic_fixture.ps1",
+  "tests/verify_feature_migration.ps1",
+  "tests/verify_feature_switches.py",
+  "tests/verify_installer_layout.ps1",
+  "tests/verify_installer_speed.py",
+  "tests/verify_layout_restore.ps1",
+  "tests/verify_share.py",
+  "tests/verify_split_install_failure.py",
+  "tools/build_share.py",
+  "tools/install_local.py",
+  "tools/release_features.py"
+ ],
+ "sources": [
+  "distribution/SplitManage.ps1",
+  "tests/verify_installer_layout.ps1",
+  "tests/verify_layout_restore.ps1",
+  "distribution/Manage.ps1",
+  "tests/installer_atomic_fixture.ps1"
+ ],
+ "tests": [
+  "installer-atomic",
+  "installer-layout",
+  "layout-restore"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "installer-atomic",
+  "installer-layout",
+  "layout-restore"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

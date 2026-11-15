@@ -1,0 +1,53 @@
+{
+ "schema": 1,
+ "id": "small-army-campaign",
+ "title": "small-army-campaign",
+ "host": "combat",
+ "build": "split",
+ "status": "aggregate",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "ai",
+  "sortie"
+ ],
+ "conflicts": [],
+ "owns": [],
+ "sources": [
+  "src/campaign_policy.h",
+  "src/native_campaign_operations.inl",
+  "src/sortie_policy.h"
+ ],
+ "tests": [
+  "native",
+  "sortie",
+  "merit",
+  "recruitment",
+  "personnel",
+  "awards"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "native",
+  "sortie",
+  "merit",
+  "recruitment",
+  "personnel",
+  "awards"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

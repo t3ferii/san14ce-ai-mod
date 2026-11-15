@@ -1,0 +1,68 @@
+{
+ "schema": 1,
+ "id": "lord-change",
+ "title": "lord-change",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "layout"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_lord_change.inl"
+ ],
+ "sources": [
+  "src/native_lord_change.inl"
+ ],
+ "tests": [
+  "layout-registry",
+  "split-module"
+ ],
+ "hook_owners": [
+  "lord_change"
+ ],
+ "checks": [
+  "layout-registry",
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "officer_ui",
+   "key": "lord_change"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "officer_ui",
+    "key": "lord_change"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "lord_change",
+    "module": "lord-change",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 36,
+    "wanted": "mod_features.lord_change",
+    "install": "lord_change::install()",
+    "refused": "split_feature_off(mod_features.lord_change,36,5)",
+    "after": [],
+    "seq": 250
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

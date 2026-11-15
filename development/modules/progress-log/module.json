@@ -1,0 +1,67 @@
+{
+ "schema": 1,
+ "id": "progress-log",
+ "title": "progress-log",
+ "host": "convenience",
+ "build": "split",
+ "status": "aggregate",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "core"
+ ],
+ "conflicts": [],
+ "owns": [
+  "distribution/diagnostics.ini",
+  "tests/log_append_fixture.cpp",
+  "tools/build_log_fixture.ps1"
+ ],
+ "sources": [
+  "src/native_adapter.cpp",
+  "src/native_crash_diagnostic.inl",
+  "src/native_adjacency.inl",
+  "src/native_progress.inl",
+  "src/native_merit_save.inl",
+  "src/log_append.h",
+  "distribution/diagnostics.ini",
+  "distribution/progress_native.ini"
+ ],
+ "tests": [
+  "log",
+  "progress-native",
+  "progress-rollback",
+  "native",
+  "sortie",
+  "merit",
+  "recruitment",
+  "personnel",
+  "awards"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "log",
+  "progress-native",
+  "progress-rollback",
+  "native",
+  "sortie",
+  "merit",
+  "recruitment",
+  "personnel",
+  "awards"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

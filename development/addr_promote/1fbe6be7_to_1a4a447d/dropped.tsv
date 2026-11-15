@@ -1,0 +1,17 @@
+old_id	old_rva	kind	method	reason
+GA_46300	46300	func	table	value 0 in the target build, no source names it, no other id uses it as container
+GA_49AA0	49AA0	func	table	value 0 in the target build, no source names it, no other id uses it as container
+GA_736A0	736A0	func	table	value 0 in the target build, no source names it, no other id uses it as container
+GA_1CA600	1CA600	func	sig	value 0 in the target build, no source names it, no other id uses it as container
+GA_1ECBE0	1ECBE0	func	table	value 0 in the target build, no source names it, no other id uses it as container
+GA_1FA240	1FA240	func	table	value 0 in the target build, no source names it, no other id uses it as container
+GA_20A36B	20A36B	func	table	value 0 in the target build, no source names it, no other id uses it as container
+GA_20A800	20A800	func	table	value 0 in the target build, no source names it, no other id uses it as container
+GA_28F200	28F200	func	table	value 0 in the target build, no source names it, no other id uses it as container
+GA_2CC1E0	2CC1E0	func	table	value 0 in the target build, no source names it, no other id uses it as container
+GA_2E10B0	2E10B0	func	table	value 0 in the target build, no source names it, no other id uses it as container
+GA_3228F0	3228F0	func	sig	value 0 in the target build, no source names it, no other id uses it as container
+GA_748320	748320	func	table	value 0 in the target build, no source names it, no other id uses it as container
+GA_816100	816100	func	table	value 0 in the target build, no source names it, no other id uses it as container
+GA_2B09F9	2B09F9	func	sig	kept as GA_X2B09F9 (value 0 = denied)
+GA_2E111D	2E111D	mid	table	kept as GA_X2E111D (value 0 = denied)

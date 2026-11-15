@@ -1,0 +1,91 @@
+{
+ "schema": 1,
+ "id": "injury",
+ "title": "injury",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "personnel"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_injury.inl",
+  "src/native_injury_links.inl",
+  "tests/injury_fixture.inl"
+ ],
+ "sources": [
+  "src/native_injury.inl",
+  "src/native_injury_links.inl",
+  "src/native_personnel.inl",
+  "src/native_recruit_ai.inl",
+  "src/native_domestic.inl"
+ ],
+ "tests": [
+  "personnel",
+  "native",
+  "recruitment",
+  "merit"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "personnel",
+  "native",
+  "recruitment",
+  "merit"
+ ],
+ "ini": [
+  {
+   "section": "personnel",
+   "key": "injury"
+  },
+  {
+   "section": "personnel",
+   "key": "injury_herbal"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "personnel",
+    "key": "injury"
+   },
+   {
+    "section": "personnel",
+    "key": "injury_herbal"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [
+   {
+    "service": "domestic_tick",
+    "owner": "injury",
+    "kind": "add",
+    "order": 20,
+    "gate_order": 0,
+    "cond": "defined(INJURY_PROTECTION)",
+    "expr": "services::domestic_tick.add(\"injury\",{[](Obj city){injury_synchronize_city(city);},nullptr},[]{return mod_features.injury || mod_features.injury_herbal;},20)"
+   },
+   {
+    "service": "domestic_tick",
+    "owner": "injury",
+    "kind": "fail",
+    "order": 0,
+    "gate_order": 0,
+    "cond": "",
+    "expr": "services::domestic_tick.on_fail(&mod_features.injury,10)"
+   }
+  ],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

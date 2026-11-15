@@ -1,0 +1,74 @@
+{
+ "schema": 1,
+ "id": "corps-domestic",
+ "title": "corps-domestic",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "personnel"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_corps_domestic.inl",
+  "src/computer_tactics.h"
+ ],
+ "sources": [
+  "src/native_corps_domestic.inl",
+  "src/computer_tactics.h",
+  "src/native_personnel.inl",
+  "src/native_split_install.inl"
+ ],
+ "tests": [
+  "personnel",
+  "native"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "personnel",
+  "native"
+ ],
+ "ini": [
+  {
+   "section": "personnel",
+   "key": "ai_learn"
+  },
+  {
+   "section": "personnel",
+   "key": "ai_search2"
+  },
+  {
+   "section": "personnel",
+   "key": "officer_first"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "personnel",
+    "key": "ai_search2"
+   },
+   {
+    "section": "personnel",
+    "key": "ai_learn"
+   },
+   {
+    "section": "personnel",
+    "key": "officer_first"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

@@ -1,0 +1,29 @@
+{
+ "_comment": "local11 (2026-11-06, docs/HISTORY.md section 18): entries of original functions that San14Sim's version.dll (San14Sim/dump/profile.h kProfiles trace[] + entry, trace.h trace_install, dump.cpp install_hook; a read-only observer, not ours) replaces by `E9 rel32` plus NOP padding, the jump leaving the game image. old = 1fbe6be7 RVA, new = 1a4a447d RVA, len = displaced prefix length in bytes (kTraceBase second field; the entry hook patches 6 bytes: E9 rel32 NOP). The original prefix bytes are read from both unpacked EXEs by tools/gen_emit.py (they must be identical in both builds and contain no relocation) and emitted as ga_observers[] in src/game_addresses_data.inl. tools/check_observer_hooks.py compares this file with San14Sim/dump/profile.h when that file exists. Order = profile order, the entry hook last.",
+ "entries": [
+  {"old": "176B80", "new": "177B30", "len": 5, "what": "tactic arithmetic"},
+  {"old": "2DD020", "new": "2DF350", "len": 9, "what": "officer assignment"},
+  {"old": "1F42B0", "new": "1F5680", "len": 5, "what": "building durability set (GA_1F42B0, building_destruction guard row)"},
+  {"old": "2D95F0", "new": "2DB9A0", "len": 9, "what": "unit update"},
+  {"old": "3FBB00", "new": "3FDFF0", "len": 5, "what": "RNG"},
+  {"old": "448E40", "new": "44B090", "len": 5, "what": "advisor_briefing hash row (GA_448E40)"},
+  {"old": "44A0F0", "new": "44C340", "len": 11, "what": "advisor_briefing hash row (GA_44A0F0)"},
+  {"old": "170870", "new": "171820", "len": 5, "what": "attack dispatcher"},
+  {"old": "172E20", "new": "173DD0", "len": 6, "what": "ordinary attack on a unit"},
+  {"old": "174BC0", "new": "175B70", "len": 8, "what": "siege/facility attack"},
+  {"old": "174E30", "new": "175DE0", "len": 6, "what": "sibling attack path"},
+  {"old": "178E30", "new": "179DE0", "len": 5, "what": "wounded creation"},
+  {"old": "1798A0", "new": "17A850", "len": 5, "what": "damage application wrapper"},
+  {"old": "29EDE0", "new": "2A0CF0", "len": 5, "what": "unit enters a site"},
+  {"old": "26AA20", "new": "26C340", "len": 6, "what": "policy activation"},
+  {"old": "185B30", "new": "186E60", "len": 5, "what": "set_owner"},
+  {"old": "2DF720", "new": "2E1A50", "len": 6, "what": "ring paint"},
+  {"old": "1FC550", "new": "1FD930", "len": 6, "what": "area occupation"},
+  {"old": "276960", "new": "278290", "len": 6, "what": "logistics check"},
+  {"old": "270E00", "new": "272720", "len": 5, "what": "periodic morale decay"},
+  {"old": "288460", "new": "28A200", "len": 6, "what": "facility construction start"},
+  {"old": "2D8A50", "new": "2DAE00", "len": 5, "what": "building record creation"},
+  {"old": "2AB390", "new": "2AD6C0", "len": 5, "what": "facility cost"},
+  {"old": "449880", "new": "44BAD0", "len": 6, "what": "dump entry hook (daily progress function; Profile::entry, only when [dump] enabled=1)"}
+ ]
+}

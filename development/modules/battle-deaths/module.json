@@ -1,0 +1,78 @@
+{
+ "schema": 1,
+ "id": "battle-deaths",
+ "title": "battle-deaths",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "layout"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/battle_deaths_profile.h",
+  "src/native_battle_deaths.inl",
+  "tests/battle_deaths_fixture.cpp",
+  "tools/build_battle_deaths_fixture.ps1"
+ ],
+ "sources": [
+  "src/battle_deaths_profile.h",
+  "src/native_battle_deaths.inl",
+  "src/layout_registry.h",
+  "src/native_layout_core.inl",
+  "tests/battle_deaths_fixture.cpp",
+  "tools/build_battle_deaths_fixture.ps1"
+ ],
+ "tests": [
+  "battle-deaths",
+  "layout-registry",
+  "split-module"
+ ],
+ "hook_owners": [
+  "battle_deaths"
+ ],
+ "checks": [
+  "battle-deaths",
+  "layout-registry",
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "extensions",
+   "key": "battle_deaths"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "extensions",
+    "key": "battle_deaths"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "battle_deaths",
+    "module": "battle-deaths",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE) && defined(SPLIT_MODPACK)",
+    "off_id": 18,
+    "wanted": "mod_features.battle_deaths",
+    "install": "battle_deaths_install()",
+    "refused": "split_feature_off(mod_features.battle_deaths,18,5)",
+    "after": [],
+    "seq": 350
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

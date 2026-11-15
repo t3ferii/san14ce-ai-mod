@@ -1,4 +1,4 @@
-param([string]$GameDirectory, [switch]$Quiet, [switch]$Trace, [switch]$NonInteractive)
+﻿param([string]$GameDirectory, [switch]$Quiet, [switch]$Trace, [switch]$NonInteractive)
 $ErrorActionPreference = 'Stop'
 if (-not $GameDirectory) {
     $GameDirectory = Split-Path -Parent $PSScriptRoot

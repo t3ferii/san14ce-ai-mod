@@ -1,0 +1,104 @@
+{
+ "schema": 1,
+ "id": "tactic-priority",
+ "title": "tactic-priority",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "layout",
+  "trait-hover"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/sortie_screen_bridge.h",
+  "tools/check_log_side_effects.py",
+  "src/native_tactic_memory_save.inl",
+  "src/native_tactic_priority.inl",
+  "src/native_tactic_priority_grid.inl",
+  "src/tactic_memory_store.h",
+  "src/tactic_priority_io.h",
+  "src/tactic_priority_profile.h",
+  "tests/tactic_memory_fixture.cpp",
+  "tests/tactic_priority_fixture.cpp",
+  "tools/build_tactic_memory_fixture.ps1",
+  "tools/build_tactic_priority_fixture.ps1"
+ ],
+ "sources": [
+  "src/sortie_screen_bridge.h",
+  "tools/check_log_side_effects.py",
+  "src/tactic_priority_profile.h",
+  "src/native_tactic_priority.inl",
+  "src/native_tactic_priority_grid.inl",
+  "src/tactic_priority_io.h",
+  "src/tactic_memory_store.h",
+  "src/native_tactic_memory_save.inl",
+  "src/layout_registry.h",
+  "src/native_merit_save.inl",
+  "tests/tactic_priority_fixture.cpp",
+  "tools/build_tactic_priority_fixture.ps1",
+  "tests/tactic_memory_fixture.cpp",
+  "tools/build_tactic_memory_fixture.ps1"
+ ],
+ "tests": [
+  "tactic-priority",
+  "layout-registry",
+  "split-module",
+  "merit",
+  "address-table"
+ ],
+ "hook_owners": [
+  "tactic_priority"
+ ],
+ "checks": [
+  "tactic-priority",
+  "layout-registry",
+  "split-module",
+  "merit",
+  "address-table"
+ ],
+ "ini": [
+  {
+   "section": "officer_ui",
+   "key": "tactic_priority"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "officer_ui",
+    "key": "tactic_priority"
+   }
+  ]
+ },
+ "ui": [
+  {
+   "owner": "tactic_priority",
+   "entry": ""
+  }
+ ],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "tactic_priority",
+    "module": "tactic-priority",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 39,
+    "wanted": "mod_features.tactic_priority || mod_features.ambush",
+    "install": "tactic_priority::install()",
+    "refused": "split_feature_off(mod_features.tactic_priority,39,5)",
+    "after": [],
+    "seq": 260
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

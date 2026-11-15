@@ -1,0 +1,76 @@
+{
+ "schema": 1,
+ "id": "auto-commands",
+ "title": "auto-commands",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/native_auto_commands.inl",
+  "src/auto_commands_policy.h",
+  "tests/auto_commands_fixture.inl"
+ ],
+ "sources": [
+  "src/native_auto_commands.inl",
+  "src/auto_commands_policy.h",
+  "tests/auto_commands_fixture.inl"
+ ],
+ "tests": [
+  "split-module"
+ ],
+ "hook_owners": [
+  "auto_buttons"
+ ],
+ "checks": [
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "game_flow",
+   "key": "auto_reward"
+  },
+  {
+   "section": "game_flow",
+   "key": "auto_search"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "game_flow",
+    "key": "auto_search"
+   },
+   {
+    "section": "game_flow",
+    "key": "auto_reward"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "auto_commands",
+    "module": "auto-commands",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.auto_search || mod_features.auto_reward",
+    "install": "(auto_commands::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 390
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

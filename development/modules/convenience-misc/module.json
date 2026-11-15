@@ -1,0 +1,129 @@
+{
+ "schema": 1,
+ "id": "convenience-misc",
+ "title": "convenience-misc",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/native_caravan_stay.inl",
+  "src/native_occupy_fast.inl",
+  "src/native_save_codec.inl",
+  "src/save_codec.h",
+  "tests/save_codec_fixture.cpp"
+ ],
+ "sources": [
+  "src/native_caravan_stay.inl",
+  "src/native_face_timing.inl",
+  "src/native_occupy_fast.inl",
+  "src/native_save_codec.inl",
+  "src/save_codec.h",
+  "tests/save_codec_fixture.cpp"
+ ],
+ "tests": [
+  "split-module"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "game_flow",
+   "key": "caravan_stay"
+  },
+  {
+   "section": "game_flow",
+   "key": "fast_save"
+  },
+  {
+   "section": "game_flow",
+   "key": "occupy_fast"
+  },
+  {
+   "section": "performance",
+   "key": "timer_1ms"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "game_flow",
+    "key": "occupy_fast"
+   },
+   {
+    "section": "game_flow",
+    "key": "caravan_stay"
+   },
+   {
+    "section": "performance",
+    "key": "timer_1ms",
+    "retired": true
+   },
+   {
+    "section": "game_flow",
+    "key": "fast_save"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "fast_save",
+    "module": "convenience-misc",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.fast_save",
+    "install": "(save_codec_hook::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 100
+   },
+   {
+    "name": "occupy_fast",
+    "module": "convenience-misc",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.occupy_fast",
+    "install": "(occupy_fast::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 110
+   },
+   {
+    "name": "caravan_stay",
+    "module": "convenience-misc",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.caravan_stay",
+    "install": "(caravan_stay::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 120
+   },
+   {
+    "name": "timer_1ms",
+    "module": "convenience-misc",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.timer_1ms",
+    "install": "(split_timer_1ms(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 340
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

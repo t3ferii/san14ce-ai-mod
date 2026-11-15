@@ -1,0 +1,83 @@
+{
+ "schema": 1,
+ "id": "ai-trace",
+ "title": "ai-trace",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/ai_trace_nodes.h",
+  "src/native_ai_trace.inl",
+  "tests/ai_trace_fixture.cpp",
+  "tests/verify_ai_trace_nodes.py",
+  "tools/analyze_ai_trace.py",
+  "tools/build_ai_trace.ps1",
+  "tools/gen_ai_trace_nodes.py"
+ ],
+ "sources": [
+  "src/native_ai_trace.inl",
+  "src/ai_trace_nodes.h",
+  "tools/gen_ai_trace_nodes.py",
+  "tools/analyze_ai_trace.py",
+  "tests/ai_trace_fixture.cpp",
+  "tools/build_ai_trace.ps1"
+ ],
+ "tests": [
+  "ai-trace",
+  "split-module",
+  "native"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "ai-trace",
+  "split-module",
+  "native"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "face_timing",
+    "module": "ai-trace",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE) && defined(RUNTIME_COST_PROFILE)",
+    "off_id": 0,
+    "wanted": "costprofile::on",
+    "install": "(face_timing::install(),true)",
+    "refused": "",
+    "after": [
+     "trait_hover"
+    ],
+    "seq": 370
+   },
+   {
+    "name": "ai_trace",
+    "module": "ai-trace",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "split_ai_trace_wanted()",
+    "install": "(split_ai_trace_install(),true)",
+    "refused": "",
+    "after": [
+     "face_timing",
+     "auto_commands"
+    ],
+    "seq": 400
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

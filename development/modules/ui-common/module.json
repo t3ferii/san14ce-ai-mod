@@ -1,0 +1,40 @@
+{
+ "schema": 1,
+ "id": "ui-common",
+ "title": "ui-common",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/native_ui_common.inl"
+ ],
+ "sources": [
+  "src/native_ui_common.inl"
+ ],
+ "tests": [
+  "recruitment"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "recruitment"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

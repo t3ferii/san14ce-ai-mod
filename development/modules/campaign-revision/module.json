@@ -1,0 +1,50 @@
+{
+ "schema": 1,
+ "id": "campaign-revision",
+ "title": "campaign-revision",
+ "host": "combat",
+ "build": "split",
+ "status": "aggregate",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "ai"
+ ],
+ "conflicts": [],
+ "owns": [
+  "tests/campaign_revision_fixture.inl"
+ ],
+ "sources": [],
+ "tests": [
+  "native",
+  "sortie",
+  "merit",
+  "recruitment",
+  "personnel",
+  "awards"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "native",
+  "sortie",
+  "merit",
+  "recruitment",
+  "personnel",
+  "awards"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

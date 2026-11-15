@@ -1,0 +1,88 @@
+{
+ "schema": 1,
+ "id": "building-destruction",
+ "title": "building-destruction",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/building_destruction_profile.h",
+  "src/native_building_destruction.inl",
+  "tests/building_destruction_fixture.cpp",
+  "tools/build_building_destruction_fixture.ps1",
+  "tools/verify_building_destruction_native.py"
+ ],
+ "sources": [
+  "src/native_building_destruction.inl",
+  "src/building_destruction_profile.h",
+  "src/native_adapter.cpp",
+  "src/native_split_install.inl",
+  "installer/InstallerGui.cs",
+  "distribution/FeatureSelect.ps1",
+  "tests/building_destruction_fixture.cpp",
+  "tools/verify_building_destruction_native.py",
+  "tools/current_image.py"
+ ],
+ "tests": [
+  "building-destruction",
+  "native",
+  "split-module",
+  "installer-gui"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "building-destruction",
+  "native",
+  "split-module",
+  "installer-gui"
+ ],
+ "ini": [
+  {
+   "section": "stratagem",
+   "key": "building_destruction_all"
+  },
+  {
+   "section": "stratagem",
+   "key": "building_destruction_boost"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "stratagem",
+    "key": "building_destruction_all"
+   },
+   {
+    "section": "stratagem",
+    "key": "building_destruction_boost"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "building_destruction",
+    "module": "building-destruction",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.building_destruction_all || mod_features.building_destruction_boost || mod_features.destruction_ticket",
+    "install": "(building_destruction::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 320
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

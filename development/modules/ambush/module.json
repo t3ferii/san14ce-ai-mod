@@ -1,0 +1,69 @@
+{
+ "schema": 1,
+ "id": "ambush",
+ "title": "ambush",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "advisor-briefing",
+  "ambush-combat",
+  "tactic-priority"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_ambush.inl"
+ ],
+ "sources": [
+  "src/native_ambush.inl"
+ ],
+ "tests": [
+  "split-module"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "split-module"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "ambush",
+    "module": "ambush",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 91,
+    "wanted": "mod_features.ambush",
+    "install": "ambush::install()",
+    "refused": "split_feature_off(mod_features.ambush,91,5)",
+    "after": [
+     "advisor_briefing",
+     "tactic_priority"
+    ],
+    "seq": 395
+   }
+  ],
+  "subscriptions": [
+   {
+    "service": "sidecars",
+    "owner": "ambush",
+    "kind": "add",
+    "order": 60,
+    "gate_order": 0,
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "expr": "merit_sidecars.add(&ambush::sidecar_plugin,60)"
+   }
+  ],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

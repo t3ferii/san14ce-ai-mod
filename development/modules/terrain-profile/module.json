@@ -1,0 +1,60 @@
+{
+ "schema": 1,
+ "id": "terrain-profile",
+ "title": "terrain-profile",
+ "host": "tool",
+ "build": "none",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/terrain_call_profile.h",
+  "tests/terrain_call_profile_build.ps1",
+  "tests/terrain_call_profile_fixture.cpp",
+  "tests/test_analyze_terrain_profile.py",
+  "tools/analyze_terrain_profile.py"
+ ],
+ "sources": [
+  "src/terrain_call_profile.h",
+  "tests/terrain_call_profile_fixture.cpp",
+  "tests/terrain_call_profile_build.ps1",
+  "tools/analyze_terrain_profile.py",
+  "tests/test_analyze_terrain_profile.py"
+ ],
+ "tests": [
+  "terrain-profile"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "terrain-profile"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "terrain_profile_init",
+    "module": "terrain-profile",
+    "cond": "!defined(NO_RUNTIME_LOG) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "true",
+    "install": "split_terrain_profile_init()",
+    "refused": "",
+    "after": [],
+    "seq": 10
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

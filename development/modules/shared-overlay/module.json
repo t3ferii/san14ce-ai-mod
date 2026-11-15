@@ -1,0 +1,51 @@
+{
+ "schema": 1,
+ "id": "shared-overlay",
+ "title": "shared-overlay",
+ "host": "layout",
+ "build": "split",
+ "status": "active",
+ "hub": true,
+ "alias_of": "",
+ "depends": [
+  "layout"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_advisor_overlay.inl",
+  "src/native_unified_overlay.inl",
+  "src/unified_overlay_policy.h",
+  "tests/shared_overlay_fixture.cpp",
+  "tools/build_shared_overlay_fixture.ps1"
+ ],
+ "sources": [
+  "src/native_unified_overlay.inl",
+  "src/unified_overlay_policy.h",
+  "src/native_advisor_overlay.inl",
+  "src/native_ccz_preview.inl",
+  "tests/shared_overlay_fixture.cpp",
+  "tools/build_shared_overlay_fixture.ps1"
+ ],
+ "tests": [
+  "shared-overlay"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "shared-overlay"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

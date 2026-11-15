@@ -1,0 +1,68 @@
+{
+ "schema": 1,
+ "id": "fast-menu",
+ "title": "fast-menu",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "layout"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_fast_menu.inl"
+ ],
+ "sources": [
+  "src/native_fast_menu.inl"
+ ],
+ "tests": [
+  "layout-registry",
+  "split-module"
+ ],
+ "hook_owners": [
+  "fast_menu"
+ ],
+ "checks": [
+  "layout-registry",
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "performance",
+   "key": "fast_menu"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "performance",
+    "key": "fast_menu"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "fast_menu",
+    "module": "fast-menu",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.fast_menu || services::map_tick.any()",
+    "install": "(fast_menu::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 150
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

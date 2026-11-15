@@ -1,0 +1,2412 @@
+{
+ "schema": 1,
+ "generated_by": "tools/gen_module_manifests.py",
+ "modules": {
+  "address-table": {
+   "title": "address-table",
+   "host": "tool",
+   "status": "active",
+   "hub": true,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "address-table"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "advisor-briefing": {
+   "title": "advisor-briefing",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "shared-overlay"
+   ],
+   "conflicts": [],
+   "checks": [
+    "advisor-briefing",
+    "shared-overlay"
+   ],
+   "ini": [
+    {
+     "section": "advisor_briefing",
+     "key": "collect"
+    },
+    {
+     "section": "game_flow",
+     "key": "advisor_briefing"
+    },
+    {
+     "section": "game_flow",
+     "key": "briefing16"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "game_flow",
+      "key": "advisor_briefing"
+     },
+     {
+      "section": "game_flow",
+      "key": "briefing16"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "advisor_briefing": {
+   "title": "advisor_briefing",
+   "host": "convenience",
+   "status": "alias",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "advisor-briefing",
+    "split-module"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "ai": {
+   "title": "ai",
+   "host": "combat",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "ambush-combat"
+   ],
+   "conflicts": [],
+   "checks": [
+    "native"
+   ],
+   "ini": [
+    {
+     "section": "combat",
+     "key": "ai_catapult_block"
+    },
+    {
+     "section": "combat",
+     "key": "ai_max_aggression"
+    },
+    {
+     "section": "combat",
+     "key": "ai_tactic_order"
+    },
+    {
+     "section": "combat",
+     "key": "ai_wall_block"
+    },
+    {
+     "section": "combat",
+     "key": "builder_ruler_fill"
+    },
+    {
+     "section": "combat",
+     "key": "combat_cut"
+    },
+    {
+     "section": "combat",
+     "key": "computer_trade"
+    },
+    {
+     "section": "combat",
+     "key": "departures"
+    },
+    {
+     "section": "combat",
+     "key": "front_hire"
+    },
+    {
+     "section": "combat",
+     "key": "garrison_recall"
+    },
+    {
+     "section": "combat",
+     "key": "gate_intercept"
+    },
+    {
+     "section": "combat",
+     "key": "group_advance"
+    },
+    {
+     "section": "combat",
+     "key": "helm_intercept"
+    },
+    {
+     "section": "combat",
+     "key": "hit_response"
+    },
+    {
+     "section": "combat",
+     "key": "mission_v2"
+    },
+    {
+     "section": "combat",
+     "key": "morale"
+    },
+    {
+     "section": "combat",
+     "key": "no_tribe_target"
+    },
+    {
+     "section": "combat",
+     "key": "obstacle"
+    },
+    {
+     "section": "combat",
+     "key": "path_wall"
+    },
+    {
+     "section": "combat",
+     "key": "ranged_facility_kill"
+    },
+    {
+     "section": "combat",
+     "key": "recall_veto"
+    },
+    {
+     "section": "combat",
+     "key": "retake_adjacent"
+    },
+    {
+     "section": "combat",
+     "key": "retake_build"
+    },
+    {
+     "section": "combat",
+     "key": "siege_fort_first"
+    },
+    {
+     "section": "combat",
+     "key": "siege_native"
+    },
+    {
+     "section": "combat",
+     "key": "siege_no_catapult"
+    },
+    {
+     "section": "combat",
+     "key": "siege_no_trap"
+    },
+    {
+     "section": "combat",
+     "key": "siege_no_watchtower"
+    },
+    {
+     "section": "combat",
+     "key": "siege_ring10"
+    },
+    {
+     "section": "combat",
+     "key": "siege_stall_near"
+    },
+    {
+     "section": "combat",
+     "key": "stationary_retreat"
+    },
+    {
+     "section": "combat",
+     "key": "supply_relay"
+    },
+    {
+     "section": "combat",
+     "key": "support"
+    },
+    {
+     "section": "combat",
+     "key": "tribe_terrain_path"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "combat",
+      "key": "departures",
+      "retired": true
+     },
+     {
+      "section": "combat",
+      "key": "group_advance",
+      "retired": true
+     },
+     {
+      "section": "combat",
+      "key": "stationary_retreat"
+     },
+     {
+      "section": "combat",
+      "key": "morale"
+     },
+     {
+      "section": "combat",
+      "key": "support",
+      "retired": true
+     },
+     {
+      "section": "combat",
+      "key": "mission_v2"
+     },
+     {
+      "section": "combat",
+      "key": "siege_stall_near"
+     },
+     {
+      "section": "combat",
+      "key": "siege_native",
+      "retired": true
+     },
+     {
+      "section": "combat",
+      "key": "siege_ring10"
+     },
+     {
+      "section": "combat",
+      "key": "siege_no_catapult"
+     },
+     {
+      "section": "combat",
+      "key": "siege_no_watchtower"
+     },
+     {
+      "section": "combat",
+      "key": "siege_no_trap"
+     },
+     {
+      "section": "combat",
+      "key": "siege_fort_first"
+     },
+     {
+      "section": "combat",
+      "key": "retake_adjacent"
+     },
+     {
+      "section": "combat",
+      "key": "retake_build"
+     },
+     {
+      "section": "combat",
+      "key": "gate_intercept"
+     },
+     {
+      "section": "combat",
+      "key": "helm_intercept"
+     },
+     {
+      "section": "combat",
+      "key": "garrison_recall"
+     },
+     {
+      "section": "combat",
+      "key": "computer_trade"
+     },
+     {
+      "section": "combat",
+      "key": "front_hire"
+     },
+     {
+      "section": "combat",
+      "key": "ranged_facility_kill"
+     },
+     {
+      "section": "combat",
+      "key": "builder_ruler_fill"
+     },
+     {
+      "section": "combat",
+      "key": "ai_max_aggression"
+     },
+     {
+      "section": "combat",
+      "key": "ai_wall_block"
+     },
+     {
+      "section": "combat",
+      "key": "ai_catapult_block"
+     },
+     {
+      "section": "combat",
+      "key": "combat_cut"
+     },
+     {
+      "section": "combat",
+      "key": "hit_response"
+     },
+     {
+      "section": "combat",
+      "key": "obstacle"
+     },
+     {
+      "section": "combat",
+      "key": "path_wall"
+     },
+     {
+      "section": "combat",
+      "key": "supply_relay"
+     },
+     {
+      "section": "combat",
+      "key": "no_tribe_target"
+     },
+     {
+      "section": "combat",
+      "key": "tribe_terrain_path"
+     },
+     {
+      "section": "combat",
+      "key": "ai_tactic_order"
+     },
+     {
+      "section": "combat",
+      "key": "recall_veto"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "ai-trace": {
+   "title": "ai-trace",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "ai-trace",
+    "split-module",
+    "native"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "ambush": {
+   "title": "ambush",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "advisor-briefing",
+    "ambush-combat",
+    "tactic-priority"
+   ],
+   "conflicts": [],
+   "checks": [
+    "split-module"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "ambush-combat": {
+   "title": "ambush-combat",
+   "host": "combat",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "advisor-briefing"
+   ],
+   "conflicts": [],
+   "checks": [
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "game_flow",
+     "key": "ambush"
+    },
+    {
+     "section": "game_flow",
+     "key": "destruction_ticket"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "game_flow",
+      "key": "ambush"
+     },
+     {
+      "section": "game_flow",
+      "key": "destruction_ticket"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "appear-batch": {
+   "title": "appear-batch",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "appear-batch",
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "performance",
+     "key": "appear_batch"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "performance",
+      "key": "appear_batch"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "area-index": {
+   "title": "area-index",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "area-index"
+   ],
+   "ini": [
+    {
+     "section": "diagnostics",
+     "key": "area_index_verify"
+    },
+    {
+     "section": "performance",
+     "key": "area_index"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "performance",
+      "key": "area_index"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "auto-commands": {
+   "title": "auto-commands",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "game_flow",
+     "key": "auto_reward"
+    },
+    {
+     "section": "game_flow",
+     "key": "auto_search"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "game_flow",
+      "key": "auto_search"
+     },
+     {
+      "section": "game_flow",
+      "key": "auto_reward"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "awards": {
+   "title": "awards",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "merit",
+    "personnel",
+    "domestic",
+    "ui-common"
+   ],
+   "conflicts": [],
+   "checks": [
+    "awards",
+    "native",
+    "merit",
+    "recruitment"
+   ],
+   "ini": [
+    {
+     "section": "personnel",
+     "key": "awards"
+    },
+    {
+     "section": "personnel",
+     "key": "awards_ai"
+    },
+    {
+     "section": "personnel",
+     "key": "awards_horse"
+    },
+    {
+     "section": "personnel",
+     "key": "awards_v16"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "personnel",
+      "key": "awards"
+     },
+     {
+      "section": "personnel",
+      "key": "awards_ai"
+     },
+     {
+      "section": "personnel",
+      "key": "awards_horse"
+     },
+     {
+      "section": "personnel",
+      "key": "awards_v16"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "battle-deaths": {
+   "title": "battle-deaths",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "layout"
+   ],
+   "conflicts": [],
+   "checks": [
+    "battle-deaths",
+    "layout-registry",
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "extensions",
+     "key": "battle_deaths"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "extensions",
+      "key": "battle_deaths"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "building-destruction": {
+   "title": "building-destruction",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "building-destruction",
+    "native",
+    "split-module",
+    "installer-gui"
+   ],
+   "ini": [
+    {
+     "section": "stratagem",
+     "key": "building_destruction_all"
+    },
+    {
+     "section": "stratagem",
+     "key": "building_destruction_boost"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "stratagem",
+      "key": "building_destruction_all"
+     },
+     {
+      "section": "stratagem",
+      "key": "building_destruction_boost"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "campaign-revision": {
+   "title": "campaign-revision",
+   "host": "combat",
+   "status": "aggregate",
+   "hub": false,
+   "depends": [
+    "ai"
+   ],
+   "conflicts": [],
+   "checks": [
+    "native",
+    "sortie",
+    "merit",
+    "recruitment",
+    "personnel",
+    "awards"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "ccz-sprites": {
+   "title": "ccz-sprites",
+   "host": "ccz",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "shared-overlay"
+   ],
+   "conflicts": [],
+   "checks": [
+    "ccz-sprites",
+    "split-module",
+    "shared-overlay"
+   ],
+   "ini": [
+    {
+     "section": "ccz",
+     "key": "ccz_block"
+    },
+    {
+     "section": "ccz",
+     "key": "ccz_critical"
+    },
+    {
+     "section": "ccz",
+     "key": "ccz_depth"
+    },
+    {
+     "section": "ccz",
+     "key": "ccz_far_keep"
+    },
+    {
+     "section": "ccz",
+     "key": "ccz_hide_model"
+    },
+    {
+     "section": "ccz",
+     "key": "ccz_sprites"
+    },
+    {
+     "section": "ccz",
+     "key": "sprite_fallback"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "ccz",
+      "key": "ccz_sprites"
+     },
+     {
+      "section": "ccz",
+      "key": "sprite_fallback"
+     },
+     {
+      "section": "ccz",
+      "key": "ccz_hide_model",
+      "retired": true
+     },
+     {
+      "section": "ccz",
+      "key": "ccz_depth",
+      "retired": true
+     },
+     {
+      "section": "ccz",
+      "key": "ccz_far_keep",
+      "retired": true
+     },
+     {
+      "section": "ccz",
+      "key": "ccz_block"
+     },
+     {
+      "section": "ccz",
+      "key": "ccz_critical"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "checks": {
+   "title": "checks",
+   "host": "tool",
+   "status": "tooling",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "manifest",
+    "hook-map",
+    "feature-deps",
+    "checks-selftest"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "combat-rebuild": {
+   "title": "combat-rebuild",
+   "host": "combat",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "combat-rebuild"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "convenience-misc": {
+   "title": "convenience-misc",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "game_flow",
+     "key": "caravan_stay"
+    },
+    {
+     "section": "game_flow",
+     "key": "fast_save"
+    },
+    {
+     "section": "game_flow",
+     "key": "occupy_fast"
+    },
+    {
+     "section": "performance",
+     "key": "timer_1ms"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "game_flow",
+      "key": "occupy_fast"
+     },
+     {
+      "section": "game_flow",
+      "key": "caravan_stay"
+     },
+     {
+      "section": "performance",
+      "key": "timer_1ms",
+      "retired": true
+     },
+     {
+      "section": "game_flow",
+      "key": "fast_save"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "core": {
+   "title": "core",
+   "host": "convenience",
+   "status": "active",
+   "hub": true,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "native",
+    "merit",
+    "recruitment"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "corps-domestic": {
+   "title": "corps-domestic",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "personnel"
+   ],
+   "conflicts": [],
+   "checks": [
+    "personnel",
+    "native"
+   ],
+   "ini": [
+    {
+     "section": "personnel",
+     "key": "ai_learn"
+    },
+    {
+     "section": "personnel",
+     "key": "ai_search2"
+    },
+    {
+     "section": "personnel",
+     "key": "officer_first"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "personnel",
+      "key": "ai_search2"
+     },
+     {
+      "section": "personnel",
+      "key": "ai_learn"
+     },
+     {
+      "section": "personnel",
+      "key": "officer_first"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "damage-preview": {
+   "title": "damage-preview",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "damage-preview",
+    "native",
+    "split-module",
+    "installer-gui"
+   ],
+   "ini": [
+    {
+     "section": "officer_ui",
+     "key": "damage_preview"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "officer_ui",
+      "key": "damage_preview"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "dev-tools": {
+   "title": "dev-tools",
+   "host": "tool",
+   "status": "tooling",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "cpu-trace"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "diplomacy-intel": {
+   "title": "diplomacy-intel",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "diplomacy-intel"
+   ],
+   "ini": [
+    {
+     "section": "diplomacy",
+     "key": "diplomacy_counterturn"
+    },
+    {
+     "section": "diplomacy",
+     "key": "diplomacy_overinvest"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "diplomacy",
+      "key": "diplomacy_overinvest",
+      "retired": true
+     },
+     {
+      "section": "diplomacy",
+      "key": "diplomacy_counterturn"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "dispatch-days": {
+   "title": "dispatch-days",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "layout"
+   ],
+   "conflicts": [],
+   "checks": [
+    "layout-registry",
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "officer_ui",
+     "key": "dispatch_days"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "officer_ui",
+      "key": "dispatch_days"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "district-intercept": {
+   "title": "district-intercept",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "sortie"
+   ],
+   "conflicts": [],
+   "checks": [
+    "district-intercept",
+    "sortie",
+    "native",
+    "split-module",
+    "installer-gui"
+   ],
+   "ini": [
+    {
+     "section": "combat",
+     "key": "district_intercept_block"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "combat",
+      "key": "district_intercept_block"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "dll-split": {
+   "title": "dll-split",
+   "host": "loader",
+   "status": "active",
+   "hub": true,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "split-module",
+    "native",
+    "sortie",
+    "merit",
+    "recruitment",
+    "personnel",
+    "awards",
+    "progress-native",
+    "log",
+    "progress-rollback",
+    "address-table",
+    "tactic-priority",
+    "manifest",
+    "hook-map",
+    "module-registry",
+    "core-services",
+    "save-host"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "domestic": {
+   "title": "domestic",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "personnel",
+    "injury"
+   ],
+   "conflicts": [],
+   "checks": [
+    "native"
+   ],
+   "ini": [
+    {
+     "section": "domestic",
+     "key": "domestic"
+    },
+    {
+     "section": "domestic",
+     "key": "domestic_direct"
+    },
+    {
+     "section": "domestic",
+     "key": "domestic_free"
+    },
+    {
+     "section": "domestic",
+     "key": "population"
+    },
+    {
+     "section": "domestic",
+     "key": "population_rate"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "domestic",
+      "key": "domestic"
+     },
+     {
+      "section": "domestic",
+      "key": "domestic_direct"
+     },
+     {
+      "section": "domestic",
+      "key": "domestic_free"
+     },
+     {
+      "section": "domestic",
+      "key": "population"
+     },
+     {
+      "section": "domestic",
+      "key": "population_rate"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "drag_learn": {
+   "title": "drag_learn",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "officer_ui",
+     "key": "drag_learn"
+    },
+    {
+     "section": "officer_ui",
+     "key": "drag_learn_multi"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "officer_ui",
+      "key": "drag_learn"
+     },
+     {
+      "section": "officer_ui",
+      "key": "drag_learn_multi"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "expert-combat": {
+   "title": "expert-combat",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "native",
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "battle_rules",
+     "key": "battle_rules"
+    },
+    {
+     "section": "battle_rules",
+     "key": "expert_ingame"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "battle_rules",
+      "key": "battle_rules"
+     },
+     {
+      "section": "battle_rules",
+      "key": "expert_ingame"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "face-keep": {
+   "title": "face-keep",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "layout"
+   ],
+   "conflicts": [],
+   "checks": [
+    "face-keep",
+    "layout-registry",
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "performance",
+     "key": "face_keep"
+    },
+    {
+     "section": "performance",
+     "key": "face_prefetch"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "performance",
+      "key": "face_keep"
+     },
+     {
+      "section": "performance",
+      "key": "face_prefetch"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "fast-menu": {
+   "title": "fast-menu",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "layout"
+   ],
+   "conflicts": [],
+   "checks": [
+    "layout-registry",
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "performance",
+     "key": "fast_menu"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "performance",
+      "key": "fast_menu"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "field-activity": {
+   "title": "field-activity",
+   "host": "combat",
+   "status": "aggregate",
+   "hub": false,
+   "depends": [
+    "ai",
+    "sortie"
+   ],
+   "conflicts": [],
+   "checks": [
+    "log",
+    "progress-native",
+    "progress-rollback",
+    "native",
+    "sortie",
+    "merit",
+    "recruitment",
+    "personnel",
+    "awards"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "field-io-revision": {
+   "title": "field-io-revision",
+   "host": "convenience",
+   "status": "aggregate",
+   "hub": false,
+   "depends": [
+    "merit",
+    "sortie"
+   ],
+   "conflicts": [],
+   "checks": [
+    "split-module",
+    "native",
+    "sortie",
+    "merit",
+    "recruitment",
+    "personnel",
+    "awards",
+    "progress-native",
+    "log",
+    "progress-rollback"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "injury": {
+   "title": "injury",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "personnel"
+   ],
+   "conflicts": [],
+   "checks": [
+    "personnel",
+    "native",
+    "recruitment",
+    "merit"
+   ],
+   "ini": [
+    {
+     "section": "personnel",
+     "key": "injury"
+    },
+    {
+     "section": "personnel",
+     "key": "injury_herbal"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "personnel",
+      "key": "injury"
+     },
+     {
+      "section": "personnel",
+      "key": "injury_herbal"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "installer": {
+   "title": "installer",
+   "host": "tool",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "installer-atomic",
+    "installer-layout",
+    "layout-restore"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "installer-gui": {
+   "title": "installer-gui",
+   "host": "tool",
+   "status": "active",
+   "hub": true,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "installer-gui"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "layout": {
+   "title": "layout",
+   "host": "layout",
+   "status": "active",
+   "hub": true,
+   "depends": [
+    "dll-split"
+   ],
+   "conflicts": [],
+   "checks": [
+    "split-module",
+    "shared-overlay",
+    "layout-registry"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "layout-registry": {
+   "title": "layout-registry",
+   "host": "layout",
+   "status": "active",
+   "hub": true,
+   "depends": [
+    "layout"
+   ],
+   "conflicts": [],
+   "checks": [
+    "layout-registry"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "layout-wait": {
+   "title": "layout-wait",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "layout"
+   ],
+   "conflicts": [],
+   "checks": [
+    "layout-registry",
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "diagnostics",
+     "key": "layout_wait"
+    },
+    {
+     "section": "performance",
+     "key": "layout_keep"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "performance",
+      "key": "layout_keep"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "lord-change": {
+   "title": "lord-change",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "layout"
+   ],
+   "conflicts": [],
+   "checks": [
+    "layout-registry",
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "officer_ui",
+     "key": "lord_change"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "officer_ui",
+      "key": "lord_change"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "mediation-plus": {
+   "title": "mediation-plus",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "layout"
+   ],
+   "conflicts": [],
+   "checks": [
+    "layout-registry",
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "officer_ui",
+     "key": "mediation_plus"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "officer_ui",
+      "key": "mediation_plus"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "merit": {
+   "title": "merit",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "merit",
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "personnel",
+     "key": "merit"
+    },
+    {
+     "section": "personnel",
+     "key": "merit_bond16"
+    },
+    {
+     "section": "personnel",
+     "key": "merit_friendship"
+    },
+    {
+     "section": "personnel",
+     "key": "merit_troops_level"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "personnel",
+      "key": "merit"
+     },
+     {
+      "section": "personnel",
+      "key": "merit_bond16"
+     },
+     {
+      "section": "personnel",
+      "key": "merit_troops_level"
+     },
+     {
+      "section": "personnel",
+      "key": "merit_friendship"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "modpack-v16": {
+   "title": "modpack-v16",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "layout"
+   ],
+   "conflicts": [],
+   "checks": [
+    "trait-hover",
+    "battle-deaths",
+    "split-module",
+    "native"
+   ],
+   "ini": [
+    {
+     "section": "extensions",
+     "key": "scenery_skip"
+    },
+    {
+     "section": "extensions",
+     "key": "stats200"
+    },
+    {
+     "section": "extensions",
+     "key": "stats200_growth"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "extensions",
+      "key": "scenery_skip",
+      "retired": true
+     },
+     {
+      "section": "extensions",
+      "key": "stats200"
+     },
+     {
+      "section": "extensions",
+      "key": "stats200_growth"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "module-manifests": {
+   "title": "module-manifests",
+   "host": "tool",
+   "status": "active",
+   "hub": true,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "module-manifests"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "name-lookup": {
+   "title": "name-lookup",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "name-lookup",
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "performance",
+     "key": "name_lookup"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "performance",
+      "key": "name_lookup"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "officer-rotation": {
+   "title": "officer-rotation",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "personnel"
+   ],
+   "conflicts": [],
+   "checks": [
+    "personnel",
+    "native"
+   ],
+   "ini": [
+    {
+     "section": "personnel",
+     "key": "officer_rotation"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "personnel",
+      "key": "officer_rotation"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "patch-next": {
+   "title": "patch-next",
+   "host": "tool",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "address-table"
+   ],
+   "conflicts": [],
+   "checks": [
+    "patch-next"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "path-count": {
+   "title": "path-count",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "path-count"
+   ],
+   "ini": [
+    {
+     "section": "diagnostics",
+     "key": "path_count"
+    }
+   ],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "path-fast": {
+   "title": "path-fast",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "path-fast"
+   ],
+   "ini": [
+    {
+     "section": "diagnostics",
+     "key": "path_count"
+    },
+    {
+     "section": "diagnostics",
+     "key": "path_fast_verify"
+    },
+    {
+     "section": "performance",
+     "key": "path_fast"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "performance",
+      "key": "path_fast"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "personnel": {
+   "title": "personnel",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "personnel"
+   ],
+   "ini": [
+    {
+     "section": "officer_ui",
+     "key": "loyalty"
+    },
+    {
+     "section": "officer_ui",
+     "key": "unified"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "officer_ui",
+      "key": "loyalty"
+     },
+     {
+      "section": "officer_ui",
+      "key": "unified",
+      "retired": true
+     }
+    ]
+   },
+   "ui": []
+  },
+  "progress-log": {
+   "title": "progress-log",
+   "host": "convenience",
+   "status": "aggregate",
+   "hub": false,
+   "depends": [
+    "core"
+   ],
+   "conflicts": [],
+   "checks": [
+    "log",
+    "progress-native",
+    "progress-rollback",
+    "native",
+    "sortie",
+    "merit",
+    "recruitment",
+    "personnel",
+    "awards"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "progress-native": {
+   "title": "progress-native",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "core"
+   ],
+   "conflicts": [],
+   "checks": [
+    "progress-native",
+    "progress-rollback",
+    "native",
+    "sortie",
+    "merit",
+    "recruitment",
+    "personnel",
+    "awards"
+   ],
+   "ini": [
+    {
+     "section": "performance",
+     "key": "distance"
+    },
+    {
+     "section": "progress_native",
+     "key": "geometry"
+    },
+    {
+     "section": "progress_native",
+     "key": "profile"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "performance",
+      "key": "distance"
+     },
+     {
+      "section": "progress_native",
+      "key": "geometry"
+     },
+     {
+      "section": "progress_native",
+      "key": "profile"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "progress-study": {
+   "title": "progress-study",
+   "host": "tool",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "progress",
+    "progress-samples"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "recruitment": {
+   "title": "recruitment",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "personnel",
+    "ui-common"
+   ],
+   "conflicts": [],
+   "checks": [
+    "recruitment"
+   ],
+   "ini": [
+    {
+     "section": "personnel",
+     "key": "recruit"
+    },
+    {
+     "section": "personnel",
+     "key": "recruit_ai"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "personnel",
+      "key": "recruit"
+     },
+     {
+      "section": "personnel",
+      "key": "recruit_ai"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "region-officers": {
+   "title": "region-officers",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "region-officers",
+    "native",
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "domestic",
+     "key": "region_officer_traits"
+    },
+    {
+     "section": "domestic",
+     "key": "region_officers"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "domestic",
+      "key": "region_officers"
+     },
+     {
+      "section": "domestic",
+      "key": "region_officer_traits"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "shared-overlay": {
+   "title": "shared-overlay",
+   "host": "layout",
+   "status": "active",
+   "hub": true,
+   "depends": [
+    "layout"
+   ],
+   "conflicts": [],
+   "checks": [
+    "shared-overlay"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "small-army-campaign": {
+   "title": "small-army-campaign",
+   "host": "combat",
+   "status": "aggregate",
+   "hub": false,
+   "depends": [
+    "ai",
+    "sortie"
+   ],
+   "conflicts": [],
+   "checks": [
+    "native",
+    "sortie",
+    "merit",
+    "recruitment",
+    "personnel",
+    "awards"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "sortie": {
+   "title": "sortie",
+   "host": "combat",
+   "status": "alias",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "sortie",
+    "native",
+    "merit",
+    "recruitment",
+    "personnel"
+   ],
+   "ini": [
+    {
+     "section": "combat",
+     "key": "attack_eval70"
+    },
+    {
+     "section": "combat",
+     "key": "retreat_eval60"
+    },
+    {
+     "section": "combat",
+     "key": "siege_guard"
+    },
+    {
+     "section": "combat",
+     "key": "siege_guard_range"
+    },
+    {
+     "section": "combat",
+     "key": "sortie_formation"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "combat",
+      "key": "sortie_formation"
+     },
+     {
+      "section": "combat",
+      "key": "attack_eval70"
+     },
+     {
+      "section": "combat",
+      "key": "retreat_eval60"
+     },
+     {
+      "section": "combat",
+      "key": "siege_guard"
+     },
+     {
+      "section": "combat",
+      "key": "siege_guard_range"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "speed-buttons": {
+   "title": "speed-buttons",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "layout"
+   ],
+   "conflicts": [],
+   "checks": [
+    "speed-buttons",
+    "layout-registry",
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "diagnostics",
+     "key": "day_stage"
+    },
+    {
+     "section": "game_flow",
+     "key": "speed_buttons"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "game_flow",
+      "key": "speed_buttons"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "stat-exp": {
+   "title": "stat-exp",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "layout"
+   ],
+   "conflicts": [],
+   "checks": [
+    "layout-registry",
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "officer_ui",
+     "key": "stat_exp"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "officer_ui",
+      "key": "stat_exp"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "tactic-priority": {
+   "title": "tactic-priority",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "layout",
+    "trait-hover"
+   ],
+   "conflicts": [],
+   "checks": [
+    "tactic-priority",
+    "layout-registry",
+    "split-module",
+    "merit",
+    "address-table"
+   ],
+   "ini": [
+    {
+     "section": "officer_ui",
+     "key": "tactic_priority"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "officer_ui",
+      "key": "tactic_priority"
+     }
+    ]
+   },
+   "ui": [
+    {
+     "owner": "tactic_priority",
+     "entry": ""
+    }
+   ]
+  },
+  "terrain-edit": {
+   "title": "terrain-edit",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "advisor-briefing",
+    "shared-overlay",
+    "terrain-profile"
+   ],
+   "conflicts": [],
+   "checks": [
+    "terrain-profile",
+    "terrain-edit",
+    "terrain-edit-ui",
+    "terrain-render",
+    "terrain-trees",
+    "water-diag",
+    "terrain-foam",
+    "terrain-diag"
+   ],
+   "ini": [
+    {
+     "section": "diagnostics",
+     "key": "water_diag"
+    },
+    {
+     "section": "real_estate",
+     "key": "terrain_edit"
+    },
+    {
+     "section": "season",
+     "key": "season_cloud"
+    },
+    {
+     "section": "season",
+     "key": "season_damage"
+    },
+    {
+     "section": "season",
+     "key": "season_disaster"
+    },
+    {
+     "section": "season",
+     "key": "season_domestic"
+    },
+    {
+     "section": "season",
+     "key": "season_fire"
+    },
+    {
+     "section": "season",
+     "key": "season_map"
+    },
+    {
+     "section": "season",
+     "key": "season_news"
+    },
+    {
+     "section": "season",
+     "key": "season_rain"
+    },
+    {
+     "section": "season",
+     "key": "season_tiles"
+    },
+    {
+     "section": "season",
+     "key": "season_weather"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "real_estate",
+      "key": "terrain_edit"
+     },
+     {
+      "section": "season",
+      "key": "season_map"
+     },
+     {
+      "section": "season",
+      "key": "season_weather"
+     },
+     {
+      "section": "season",
+      "key": "season_disaster"
+     },
+     {
+      "section": "season",
+      "key": "season_damage"
+     },
+     {
+      "section": "season",
+      "key": "season_news"
+     },
+     {
+      "section": "season",
+      "key": "season_fire",
+      "retired": true
+     },
+     {
+      "section": "season",
+      "key": "season_domestic"
+     },
+     {
+      "section": "season",
+      "key": "season_rain",
+      "retired": true
+     },
+     {
+      "section": "season",
+      "key": "season_cloud"
+     },
+     {
+      "section": "season",
+      "key": "season_tiles"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "terrain-profile": {
+   "title": "terrain-profile",
+   "host": "tool",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "terrain-profile"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  },
+  "trait-hover": {
+   "title": "trait-hover",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "layout",
+    "modpack-v16"
+   ],
+   "conflicts": [],
+   "checks": [
+    "trait-hover",
+    "layout-registry",
+    "split-module"
+   ],
+   "ini": [
+    {
+     "section": "extensions",
+     "key": "tooltip_collab"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "extensions",
+      "key": "tooltip_collab"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "traits9-captive": {
+   "title": "traits9-captive",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "layout"
+   ],
+   "conflicts": [],
+   "checks": [
+    "split-module",
+    "traits9-save"
+   ],
+   "ini": [
+    {
+     "section": "extensions",
+     "key": "traits9"
+    }
+   ],
+   "installer": {
+    "items": [
+     {
+      "section": "extensions",
+      "key": "traits9"
+     }
+    ]
+   },
+   "ui": []
+  },
+  "ui-common": {
+   "title": "ui-common",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [],
+   "conflicts": [],
+   "checks": [
+    "recruitment"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": []
+  }
+ }
+}

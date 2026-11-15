@@ -15,7 +15,7 @@ static void ui_expect(bool ok,unsigned line) {
 // test the common close slot with already populated output instead.
 static Obj ui_district,ui_layout,ui_dialog,ui_target,ui_actor,ui_body,ui_widget;
 static unsigned ui_original_calls,ui_setup_calls,ui_layout_calls,ui_collect_calls,ui_close_calls;
-static bool ui_accept=true,ui_send=true,ui_poison_layout=false;
+static bool ui_accept=true,ui_send=true,ui_poison_layout=false,ui_keep_current=false;
 static int ui_cost=1;
 static Obj ui_closed_dialog;
 static unsigned ui_closed_code,ui_label_node=2;
@@ -101,7 +101,10 @@ static void __fastcall ui_state_native(Obj state) {
         putptr(ui_dialog,0x1A8,ui_config_copy);
         if(ui_accept)ui_collect(ui_body,&out);
         recruit_selector_close(ui_dialog,0x7FFFFFFE); // 8F19C0 ordinary decision path.
-        Link *first=list_first(out);if(first)putptr(layout,0x188,first->value);
+        Link *first=list_first(out);bool kept=false;
+        // ui_keep_current models a picker that keeps a still-checked current target.
+        if(ui_keep_current)for(Link *link=first;link;link=link->next)if(link->value==pointer(layout,0x188)) {kept=true;break;}
+        if(first && !kept)putptr(layout,0x188,first->value);
         list_free(out); // Native 733BD0 releases the selection output.
     }
     if((operation==3 || operation==4) && ui_send) {
@@ -373,6 +376,21 @@ static void test_ui() {
     // Empty cancellation output retains the previous confirmed target.
     ui_accept=false;put32(ui_layout,0x180,2);recruit_state_update(state);ui_accept=true;
     expect(recruit_multi.count==3 && pointer(ui_layout,0x188)==last);
+    // local175: a second multi-pick reopens with the current target pre-checked;
+    // when the native keeps that target, 「외 N명」 and the batch must still match.
+    {
+        RecruitMultiSnapshot before=recruit_multi;
+        ui_pick_list={ui_target,second};put32(ui_layout,0x180,2);recruit_state_update(state);
+        expect(recruit_multi.count==2 && pointer(ui_layout,0x188)==second && recruit_multi.people[0]==second);
+        ui_keep_current=true;ui_pick_list={second,ui_target,last};
+        unsigned previews=ui_preview_calls;put32(ui_layout,0x180,2);recruit_state_update(state);ui_keep_current=false;
+        expect(pointer(ui_layout,0x188)==second && recruit_multi.count==3 && recruit_multi.people[0]==second &&
+               recruit_multi_matches(ui_layout,ui_district) && ui_preview_calls>previews && ui_label==L"은관 외 2명");
+        // The native choice outside the snapshot stays unmatched (native single pick).
+        RecruitMultiSnapshot kept=recruit_multi;putptr(ui_layout,0x188,other_actor);recruit_multi_align(ui_layout,ui_district);
+        expect(!memcmp(&kept,&recruit_multi,sizeof(kept)) && !recruit_multi_matches(ui_layout,ui_district));
+        recruit_multi=before;putptr(ui_layout,0x188,last);ui_pick_list={ui_target,second,last};
+    }
     // A mismatched target, world, district or layout must never auto-dispatch.
     ui_send=false;batch_orders.clear();
     RecruitMultiSnapshot saved_batch=recruit_multi;

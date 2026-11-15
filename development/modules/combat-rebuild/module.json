@@ -1,0 +1,66 @@
+{
+ "schema": 1,
+ "id": "combat-rebuild",
+ "title": "combat-rebuild",
+ "host": "combat",
+ "build": "none",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/combat_v2/hex.h",
+  "src/combat_v2/legacy_features.cpp",
+  "src/combat_v2/legacy_features.h",
+  "src/combat_v2/movement.cpp",
+  "src/combat_v2/movement.h",
+  "src/combat_v2/native_contract.h",
+  "src/combat_v2/sortie.cpp",
+  "src/combat_v2/sortie.h",
+  "tests/combat_v2_features_fixture.cpp",
+  "tests/combat_v2_movement_fixture.cpp",
+  "tests/combat_v2_movement_model.h",
+  "tests/combat_v2_sortie_fixture.cpp",
+  "tests/verify_combat_rebuild.py",
+  "tools/build_combat_rebuild.ps1"
+ ],
+ "sources": [
+  "src/combat_v2/hex.h",
+  "src/combat_v2/legacy_features.cpp",
+  "src/combat_v2/legacy_features.h",
+  "src/combat_v2/movement.cpp",
+  "src/combat_v2/movement.h",
+  "src/combat_v2/native_contract.h",
+  "src/combat_v2/sortie.cpp",
+  "src/combat_v2/sortie.h",
+  "tests/combat_v2_sortie_fixture.cpp",
+  "tests/combat_v2_movement_fixture.cpp",
+  "tests/combat_v2_movement_model.h",
+  "tests/combat_v2_features_fixture.cpp",
+  "tests/verify_combat_rebuild.py",
+  "tools/build_combat_rebuild.ps1"
+ ],
+ "tests": [
+  "combat-rebuild"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "combat-rebuild"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

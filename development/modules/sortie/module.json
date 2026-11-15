@@ -1,0 +1,92 @@
+{
+ "schema": 1,
+ "id": "sortie",
+ "title": "sortie",
+ "host": "combat",
+ "build": "split",
+ "status": "alias",
+ "hub": false,
+ "alias_of": "ai",
+ "depends": [],
+ "conflicts": [],
+ "owns": [],
+ "sources": [
+  "src/native_sortie.inl",
+  "src/native_sortie_links.inl",
+  "src/sortie_policy.h",
+  "src/computer_tactics.h",
+  "src/native_campaign_departures.inl"
+ ],
+ "tests": [
+  "sortie",
+  "native",
+  "merit",
+  "recruitment",
+  "personnel"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "sortie",
+  "native",
+  "merit",
+  "recruitment",
+  "personnel"
+ ],
+ "ini": [
+  {
+   "section": "combat",
+   "key": "attack_eval70"
+  },
+  {
+   "section": "combat",
+   "key": "retreat_eval60"
+  },
+  {
+   "section": "combat",
+   "key": "siege_guard"
+  },
+  {
+   "section": "combat",
+   "key": "siege_guard_range"
+  },
+  {
+   "section": "combat",
+   "key": "sortie_formation"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "combat",
+    "key": "sortie_formation"
+   },
+   {
+    "section": "combat",
+    "key": "attack_eval70"
+   },
+   {
+    "section": "combat",
+    "key": "retreat_eval60"
+   },
+   {
+    "section": "combat",
+    "key": "siege_guard"
+   },
+   {
+    "section": "combat",
+    "key": "siege_guard_range"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

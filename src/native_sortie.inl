@@ -180,10 +180,16 @@ static bool sortie_area_trait(Obj p) {
     }
     return false;
 }
-// 1,000-soldier units (user 2026-11-11 "여무장은 1000명으로 해 통솔 60이하면 그냥 1000명으로 지원나가는게 좋아"): every female
-// officer leaves with at most 1,000 soldiers (the 통솔 60 part was dropped in local139).
+// 1,000-soldier units (user 2026-11-11 "여무장은 1000명으로 해 통솔 60이하면 그냥 1000명으로 지원나가는게 좋아"): local139 capped
+// every female officer (its 통솔 60 OR-rule capped low-통솔 men too).
+// local174 (user 2026-11-15 "여무장 1000명제한은 응원/악주 and 여무장 and 통솔 60미만인경우에만 제한하자"): only a female officer
+// holding 응원 (96) or 악주 (23) in the original five slots and with 통솔 below 60 is capped; every other officer leaves with a
+// full unit.
 static bool sortie_female_capped(Obj p) {
-    return p[0xA9]==1;   // local139 (user 2026-11-14 "통솔 60이하 1000명제한 코드 풀자 오작동하네"): female officers only
+    if(p[0xA9]!=1)return false;
+    bool cheer=false;
+    for(unsigned i=0;i<5 && !cheer;++i) {const unsigned t=word(p,0x118+i*2);cheer=t==23 || t==96;}
+    return cheer && fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(p,0,0xFFF)<60;
 }
 static bool sortie_likes(Obj a,Obj b) {
     const auto liked=fn<int(__fastcall *)(Obj,Obj)>(GA(GA_234880));

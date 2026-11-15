@@ -1,0 +1,88 @@
+{
+ "schema": 1,
+ "id": "modpack-v16",
+ "title": "modpack-v16",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "layout"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/modpack_tables.h",
+  "src/native_modpack.inl",
+  "src/stat_growth.h",
+  "tests/modpack_fixture.cpp",
+  "tests/verify_modpack_static.py"
+ ],
+ "sources": [
+  "src/native_modpack.inl",
+  "src/modpack_tables.h",
+  "src/stat_growth.h",
+  "src/native_split_install.inl",
+  "tests/modpack_fixture.cpp",
+  "tests/verify_modpack_static.py"
+ ],
+ "tests": [
+  "trait-hover",
+  "battle-deaths",
+  "split-module",
+  "native"
+ ],
+ "hook_owners": [
+  "collab",
+  "scenery",
+  "stats200"
+ ],
+ "checks": [
+  "trait-hover",
+  "battle-deaths",
+  "split-module",
+  "native"
+ ],
+ "ini": [
+  {
+   "section": "extensions",
+   "key": "scenery_skip"
+  },
+  {
+   "section": "extensions",
+   "key": "stats200"
+  },
+  {
+   "section": "extensions",
+   "key": "stats200_growth"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "extensions",
+    "key": "scenery_skip",
+    "retired": true
+   },
+   {
+    "section": "extensions",
+    "key": "stats200"
+   },
+   {
+    "section": "extensions",
+    "key": "stats200_growth"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

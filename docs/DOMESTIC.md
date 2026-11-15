@@ -1,4 +1,4 @@
-# 자동 내정과 1군단 범위
+﻿# 자동 내정과 1군단 범위
 
 `SAN14_Convenience.dll`의 `native_domestic.inl`이 담당한다. `[groups] convenience`와 `[domestic] domestic`을 켜면 컴퓨터 세력·플레이어의 2군단 이후에 균형 개발을 적용한다.
 

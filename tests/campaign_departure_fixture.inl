@@ -49,11 +49,17 @@ static void campaign_departure_tests() {
     reset();*reinterpret_cast<unsigned *>(sortie_city+0x3C)=4000;
     check(!campaign_paid_single(sortie_city,goal,48400,8000,false) && sortie_issued==0,
         "weak city does not override the four thousand garrison floor");
-    reset();*reinterpret_cast<unsigned *>(sortie_city+0x3C)=10000;first[0xA9]=1;
+    // local174: the cap is for a female 응원/악주 holder under 통솔 60 only.
+    const unsigned short first_trait=word(first,0x118);const unsigned char first_lead=first[0xEC];
+    reset();*reinterpret_cast<unsigned *>(sortie_city+0x3C)=10000;first[0xA9]=1;put16(first,0x118,96);first[0xEC]=50;
     unsigned cmd[30];sortie_command(nullptr,goal,first,1,6000,cmd);
     Obj woman=sortie_issue(cmd,1);
     check(valid(woman) && word(woman,0x16)==1000 && cmd[2]==6000 && dword(sortie_city,0x3C)==9000,
-        "automatic female departure is capped at one thousand without modifying the caller command");
+        "automatic female 응원 departure under 통솔 60 is capped at one thousand without modifying the caller command");
+    reset();*reinterpret_cast<unsigned *>(sortie_city+0x3C)=10000;first[0xEC]=60;
+    Obj strong=sortie_issue(cmd,1);
+    check(valid(strong) && word(strong,0x16)==6000,"female 응원 holder with 통솔 60 leaves with the full command");
+    put16(first,0x118,first_trait);first[0xEC]=first_lead;
     reset();Obj saved_root=root;
     Obj ownforce=table(0xDF30,2,51);Obj formations[21]={};for(unsigned i=1;i<=20;++i)formations[i]=table(0x77428,i,20);
     root=static_cast<Obj>(calloc(1,0x90000));putptr(image,0x2780F60,root);putptr(root,0x871E8,player);

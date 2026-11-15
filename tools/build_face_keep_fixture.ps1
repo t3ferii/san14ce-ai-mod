@@ -1,4 +1,4 @@
-param()
+﻿param()
 # face_keep: static guard check against the analysis EXE/running .text + mock of the pin decision.
 $ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot

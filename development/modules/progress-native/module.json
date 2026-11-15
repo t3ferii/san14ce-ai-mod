@@ -1,0 +1,109 @@
+{
+ "schema": 1,
+ "id": "progress-native",
+ "title": "progress-native",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "core"
+ ],
+ "conflicts": [],
+ "owns": [
+  "distribution/progress_native.ini",
+  "src/native_progress.inl",
+  "src/native_progress_profile.h",
+  "src/progress_distance_kernel.asm",
+  "src/progress_distance_kernel.h",
+  "src/progress_geometry.h",
+  "tests/progress_geometry_fixture.cpp",
+  "tests/progress_measure_fixture.ps1",
+  "tests/progress_native_fixture.cpp",
+  "tests/verify_progress_rollback.py",
+  "tools/build_progress_fixture.ps1"
+ ],
+ "sources": [
+  "src/native_progress.inl",
+  "src/progress_geometry.h",
+  "src/native_progress_profile.h",
+  "src/progress_distance_kernel.asm",
+  "src/progress_distance_kernel.h",
+  "src/native_adapter.cpp"
+ ],
+ "tests": [
+  "progress-native",
+  "progress-rollback",
+  "native",
+  "sortie",
+  "merit",
+  "recruitment",
+  "personnel",
+  "awards"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "progress-native",
+  "progress-rollback",
+  "native",
+  "sortie",
+  "merit",
+  "recruitment",
+  "personnel",
+  "awards"
+ ],
+ "ini": [
+  {
+   "section": "performance",
+   "key": "distance"
+  },
+  {
+   "section": "progress_native",
+   "key": "geometry"
+  },
+  {
+   "section": "progress_native",
+   "key": "profile"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "performance",
+    "key": "distance"
+   },
+   {
+    "section": "progress_native",
+    "key": "geometry"
+   },
+   {
+    "section": "progress_native",
+    "key": "profile"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "progress_native",
+    "module": "progress-native",
+    "cond": "",
+    "off_id": 0,
+    "wanted": "mod_features.distance",
+    "install": "(install_progress_native(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 60
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

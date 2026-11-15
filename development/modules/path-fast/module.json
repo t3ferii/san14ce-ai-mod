@@ -1,0 +1,85 @@
+{
+ "schema": 1,
+ "id": "path-fast",
+ "title": "path-fast",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/native_path_fast.inl",
+  "src/path_fast.h",
+  "tests/path_fast_fixture.cpp",
+  "tests/verify_path_fast.py",
+  "tools/build_path_fast_fixture.ps1"
+ ],
+ "sources": [
+  "src/native_path_fast.inl",
+  "src/path_fast.h",
+  "src/native_adapter.cpp",
+  "src/native_path_count.inl",
+  "src/native_split_install.inl",
+  "tests/path_fast_fixture.cpp",
+  "tests/verify_path_fast.py",
+  "tests/split_module_fixture.cpp",
+  "tools/build_path_fast_fixture.ps1",
+  "installer/InstallerGui.cs",
+  "distribution/FeatureSelect.ps1",
+  "FeatureSelect.ps1"
+ ],
+ "tests": [
+  "path-fast"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "path-fast"
+ ],
+ "ini": [
+  {
+   "section": "diagnostics",
+   "key": "path_count"
+  },
+  {
+   "section": "diagnostics",
+   "key": "path_fast_verify"
+  },
+  {
+   "section": "performance",
+   "key": "path_fast"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "performance",
+    "key": "path_fast"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "path_fast",
+    "module": "path-fast",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.path_fast",
+    "install": "(path_fast::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 170
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

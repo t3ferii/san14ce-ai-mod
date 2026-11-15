@@ -1,4 +1,4 @@
-param()
+﻿param()
 $ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot
 & python -B -X utf8 (Join-Path $taskProject 'tests/verify_diplomacy_intel.py')

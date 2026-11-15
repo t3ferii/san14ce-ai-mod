@@ -1,4 +1,4 @@
-param(
+﻿param(
     [ValidateRange(2,300)][int]$Seconds=60,
     [ValidateRange(250,5000)][int]$IntervalMs=500,
     [ValidateRange(0,30)][int]$Countdown=5,

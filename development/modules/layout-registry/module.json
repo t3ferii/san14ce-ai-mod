@@ -1,0 +1,44 @@
+{
+ "schema": 1,
+ "id": "layout-registry",
+ "title": "layout-registry",
+ "host": "layout",
+ "build": "split",
+ "status": "active",
+ "hub": true,
+ "alias_of": "",
+ "depends": [
+  "layout"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/layout_registry.h",
+  "tests/verify_layout_registry.py"
+ ],
+ "sources": [
+  "src/layout_registry.h",
+  "tests/verify_layout_registry.py"
+ ],
+ "tests": [
+  "layout-registry"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "layout-registry"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

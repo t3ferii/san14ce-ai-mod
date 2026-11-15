@@ -1,0 +1,79 @@
+{
+ "schema": 1,
+ "id": "layout",
+ "title": "layout",
+ "host": "layout",
+ "build": "split",
+ "status": "active",
+ "hub": true,
+ "alias_of": "",
+ "depends": [
+  "dll-split"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/layout_api.h",
+  "src/layout_main.cpp",
+  "src/native_layout_client.inl",
+  "src/native_layout_core.inl",
+  "src/native_layout_present.inl",
+  "src/native_layout_ui.inl",
+  "tests/layout_fixture.cpp",
+  "tests/layout_loader_mock.cpp",
+  "tests/layout_p3_fixture.cpp",
+  "tests/layout_p4_fixture.cpp",
+  "tests/verify_layout_loader.py"
+ ],
+ "sources": [
+  "src/layout_api.h",
+  "src/layout_registry.h",
+  "src/native_layout_client.inl",
+  "src/layout_main.cpp",
+  "src/native_layout_core.inl",
+  "src/native_layout_present.inl",
+  "src/native_layout_ui.inl",
+  "src/native_layout_wait.inl",
+  "src/native_unified_overlay.inl",
+  "src/native_split_install.inl",
+  "src/module_loader.cpp",
+  "src/input_proxy.cpp",
+  "tests/layout_fixture.cpp",
+  "tests/layout_p3_fixture.cpp",
+  "tests/layout_p4_fixture.cpp",
+  "tests/verify_layout_registry.py",
+  "tests/layout_loader_mock.cpp",
+  "tests/verify_layout_loader.py",
+  "tests/verify_split_exports.py",
+  "tools/build_split.ps1",
+  "docs/LAYOUT_DLL_COMPAT_DESIGN.md"
+ ],
+ "tests": [
+  "split-module",
+  "shared-overlay",
+  "layout-registry"
+ ],
+ "hook_owners": [
+  "layout_events*",
+  "layout_present*"
+ ],
+ "checks": [
+  "split-module",
+  "shared-overlay",
+  "layout-registry"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

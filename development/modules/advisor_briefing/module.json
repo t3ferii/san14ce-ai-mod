@@ -1,0 +1,55 @@
+{
+ "schema": 1,
+ "id": "advisor_briefing",
+ "title": "advisor_briefing",
+ "host": "convenience",
+ "build": "split",
+ "status": "alias",
+ "hub": false,
+ "alias_of": "advisor-briefing",
+ "depends": [],
+ "conflicts": [],
+ "owns": [],
+ "sources": [
+  "src/native_advisor_briefing.inl",
+  "src/native_adapter.cpp",
+  "src/native_split_install.inl",
+  "tests/advisor_briefing_fixture.cpp",
+  "tools/build_advisor_briefing_fixture.ps1",
+  "tests/split_module_fixture.cpp"
+ ],
+ "tests": [
+  "advisor-briefing",
+  "split-module"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "advisor-briefing",
+  "split-module"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [
+   {
+    "service": "overlay",
+    "owner": "advisor_briefing",
+    "kind": "add",
+    "order": 40,
+    "gate_order": 10,
+    "cond": "defined(SPLIT_BASE)",
+    "expr": "services::overlay.add(\"advisor_briefing\",services::OverlaySub{services::kOverlayContext|services::kOverlayWindow,services::kGateBriefing,&briefing_overlay::needs_draw,&briefing_overlay::needs_draw,[](ID3D11Device *d,ID3D11DeviceContext *c,ID3D11Texture2D *back,const D3D11_TEXTURE2D_DESC &desc,bool){briefing_overlay::draw(d,c,back,desc);},&briefing_overlay::input},[]{return mod_features.advisor_briefing;},services::kOverlayBriefing)"
+   }
+  ],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

@@ -1,0 +1,71 @@
+{
+ "schema": 1,
+ "id": "recruitment",
+ "title": "recruitment",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "personnel",
+  "ui-common"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_personnel_batch.inl",
+  "src/native_recruit_ai.inl",
+  "src/native_recruit_ui.inl",
+  "tests/recruit_ai_fixture.inl",
+  "tests/recruitment_ui_fixture.cpp"
+ ],
+ "sources": [
+  "src/native_recruit_ui.inl",
+  "src/native_personnel_batch.inl",
+  "src/native_personnel.inl",
+  "src/native_recruit_ai.inl",
+  "src/personnel_policy.h"
+ ],
+ "tests": [
+  "recruitment"
+ ],
+ "hook_owners": [
+  "recruit_ui"
+ ],
+ "checks": [
+  "recruitment"
+ ],
+ "ini": [
+  {
+   "section": "personnel",
+   "key": "recruit"
+  },
+  {
+   "section": "personnel",
+   "key": "recruit_ai"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "personnel",
+    "key": "recruit"
+   },
+   {
+    "section": "personnel",
+    "key": "recruit_ai"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

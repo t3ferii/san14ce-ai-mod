@@ -1,4 +1,4 @@
-param()
+﻿param()
 # appear_batch: static guard check against the analysis EXE/running .text + mock of the per-frame loop.
 $ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot

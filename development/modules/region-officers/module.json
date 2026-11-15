@@ -1,0 +1,85 @@
+{
+ "schema": 1,
+ "id": "region-officers",
+ "title": "region-officers",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/native_region_officer_traits.inl",
+  "src/native_region_officers.inl",
+  "src/region_officer_profile.h",
+  "tests/region_officer_fixture.cpp",
+  "tests/verify_region_officers.py",
+  "tools/build_region_officer_fixture.ps1"
+ ],
+ "sources": [
+  "src/native_region_officers.inl",
+  "src/native_region_officer_traits.inl",
+  "src/region_officer_profile.h",
+  "tests/region_officer_fixture.cpp",
+  "tests/verify_region_officers.py"
+ ],
+ "tests": [
+  "region-officers",
+  "native",
+  "split-module"
+ ],
+ "hook_owners": [
+  "region_officers"
+ ],
+ "checks": [
+  "region-officers",
+  "native",
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "domestic",
+   "key": "region_officer_traits"
+  },
+  {
+   "section": "domestic",
+   "key": "region_officers"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "domestic",
+    "key": "region_officers"
+   },
+   {
+    "section": "domestic",
+    "key": "region_officer_traits"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "region_officers",
+    "module": "region-officers",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 37,
+    "wanted": "mod_features.region_officers",
+    "install": "region_officers::install()",
+    "refused": "split_feature_off(mod_features.region_officers,37,5)",
+    "after": [],
+    "seq": 270
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

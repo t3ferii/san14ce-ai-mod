@@ -1,4 +1,4 @@
-param([Alias('Action')][ValidateSet('Apply','Restore','Select')][string]$Mode = 'Apply', [string]$GameDirectory, [switch]$NonInteractive)
+﻿param([Alias('Action')][ValidateSet('Apply','Restore','Select')][string]$Mode = 'Apply', [string]$GameDirectory, [switch]$NonInteractive)
 $ErrorActionPreference = 'Stop'
 try {
     if (-not $GameDirectory) {

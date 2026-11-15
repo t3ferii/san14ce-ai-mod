@@ -1,4 +1,4 @@
-# user 2026-11-03: ?? ?? ? ??. CCZ OFF/Restore A-H fixtures.
+﻿# user 2026-11-03: ?? ?? ? ??. CCZ OFF/Restore A-H fixtures.
 # Operates exclusively on newly created fixture files under build/.
 param([string]$Payload)
 $ErrorActionPreference='Stop'

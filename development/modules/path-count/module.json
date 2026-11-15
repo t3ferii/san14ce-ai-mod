@@ -1,0 +1,73 @@
+{
+ "schema": 1,
+ "id": "path-count",
+ "title": "path-count",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/native_path_count.inl",
+  "src/path_count.h",
+  "tests/path_count_fixture.cpp",
+  "tests/verify_path_count.py",
+  "tools/build_path_count_fixture.ps1"
+ ],
+ "sources": [
+  "src/native_path_count.inl",
+  "src/path_count.h",
+  "src/native_adapter.cpp",
+  "src/native_split_install.inl",
+  "src/native_progress.inl",
+  "tests/path_count_fixture.cpp",
+  "tests/verify_path_count.py",
+  "tools/build_path_count_fixture.ps1",
+  "installer/InstallerGui.cs",
+  "distribution/FeatureSelect.ps1",
+  "FeatureSelect.ps1"
+ ],
+ "tests": [
+  "path-count"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "path-count"
+ ],
+ "ini": [
+  {
+   "section": "diagnostics",
+   "key": "path_count"
+  }
+ ],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "path_count",
+    "module": "path-count",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE) && !defined(NO_RUNTIME_LOG)",
+    "off_id": 0,
+    "wanted": "true",
+    "install": "(split_path_count_install(),true)",
+    "refused": "",
+    "after": [
+     "path_fast"
+    ],
+    "seq": 180
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

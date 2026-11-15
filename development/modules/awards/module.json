@@ -1,0 +1,120 @@
+{
+ "schema": 1,
+ "id": "awards",
+ "title": "awards",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "merit",
+  "personnel",
+  "domestic",
+  "ui-common"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/award_policy.h",
+  "src/native_awards.inl",
+  "src/native_awards_links.inl",
+  "src/native_awards_save.inl",
+  "tests/awards_native_fixture.cpp"
+ ],
+ "sources": [
+  "src/award_policy.h",
+  "src/native_awards.inl",
+  "src/native_awards_save.inl",
+  "src/native_awards_links.inl"
+ ],
+ "tests": [
+  "awards",
+  "native",
+  "merit",
+  "recruitment"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "awards",
+  "native",
+  "merit",
+  "recruitment"
+ ],
+ "ini": [
+  {
+   "section": "personnel",
+   "key": "awards"
+  },
+  {
+   "section": "personnel",
+   "key": "awards_ai"
+  },
+  {
+   "section": "personnel",
+   "key": "awards_horse"
+  },
+  {
+   "section": "personnel",
+   "key": "awards_v16"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "personnel",
+    "key": "awards"
+   },
+   {
+    "section": "personnel",
+    "key": "awards_ai"
+   },
+   {
+    "section": "personnel",
+    "key": "awards_horse"
+   },
+   {
+    "section": "personnel",
+    "key": "awards_v16"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [
+   {
+    "service": "domestic_tick",
+    "owner": "awards",
+    "kind": "add",
+    "order": 10,
+    "gate_order": 0,
+    "cond": "defined(AWARD_WAREHOUSE)",
+    "expr": "services::domestic_tick.add(\"awards\",{[](Obj city){if(mod_features.awards_ai)award_ai_city(city);else award_synchronize();},nullptr},[]{return mod_features.awards;},10)"
+   },
+   {
+    "service": "domestic_tick",
+    "owner": "awards",
+    "kind": "fail",
+    "order": 0,
+    "gate_order": 0,
+    "cond": "",
+    "expr": "services::domestic_tick.on_fail(&mod_features.awards,12)"
+   },
+   {
+    "service": "sidecars",
+    "owner": "awards",
+    "kind": "add",
+    "order": 40,
+    "gate_order": 0,
+    "cond": "defined(SPLIT_BASE) && defined(AWARD_WAREHOUSE)",
+    "expr": "merit_sidecars.add(&award_sidecar_plugin,40)"
+   }
+  ],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

@@ -1,6 +1,6 @@
 # 현재 소스 조사 범위와 함수 색인
 
-기준: v16 공개 무로그 빌드 소스 (2026-11-15). split 빌드 정의·Layout 등록표·주소표·기능 게이트·정책 및 기존 함수 기록을 대조했다.
+기준: v16.1 공개 무로그 빌드 소스 (2026-11-15). split 빌드 정의·Layout 등록표·주소표·기능 게이트·정책 및 기존 함수 기록을 대조했다.
 일반 설명은 [README](../README.md), 원작 연결 함수와 변경 조건은 [기술 설명](../docs/GITHUB_기능상세.md)에 있다.
 
 ## 근거와 한계
@@ -29,7 +29,7 @@
 
 ## 파일별 탐색표
 
-현재 src 217개 파일, 정의 후보 3408개. 이 수는 검증 통과 수가 아니다.
+현재 src 218개 파일, 정의 후보 3508개. 이 수는 검증 통과 수가 아니다.
 
 | 파일 | 정의 후보 | 기능 주제 | 조사 범위 |
 |---|---:|---|---|
@@ -182,7 +182,7 @@
 | [src/native_progress.inl](../src/native_progress.inl) | 12 | 거리 계산·AI 진입 가속 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_progress_profile.h](../src/native_progress_profile.h) | 0 | 거리 계산·AI 진입 가속 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_recruit_ai.inl](../src/native_recruit_ai.inl) | 5 | 등용 화면·알림·컴퓨터 등용 제한 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_recruit_ui.inl](../src/native_recruit_ui.inl) | 22 | 등용 화면·알림·컴퓨터 등용 제한 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_recruit_ui.inl](../src/native_recruit_ui.inl) | 23 | 등용 화면·알림·컴퓨터 등용 제한 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_region_officer_traits.inl](../src/native_region_officer_traits.inl) | 9 | 담당관·관련개성 표시·분산 생성 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_region_officers.inl](../src/native_region_officers.inl) | 18 | 담당관·관련개성 표시·분산 생성 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_route_hook.inl](../src/native_route_hook.inl) | 47 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
@@ -227,6 +227,7 @@
 | [src/season/season_bc.hlsl](../src/season/season_bc.hlsl) | 7 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/season/season_cloud_vs.hlsl](../src/season/season_cloud_vs.hlsl) | 1 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/season/season_engine.c](../src/season/season_engine.c) | 126 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/season/season_engine_v26.inc](../src/season/season_engine_v26.inc) | 99 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/season/season_rain.hlsl](../src/season/season_rain.hlsl) | 22 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/season/season_rain_drops.hlsl](../src/season/season_rain_drops.hlsl) | 22 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/season/season_rain_dropsb.hlsl](../src/season/season_rain_dropsb.hlsl) | 22 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |

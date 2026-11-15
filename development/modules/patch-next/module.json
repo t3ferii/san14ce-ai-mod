@@ -1,0 +1,53 @@
+{
+ "schema": 1,
+ "id": "patch-next",
+ "title": "patch-next",
+ "host": "tool",
+ "build": "none",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "address-table"
+ ],
+ "conflicts": [],
+ "owns": [
+  "tools/gen_emit.py",
+  "tools/gen_signatures.py",
+  "tools/patch_next.py",
+  "tools/pelib.py"
+ ],
+ "sources": [
+  "tools/patch_next.py",
+  "tools/pelib.py",
+  "tools/gen_signatures.py",
+  "tools/gen_emit.py",
+  "tools/addr_promote.py",
+  "tools/hook_map.py",
+  "tools/build_addr_fixtures.ps1",
+  "tools/build_ga_equiv_dump.ps1",
+  "docs/PATCH_RESILIENCE.md"
+ ],
+ "tests": [
+  "patch-next"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "patch-next"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

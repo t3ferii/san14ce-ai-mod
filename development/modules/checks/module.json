@@ -1,0 +1,58 @@
+{
+ "schema": 1,
+ "id": "checks",
+ "title": "checks",
+ "host": "tool",
+ "build": "none",
+ "status": "tooling",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "tools/check_feature.ps1",
+  "tools/run_checks.py",
+  "tests/verify_run_checks.py",
+  "tools/check_observer_hooks.py",
+  "tools/observer_hooks.json",
+  "tests/verify_check_manifest.py",
+  "tests/verify_feature_deps.py",
+  "tests/verify_hook_map.py",
+  "tests/verify_select_checks.py",
+  "tools/check_manifest.py",
+  "tools/feature_deps.py",
+  "tools/hook_map.py",
+  "tools/hookmap_extract.py",
+  "tools/route_inputs.py",
+  "tools/select_checks.py"
+ ],
+ "sources": [],
+ "tests": [
+  "manifest",
+  "hook-map",
+  "feature-deps",
+  "checks-selftest"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "manifest",
+  "hook-map",
+  "feature-deps",
+  "checks-selftest"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

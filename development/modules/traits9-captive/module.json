@@ -1,0 +1,63 @@
+{
+ "schema": 1,
+ "id": "traits9-captive",
+ "title": "traits9-captive",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "layout"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_traits9.inl",
+  "src/traits9_payloads.h",
+  "tests/verify_traits9_save.py",
+  "tools/traits9_layout.py"
+ ],
+ "sources": [
+  "src/native_traits9.inl",
+  "src/traits9_payloads.h",
+  "src/native_split_install.inl",
+  "tests/verify_traits9_save.py",
+  "distribution/SplitManage.ps1"
+ ],
+ "tests": [
+  "split-module",
+  "traits9-save"
+ ],
+ "hook_owners": [
+  "traits9"
+ ],
+ "checks": [
+  "split-module",
+  "traits9-save"
+ ],
+ "ini": [
+  {
+   "section": "extensions",
+   "key": "traits9"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "extensions",
+    "key": "traits9"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

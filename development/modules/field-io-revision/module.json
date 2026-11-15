@@ -1,0 +1,70 @@
+{
+ "schema": 1,
+ "id": "field-io-revision",
+ "title": "field-io-revision",
+ "host": "convenience",
+ "build": "split",
+ "status": "aggregate",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "merit",
+  "sortie"
+ ],
+ "conflicts": [],
+ "owns": [],
+ "sources": [
+  "src/native_adapter.cpp",
+  "src/native_sortie.inl",
+  "src/native_campaign.inl",
+  "src/native_campaign_routes.inl",
+  "src/native_campaign_operations.inl",
+  "src/native_campaign_support.inl",
+  "src/native_campaign_departures.inl",
+  "src/native_merit.inl",
+  "src/native_merit_save.inl",
+  "src/merit_bond.h",
+  "src/sidecar_cache.h",
+  "src/native_adjacency.inl"
+ ],
+ "tests": [
+  "split-module",
+  "native",
+  "sortie",
+  "merit",
+  "recruitment",
+  "personnel",
+  "awards",
+  "progress-native",
+  "log",
+  "progress-rollback"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "split-module",
+  "native",
+  "sortie",
+  "merit",
+  "recruitment",
+  "personnel",
+  "awards",
+  "progress-native",
+  "log",
+  "progress-rollback"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

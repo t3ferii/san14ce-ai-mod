@@ -1,4 +1,4 @@
-// Save codec check on real autosave files (read-only copies) and random data:
+﻿// Save codec check on real autosave files (read-only copies) and random data:
 // 1) our decoder reproduces each original block exactly to its recorded size,
 // 2) our rank table equals the stored table (9332B0 semantics),
 // 3) fast encoder output decodes back to the same bytes; size/time vs original.

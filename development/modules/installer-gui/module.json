@@ -1,0 +1,51 @@
+{
+ "schema": 1,
+ "id": "installer-gui",
+ "title": "installer-gui",
+ "host": "tool",
+ "build": "none",
+ "status": "active",
+ "hub": true,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "FeatureSelect.ps1",
+  "distribution/FeatureSelect.ps1",
+  "installer/InstallerGui.cs",
+  "installer/app.manifest",
+  "tests/installer_gui_roundtrip.ps1",
+  "tests/verify_installer_gui.py",
+  "tools/build_installer.ps1"
+ ],
+ "sources": [
+  "installer/InstallerGui.cs",
+  "installer/app.manifest",
+  "tools/build_installer.ps1",
+  "tests/verify_installer_gui.py",
+  "tests/installer_gui_roundtrip.ps1",
+  "distribution/FeatureSelect.ps1"
+ ],
+ "tests": [
+  "installer-gui"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "installer-gui"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

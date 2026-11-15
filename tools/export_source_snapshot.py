@@ -72,23 +72,51 @@ def cpp_tokens(text):
     return [m[0] for m in re.finditer(pattern, text) if not m[0].isspace() and not m[0].startswith(('//', '/*'))]
 
 
+# Every git-tracked text file is published unless listed here, so a new tool,
+# doc or catalog cannot silently go missing from the public source.
+# Kept out: the public repository's own workflow/site/ignore files and public
+# CURRENT.md, the reference-mod inventory (research), and backups.
+EXCLUDE_PREFIX = ('.github/', 'site/')
+EXCLUDE_FILES = {'.gitignore', '.gitattributes', 'development/CURRENT.md', 'development/reference_inventory.json'}
+# Untracked (gitignored) text that the published source references. Binary
+# payloads (*.bin, images) and game-derived data/ tables stay excluded.
+EXTRA_UNTRACKED = ['assets/ccz/README.md', 'assets/ccz/ccz_catalog.json', 'assets/ccz/ccz_units.json']
+
+
+def tracked_text():
+    import subprocess
+    out = subprocess.run(['git', '-C', str(PROJECT), 'ls-files', '-z'], capture_output=True, check=True).stdout
+    for rel in filter(None, out.decode('utf-8').split('\0')):
+        if rel.startswith(EXCLUDE_PREFIX) or rel in EXCLUDE_FILES or '.bak' in rel.rsplit('/', 1)[-1]:
+            continue
+        path = PROJECT / rel
+        if path.is_file() and b'\x00' not in path.read_bytes():
+            yield path
+
+
 def main():
     if DEST.exists():
         raise SystemExit('Snapshot already exists; preserve it and choose a new export path.')
     selected = set()
     for folder in ('src', 'tests', 'installer', 'distribution'):
-        selected.update(p for p in (PROJECT / folder).rglob('*') if p.is_file() and p.suffix in TEXT)
+        selected.update(p for p in (PROJECT / folder).rglob('*') if p.is_file() and p.suffix in TEXT and '.bak' not in p.name)
     selected.update(p for p in (PROJECT / 'tools').glob('*') if p.is_file() and (p.name.startswith(('build_', 'verify_'))) and p.suffix in TEXT)
     selected.update(PROJECT / 'tools' / name for name in EXTRA_TOOLS)
     selected.update(PROJECT / 'docs' / name for name in DOCS)
     selected.update([PROJECT / 'development/features.json', PROJECT / 'README.md'])
+    selected.update(tracked_text())
+    selected.update(PROJECT / rel for rel in EXTRA_UNTRACKED if (PROJECT / rel).is_file())
     # Resolve local Python helper imports without executing any module.
     while True:
         more = set()
         for path in selected:
             if path.suffix != '.py':
                 continue
-            for node in ast.walk(ast.parse(path.read_text(encoding='utf-8-sig'))):
+            try:
+                tree = ast.parse(path.read_text(encoding='utf-8-sig'))
+            except SyntaxError:
+                continue  # e.g. a Ghidra/Jython helper; published as text only.
+            for node in ast.walk(tree):
                 names = [node.module] if isinstance(node, ast.ImportFrom) and node.module else [a.name for a in node.names] if isinstance(node, ast.Import) else []
                 for name in names:
                     for parent in (PROJECT / 'tools', PROJECT / 'legacy/FogMod_Source/tools'):
@@ -121,7 +149,11 @@ def main():
             raise ValueError('Private machine path remains: ' + rel)
         target = DEST / rel
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(text, encoding='utf-8', newline='\n')
+        original = raw.decode('utf-16' if raw.startswith((b'\xff\xfe', b'\xfe\xff')) else 'utf-8-sig')
+        if text == original:
+            target.write_bytes(raw)  # Unchanged: keep BOM (Windows PowerShell 5.1 Korean) and line endings.
+        else:
+            target.write_text(text, encoding='utf-8-sig' if raw.startswith(b'\xef\xbb\xbf') else 'utf-8', newline='\n')
         records.append(dict(path=rel, original_sha256=hashlib.sha256(raw).hexdigest(), published_sha256=hashlib.sha256(target.read_bytes()).hexdigest(), ai_contracts=len(COMMENTS.get(rel, []))))
     template = DEST / 'distribution/기능설정.ini'
     (DEST / '기능설정.ini').write_bytes(template.read_bytes())

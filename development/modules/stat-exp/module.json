@@ -1,0 +1,68 @@
+{
+ "schema": 1,
+ "id": "stat-exp",
+ "title": "stat-exp",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "layout"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_stat_exp.inl"
+ ],
+ "sources": [
+  "src/native_stat_exp.inl"
+ ],
+ "tests": [
+  "layout-registry",
+  "split-module"
+ ],
+ "hook_owners": [
+  "stat_exp"
+ ],
+ "checks": [
+  "layout-registry",
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "officer_ui",
+   "key": "stat_exp"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "officer_ui",
+    "key": "stat_exp"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "stat_exp",
+    "module": "stat-exp",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.stat_exp",
+    "install": "(stat_exp::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 130
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

@@ -1,0 +1,65 @@
+{
+ "schema": 1,
+ "id": "personnel",
+ "title": "personnel",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/native_personnel.inl",
+  "src/personnel_policy.h",
+  "tests/personnel_native_fixture.cpp",
+  "tests/personnel_policy_fixture.cpp",
+  "tools/build_personnel_fixture.ps1"
+ ],
+ "sources": [
+  "src/native_personnel.inl",
+  "src/native_recruit_ai.inl",
+  "src/personnel_policy.h"
+ ],
+ "tests": [
+  "personnel"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "personnel"
+ ],
+ "ini": [
+  {
+   "section": "officer_ui",
+   "key": "loyalty"
+  },
+  {
+   "section": "officer_ui",
+   "key": "unified"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "officer_ui",
+    "key": "loyalty"
+   },
+   {
+    "section": "officer_ui",
+    "key": "unified",
+    "retired": true
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

@@ -1,0 +1,55 @@
+{
+ "schema": 1,
+ "id": "officer-rotation",
+ "title": "officer-rotation",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "personnel"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_officer_rotation.inl"
+ ],
+ "sources": [
+  "src/native_officer_rotation.inl",
+  "src/native_domestic.inl"
+ ],
+ "tests": [
+  "personnel",
+  "native"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "personnel",
+  "native"
+ ],
+ "ini": [
+  {
+   "section": "personnel",
+   "key": "officer_rotation"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "personnel",
+    "key": "officer_rotation"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

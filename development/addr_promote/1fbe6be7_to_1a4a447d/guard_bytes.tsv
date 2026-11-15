@@ -1,0 +1,2 @@
+kind	file	line	old	new
+guard-byte	src/native_profile.h	8	0x57	0x56

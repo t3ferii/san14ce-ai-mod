@@ -1,0 +1,318 @@
+{
+ "schema": 1,
+ "id": "terrain-edit",
+ "title": "terrain-edit",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "advisor-briefing",
+  "shared-overlay",
+  "terrain-profile"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_terrain_edit.inl",
+  "src/native_terrain_edit_save.inl",
+  "src/native_terrain_edit_ui.inl",
+  "src/native_terrain_foam.inl",
+  "src/native_terrain_render.inl",
+  "src/native_terrain_trees.inl",
+  "src/native_season_bake.inl",
+  "src/native_season_probe.inl",
+  "src/season_dxbc.h",
+  "src/season/season_bake.hlsl",
+  "src/season/season_bc.hlsl",
+  "src/season/season_rain.hlsl",
+  "src/season/season_rain_drops.hlsl",
+  "src/season/season_rain_dropsb.hlsl",
+  "src/season/season_rainb.hlsl",
+  "src/season/season_cloud_vs.hlsl",
+  "src/season/season_terrain.hlsl",
+  "tests/season_bake_fixture.cpp",
+  "tests/season_dxbc_fixture.cpp",
+  "src/modpack_dll.cpp",
+  "src/modpack_dll_api.h",
+  "src/season_mobility_shared.h",
+  "src/native_modpack_dll.inl",
+  "src/season/season_engine.c",
+  "src/season/season_engine_v26.inc",
+  "tools/vendor_season_rules.py",
+  "tools/build_season_shaders.ps1",
+  "src/native_water_diag.inl",
+  "src/terrain_edit_policy.h",
+  "tests/build_terrain_edit_fixture.ps1",
+  "tests/terrain_edit_build.ps1",
+  "tests/terrain_edit_fixture.cpp",
+  "tests/terrain_edit_split_fixture.cpp",
+  "tests/terrain_edit_ui_fixture.cpp",
+  "tests/terrain_edit_verify.py",
+  "tests/terrain_foam_build.ps1",
+  "tests/terrain_foam_extract.py",
+  "tests/terrain_foam_fixture.cpp",
+  "tests/terrain_foam_verify.py",
+  "tests/terrain_render_build.ps1",
+  "tests/terrain_render_cliff_fixture.cpp",
+  "tests/terrain_render_early_fixture.cpp",
+  "tests/terrain_render_fixture.cpp",
+  "tests/terrain_render_overlay_fixture.cpp",
+  "tests/terrain_render_r2_fixture.cpp",
+  "tests/terrain_render_r2b_fixture.cpp",
+  "tests/terrain_render_site_fixture.cpp",
+  "tests/terrain_render_verify.py",
+  "tests/terrain_render_water_mask_fixture.cpp",
+  "tests/terrain_trees_build.ps1",
+  "tests/terrain_trees_fixture.cpp",
+  "tests/terrain_trees_verify.py",
+  "tests/verify_terrain_diag.py",
+  "tests/water_diag_build.ps1",
+  "tests/water_diag_fixture.cpp",
+  "tests/water_diag_verify.py"
+ ],
+ "sources": [
+  "src/terrain_call_profile.h",
+  "src/native_terrain_trees.inl",
+  "tests/terrain_trees_fixture.cpp",
+  "tests/terrain_trees_verify.py",
+  "tests/terrain_trees_build.ps1",
+  "src/terrain_edit_policy.h",
+  "src/native_terrain_edit.inl",
+  "src/native_terrain_render.inl",
+  "src/native_season_bake.inl",
+  "src/native_season_probe.inl",
+  "src/season_dxbc.h",
+  "src/season/season_bake.hlsl",
+  "src/season/season_bc.hlsl",
+  "src/season/season_terrain.hlsl",
+  "tests/season_bake_fixture.cpp",
+  "tests/season_dxbc_fixture.cpp",
+  "src/modpack_dll.cpp",
+  "src/modpack_dll_api.h",
+  "src/season_mobility_shared.h",
+  "src/native_modpack_dll.inl",
+  "src/season/season_engine.c",
+  "src/season/season_engine_v26.inc",
+  "tools/vendor_season_rules.py",
+  "tools/build_season_shaders.ps1",
+  "src/native_water_diag.inl",
+  "tests/water_diag_fixture.cpp",
+  "tests/water_diag_build.ps1",
+  "tests/water_diag_verify.py",
+  "src/native_unified_overlay.inl",
+  "tests/terrain_render_fixture.cpp",
+  "tests/terrain_render_r2_fixture.cpp",
+  "tests/terrain_render_overlay_fixture.cpp",
+  "tests/terrain_render_site_fixture.cpp",
+  "tests/terrain_render_early_fixture.cpp",
+  "tests/terrain_render_verify.py",
+  "tests/terrain_render_build.ps1",
+  "tests/terrain_render_water_mask_fixture.cpp",
+  "tests/split_module_fixture.cpp",
+  "src/native_terrain_edit_ui.inl",
+  "src/native_split_install.inl",
+  "src/native_terrain_edit_save.inl",
+  "src/native_adapter.cpp",
+  "src/native_merit_save.inl",
+  "tests/terrain_edit_fixture.cpp",
+  "tests/terrain_edit_ui_fixture.cpp",
+  "tests/terrain_edit_split_fixture.cpp",
+  "tests/terrain_edit_verify.py",
+  "tests/terrain_edit_build.ps1",
+  "tests/build_terrain_edit_fixture.ps1",
+  "installer/InstallerGui.cs",
+  "distribution/FeatureSelect.ps1",
+  "FeatureSelect.ps1"
+ ],
+ "tests": [
+  "terrain-profile",
+  "terrain-edit",
+  "terrain-edit-ui",
+  "terrain-render",
+  "terrain-trees",
+  "water-diag",
+  "terrain-foam",
+  "terrain-diag"
+ ],
+ "hook_owners": [
+  "kPointerTerrain"
+ ],
+ "checks": [
+  "terrain-profile",
+  "terrain-edit",
+  "terrain-edit-ui",
+  "terrain-render",
+  "terrain-trees",
+  "water-diag",
+  "terrain-foam",
+  "terrain-diag"
+ ],
+ "ini": [
+  {
+   "section": "diagnostics",
+   "key": "water_diag"
+  },
+  {
+   "section": "real_estate",
+   "key": "terrain_edit"
+  },
+  {
+   "section": "season",
+   "key": "season_cloud"
+  },
+  {
+   "section": "season",
+   "key": "season_damage"
+  },
+  {
+   "section": "season",
+   "key": "season_disaster"
+  },
+  {
+   "section": "season",
+   "key": "season_domestic"
+  },
+  {
+   "section": "season",
+   "key": "season_fire"
+  },
+  {
+   "section": "season",
+   "key": "season_map"
+  },
+  {
+   "section": "season",
+   "key": "season_news"
+  },
+  {
+   "section": "season",
+   "key": "season_rain"
+  },
+  {
+   "section": "season",
+   "key": "season_tiles"
+  },
+  {
+   "section": "season",
+   "key": "season_weather"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "real_estate",
+    "key": "terrain_edit"
+   },
+   {
+    "section": "season",
+    "key": "season_map"
+   },
+   {
+    "section": "season",
+    "key": "season_weather"
+   },
+   {
+    "section": "season",
+    "key": "season_disaster"
+   },
+   {
+    "section": "season",
+    "key": "season_damage"
+   },
+   {
+    "section": "season",
+    "key": "season_news"
+   },
+   {
+    "section": "season",
+    "key": "season_fire",
+    "retired": true
+   },
+   {
+    "section": "season",
+    "key": "season_domestic"
+   },
+   {
+    "section": "season",
+    "key": "season_rain",
+    "retired": true
+   },
+   {
+    "section": "season",
+    "key": "season_cloud"
+   },
+   {
+    "section": "season",
+    "key": "season_tiles"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "terrain_render_early",
+    "module": "terrain-edit",
+    "cond": "",
+    "off_id": 0,
+    "wanted": "true",
+    "install": "(terrain_render::install_early(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 20
+   },
+   {
+    "name": "terrain_foam",
+    "module": "terrain-edit",
+    "cond": "defined(SAN14_TERRAIN_FOAM_INCLUDED)",
+    "off_id": 0,
+    "wanted": "true",
+    "install": "(terrain_foam::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 30
+   },
+   {
+    "name": "terrain_height_link",
+    "module": "terrain-edit",
+    "cond": "!defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "true",
+    "install": "(terrain_height_link::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 40
+   },
+   {
+    "name": "terrain_diag_log",
+    "module": "terrain-edit",
+    "cond": "!defined(NO_RUNTIME_LOG)",
+    "off_id": 0,
+    "wanted": "true",
+    "install": "split_terrain_diag_log()",
+    "refused": "",
+    "after": [],
+    "seq": 50
+   },
+   {
+    "name": "season_rules",
+    "module": "terrain-edit",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.season_weather",
+    "install": "(season_rules::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 396
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

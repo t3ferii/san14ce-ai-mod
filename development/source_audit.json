@@ -1,5 +1,5 @@
 {
-  "basis": "v16 public build source (2026-11-15)",
+  "basis": "v16.1 public build source (2026-11-15)",
   "method": "lexical definition candidates; not preprocessed; not full semantic review",
   "files": [
     {
@@ -9681,7 +9681,7 @@
     },
     {
       "file": "src/native_recruit_ui.inl",
-      "sha256": "fc44075367bc393a6df604242ce585996bf525a5de44f81ea26bc7bcc4df8272",
+      "sha256": "42f5ada6fd9817c74e1707fe45580cb351fd649add89988a3337d2f50eb5e9b0",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "등용 화면·알림·컴퓨터 등용 제한",
       "definitions": [
@@ -9751,27 +9751,31 @@
         },
         {
           "name": "recruit_selector_init",
-          "line": 212
+          "line": 213
         },
         {
           "name": "recruit_layout_init",
-          "line": 246
+          "line": 247
         },
         {
           "name": "recruit_report_automatic",
-          "line": 249
+          "line": 250
         },
         {
           "name": "recruit_actor_count",
-          "line": 276
+          "line": 277
         },
         {
           "name": "recruit_multi_preview",
-          "line": 282
+          "line": 283
+        },
+        {
+          "name": "recruit_multi_align",
+          "line": 308
         },
         {
           "name": "recruit_state_update",
-          "line": 301
+          "line": 316
         }
       ]
     },
@@ -10649,7 +10653,7 @@
     },
     {
       "file": "src/native_sortie.inl",
-      "sha256": "c17937aede62113cf803fbce5bbe5d6bb69ade17d33602a8f8cd10a04be1ca85",
+      "sha256": "b7d8bd624582279fd35f11c977e1f2f764d803d829c683f1b06a4b9d8207e044",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "출진 명령·편성·대열·역할·이동속도",
       "definitions": [
@@ -10719,171 +10723,171 @@
         },
         {
           "name": "sortie_female_capped",
-          "line": 185
-        },
-        {
-          "name": "sortie_likes",
           "line": 188
         },
         {
+          "name": "sortie_likes",
+          "line": 194
+        },
+        {
           "name": "sortie_command",
-          "line": 192
+          "line": 198
         },
         {
           "name": "sortie_field_formation",
-          "line": 203
+          "line": 209
         },
         {
           "name": "sortie_capture_formation",
-          "line": 208
+          "line": 214
         },
         {
           "name": "computer_tactic_order",
-          "line": 219
+          "line": 225
         },
         {
           "name": "sortie_dispatch",
-          "line": 243
+          "line": 249
         },
         {
           "name": "sortie_issue",
-          "line": 301
+          "line": 307
         },
         {
           "name": "sortie_departure_from",
-          "line": 305
+          "line": 311
         },
         {
           "name": "sortie_departure",
-          "line": 482
+          "line": 488
         },
         {
           "name": "sortie_escort_clear",
-          "line": 493
+          "line": 499
         },
         {
           "name": "sortie_escort_member",
-          "line": 497
+          "line": 503
         },
         {
           "name": "sortie_support_attach",
-          "line": 519
+          "line": 525
         },
         {
           "name": "sortie_group_count",
-          "line": 574
+          "line": 580
         },
         {
           "name": "sortie_plan",
-          "line": 577
+          "line": 583
         },
         {
           "name": "sortie_plan8",
-          "line": 604
+          "line": 610
         },
         {
           "name": "sortie_plan9",
-          "line": 605
+          "line": 611
         },
         {
           "name": "sortie_plan10",
-          "line": 606
+          "line": 612
         },
         {
           "name": "sortie_plan11",
-          "line": 607
+          "line": 613
         },
         {
           "name": "sortie_plan22",
-          "line": 608
+          "line": 614
         },
         {
           "name": "sortie_valid_group",
-          "line": 609
+          "line": 615
         },
         {
           "name": "sortie_movement_next",
-          "line": 621
+          "line": 627
         },
         {
           "name": "tile_index",
-          "line": 648
+          "line": 654
         },
         {
           "name": "apply",
-          "line": 665
+          "line": 671
         },
         {
           "name": "sortie_movement",
-          "line": 674
+          "line": 680
         },
         {
           "name": "sortie_move",
-          "line": 679
+          "line": 685
         },
         {
           "name": "sortie_order",
-          "line": 690
+          "line": 696
         },
         {
           "name": "sortie_restore",
-          "line": 691
+          "line": 697
         },
         {
           "name": "sortie_trace_path",
-          "line": 692
+          "line": 698
         },
         {
           "name": "sortie_chain_order",
-          "line": 701
+          "line": 707
         },
         {
           "name": "sortie_short_move",
-          "line": 728
+          "line": 734
         },
         {
           "name": "sortie_route_issue",
-          "line": 747
-        },
-        {
-          "name": "sortie_route_orders",
           "line": 753
         },
         {
+          "name": "sortie_route_orders",
+          "line": 759
+        },
+        {
           "name": "sortie_settled",
-          "line": 760
+          "line": 766
         },
         {
           "name": "sortie_facing",
-          "line": 767
-        },
-        {
-          "name": "sortie_place",
           "line": 773
         },
         {
+          "name": "sortie_place",
+          "line": 779
+        },
+        {
           "name": "sortie_hold",
-          "line": 791
+          "line": 797
         },
         {
           "name": "sortie_advance",
-          "line": 795
+          "line": 801
         },
         {
           "name": "sortie_forced_group_march",
-          "line": 815
+          "line": 821
         },
         {
           "name": "sortie_support_step",
-          "line": 833
+          "line": 839
         },
         {
           "name": "sortie_capture_work",
-          "line": 855
+          "line": 861
         },
         {
           "name": "sortie_step",
-          "line": 896
+          "line": 902
         }
       ]
     },
@@ -14081,6 +14085,410 @@
         {
           "name": "sr_ready",
           "line": 1798
+        }
+      ]
+    },
+    {
+      "file": "src/season/season_engine_v26.inc",
+      "sha256": "ba95054ef31334884812b923cb39b3780b205202f49f93f8e482a01a68408599",
+      "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
+      "topic": "정책·자료구조·저장 형식·공통 보조 함수",
+      "definitions": [
+        {
+          "name": "cl_alt",
+          "line": 26
+        },
+        {
+          "name": "cl_T0",
+          "line": 27
+        },
+        {
+          "name": "cl_P",
+          "line": 28
+        },
+        {
+          "name": "cl_RD",
+          "line": 29
+        },
+        {
+          "name": "cl_RH",
+          "line": 30
+        },
+        {
+          "name": "cl_land",
+          "line": 31
+        },
+        {
+          "name": "fsqrt",
+          "line": 34
+        },
+        {
+          "name": "fexp",
+          "line": 35
+        },
+        {
+          "name": "flog",
+          "line": 37
+        },
+        {
+          "name": "fpow",
+          "line": 39
+        },
+        {
+          "name": "fcos",
+          "line": 40
+        },
+        {
+          "name": "fsin",
+          "line": 41
+        },
+        {
+          "name": "sm",
+          "line": 42
+        },
+        {
+          "name": "clampf",
+          "line": 43
+        },
+        {
+          "name": "frand",
+          "line": 44
+        },
+        {
+          "name": "gauss",
+          "line": 45
+        },
+        {
+          "name": "fabsf_",
+          "line": 46
+        },
+        {
+          "name": "MX",
+          "line": 49
+        },
+        {
+          "name": "MY",
+          "line": 50
+        },
+        {
+          "name": "nb6",
+          "line": 51
+        },
+        {
+          "name": "node_mix",
+          "line": 59
+        },
+        {
+          "name": "year_field",
+          "line": 71
+        },
+        {
+          "name": "grade_of",
+          "line": 81
+        },
+        {
+          "name": "year_roll",
+          "line": 82
+        },
+        {
+          "name": "nw_hill",
+          "line": 117
+        },
+        {
+          "name": "vis_snow",
+          "line": 120
+        },
+        {
+          "name": "snow_ice_of",
+          "line": 131
+        },
+        {
+          "name": "frozen_dyn",
+          "line": 148
+        },
+        {
+          "name": "loc_fac",
+          "line": 153
+        },
+        {
+          "name": "climate_turn",
+          "line": 162
+        },
+        {
+          "name": "frz_cur",
+          "line": 204
+        },
+        {
+          "name": "frz_next",
+          "line": 205
+        },
+        {
+          "name": "vanilla_now",
+          "line": 207
+        },
+        {
+          "name": "stats_reset",
+          "line": 215
+        },
+        {
+          "name": "lat_at",
+          "line": 218
+        },
+        {
+          "name": "lat_fill",
+          "line": 224
+        },
+        {
+          "name": "noise_cell",
+          "line": 225
+        },
+        {
+          "name": "lat_axis",
+          "line": 239
+        },
+        {
+          "name": "noise_prep",
+          "line": 244
+        },
+        {
+          "name": "lat_fast",
+          "line": 252
+        },
+        {
+          "name": "noise_fast",
+          "line": 256
+        },
+        {
+          "name": "build_cdf",
+          "line": 264
+        },
+        {
+          "name": "dry_need",
+          "line": 286
+        },
+        {
+          "name": "rain_day",
+          "line": 291
+        },
+        {
+          "name": "city_weather_count",
+          "line": 364
+        },
+        {
+          "name": "ri_norm_init",
+          "line": 371
+        },
+        {
+          "name": "fire_has",
+          "line": 385
+        },
+        {
+          "name": "burnable",
+          "line": 386
+        },
+        {
+          "name": "fire_spread",
+          "line": 387
+        },
+        {
+          "name": "fire_ember",
+          "line": 402
+        },
+        {
+          "name": "fire_tier",
+          "line": 413
+        },
+        {
+          "name": "fire_news_start",
+          "line": 414
+        },
+        {
+          "name": "area_faction",
+          "line": 424
+        },
+        {
+          "name": "fire_end",
+          "line": 425
+        },
+        {
+          "name": "fire_hurt",
+          "line": 449
+        },
+        {
+          "name": "fire_start_at",
+          "line": 454
+        },
+        {
+          "name": "fires_turn",
+          "line": 465
+        },
+        {
+          "name": "fires_day",
+          "line": 493
+        },
+        {
+          "name": "fire_douse_cell",
+          "line": 517
+        },
+        {
+          "name": "flood_walls",
+          "line": 525
+        },
+        {
+          "name": "flood_paint_s",
+          "line": 535
+        },
+        {
+          "name": "flood_entry",
+          "line": 548
+        },
+        {
+          "name": "flood_food",
+          "line": 559
+        },
+        {
+          "name": "radd_place",
+          "line": 595
+        },
+        {
+          "name": "minor_city",
+          "line": 603
+        },
+        {
+          "name": "sr_minor_rivers",
+          "line": 610
+        },
+        {
+          "name": "minor_runoff",
+          "line": 662
+        },
+        {
+          "name": "hydro_day",
+          "line": 670
+        },
+        {
+          "name": "ep_final",
+          "line": 687
+        },
+        {
+          "name": "ep_end",
+          "line": 695
+        },
+        {
+          "name": "stretch_set",
+          "line": 703
+        },
+        {
+          "name": "floods_day",
+          "line": 745
+        },
+        {
+          "name": "floods_turn",
+          "line": 767
+        },
+        {
+          "name": "force_flood",
+          "line": 793
+        },
+        {
+          "name": "slides_turn",
+          "line": 801
+        },
+        {
+          "name": "drought_turn",
+          "line": 822
+        },
+        {
+          "name": "state_build",
+          "line": 859
+        },
+        {
+          "name": "grid_params",
+          "line": 882
+        },
+        {
+          "name": "cell_wx",
+          "line": 893
+        },
+        {
+          "name": "weather_write",
+          "line": 898
+        },
+        {
+          "name": "perf_path",
+          "line": 945
+        },
+        {
+          "name": "perf_save",
+          "line": 946
+        },
+        {
+          "name": "perf_load",
+          "line": 952
+        },
+        {
+          "name": "rain_calibrate",
+          "line": 962
+        },
+        {
+          "name": "wl_watch",
+          "line": 995
+        },
+        {
+          "name": "pf_set",
+          "line": 1036
+        },
+        {
+          "name": "perf_summary",
+          "line": 1037
+        },
+        {
+          "name": "perf_ab",
+          "line": 1051
+        },
+        {
+          "name": "perf_ab",
+          "line": 1090
+        },
+        {
+          "name": "diag_tick",
+          "line": 1100
+        },
+        {
+          "name": "diag_tick",
+          "line": 1157
+        },
+        {
+          "name": "FireRateHook",
+          "line": 1165
+        },
+        {
+          "name": "install_firerate",
+          "line": 1175
+        },
+        {
+          "name": "game_fires_day",
+          "line": 1193
+        },
+        {
+          "name": "force_rain_at",
+          "line": 1205
+        },
+        {
+          "name": "force_fire_size",
+          "line": 1211
+        },
+        {
+          "name": "flood_rings",
+          "line": 1229
+        },
+        {
+          "name": "engine_load",
+          "line": 1266
+        },
+        {
+          "name": "engine_reset",
+          "line": 1283
         }
       ]
     },

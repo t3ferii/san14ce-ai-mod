@@ -1,0 +1,69 @@
+{
+ "schema": 1,
+ "id": "mediation-plus",
+ "title": "mediation-plus",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "layout"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_mediation_plus.inl"
+ ],
+ "sources": [
+  "src/native_mediation_plus.inl"
+ ],
+ "tests": [
+  "layout-registry",
+  "split-module"
+ ],
+ "hook_owners": [
+  "mediation_plus",
+  "mediation_fallback"
+ ],
+ "checks": [
+  "layout-registry",
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "officer_ui",
+   "key": "mediation_plus"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "officer_ui",
+    "key": "mediation_plus"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "mediation_plus",
+    "module": "mediation-plus",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.mediation_plus",
+    "install": "(mediation_plus::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 210
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

@@ -1,4 +1,4 @@
-# Restore must return the traits9/speed-button ScreenLayout entries to the original index even
+﻿# Restore must return the traits9/speed-button ScreenLayout entries to the original index even
 # when the install record has no (or a stale) layout entry. Works on copies in build/ only.
 param([string]$Report,[string]$Payload)
 $ErrorActionPreference='Stop'

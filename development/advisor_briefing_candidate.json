@@ -1,0 +1,382 @@
+{
+  "status": "installed_awaiting_header_latency_and_passive_verification",
+  "version": "v12.21-advisor-briefing-local11",
+  "installed": true,
+  "enabled": true,
+  "code_signed": false,
+  "live_game": false,
+  "game_launched": false,
+  "date": "2026-10-27T01:28:08.426480+00:00",
+  "behavior_checks": 280,
+  "graphics_checks": 61,
+  "native_checks": 230,
+  "slots": 20,
+  "required_split_checks_passed": true,
+  "installer_static_checks": 343,
+  "installer_roundtrip_checks": 96,
+  "diagnostic_dll": "build/development/loader_split_diagnostic/SAN14_Convenience.dll",
+  "diagnostic_sha256": "7f9f595de2af70493b07ea89bff9077e1a76dfc17e354799e3840f2af78beab3",
+  "release_dll": "build/development/loader_split/SAN14_Convenience.dll",
+  "release_sha256": "969cc2b4fa811d6121cc3e8cb7879b36530831d5d2644214b233d839b14a0a75",
+  "installation_proof": "build/v12_21-advisor-briefing-local11_installation.json",
+  "settings_preserved": true,
+  "combat_and_loader_preserved": true,
+  "sources": {
+    "FeatureSelect.ps1": "6ed4525050bb104bc12ac3342e44484caab973ba620bc75d4f486e493d2b6f5f",
+    "distribution/FeatureSelect.ps1": "e679f8d9e22afaf510bc79ad85f2a7bb99517ba578214edf88d132165da43c95",
+    "installer/InstallerGui.cs": "eddc13f603dc5de43ee7d29817e2857e32a0ea48bf01ae908f52b98d8637723d",
+    "src/advisor_briefing.h": "eb853411dc91529610db4e5b59f80af32f7d219076af6658547521266ec6e4d8",
+    "src/advisor_briefing.hlsl": "16fd2f5bea9a7613b9aa84f46dbed4e67f82500490a54a9af5f39cf9929ac1e8",
+    "src/advisor_briefing_profile.h": "df505e0d6e0206e196eaed97d300dcf868871bd2414f111af433782110c6825e",
+    "src/advisor_ps.h": "a3ad9ce2cb3d8e1fcd7f7dce9fa836499ffb7c44aab51fdf0cb6be5dc19511c8",
+    "src/advisor_vs.h": "57fbe196280f3137e2ee6766c101a409b4d7a2b0704575c2aabfc5f377ba996e",
+    "src/native_adapter.cpp": "1295533ef04ef462780f8cd8061f894d991267550c79a262c719dad02717fd4e",
+    "src/native_advisor_briefing.inl": "04abd11f5b31990480246cc6d1aa07f646163cd73754c71f68e0d7827c24c71f",
+    "src/native_advisor_overlay.inl": "24ebcd8c22a53a413fad50b1bf6ebf8ef0ccbec26ec589104004cb4f9d1082d9",
+    "src/native_split_install.inl": "17ee70704c62e5f378975fc1129974754b3b2ad025a8677439e336202f556b91",
+    "src/native_unified_overlay.inl": "5183055edf2a79d38830a4c894a345d896761bdaecafe0ff53e3786478bef12b",
+    "src/native_unified_personnel.inl": "6c42b1a27d8b09d8bd220456efadce3571a9a217b33fab1b4b18ab351af5bd88",
+    "tests/advisor_briefing_fixture.cpp": "60cfd8378707008f1516af76bf3972dec14665d0f9bbf1786fa70bf9164a8dea",
+    "tests/advisor_overlay_fixture.cpp": "a9e255c7956b2bbb1a7b59aaf2ffb0cfd50681159ec3038e02ab1221e955f112",
+    "tests/split_module_fixture.cpp": "9213b0e4f320765ec590f051d51371d2c8e1f64283c3b55a1ecf9e1e64bed5b2",
+    "tests/verify_advisor_briefing.py": "05c7d3c16b7391c2ef66819de81e794ba43031248daa6332c1faf7f916997c66",
+    "tests/verify_local_install_rollback.py": "c8ca8b8b6a111ad69269fdb7caa5e40a622deee9d1e4b0c5a940850a1db6a711",
+    "tools/build_advisor_briefing_fixture.ps1": "ef8ac19ee6ebee86be31b7d1e487a2c1c2dd391b823246c497faeabe640a053b",
+    "tools/build_advisor_shaders.ps1": "e4128cc9911e7b75a015b9416ac633da9485c2ce1813196977d5c3e5f7d072bf",
+    "tools/build_split.ps1": "366e7d88a203317f036d3f3c8a4fb4d3f5dbe3f9a29b659a9ef462e8695cef8e",
+    "tools/check_feature.ps1": "e376ffe56791c55f1782b070ae657dadcb3b8d5b7d16076f10a19e03871f37c5",
+    "tools/generate_handoff.py": "53e8b1d0cc011782fad2bf0492afd5673035a85968fa38d94f76b5a226d082b2",
+    "tools/inspect_advisor_briefing.py": "599ebea6894547185353f02a48dcd2752687437fac4379fa65a1a294204fe1b0",
+    "tools/install_local.py": "08736e02a47cc61b3762904b42742940ee70f3916c1ba2655eb03ade989e2895"
+  },
+  "logs": [
+    "build/development/advisor_header_latency_feature.log",
+    "build/development/advisor_header_latency_full.log",
+    "build/development/advisor_header_latency_diagnostic.log"
+  ],
+  "pending_live_checks": [
+    "top-right arrows and actual response: queue, accepted/rejected input, GPU submission timing",
+    "readability/name colors/fixed income columns and adviser voice",
+    "military-point/messenger/discovery/plot passive popups redirected; actual choices preserved",
+    "report transition flash removed in actual game",
+    "diplomacy refusal, cycle expiry, reload, speed x8 and long-run stability"
+  ],
+  "runtime_probe_verified": false,
+  "previous_user_observation": {
+    "version": "v12.21-advisor-briefing-local9",
+    "confirmed_at": "2026-10-27T00:45:37.625309+00:00",
+    "user_confirmed": "Report inbox opens well and design is liked",
+    "scope": [
+      "open/interaction of report inbox",
+      "current overall design",
+      "recruitment result records present in inbox",
+      "building destruction result records present in inbox"
+    ],
+    "remaining_request": [
+      "stronger text readability without font-size change",
+      "repeat distinct colors for officer names",
+      "proper fixed-column income alignment",
+      "all passive progress messages redirected except actual interactions",
+      "native report flash investigation",
+      "adviser outcome voice instead of copied ruler quote"
+    ]
+  },
+  "installer_validation_reused": true,
+  "post_install_setting_changes": {},
+  "runtime_observation": {},
+  "diplomacy_refusal_verified": false,
+  "user_verification": {},
+  "previous_runtime_observation": {
+    "pid": 44684,
+    "evidence": "data/diagnostics/advisor_local9_click_20261027T003703653299Z.json",
+    "event_evidence": "data/diagnostics/advisor_live_20261027T003603820143Z.json",
+    "events": 21,
+    "input_dispatches": 12,
+    "input_max_delay_ms": 16,
+    "latency_scope": "posted input to UI queue dispatch only; excludes rendering",
+    "inbox_open": true,
+    "collecting": false,
+    "fallback": false,
+    "three_second_visibility_samples": [
+      {
+        "visible": 1,
+        "top": "CStrategyEnemyCityHexState",
+        "samples": 346
+      },
+      {
+        "visible": 1,
+        "top": "CUserStrategyState",
+        "samples": 950
+      }
+    ],
+    "visual_user_confirmation_pending": true
+  },
+  "inline_hooks": [
+    "930D20",
+    "841660"
+  ],
+  "diplomatic_followup": true,
+  "serif_ink_theme": true,
+  "theme_preview": "build/development/advisor_header_income_preview.png",
+  "font_candidates": [
+    "Noto Serif KR",
+    "함초롬바탕",
+    "바탕"
+  ],
+  "srgb_renderer_verified": true,
+  "diplomatic_followup_observed": false,
+  "diplomatic_followup_user_verified": false,
+  "ui_user_verified": false,
+  "prior_versions": {
+    "v12.21-advisor-briefing-local5": {
+      "user_observation": {
+        "version": "v12.21-advisor-briefing-local5",
+        "advisor_briefing_on": true,
+        "user_confirmed": "same diplomatic money-demand refusal proceeds normally",
+        "confirmed_at": "2026-10-26T13:01:41.150537+00:00",
+        "other_scenarios_not_implied": true
+      },
+      "runtime_observation": {
+        "pid": 56220,
+        "evidence": "data/diagnostics/advisor_local5_live_20261026T125920962000Z.json",
+        "events": 17,
+        "collecting": false,
+        "fallback": false,
+        "inbox_open": true,
+        "categories": 3,
+        "native_report_active": false,
+        "portrait_rgb_validated": true,
+        "diplomacy_refusal_retest_pending": false
+      }
+    },
+    "v12.21-advisor-briefing-local6": {
+      "version": "v12.21-advisor-briefing-local6",
+      "installation_proof": "build/v12_21-advisor-briefing-local6_installation.json",
+      "diagnostic_sha256": "3a9f630a011b31548ef276a21e6a0c4496152abfb707e846f3f7b402ea00ceda",
+      "runtime_observation": {
+        "pid": 31648,
+        "evidence": "data/diagnostics/advisor_live_20261026T164116354428Z.json",
+        "events": 21,
+        "diplomatic_events": 4,
+        "collecting": false,
+        "fallback": false,
+        "categories": 4,
+        "native_report_active": false,
+        "portrait_rgb_validated": true,
+        "visual_user_confirmation_pending": false
+      },
+      "user_verification": {
+        "version": "v12.21-advisor-briefing-local6",
+        "confirmed_at": "2026-10-26T16:50:13.418850+00:00",
+        "user_confirmed": "diplomatic followup collection and new UI both normal",
+        "scope": [
+          "diplomatic refusal continuation",
+          "followup text stored in bubble",
+          "new font and UI display"
+        ],
+        "remaining_request": "improve input responsiveness; double window width and height with unchanged font size"
+      },
+      "diplomacy_refusal_verified": true,
+      "diplomatic_followup_user_verified": true,
+      "ui_user_verified": true
+    },
+    "v12.21-advisor-briefing-local7": {
+      "version": "v12.21-advisor-briefing-local7",
+      "installation_proof": "build/v12_21-advisor-briefing-local7_installation.json",
+      "diagnostic_sha256": "2d6b2d8ac559f555b09fc8c89e3b80e32527a72594751827acd68a9bc4d38b70",
+      "user_verification": {},
+      "runtime_observation": {},
+      "reported_failure": {
+        "version": "v12.21-advisor-briefing-local7",
+        "user_report": "Player map: bubble cannot be clicked; recruitment notification remains outside inbox",
+        "runtime_evidence": "data/diagnostics/advisor_live_20261026T174057068788Z.json",
+        "pid": 24276,
+        "read_only": true,
+        "events": 21,
+        "recruitment_log_events": 1,
+        "input_dispatches": 0,
+        "four_second_visibility_samples": {
+          "hidden": 74,
+          "visible": 823
+        },
+        "inference": "Command-menu eligibility and player-frame publishing alternated visibility; hidden publish clears the armed press. Employment result dialogue uses separate 842380 narrative calls."
+      }
+    },
+    "v12.21-advisor-briefing-local8": {
+      "version": "v12.21-advisor-briefing-local8",
+      "installation_proof": "build/v12_21-advisor-briefing-local8_installation.json",
+      "diagnostic_sha256": "31692d76fcd369540066e44601b2c4b3ba6cd21a5e68742ad35df3e93d8538de",
+      "runtime_observation": {},
+      "user_verification": {},
+      "reported_failure": {
+        "version": "v12.21-advisor-briefing-local8",
+        "pid": 40884,
+        "read_only": true,
+        "user_confirmed": "bubble still cannot be clicked; held portrait for about three seconds",
+        "poll": "data/diagnostics/advisor_click_poll_20261026T180545499667Z.json",
+        "poll_state_counts": [
+          {
+            "values": [
+              1,
+              0,
+              0,
+              1,
+              0
+            ],
+            "samples": 892
+          },
+          {
+            "values": [
+              0,
+              0,
+              0,
+              1,
+              0
+            ],
+            "samples": 188
+          },
+          {
+            "values": [
+              1,
+              0,
+              0,
+              0,
+              0
+            ],
+            "samples": 16483
+          },
+          {
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "samples": 1666
+          }
+        ],
+        "manager48_observed_names": {
+          "CGameState": 61,
+          "CRootState": 3,
+          "CMotorGameState": 4,
+          "CStrategyState": 2,
+          "CUserStrategyState": 2
+        },
+        "correction": "56FC20 returns currently-updating state pointer manager+48; not a modal or queued dialog indicator. False hide publications still occurred with actual top CUserStrategyState.",
+        "new_test_requirement": "manager+48 nonzero must not block player standby; zero must not allow input through a real child dialog",
+        "gameplay_fixed": false
+      }
+    },
+    "v12.21-advisor-briefing-local9": {
+      "version": "v12.21-advisor-briefing-local9",
+      "installation_proof": "build/v12_21-advisor-briefing-local9_installation.json",
+      "diagnostic_sha256": "26a5043fc21e2c94d1f87a0c21f67cfde1ca4a477abea19d1bcf7a1a5a4911c2",
+      "user_verification": {
+        "version": "v12.21-advisor-briefing-local9",
+        "confirmed_at": "2026-10-27T00:45:37.625309+00:00",
+        "user_confirmed": "Report inbox opens well and design is liked",
+        "scope": [
+          "open/interaction of report inbox",
+          "current overall design",
+          "recruitment result records present in inbox",
+          "building destruction result records present in inbox"
+        ],
+        "remaining_request": [
+          "stronger text readability without font-size change",
+          "repeat distinct colors for officer names",
+          "proper fixed-column income alignment",
+          "all passive progress messages redirected except actual interactions",
+          "native report flash investigation",
+          "adviser outcome voice instead of copied ruler quote"
+        ]
+      },
+      "runtime_observation": {
+        "pid": 44684,
+        "evidence": "data/diagnostics/advisor_local9_click_20261027T003703653299Z.json",
+        "event_evidence": "data/diagnostics/advisor_live_20261027T003603820143Z.json",
+        "events": 21,
+        "input_dispatches": 12,
+        "input_max_delay_ms": 16,
+        "latency_scope": "posted input to UI queue dispatch only; excludes rendering",
+        "inbox_open": true,
+        "collecting": false,
+        "fallback": false,
+        "three_second_visibility_samples": [
+          {
+            "visible": 1,
+            "top": "CStrategyEnemyCityHexState",
+            "samples": 346
+          },
+          {
+            "visible": 1,
+            "top": "CUserStrategyState",
+            "samples": 950
+          }
+        ],
+        "visual_user_confirmation_pending": true
+      },
+      "recruitment_result_user_verified": true,
+      "plot_result_user_verified": true
+    },
+    "v12.21-advisor-briefing-local10": {
+      "version": "v12.21-advisor-briefing-local10",
+      "status": "installed_ui_and_passive_changes_arrow_followup_in_progress",
+      "installation_proof": "build/v12_21-advisor-briefing-local10_installation.json",
+      "diagnostic_sha256": "d2ff38073ae6ab3df80aa3e24bfa72408ea4fda5aa293420919e2405018f1d74",
+      "user_verification": {},
+      "runtime_observation": {},
+      "slots": 20,
+      "native_checks": 230,
+      "behavior_checks": 276,
+      "graphics_checks": 58
+    }
+  },
+  "paper_report_theme": true,
+  "window_virtual_size": [
+    1160,
+    1000
+  ],
+  "previous_window_virtual_size": [
+    580,
+    500
+  ],
+  "font_sizes": {
+    "body": 23,
+    "heading": 27,
+    "caption": 18
+  },
+  "opening_ease_ms": 80,
+  "player_frame_dispatch": "44CAF0 / CUserStrategyState+28",
+  "input_queue_latency_live_measured": false,
+  "strategist_diplomacy_summary": true,
+  "relationship_stat_change_not_inferred": true,
+  "event_stride": 96,
+  "click_visibility_repaired": true,
+  "recruitment_result_talk": true,
+  "recruitment_call_sites": [
+    "733F21",
+    "734037",
+    "734139"
+  ],
+  "recruitment_original_function": "842380: six arguments, original coroutine/log/completion",
+  "updating_state_guard_repaired": true,
+  "recruitment_result_user_verified": false,
+  "plot_result_user_verified": false,
+  "readable_income_table": true,
+  "body_font_weight": 600,
+  "officer_name_palette": 6,
+  "passive_person_notices": true,
+  "report_flash_mask": true,
+  "render_mask_cleanup_frames": 2,
+  "adviser_outcome_summary": true,
+  "name_preview": "build/development/advisor_header_names_preview.png",
+  "top_right_navigation": true,
+  "navigation_snapshot_reuse": true,
+  "input_to_render_diagnostics": true,
+  "timing_scope": {
+    "input_render_ms": "input post to updated GPU command-list submission, not scanout",
+    "raster_ms": "most recent GDI/texture raster call, including avatar/badge components",
+    "maxima": "process lifetime observations, not a frame-rate benchmark"
+  }
+}

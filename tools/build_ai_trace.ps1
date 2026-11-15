@@ -1,4 +1,4 @@
-# AI trace checks: regenerates the node table from the plain EXE, builds and runs the trace fixture
+﻿# AI trace checks: regenerates the node table from the plain EXE, builds and runs the trace fixture
 # (the real native_ai_trace.inl against a fake image) and the offline analyzer. The tracer itself is
 # part of SAN14_Convenience.dll ([diagnostics] ai_trace / ai_trace_original). Writes only build\development.
 $ErrorActionPreference='Stop'

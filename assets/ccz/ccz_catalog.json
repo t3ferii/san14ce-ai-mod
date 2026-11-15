@@ -1,0 +1,33 @@
+{
+  "format": "CCZC v1",
+  "count": 1078,
+  "bytes": 35170623,
+  "sha256": "81c8262825307c0f3d1a40fc0e3acefef329fc7419bbc8844cd138eeabbcde9a",
+  "sources": {
+    "신조조전": {
+      "Unit_mov.e5": "22846be532ebe172773374a61b51562d9a6932f959d45adbf9ec2cc7982801f9",
+      "Unit_atk.e5": "d3e61f2a3b07b00835a678d7b8b0d96d739e11b919c8eb204929bcf51b8fa65b",
+      "Unit_spc.e5": "454e849cbf12e091df833efbfebd8ffe275ea3bff4d4eafe82a5837bb24ed69b",
+      "Spalet.e5": "4a3e5a02422dfd3c4512622b1ccd800d50c0dc6b6cf9d64d6818c8c153a342b7"
+    },
+    "조조전": {
+      "Unit_mov.e5": "f9f0fb499d6291f480d89f2bc421906074ee518e830aa71f49b561a9e4c1706a",
+      "Unit_atk.e5": "3b97923c6c47239a2dba1d8ba618c42a4c83fd43de62ac3f170ff57045a9e1b9",
+      "Unit_spc.e5": "dbb24678539e84db782cda6a72f474132a0a3cbbf5e39195753297cc331ec19d",
+      "E5\\Spalet.e5": "66a4b76da031242039f4814854f6bf8bf66a546477f8c5829d7bd54f9117e954"
+    }
+  },
+  "counts": {
+    "신조조전": {
+      "entries": 1500,
+      "nonempty": 686
+    },
+    "조조전": {
+      "entries": 1500,
+      "nonempty": 392
+    }
+  },
+  "runtime_directory_bytes": 27936,
+  "runtime_gpu_atlas_cache_limit": 256,
+  "preview_bytes_per_cell": 2304
+}

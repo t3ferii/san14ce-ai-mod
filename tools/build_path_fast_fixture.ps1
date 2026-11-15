@@ -1,4 +1,4 @@
-param()
+﻿param()
 # User 2026-10-25: sampled verification, bounded detail logs, stateful helper and tie-order audit.
 $ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot

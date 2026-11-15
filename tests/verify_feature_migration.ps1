@@ -1,4 +1,4 @@
-# user 2026-11-03: GUI/PS migrate known old keys without losing raw/custom data.
+﻿# user 2026-11-03: GUI/PS migrate known old keys without losing raw/custom data.
 param([string]$Exe)
 $ErrorActionPreference='Stop'
 $project=Split-Path -Parent $PSScriptRoot

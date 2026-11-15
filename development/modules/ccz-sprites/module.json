@@ -1,0 +1,214 @@
+{
+ "schema": 1,
+ "id": "ccz-sprites",
+ "title": "ccz-sprites",
+ "host": "ccz",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "shared-overlay"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/ccz_appearance.h",
+  "src/ccz_appearance_io.h",
+  "src/ccz_appearance_labels.h",
+  "src/ccz_catalog.h",
+  "src/ccz_module.cpp",
+  "src/ccz_module_api.h",
+  "src/ccz_preview_palette.h",
+  "src/ccz_sprites.hlsl",
+  "src/ccz_sprites_ps.h",
+  "src/ccz_sprites_vs.h",
+  "src/native_ccz_bridge.inl",
+  "src/native_ccz_editor.inl",
+  "src/native_ccz_preview.inl",
+  "src/native_ccz_settings.inl",
+  "src/native_ccz_sprites.inl",
+  "src/native_ccz_title.inl",
+  "src/native_ui_call_trace.inl",
+  "src/native_unified_dialogs.inl",
+  "tests/ccz_battle_build.ps1",
+  "tests/ccz_battle_fixture.cpp",
+  "tests/ccz_native_editor_build.ps1",
+  "tests/ccz_native_editor_fixture.cpp",
+  "tests/ccz_settings_build.ps1",
+  "tests/ccz_settings_fixture.cpp",
+  "tests/ui_call_trace_fixture.cpp",
+  "tests/verify_ccz_layout_switch.ps1",
+  "tests/verify_ccz_select.py",
+  "tests/verify_ccz_settings.py",
+  "tests/verify_ccz_sprites.py",
+  "tools/ccz_build_catalog.py",
+  "tools/ccz_extract_units.py",
+  "tools/prepare_ccz_title_layout.py"
+ ],
+ "sources": [
+  "src/ccz_appearance.h",
+  "src/ccz_appearance_io.h",
+  "src/ccz_appearance_labels.h",
+  "src/native_ccz_editor.inl",
+  "src/native_ui_call_trace.inl",
+  "tests/ui_call_trace_fixture.cpp",
+  "tools/inspect_ccz_ui_trace.py",
+  "src/native_ccz_preview.inl",
+  "src/ccz_catalog.h",
+  "src/ccz_preview_palette.h",
+  "tests/ccz_native_editor_fixture.cpp",
+  "tests/ccz_native_editor_build.ps1",
+  "tools/ccz_build_catalog.py",
+  "assets/ccz/ccz_catalog.bin",
+  "assets/ccz/ccz_catalog.json",
+  "src/native_ccz_title.inl",
+  "tests/ccz_settings_fixture.cpp",
+  "tests/ccz_settings_build.ps1",
+  "tests/verify_ccz_settings.py",
+  "tools/prepare_ccz_title_layout.py",
+  "src/ccz_module.cpp",
+  "src/native_ccz_bridge.inl",
+  "tests/ccz_battle_fixture.cpp",
+  "tests/ccz_battle_build.ps1",
+  "src/native_ccz_sprites.inl",
+  "src/ccz_sprites.hlsl",
+  "src/ccz_sprites_vs.h",
+  "src/ccz_sprites_ps.h",
+  "src/native_unified_overlay.inl",
+  "src/native_adapter.cpp",
+  "src/native_split_install.inl",
+  "tools/ccz_extract_units.py",
+  "assets/ccz/ccz_units.bin",
+  "tests/verify_ccz_sprites.py",
+  "tests/shared_overlay_fixture.cpp",
+  "tools/build_shared_overlay_fixture.ps1"
+ ],
+ "tests": [
+  "ccz-sprites",
+  "split-module",
+  "shared-overlay"
+ ],
+ "hook_owners": [
+  "ccz_title",
+  "ccz_sprites",
+  "unified_dialogs",
+  "kPointerCczDialog"
+ ],
+ "checks": [
+  "ccz-sprites",
+  "split-module",
+  "shared-overlay"
+ ],
+ "ini": [
+  {
+   "section": "ccz",
+   "key": "ccz_block"
+  },
+  {
+   "section": "ccz",
+   "key": "ccz_critical"
+  },
+  {
+   "section": "ccz",
+   "key": "ccz_depth"
+  },
+  {
+   "section": "ccz",
+   "key": "ccz_far_keep"
+  },
+  {
+   "section": "ccz",
+   "key": "ccz_hide_model"
+  },
+  {
+   "section": "ccz",
+   "key": "ccz_sprites"
+  },
+  {
+   "section": "ccz",
+   "key": "sprite_fallback"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "ccz",
+    "key": "ccz_sprites"
+   },
+   {
+    "section": "ccz",
+    "key": "sprite_fallback"
+   },
+   {
+    "section": "ccz",
+    "key": "ccz_hide_model",
+    "retired": true
+   },
+   {
+    "section": "ccz",
+    "key": "ccz_depth",
+    "retired": true
+   },
+   {
+    "section": "ccz",
+    "key": "ccz_far_keep",
+    "retired": true
+   },
+   {
+    "section": "ccz",
+    "key": "ccz_block"
+   },
+   {
+    "section": "ccz",
+    "key": "ccz_critical"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "ccz_sprites",
+    "module": "ccz-sprites",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 32,
+    "wanted": "mod_features.ccz_sprites",
+    "install": "ccz_sprites::install(mod_features.ccz_hide_model,mod_features.ccz_depth,mod_features.ccz_far_keep,mod_features.sprite_fallback)",
+    "refused": "split_disable(mod_features.ccz_sprites,32)",
+    "after": [],
+    "seq": 280
+   },
+   {
+    "name": "ccz_title",
+    "module": "ccz-sprites",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 38,
+    "wanted": "mod_features.ccz_sprites",
+    "install": "ccz_title::install()",
+    "refused": "log_event(\"feature_off\",38,5)",
+    "after": [
+     "ccz_sprites"
+    ],
+    "seq": 290
+   },
+   {
+    "name": "ccz_combat",
+    "module": "ccz-sprites",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 33,
+    "wanted": "mod_features.ccz_block || mod_features.ccz_critical",
+    "install": "ccz_combat::install(mod_features.ccz_block,mod_features.ccz_critical)",
+    "refused": "split_disable(mod_features.ccz_block,33);split_disable(mod_features.ccz_critical,33)",
+    "after": [],
+    "seq": 310
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

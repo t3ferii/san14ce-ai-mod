@@ -1,4 +1,4 @@
-param([switch]$Fixture,[switch]$RuntimeDiagnostics,[switch]$RuntimeCosts)
+﻿param([switch]$Fixture,[switch]$RuntimeDiagnostics,[switch]$RuntimeCosts)
 $ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot
 $taskBuild=Join-Path $taskProject 'build\development\loader_split'

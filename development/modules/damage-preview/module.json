@@ -1,0 +1,85 @@
+{
+ "schema": 1,
+ "id": "damage-preview",
+ "title": "damage-preview",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/damage_preview.h",
+  "src/damage_preview_profile.h",
+  "src/native_damage_preview.inl",
+  "tests/damage_preview_fixture.cpp",
+  "tools/build_damage_preview_fixture.ps1",
+  "tools/current_image.py",
+  "tools/verify_damage_preview_native.py"
+ ],
+ "sources": [
+  "src/native_damage_preview.inl",
+  "src/damage_preview.h",
+  "src/damage_preview_profile.h",
+  "src/native_adapter.cpp",
+  "src/native_split_install.inl",
+  "installer/InstallerGui.cs",
+  "distribution/FeatureSelect.ps1",
+  "tests/damage_preview_fixture.cpp",
+  "tools/verify_damage_preview_native.py",
+  "tools/current_image.py"
+ ],
+ "tests": [
+  "damage-preview",
+  "native",
+  "split-module",
+  "installer-gui"
+ ],
+ "hook_owners": [
+  "damage_preview"
+ ],
+ "checks": [
+  "damage-preview",
+  "native",
+  "split-module",
+  "installer-gui"
+ ],
+ "ini": [
+  {
+   "section": "officer_ui",
+   "key": "damage_preview"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "officer_ui",
+    "key": "damage_preview"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "damage_preview",
+    "module": "damage-preview",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.damage_preview",
+    "install": "(damage_forecast::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 330
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

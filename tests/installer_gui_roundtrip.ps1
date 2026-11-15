@@ -1,4 +1,4 @@
-# Headless check of the built GUI installer: loads the EXE assembly and, in an isolated fixture
+﻿# Headless check of the built GUI installer: loads the EXE assembly and, in an isolated fixture
 # folder only, checks old-file inheritance, dependency chaining, package-copy limits, the
 # guarded manager's (distribution copy) rewrite of 기능설정.ini, and renders each tab to PNG.
 # Never touches the real game folder; no clicks.

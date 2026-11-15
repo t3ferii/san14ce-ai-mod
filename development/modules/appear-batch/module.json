@@ -1,0 +1,74 @@
+{
+ "schema": 1,
+ "id": "appear-batch",
+ "title": "appear-batch",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/appear_batch.h",
+  "src/native_appear_batch.inl",
+  "tests/appear_batch_fixture.cpp",
+  "tests/verify_appear_batch.py",
+  "tools/build_appear_batch_fixture.ps1"
+ ],
+ "sources": [
+  "src/appear_batch.h",
+  "src/native_appear_batch.inl",
+  "src/native_adapter.cpp",
+  "src/native_split_install.inl",
+  "tests/appear_batch_fixture.cpp",
+  "tests/verify_appear_batch.py",
+  "tools/build_appear_batch_fixture.ps1"
+ ],
+ "tests": [
+  "appear-batch",
+  "split-module"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "appear-batch",
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "performance",
+   "key": "appear_batch"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "performance",
+    "key": "appear_batch"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "appear_batch",
+    "module": "appear-batch",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.appear_batch",
+    "install": "(appear_batch::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 190
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

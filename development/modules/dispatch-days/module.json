@@ -1,0 +1,68 @@
+{
+ "schema": 1,
+ "id": "dispatch-days",
+ "title": "dispatch-days",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "layout"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_dispatch_days.inl"
+ ],
+ "sources": [
+  "src/native_dispatch_days.inl"
+ ],
+ "tests": [
+  "layout-registry",
+  "split-module"
+ ],
+ "hook_owners": [
+  "dispatch_days"
+ ],
+ "checks": [
+  "layout-registry",
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "officer_ui",
+   "key": "dispatch_days"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "officer_ui",
+    "key": "dispatch_days"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "dispatch_days",
+    "module": "dispatch-days",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.dispatch_days",
+    "install": "(dispatch_days::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 140
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

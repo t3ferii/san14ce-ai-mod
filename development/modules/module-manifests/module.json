@@ -1,0 +1,50 @@
+{
+ "schema": 1,
+ "id": "module-manifests",
+ "title": "module-manifests",
+ "host": "tool",
+ "build": "none",
+ "status": "active",
+ "hub": true,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "development/modules/*/module.json",
+  "development/module_catalog.json",
+  "development/installer_map.json",
+  "tools/gen_module_manifests.py",
+  "tools/gen_installer_catalog.py",
+  "tools/installer_preflight.py",
+  "tools/mod_compat.py",
+  "docs/MOD_MANAGER_DESIGN.md"
+ ],
+ "sources": [
+  "tools/gen_module_manifests.py",
+  "tools/gen_installer_catalog.py",
+  "tools/installer_preflight.py",
+  "tools/mod_compat.py"
+ ],
+ "tests": [
+  "module-manifests"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "module-manifests"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

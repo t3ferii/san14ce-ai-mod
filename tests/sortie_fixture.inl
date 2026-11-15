@@ -178,13 +178,20 @@ static void sortie_tests() {
     Obj support=sortie_people[3];support[0xA9]=1;put16(support,0x118,23);put16(support,0x11A,94);put16(support,0x11C,96);
     check(sortie_support(support)==3,"three support traits and native female field decoded");
     support[0xA9]=0;check(sortie_support(support)==0,"male traits do not fill the female support seat");support[0xA9]=1;
-    check(sortie_female_capped(support),"female 응원/악주 support seat keeps the 1,000-soldier rule");
-    {   // local58b: every female officer is capped at 1,000, whatever her traits; a male officer over 통솔 60 is not.
+    // local174: the cap needs a female 응원/악주 holder with 통솔 below 60 (mock ability = person +0xEC).
+    support[0xEC]=59;check(sortie_female_capped(support),"female 응원/악주 support seat under 통솔 60 keeps the 1,000-soldier rule");
+    support[0xEC]=60;check(!sortie_female_capped(support),"female 응원/악주 with 통솔 60 leaves with a full unit");
+    support[0xEC]=59;put16(support,0x118,94);put16(support,0x11C,0);
+    check(!sortie_female_capped(support),"female without 응원/악주 is not capped");
+    put16(support,0x11C,96);check(sortie_female_capped(support),"응원 in any of the five slots caps her");
+    put16(support,0x118,23);support[0xEC]=80;
+    {   // local58b / local174: a female ally-area trait holder without 응원/악주 and a male officer keep a full unit.
         Obj other=sortie_people[5];other[0xA9]=1;
-        put16(other,0x118,46);
-        check(sortie_area_trait(other) && sortie_female_capped(other),"female ally-area trait holder still leaves with 1,000");
-        put16(other,0x118,0);other[0xA9]=0;
-        check(!sortie_female_capped(other),"male officer over 통솔 60 keeps a full unit");
+        put16(other,0x118,46);other[0xEC]=50;
+        check(sortie_area_trait(other) && !sortie_female_capped(other),"female 독려 holder without 응원/악주 keeps a full unit");
+        put16(other,0x118,96);other[0xA9]=0;
+        check(!sortie_female_capped(other),"male 응원 holder under 통솔 60 keeps a full unit");
+        put16(other,0x118,0);other[0xEC]=80;
         put16(other,0x11A,11);check(sortie_area_trait(other),"male 용장 counts as an ally-area trait");put16(other,0x11A,0);
     }
     campaign_reinforcement_tests();

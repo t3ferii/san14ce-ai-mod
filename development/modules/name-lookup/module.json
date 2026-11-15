@@ -1,0 +1,76 @@
+{
+ "schema": 1,
+ "id": "name-lookup",
+ "title": "name-lookup",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/name_lookup.h",
+  "src/native_name_lookup.inl",
+  "tests/name_lookup_fixture.cpp",
+  "tools/build_name_lookup_fixture.ps1",
+  "tools/compare_name_lookup_ab.py"
+ ],
+ "sources": [
+  "src/name_lookup.h",
+  "src/native_name_lookup.inl",
+  "src/native_adapter.cpp",
+  "src/native_split_install.inl",
+  "tests/name_lookup_fixture.cpp",
+  "tools/build_name_lookup_fixture.ps1",
+  "tools/compare_name_lookup_ab.py",
+  "docs/NAME_LOOKUP.md",
+  "distribution/progress_native.ini"
+ ],
+ "tests": [
+  "name-lookup",
+  "split-module"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "name-lookup",
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "performance",
+   "key": "name_lookup"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "performance",
+    "key": "name_lookup"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "name_lookup",
+    "module": "name-lookup",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.name_lookup",
+    "install": "(install_name_lookup(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 70
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

@@ -1,0 +1,104 @@
+{
+ "schema": 1,
+ "id": "merit",
+ "title": "merit",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/merit_bond.h",
+  "src/native_merit.inl",
+  "src/native_merit_links.inl",
+  "src/native_merit_save.inl",
+  "src/native_merit_scroll.inl",
+  "tests/merit_combat_capture.h",
+  "tests/merit_combat_fixture.inl",
+  "tests/merit_native_fixture.cpp",
+  "tests/merit_save_fixture.inl",
+  "tests/merit_scroll_fixture.inl"
+ ],
+ "sources": [
+  "src/native_merit.inl",
+  "src/native_merit_save.inl",
+  "src/native_merit_links.inl",
+  "src/merit_bond.h",
+  "src/native_merit_scroll.inl"
+ ],
+ "tests": [
+  "merit",
+  "split-module"
+ ],
+ "hook_owners": [
+  "merit",
+  "merit_save",
+  "merit_prisoner",
+  "start_guard"
+ ],
+ "checks": [
+  "merit",
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "personnel",
+   "key": "merit"
+  },
+  {
+   "section": "personnel",
+   "key": "merit_bond16"
+  },
+  {
+   "section": "personnel",
+   "key": "merit_friendship"
+  },
+  {
+   "section": "personnel",
+   "key": "merit_troops_level"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "personnel",
+    "key": "merit"
+   },
+   {
+    "section": "personnel",
+    "key": "merit_bond16"
+   },
+   {
+    "section": "personnel",
+    "key": "merit_troops_level"
+   },
+   {
+    "section": "personnel",
+    "key": "merit_friendship"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [
+   {
+    "service": "sidecars",
+    "owner": "merit",
+    "kind": "add",
+    "order": 30,
+    "gate_order": 0,
+    "cond": "defined(SPLIT_BASE)",
+    "expr": "merit_sidecars.add(&merit_sidecar_plugin,30)"
+   }
+  ],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

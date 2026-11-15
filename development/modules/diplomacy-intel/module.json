@@ -1,0 +1,87 @@
+{
+ "schema": 1,
+ "id": "diplomacy-intel",
+ "title": "diplomacy-intel",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/diplomacy_intel.h",
+  "src/diplomacy_intel_profile.h",
+  "src/native_diplomacy_intel.inl",
+  "tests/diplomacy_intel_fixture.cpp",
+  "tests/verify_diplomacy_intel.py",
+  "tools/build_diplomacy_intel_fixture.ps1"
+ ],
+ "sources": [
+  "src/native_diplomacy_intel.inl",
+  "src/diplomacy_intel.h",
+  "src/diplomacy_intel_profile.h",
+  "src/native_adapter.cpp",
+  "src/native_split_install.inl",
+  "tests/diplomacy_intel_fixture.cpp",
+  "tests/verify_diplomacy_intel.py",
+  "tests/split_module_fixture.cpp",
+  "tools/build_diplomacy_intel_fixture.ps1",
+  "installer/InstallerGui.cs",
+  "distribution/FeatureSelect.ps1",
+  "FeatureSelect.ps1"
+ ],
+ "tests": [
+  "diplomacy-intel"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "diplomacy-intel"
+ ],
+ "ini": [
+  {
+   "section": "diplomacy",
+   "key": "diplomacy_counterturn"
+  },
+  {
+   "section": "diplomacy",
+   "key": "diplomacy_overinvest"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "diplomacy",
+    "key": "diplomacy_overinvest",
+    "retired": true
+   },
+   {
+    "section": "diplomacy",
+    "key": "diplomacy_counterturn"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "diplomacy_intel",
+    "module": "diplomacy-intel",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.diplomacy_overinvest || mod_features.diplomacy_counterturn",
+    "install": "(diplomacy_intel::install(),true)",
+    "refused": "",
+    "after": [],
+    "seq": 220
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

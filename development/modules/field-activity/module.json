@@ -1,0 +1,67 @@
+{
+ "schema": 1,
+ "id": "field-activity",
+ "title": "field-activity",
+ "host": "combat",
+ "build": "split",
+ "status": "aggregate",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "ai",
+  "sortie"
+ ],
+ "conflicts": [],
+ "owns": [],
+ "sources": [
+  "src/native_adapter.cpp",
+  "src/native_sortie.inl",
+  "src/native_campaign.inl",
+  "src/native_campaign_routes.inl",
+  "src/native_campaign_operations.inl",
+  "src/native_campaign_logistics.inl",
+  "src/native_campaign_reinforcements.inl",
+  "src/native_campaign_support.inl",
+  "src/native_campaign_departures.inl",
+  "tests/campaign_departure_fixture.inl",
+  "tests/campaign_priority_fixture.inl"
+ ],
+ "tests": [
+  "log",
+  "progress-native",
+  "progress-rollback",
+  "native",
+  "sortie",
+  "merit",
+  "recruitment",
+  "personnel",
+  "awards"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "log",
+  "progress-native",
+  "progress-rollback",
+  "native",
+  "sortie",
+  "merit",
+  "recruitment",
+  "personnel",
+  "awards"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

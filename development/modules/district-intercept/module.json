@@ -1,0 +1,70 @@
+{
+ "schema": 1,
+ "id": "district-intercept",
+ "title": "district-intercept",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "sortie"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_district_intercept.inl",
+  "src/native_district_intercept_link.inl",
+  "tests/district_intercept_fixture.inl",
+  "tests/verify_district_intercept.py"
+ ],
+ "sources": [
+  "src/native_sortie.inl",
+  "src/native_adapter.cpp",
+  "installer/InstallerGui.cs",
+  "distribution/FeatureSelect.ps1",
+  "tests/district_intercept_fixture.inl",
+  "tests/verify_district_intercept.py",
+  "src/native_district_intercept.inl",
+  "src/native_split_install.inl"
+ ],
+ "tests": [
+  "district-intercept",
+  "sortie",
+  "native",
+  "split-module",
+  "installer-gui"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "district-intercept",
+  "sortie",
+  "native",
+  "split-module",
+  "installer-gui"
+ ],
+ "ini": [
+  {
+   "section": "combat",
+   "key": "district_intercept_block"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "combat",
+    "key": "district_intercept_block"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

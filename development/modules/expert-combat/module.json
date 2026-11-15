@@ -1,0 +1,73 @@
+{
+ "schema": 1,
+ "id": "expert-combat",
+ "title": "expert-combat",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [],
+ "conflicts": [],
+ "owns": [
+  "src/expert_combat_settings.h",
+  "src/native_adjacency.inl",
+  "src/native_expert_links.inl",
+  "src/native_expert_settings.inl",
+  "tests/expert_settings_fixture.inl"
+ ],
+ "sources": [
+  "src/expert_combat_settings.h",
+  "src/native_expert_settings.inl",
+  "src/native_expert_links.inl",
+  "research/expert_settings/build_preset_layout.py",
+  "src/native_adjacency.inl",
+  "src/native_split_install.inl",
+  "tests/expert_settings_fixture.inl",
+  "tests/split_module_fixture.cpp"
+ ],
+ "tests": [
+  "native",
+  "split-module"
+ ],
+ "hook_owners": [
+  "expert_links"
+ ],
+ "checks": [
+  "native",
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "battle_rules",
+   "key": "battle_rules"
+  },
+  {
+   "section": "battle_rules",
+   "key": "expert_ingame"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "battle_rules",
+    "key": "battle_rules"
+   },
+   {
+    "section": "battle_rules",
+    "key": "expert_ingame"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

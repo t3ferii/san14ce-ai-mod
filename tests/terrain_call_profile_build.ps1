@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot
 & python -B -X utf8 (Join-Path $PSScriptRoot 'test_analyze_terrain_profile.py')
 if($LASTEXITCODE -ne 0){throw 'Terrain CPU log parser tests failed.'}

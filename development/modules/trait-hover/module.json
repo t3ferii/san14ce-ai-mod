@@ -1,0 +1,82 @@
+{
+ "schema": 1,
+ "id": "trait-hover",
+ "title": "trait-hover",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "layout",
+  "modpack-v16"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_trait_hover.inl",
+  "src/trait_hover_profile.h",
+  "tests/trait_hover_fixture.cpp",
+  "tools/build_trait_hover_fixture.ps1"
+ ],
+ "sources": [
+  "src/native_trait_hover.inl",
+  "src/trait_hover_profile.h",
+  "src/layout_registry.h",
+  "src/native_layout_core.inl",
+  "src/native_layout_client.inl",
+  "tests/trait_hover_fixture.cpp",
+  "tools/build_trait_hover_fixture.ps1"
+ ],
+ "tests": [
+  "trait-hover",
+  "layout-registry",
+  "split-module"
+ ],
+ "hook_owners": [
+  "trait_hover"
+ ],
+ "checks": [
+  "trait-hover",
+  "layout-registry",
+  "split-module"
+ ],
+ "ini": [
+  {
+   "section": "extensions",
+   "key": "tooltip_collab"
+  }
+ ],
+ "installer": {
+  "items": [
+   {
+    "section": "extensions",
+    "key": "tooltip_collab"
+   }
+  ]
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [
+   {
+    "name": "trait_hover",
+    "module": "trait-hover",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE) && defined(SPLIT_MODPACK)",
+    "off_id": 34,
+    "wanted": "trait_hover_wanted()",
+    "install": "trait_hover_install()",
+    "refused": "trait_hover_off=true;log_event(\"feature_off\",34,5)",
+    "after": [
+     "battle_deaths"
+    ],
+    "seq": 360
+   }
+  ],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

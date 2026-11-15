@@ -1,4 +1,4 @@
-# Helpers/paths are supplied by Manage.ps1. Only these mod-owned names are allowed.
+﻿# Helpers/paths are supplied by Manage.ps1. Only these mod-owned names are allowed.
 # Traits9 layout: our four ScreenLayout index entries are merged into the
 # current index and point to a bank number chosen at install time. Every other
 # index entry stays byte-for-byte, so a face editor or another layout mod may

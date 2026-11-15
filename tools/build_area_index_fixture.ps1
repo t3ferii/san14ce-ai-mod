@@ -1,4 +1,4 @@
-param()
+﻿param()
 # User decision 2026-10-25: fixed map regions, equivalent native facility counts.
 $ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot
