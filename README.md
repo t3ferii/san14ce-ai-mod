@@ -4,7 +4,7 @@
 
 [소스 수정·빌드 안내](docs/SOURCE_BUILD.md) · [AI 수정 지침](docs/AI_EDITING.md) · [검증 결과](docs/SOURCE_VALIDATION.md) · [수정·재배포 허용 범위](LICENSE)
 
-`src/`, `tests/`, `tools/`, `installer/`, `distribution/`에서 원하는 기능을 fork하여 수정할 수 있습니다. 핵심 코드의 `AI-CONTRACT` 주석은 AI가 지켜야 할 스레드·ABI·훅 소유권·저장 호환성 제약을 설명합니다. **v16.2 공개 빌드 소스를 옮겼습니다(2026-11-15).** 생성·검사 도구, 설치기 카탈로그(`development/installer_map.json`), 모듈 목록(`development/modules/`), 개발 문서까지 git으로 관리하는 텍스트 파일을 모두 넣었습니다. 설치기(`installer/InstallerGui.cs`), 조조전 DLL(`src/ccz_module.cpp`), 훅 관리 DLL(`src/layout_main.cpp`) 소스도 포함합니다. 개성·전법 툴팁과 AI 전사 연출은 자체 소스로 다시 만들어 다른 모드의 기계어를 포함하지 않습니다. 개인 PC 경로만 `<user>`로 가렸고 C/C++ 실행 토큰은 원본과 같습니다. 전체 빌드에 필요한 원작 자료·외부 모드 payload는 [별도 의존성](docs/SOURCE_DEPENDENCIES.md)을 확인하세요.
+`src/`, `tests/`, `tools/`, `installer/`, `distribution/`에서 원하는 기능을 fork하여 수정할 수 있습니다. 핵심 코드의 `AI-CONTRACT` 주석은 AI가 지켜야 할 스레드·ABI·훅 소유권·저장 호환성 제약을 설명합니다. **v16.3 공개 빌드 소스를 옮겼습니다(2026-11-15).** 생성·검사 도구, 설치기 카탈로그(`development/installer_map.json`), 모듈 목록(`development/modules/`), 개발 문서까지 git으로 관리하는 텍스트 파일을 모두 넣었습니다. 설치기(`installer/InstallerGui.cs`), 조조전 DLL(`src/ccz_module.cpp`), 훅 관리 DLL(`src/layout_main.cpp`) 소스도 포함합니다. 개성·전법 툴팁과 AI 전사 연출은 자체 소스로 다시 만들어 다른 모드의 기계어를 포함하지 않습니다. 개인 PC 경로만 `<user>`로 가렸고 C/C++ 실행 토큰은 원본과 같습니다. 전체 빌드에 필요한 원작 자료·외부 모드 payload는 [별도 의존성](docs/SOURCE_DEPENDENCIES.md)을 확인하세요.
 
 버전별 변경사항은 [GitHub 릴리스](https://github.com/t3ferii/san14ce-ai-mod/releases)에서 확인하세요.
 
@@ -62,7 +62,7 @@ v15부터는 설치 관리자 상단의 **업데이트** 버튼으로 다음 버
 <details open>
 <summary><strong>조타 요격: 장강을 지키는 컴퓨터 수군</strong></summary>
 
-원작의 컴퓨터 수군 요격은 칸 수만 보고 움직여서 답답했습니다. 이제 컴퓨터도 유저처럼 조타 개성을 씁니다. 여강·건업·시상·강하·강릉·장사·무릉의 조타 장수가 항구나 성 주변 장강의 점령 칸을 잃으면 바로 출진합니다. 한 번에 멀리 움직이며 잃은 칸을 다시 칠하고, 적 부대를 감싸 병참을 끊습니다. 적 육지에 함부로 상륙하지 않고 투석대·망루 사거리를 피해 장강을 계속 지킵니다. 조타 장수는 시상부터 채우고(시상 > 건업 > 여강 > 강릉 > 강하 > 장사 > 무릉), 시상에 쉬는 조타 장수가 없으면 가까운 다른 조타 성이 대신 출진합니다.
+원작의 컴퓨터 수군 요격은 칸 수만 보고 움직여서 답답했습니다. 이제 컴퓨터도 유저처럼 조타 개성을 씁니다. 여강·건업·시상·강하·강릉·장사·무릉의 조타 장수가 항구나 성 주변 장강의 점령 칸을 잃으면 바로 출진합니다. 한 번에 멀리 움직이며 잃은 칸을 다시 칠하고, 적 부대를 감싸 병참을 끊습니다. 적 육지에 함부로 상륙하지 않고 투석대·망루 사거리를 피해 장강을 계속 지킵니다. 조타 장수는 시상부터 채우고(시상 > 건업 > 여강 > 강릉 > 강하 > 장사 > 무릉), 시상에 쉬는 조타 장수가 없으면 가까운 다른 조타 성이 대신 출진합니다. 지원 나간 배는 자기 성 항구 5칸 안에 적이 보이면 그 항구 방어로 임무를 바꿉니다.
 
 ![조타 장수가 장강을 수복하는 장면](https://raw.githubusercontent.com/t3ferii/san14ce-ai-mod/main/readme_screenshot/%EC%A1%B0%ED%83%80_%EC%9E%A5%EA%B0%95%EC%88%98%EB%B3%B5.png)
 

@@ -1,6 +1,6 @@
 {
   "snapshot_date": "2026-11-15",
-  "type": "v16.2 public build source",
+  "type": "v16.3 public build source",
   "ai_contract_comments": 19,
   "cpp_files_token_equal": true,
   "assets_not_included": [
@@ -9,7 +9,7 @@
     "assets/ccz/preview_classes.png",
     "data/ (game-derived tables, 4계절 payload)"
   ],
-  "manifest_scope": "Every git-tracked text file of the v16.2 build plus assets/ccz metadata, as staged (LF); excludes this manifest and repository-only files",
+  "manifest_scope": "Every git-tracked text file of the v16.3 build plus assets/ccz metadata, as staged (LF); excludes this manifest and repository-only files",
   "files": [
     {
       "path": "AGENTS.md",
@@ -29,7 +29,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "0019d2eb3db1800d30701d579b681a49448412a2ca69d79c9fd868c29dacd248"
+      "sha256": "bc52151bb896d505c5e2aec6933eca11ee899107c9e816494d18ef3e0e44155d"
     },
     {
       "path": "SplitManage.ps1",
@@ -49,11 +49,11 @@
     },
     {
       "path": "development/FUNCTION_AUDIT.md",
-      "sha256": "70651042594ccb0f00a0185094ba1dcac1e83c6d554982050c457864144ccfa7"
+      "sha256": "9c4b5a82b92768811879f90be3bf5383362e9f4a31c9ca056de77484ad7a30fc"
     },
     {
       "path": "development/FUNCTION_INDEX.csv",
-      "sha256": "e6cde7ed4cf2f20b39f2966785cdb74dbb6239d8115dcc680ba640dd762bbb0b"
+      "sha256": "f66989dc27f087fd0ac62ac58a2dcfb1bb44c2dc9bb6519a68e1af289a5cbbf7"
     },
     {
       "path": "development/HANDOFF_U35_LAG.md",
@@ -473,7 +473,7 @@
     },
     {
       "path": "development/source_audit.json",
-      "sha256": "e0b96392c384326e742f3ab21a0c2812aa07616f08b0e0cd7211e93ab5165e47"
+      "sha256": "bb93e2fcc6a508d85cfa581240933af8424cb8e3585cae1528a8495cfcab5c08"
     },
     {
       "path": "distribution/Diagnose.ps1",
@@ -557,7 +557,7 @@
     },
     {
       "path": "docs/CHANGES_ALL.md",
-      "sha256": "80468451b48d67e1c7726a8ab137b40f60ea6503325256b7dd7c2fef77fbe4b2"
+      "sha256": "0da61050dab8fbb029a8e5c5cc7dd18537bf378d008c8639a380320931ddbc6f"
     },
     {
       "path": "docs/CHECKS.md",
@@ -705,7 +705,7 @@
     },
     {
       "path": "docs/RELEASE_NOTES.md",
-      "sha256": "a072a44cefb27fc335a9aeb3c31225b3afeb92fb8129775230082d1c18219835"
+      "sha256": "15d69aecdb85853aca8bd959e205f10c1f3e53453011fe1c78616584fe57344d"
     },
     {
       "path": "docs/SESSION_RULES.md",
@@ -1205,7 +1205,7 @@
     },
     {
       "path": "src/native_campaign.inl",
-      "sha256": "613c7f0f91155b9261f778da0b4ef723aaaaefa2357eb508aef09ac3a21e8996"
+      "sha256": "b8ededbdb16b411e5fa5b7a4df05af40c2c5f4b08a2d74d90671611cb0138b4a"
     },
     {
       "path": "src/native_campaign_assault.inl",
@@ -2713,7 +2713,7 @@
     },
     {
       "path": "tools/release_features.py",
-      "sha256": "00aa3e555fd7d148bd2f1e7d2cc00501b62076e45c672649074e7f01cd50839d"
+      "sha256": "190c3492679b814b098ac7ff8d4a9b5e6891373792c44e203557060578676d4e"
     },
     {
       "path": "tools/rollback_progress_native.py",

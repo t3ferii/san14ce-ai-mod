@@ -990,6 +990,35 @@ static unsigned helm_pad_pick(unsigned own,unsigned from,unsigned here,Obj self,
         }
     return best;
 }
+// local186 (user 2026-11-15 "원래 출진 성 항구 5칸이내에 적부대가 보이면 시상 지원을 끄고 퇴각하는게 아니라 해당 성의 항구 적부대로
+// 목표 바꾸고 ... 처음부터 건업 방어 임무 받은것처럼 이어갈수 있나? 중간에 로직이 안끊기고 전환"): a ship working for another
+// castle (the 시상 support of helm_neighbour: its region's city is not the castle it sailed from) takes on its own castle's
+// port when a hostile army comes within kHelmHomeAlert hexes of that port's base - the port nearest the ship, unless
+// another ship of the force already works it. Only the region changes (ring cleared, goal re-picked the same day), as a
+// ship sent out for that port: the port retake, region switches, ring join and the way home all go on from there.
+static constexpr int kHelmHomeAlert=5;
+static bool helm_home_call(Obj army,Progress &p,unsigned own,unsigned here) {
+    Obj origin=fn<Obj(__fastcall *)(Obj)>(GA(GA_22BFE0))(army);
+    if(!valid(origin) || intercept_base_owner(origin)!=own)return false;
+    const unsigned home=word(origin,0x4E);if(!home || home>=52)return false;
+    Obj area=helm_area_object(p.helm_area);
+    const unsigned working=p.helm_ring?p.helm_ring:(area?area[0x35]:0);
+    if(working==home)return false;   // already on its own castle's work
+    unsigned best=0,foe_at=48400;int closest=1<<30;
+    for(unsigned n=1;n<=500;++n) {
+        Obj a=table(0x6CAF0,n,500);if(!valid(a) || a[0x35]!=home)continue;
+        const unsigned base=word(a,0x3A);Obj t=base<48400?table(0xE270,base,48399):nullptr;
+        if(!valid(t) || t[0x10]!=kRetakePortTerrain)continue;
+        unsigned foe[1];if(!intercept_attackers(own,base,kHelmHomeAlert,foe,1) || helm_area_taken(own,n,army))continue;
+        const int d=here<48400?distance(here,base):0;
+        if(d<closest) {closest=d;best=n;foe_at=foe[0];}
+    }
+    if(!best)return false;
+    // army, old region | new region << 16, hostile hex | home castle << 16
+    log_event("helm_home_switch",army_id(army),p.helm_area|(best<<16),foe_at|(home<<16));
+    p.helm_ring=0;p.helm_area=static_cast<unsigned short>(best);p.region_target=48400;p.helm_pick_day=-1;p.helm_stuck=0;
+    return true;
+}
 static bool helm_step(Obj army,Progress &p);
 // local170: after a region switch the ship picks and sails the same day (before, the day of the switch was spent waiting).
 static bool helm_switch_again(Obj army,Progress &p) {static int depth;if(depth>=2)return true;++depth;const bool r=helm_step(army,p);--depth;return r;}
@@ -997,6 +1026,7 @@ static bool helm_step(Obj army,Progress &p) { COST_SCOPE("campaign:helm_step");
     const unsigned own=army_force(army),here=word(army,0x2A);const int day=game_day();
     if(p.returning) {recovery_return(army,p);return true;}
     if(p.helm_delay)return helm_delay_step(army,p,day);
+    if(helm_home_call(army,p,own,here))return helm_switch_again(army,p);   // local186
     Obj area=helm_area_object(p.helm_area);
     const unsigned port=area?word(area,0x3A):48400;
     Obj port_tile=port<48400?table(0xE270,port,48399):nullptr;

@@ -1,5 +1,5 @@
 {
-  "basis": "v16.2 public build source (2026-11-15)",
+  "basis": "v16.3 public build source (2026-11-15)",
   "method": "lexical definition candidates; not preprocessed; not full semantic review",
   "files": [
     {
@@ -5103,7 +5103,7 @@
     },
     {
       "file": "src/native_campaign.inl",
-      "sha256": "613c7f0f91155b9261f778da0b4ef723aaaaefa2357eb508aef09ac3a21e8996",
+      "sha256": "b8ededbdb16b411e5fa5b7a4df05af40c2c5f4b08a2d74d90671611cb0138b4a",
       "scope": "현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단",
       "topic": "지역 점령·집결·원군",
       "definitions": [
@@ -5308,80 +5308,84 @@
           "line": 973
         },
         {
+          "name": "helm_home_call",
+          "line": 1000
+        },
+        {
           "name": "helm_switch_again",
-          "line": 995
+          "line": 1024
         },
         {
           "name": "helm_step",
-          "line": 996
+          "line": 1025
         },
         {
           "name": "intercept_step",
-          "line": 1148
+          "line": 1178
         },
         {
           "name": "campaign_regional_step",
-          "line": 1190
+          "line": 1220
         },
         {
           "name": "next_region",
-          "line": 1211
+          "line": 1241
         },
         {
           "name": "prepare_local_build",
-          "line": 1235
+          "line": 1265
         },
         {
           "name": "recovery_return",
-          "line": 1271
+          "line": 1301
         },
         {
           "name": "native_fort_assault",
-          "line": 1306
+          "line": 1336
         },
         {
           "name": "siege_goal_hex",
-          "line": 1317
+          "line": 1347
         },
         {
           "name": "siege_tile_distance",
-          "line": 1324
+          "line": 1354
         },
         {
           "name": "native_on_mission",
-          "line": 1328
+          "line": 1358
         },
         {
           "name": "mission_corridor_distance",
-          "line": 1351
+          "line": 1381
         },
         {
           "name": "mission_route_corridor",
-          "line": 1365
+          "line": 1395
         },
         {
           "name": "mission_route_waypoint",
-          "line": 1394
+          "line": 1424
         },
         {
           "name": "targetless",
-          "line": 1414
+          "line": 1444
         },
         {
           "name": "recover_idle",
-          "line": 1419
+          "line": 1449
         },
         {
           "name": "pause_assembly",
-          "line": 1459
+          "line": 1489
         },
         {
           "name": "campaign_step",
-          "line": 1460
+          "line": 1490
         },
         {
           "name": "campaign_individual_priority",
-          "line": 1483
+          "line": 1513
         }
       ]
     },
