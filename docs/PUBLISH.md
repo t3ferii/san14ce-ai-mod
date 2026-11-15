@@ -48,7 +48,7 @@ python -B -X utf8 <스크래치>/src_<버전>/AI_TacticsMod/tools/audit_current_
 - 결과를 저장소에 `cp -r` 한 뒤 **README.md는 `git checkout README.md`로 되돌린다**(내보내기가 로컬 README로 「모더용 소스 공개」 절을 지움).
 - `FUNCTION_AUDIT.md` 3행·`source_audit.json` basis를 새 버전으로 고친다(생성기 문구가 v12.19로 남아 있음).
 - 저장소 전용 파일 유지: `tools/build_public_smoke.ps1`(로컬에 없음, `-Combat -Ccz` 실행해 통과 확인), `docs/SOURCE_*.md`, `AI_EDITING.md`, `development/CURRENT.md`, `public_source_manifest.json`(추가·변경 파일 지문), `THIRD_PARTY.md`, `site/`.
-- 커밋 전 `git diff --cached`에서 실명·gmail·`C:\Users\<user> 경로가 없는지 확인한다.
+- 커밋 전 `git diff --cached`에서 실명·gmail·`C:\Users\<계정>` 경로가 없는지 확인한다.
 
 ## 3. 임시 브랜치로 릴리스 생성
 main 커밋 해시를 `MAIN`으로 기억한 뒤:
@@ -139,3 +139,7 @@ jobs:
 - 작업 트리(`AI_TacticsMod_wt-rules`)에서 배포할 때 `build/input_package`는 본 폴더로 가는 연결(junction)이라 `prepare_public_release.py --layout build/input_package`가 경로 검사에서 멈춘다. 작업 트리 안의 실제 폴더(예: `build/layout_v15_11`, 같은 bank 해시)를 넘긴다.
 - 릴리스 워크플로는 초안 생성 → 자산 2개 업로드(로컬 크기·SHA-256과 대조) → 공개(PATCH) 순서의 한 파일로 성공했다. 초안은 `/releases/tags/<tag>`로 안 보이므로 `/releases` 목록에서 찾는다.
 
+## v16.1 절차 보완 (2026-11-15)
+- `export_source_snapshot.py`는 이제 git으로 추적하는 텍스트 파일을 모두 내보낸다(저장소 전용 `.github/`·`site/`·`.gitignore`·`.gitattributes`·`development/CURRENT.md`, 참고 모드 목록 `development/reference_inventory.json`, `.bak` 백업 제외. `assets/ccz`의 README·JSON 2개는 추가, `.bin`·그림·`data/`는 제외). 바뀌지 않은 파일은 BOM·줄바꿈을 그대로 둔다.
+- 저장소 `development/public_source_manifest.json`은 내보낸 파일마다 스테이징된 blob의 SHA-256으로 다시 만든다(v16.1: 687개).
+- 새 판은 새 태그(`SAN14_AI_<버전>`)·새 릴리스로 낸다. 같은 판 자산 교체는 태그 이동 + 자산 삭제·재업로드 워크플로를 쓴다(v16 갱신).
