@@ -1,3 +1,5 @@
+// 2026-11-16: fixture globals (s, blocked) share names with locals in the season/flood sources; shadowing is harmless here.
+#pragma warning(disable:4459)
 // User/Claude 2026-10-29: standalone fixture instrumentation declaration.
 #ifndef COST_SCOPE
 #define COST_SCOPE(name) do {} while(0)
@@ -13,7 +15,11 @@
 using Obj=unsigned char *;
 static Obj image;
 static bool enabled=true;
-static struct {bool convenience=true,terrain_edit=true;unsigned terrain_diag_mode=0;} mod_features;
+static struct {bool convenience=true,terrain_edit=true;unsigned terrain_diag_mode=0;bool season_map=false,season_tiles=false,season_rain=false,season_cloud=false;unsigned season_probe=0;} mod_features;
+// 2026-11-16: native_terrain_render.inl carries the season bake/probe (local110+); they read the world only when a season switch is on.
+using Obj=unsigned char *;
+static Obj world(){return nullptr;}
+static bool diagnostic_logging=false;   // 2026-11-16: the local146 spike sampler runs only with diagnostics logging
 static unsigned checks,set_calls,native_calls,captures,applies,last_cells,last_writes;
 static DWORD callback_thread;
 static bool in_callback,expect_work;
@@ -24,7 +30,7 @@ static void number(Obj p,unsigned off,unsigned v) {memcpy(p+off,&v,sizeof(v));}
 static void *fixture_function(unsigned);
 template<class T> static T fn(unsigned r) {return reinterpret_cast<T>(fixture_function(r));}
 #ifndef NO_RUNTIME_LOG
-static void log_event(const char *kind,unsigned a,unsigned b,unsigned c) {
+static void log_event(const char *kind,unsigned a,unsigned b,unsigned c=0) {
     if(!strcmp(kind,"terrain_trees_capture")){++captures;require(b==1 && c==0,"capture log payload");}
     if(!strcmp(kind,"terrain_trees_apply")){++applies;last_cells=a;last_writes=b;require(c==0,"apply log payload");}
 }

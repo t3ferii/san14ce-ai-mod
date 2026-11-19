@@ -55,6 +55,15 @@
       "reason": "Both slots get the same replacement functions (personnel_search_command, personnel_officer_candidates). corps_domestic writes them only when injury is off (injury links already wrap both nodes when it is on), so each slot has one writer at run time.",
       "decided": "2026-11-11",
       "evidence": "src/native_corps_domestic.inl publish() (wrapped=mod_features.injury); src/native_injury_links.inl:7-8; src/native_split_install.inl corps_domestic::publish after publish_injury"
+    },
+    {
+      "rule": "R6",
+      "sites": ["GA_186E60", "GA_278290"],
+      "owners": ["ccz_bands"],
+      "kind": "accepted",
+      "reason": "종군 중립군 stage 0 links the 186E60 (hex owner writer) and 278290 (army supply) entries, which the San14Sim observer also traces. The observer is a research build only; when it is loaded, prepare_link's observer_conflict refuses the link, the band install publishes nothing and [ccz] bands stays off (observer_hook_conflict + band_prepare_rejected logs). Without the observer the band feature is the single writer of both entries.",
+      "decided": "2026-11-17",
+      "evidence": "src/native_patch_core.inl prepare_link/observer_conflict; src/native_ccz_bands.inl install() (all-or-nothing preparation); tools/check_observer_hooks.py KNOWN_ROW_OVERLAPS; docs/NEUTRAL_BANDITS.md section 11"
     }
   ]
 }

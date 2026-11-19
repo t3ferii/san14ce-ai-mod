@@ -8,21 +8,24 @@
 #include <string.h>
 namespace costprofile {
 constexpr unsigned maximum=1024;
-static SRWLOCK registry_lock=SRWLOCK_INIT;
-static const char *names[maximum];static unsigned registered;
-static wchar_t file_path[MAX_PATH];static LONGLONG frequency;
+inline SRWLOCK registry_lock=SRWLOCK_INIT;
+inline const char *names[maximum];inline unsigned registered;
+inline wchar_t file_path[MAX_PATH];inline LONGLONG frequency;
 // Diagnostic builds compile the writer but start it only for [diagnostics] cost_profile=1 (2026-10-23);
 // the RuntimeCosts build (NO_RUNTIME_LOG) always starts it. Release builds compile none of it.
-static bool on;
+inline bool on;
+// Present clock of the render-stall sampler (face_timing, local203): QPC and thread of the latest Present entry, written by
+// unified_overlay's frame_perf::begin in runtime-log builds.
+inline volatile LONG64 present_qpc;inline volatile LONG present_thread;
 enum CrumbDirection { Leave=0, Enter=1, Call=2 };
 struct Crumb {uint64_t tick;DWORD thread;const char *name;LONG enter;uintptr_t value;volatile LONG repeat;};
 struct CrumbRing {volatile LONG thread;volatile LONG index;Crumb entries[256];};
-static CrumbRing crumb_rings[64];
-static volatile LONG crumbs_enabled;
-static __declspec(thread) CrumbRing *thread_ring;
-static __declspec(thread) bool pair_pending;
+inline CrumbRing crumb_rings[64];
+inline volatile LONG crumbs_enabled;
+inline __declspec(thread) CrumbRing *thread_ring;
+inline __declspec(thread) bool pair_pending;
 inline void set_crumbs_enabled(bool value) {InterlockedExchange(&crumbs_enabled,value?1:0);}
-static CrumbRing *get_crumb_ring() {
+inline CrumbRing *get_crumb_ring() {
     if(thread_ring)return thread_ring;
     LONG id=static_cast<LONG>(GetCurrentThreadId());
     for(unsigned i=0;i<63;++i) {
@@ -31,10 +34,10 @@ static CrumbRing *get_crumb_ring() {
     }
     return thread_ring=&crumb_rings[63];
 }
-static bool same_crumb(const Crumb &e,const char *name,LONG direction,uintptr_t value,DWORD thread) {
+inline bool same_crumb(const Crumb &e,const char *name,LONG direction,uintptr_t value,DWORD thread) {
     return e.thread==thread && e.enter==direction && e.value==value && e.name && name && !strcmp(e.name,name);
 }
-static void crumb(const char *name,LONG direction,uintptr_t value=0) {
+inline void crumb(const char *name,LONG direction,uintptr_t value=0) {
     if(!InterlockedCompareExchange(&crumbs_enabled,0,0))return;
     CrumbRing *ring=get_crumb_ring();DWORD thread=GetCurrentThreadId();
     LONG end=InterlockedCompareExchange(&ring->index,0,0);
@@ -70,8 +73,8 @@ struct Frame {LONGLONG children;};
 // local159 long-frame record: self time of every scope inside the running depth-0 scope, per key, for this one invocation.
 struct ThreadState {Entry values[maximum];Frame frames[128];unsigned depth;ULONGLONG window,sequence,writes;
     LONGLONG invocation[maximum];unsigned short touched[256];unsigned touched_count;};
-static __declspec(thread) ThreadState state;
-static wchar_t stall_path[MAX_PATH];
+inline __declspec(thread) ThreadState state;
+inline wchar_t stall_path[MAX_PATH];
 inline void initialize(HMODULE module) {
     LARGE_INTEGER q;QueryPerformanceFrequency(&q);frequency=q.QuadPart;on=frequency>0;
     if(!GetModuleFileNameW(module,file_path,MAX_PATH)) {file_path[0]=0;return;}
@@ -93,14 +96,14 @@ inline void initialize(HMODULE module) {
 #endif
         GetCurrentProcessId());
 }
-static void note_child(unsigned slot,LONGLONG self) {
+inline void note_child(unsigned slot,LONGLONG self) {
     if(slot>=maximum)return;
     if(!state.invocation[slot] && state.touched_count<256)state.touched[state.touched_count++]=static_cast<unsigned short>(slot);
     state.invocation[slot]+=self?self:1;
 }
 // A depth-0 scope of 50 ms or more (user 2026-11-14 순-boundary stutter): one line with the root, its time, its own time and the
 // ten largest self times inside it (name=ms). Written at once (rare); the per-second CSV keeps the totals.
-static void long_root(unsigned slot,LONGLONG elapsed,LONGLONG self) {
+inline void long_root(unsigned slot,LONGLONG elapsed,LONGLONG self) {
     if(stall_path[0] && frequency>0 && elapsed*20>=frequency && slot<maximum) {
         char line[2048];size_t used=0;
         int n=_snprintf_s(line,sizeof(line),_TRUNCATE,"%llu,%lu,%s,%.3f,%.3f",GetTickCount64(),GetCurrentThreadId(),names[slot],
@@ -122,7 +125,7 @@ static void long_root(unsigned slot,LONGLONG elapsed,LONGLONG self) {
     for(unsigned i=0;i<state.touched_count;++i)state.invocation[state.touched[i]]=0;
     state.touched_count=0;
 }
-static void flush() {
+inline void flush() {
     if(state.depth || !file_path[0] || frequency<=0)return;
     char buffer[maximum*256];size_t used=0;ULONGLONG now=GetTickCount64();
     unsigned count;AcquireSRWLockShared(&registry_lock);count=registered;ReleaseSRWLockShared(&registry_lock);

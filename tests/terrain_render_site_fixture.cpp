@@ -12,9 +12,13 @@
 #include <wchar.h>
 #include <initializer_list>
 static bool enabled=true;
-static struct {bool convenience=true,terrain_edit=true;unsigned terrain_diag_mode=0;} mod_features;
+static struct {bool convenience=true,terrain_edit=true;unsigned terrain_diag_mode=0;bool season_map=false,season_tiles=false,season_rain=false,season_cloud=false;unsigned season_probe=0;} mod_features;
+// 2026-11-16: native_terrain_render.inl carries the season bake/probe (local110+); they read the world only when a season switch is on.
+using Obj=unsigned char *;
+static Obj world(){return nullptr;}
+static Obj pointer(Obj p,unsigned off){return *reinterpret_cast<Obj *>(p+off);}
 #ifndef NO_RUNTIME_LOG
-static void log_event(const char *,unsigned,unsigned,unsigned) {}
+static void log_event(const char *,unsigned,unsigned,unsigned=0) {}
 #endif
 static unsigned checks,named_lookups,module_path_calls,system_path_calls,address_calls;
 static void require(bool ok,const char *label) {++checks;if(!ok){fprintf(stderr,"FAIL %s (%u)\n",label,checks);ExitProcess(1);}}
@@ -56,6 +60,7 @@ static SIZE_T WINAPI mock_virtual_query(LPCVOID address,PMEMORY_BASIC_INFORMATIO
 #define GetModuleFileNameW mock_module_path
 #define GetSystemDirectoryW mock_system_path
 #define VirtualQuery mock_virtual_query
+static volatile LONG diagnostic_logging=0;   // native_core.inl's [diagnostics] switch (3f3e1f58 texture-create watch): off, no samples
 #include "../src/native_terrain_render.inl"
 #undef VirtualQuery
 #undef GetSystemDirectoryW

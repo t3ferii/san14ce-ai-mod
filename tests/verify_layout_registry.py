@@ -25,10 +25,10 @@ def ok(cond,what):
     global checks;checks+=1
     if not cond:fail.append(what)
 reg=(src/'layout_registry.h').read_text(encoding='utf-8')
-body=reg[reg.index('static const LayoutRow layout_rows[]'):reg.index('static const unsigned layout_row_count')]
+body=reg[reg.index('const LayoutRow layout_rows[]'):reg.index('static const unsigned layout_row_count')]
 rows=[(m.group(1),m.group(2),int(m.group(3),16),int(m.group(4),16),m.group(5)) for m in
       re.finditer(r'\{"(\w+)",(LR_\w+),\s*0x([0-9A-Fa-f]+),\s*0x([0-9A-Fa-f]+),\s*([\w|]+)\}',body)]
-ok(len(rows)==287,'287 registry rows parsed (got %d)'%len(rows))   # local166 +1 merit_save game-start guard (13EA960); User 2026-11-10 U35: +4 face_keep_portrait; local27 +1 layout_keep_wrap; local102 +10 normal-mode 설정3 rows; local105 +2 normal-mode frame and 확인; prior rows unchanged.
+ok(len(rows)==389,'389 registry rows parsed (got %d)'%len(rows))   # local237 +16 traits9_screens person detail tabs; local236 +66 traits9_screens (개성 9칸 범위 B); interop S7 (2026-11-16) +20 advisor_briefing state slots   # local166 +1 merit_save game-start guard (13EA960); User 2026-11-10 U35: +4 face_keep_portrait; local27 +1 layout_keep_wrap; local102 +10 normal-mode 설정3 rows; local105 +2 normal-mode frame and 확인; prior rows unchanged.
 # 1. exe
 for owner,kind,rva,orig,flags in rows:
     if kind=='LR_VT':
@@ -55,11 +55,11 @@ reg_sites=sorted(rva for owner,kind,rva,orig,flags in rows if owner=='stat_exp' 
 ok(sites==reg_sites,'stat_exp: registry sites equal the module scan (%d vs %d)'%(len(sites),len(reg_sites)))
 ok(call_to(0x85E907,0x9332B0) and call_to(0x89A373,0x9332B0),'stat_exp / dispatch_days text calls')
 # 2b. traits9 payload tables
-pay=P/'src/traits9_payloads.h'
+pay=P/'src/traits9_sites.h'   # 2026-11-18 local235: hand-written site table (replaces the frozen traits9_payloads.h)
 if pay.exists():
-    t=ga_expand.expand(pay.read_text(encoding='utf-8'))   # local10: the generated header spells original RVAs as GA(GA_x) too
+    t=ga_expand.expand(pay.read_text(encoding='utf-8'))
     core=[(int(a,16),int(b)) for a,b in re.findall(r'\{(0x[0-9A-Fa-f]+),(\d+),\{0x',t[t.index('traits9_core[]'):])]
-    manifests=[(int(a,16),int(b)) for a,b in re.findall(r'\{(0x[0-9A-Fa-f]+),(\d+),\d+,\{0x',t[:t.index('traits9_core[]')])]
+    manifests=[(int(a,16),int(b)) for a,b in re.findall(r'\{(0x[0-9A-Fa-f]+),(\d+),\{0x',t[t.index('traits9_sites[T9_SITE_COUNT]'):t.index('traits9_core[]')])]
     tbl=re.findall(r'\{(LP_\w+),0x([0-9A-Fa-f]+),(\d+)\}',reg)
     reg_core=[(int(a,16),int(b)) for k,a,b in tbl if k=='LP_BYTES']
     reg_span=[(int(a,16),int(b)) for k,a,b in tbl if k=='LP_SPAN']
@@ -67,7 +67,7 @@ if pay.exists():
     ok(sorted(manifests)==sorted(reg_span),'traits9 inline spans equal the payload manifests')
     ok(all(rd(a,1) for a,_ in reg_span),'span sites readable')
 else:
-    ok(False,'src/traits9_payloads.h missing')
+    ok(False,'src/traits9_sites.h missing')
 # 3. blocked entries
 blocked=[int(x,16) for x in re.findall(r'0x([0-9A-Fa-f]+)',reg[reg.index('layout_blocked_entries[]'):])]
 core_src=(src/'native_layout_core.inl').read_text(encoding='utf-8')
@@ -92,7 +92,7 @@ direct=re.compile(r'\b(prepare_link|call_prepare|call_publish|publish_link|patch
 for name in ('native_speed_buttons.inl','native_lord_change.inl','native_region_officers.inl','native_ccz_title.inl','native_ccz_sprites.inl',
              'native_layout_wait.inl','native_fast_menu.inl','native_stat_exp.inl','native_dispatch_days.inl','native_damage_preview.inl',
              'native_mediation_plus.inl','native_trait_hover.inl','native_battle_deaths.inl','native_tactic_priority.inl',
-             'native_modpack.inl','native_traits9.inl'):   # W6-E (F-03): stats200, collab/scenery slots and traits9 go through the manager only;    # battle_deaths (4 CALL rows + 1 span) added 2026-11-06 (docs/HISTORY.md 4-3, source arrives with S4); trait_hover (owner of 152 VT + 4 CALL rows) added 2026-11-06 (docs/HISTORY.md 4.3)
+             'native_modpack.inl','native_traits9.inl','native_traits9_screens.inl'):   # W6-E (F-03): stats200, collab/scenery slots and traits9 go through the manager only;    # battle_deaths (4 CALL rows + 1 span) added 2026-11-06 (docs/HISTORY.md 4-3, source arrives with S4); trait_hover (owner of 152 VT + 4 CALL rows) added 2026-11-06 (docs/HISTORY.md 4.3)
     if not (src/name).exists():ok(False,name+': module source missing (S4 not done yet)');continue
     text=(src/name).read_text(encoding='utf-8')
     ok(not direct.search(text),name+': no direct patching left (Layout manager only)')

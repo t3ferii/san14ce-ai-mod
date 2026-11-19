@@ -11,15 +11,23 @@
 #include <vector>
 #include <thread>
 static bool enabled=true;
-static struct {bool convenience=true,terrain_edit=true;unsigned terrain_diag_mode=0;} mod_features;
+static struct {bool convenience=true,terrain_edit=true;unsigned terrain_diag_mode=0;bool season_map=false,season_tiles=false,season_rain=false,season_cloud=false;unsigned season_probe=0;} mod_features;
+// 2026-11-16: native_terrain_render.inl carries the season bake/probe (local110+); they read the world only when a season switch is on.
+using Obj=unsigned char *;
+static Obj pointer(Obj p,unsigned off){return *reinterpret_cast<Obj *>(p+off);}
 static unsigned checks;
 static void require(bool ok,const char *label){++checks;if(!ok){fprintf(stderr,"FAIL %s (%u)\n",label,checks);ExitProcess(1);}}
 #ifndef NO_RUNTIME_LOG
 struct Event {const char *name;unsigned a,b,c;DWORD thread;};
 static std::vector<Event> events;
-static void log_event(const char *name,unsigned a,unsigned b,unsigned c){events.push_back({name,a,b,c,GetCurrentThreadId()});}
+static void log_event(const char *name,unsigned a,unsigned b,unsigned c=0){events.push_back({name,a,b,c,GetCurrentThreadId()});}
 static unsigned count_event(const char *name){unsigned count=0;for(const auto &e:events)if(!strcmp(name,e.name))++count;return count;}
+#else
+#define log_event(...) ((void)0)   // as the release adapter: the flood/ice logs in native_terrain_edit.inl compile away
 #endif
+using Obj=unsigned char *;
+static Obj world();   // defined below; the season bake only reads it with a season switch on
+static volatile LONG diagnostic_logging=0;   // native_core.inl's [diagnostics] switch (3f3e1f58 texture-create watch): off, no samples
 #include "../src/native_terrain_render.inl"
 using Obj=unsigned char *;
 static unsigned char root[2],tile0[32],tile1[32];
@@ -35,6 +43,8 @@ static unsigned short word(Obj,unsigned){return 0;}
 static unsigned cost_cache_clears=0;
 static void terrain_edit_fixture_cost_cache_clear() {++cost_cache_clears;}
 #define TERRAIN_EDIT_FIXTURE_COST_CACHE 1
+// 2026-11-16: the flood sync (local132) breaks a building through fn(GA(296AA0)); fixtures never stand a building under flood water.
+template<class T> static T fn(unsigned){return nullptr;}
 #include "../src/native_terrain_edit.inl"
 static unsigned gpu_pixel(ID3D11Device *device,ID3D11DeviceContext *context,ID3D11Texture2D *texture,unsigned hex) {
     auto c=terrain_render::center(hex);unsigned x=static_cast<unsigned>(std::floor(c.x/100+0.5)),z=static_cast<unsigned>(std::floor(c.z/100+0.5));
@@ -100,7 +110,8 @@ int main() {
     require(terrain_edit::apply(22101,1)==terrain_edit::Result::Applied,"user original-terrain restore");on_present(context);
     require(gpu_pixel(device,context,second,22101)==asset,"user revert restores raw prepatch pixels rather than prepatched initial values");
 #ifndef NO_RUNTIME_LOG
-    require(count_event("terrain_render_readback")==3 && !count_event("terrain_render_readback_error"),"one real readback per uploading frame including original restoration");
+    // local144: the diagnostic readback samples at most once per 5 s (Map(READ) cost ~2 ms per uploading frame), so a fast fixture sees one.
+    require(count_event("terrain_render_readback")==1 && !count_event("terrain_render_readback_error"),"diagnostic readback throttled to one sample per 5 s");
     for(const auto &e:events)if(!strcmp(e.name,"terrain_render_readback"))require(e.b==e.c,"every observed GPU word matches its expected value");
 #endif
     // Empty sidecar must reconcile every old cell, including a material-zero goal.

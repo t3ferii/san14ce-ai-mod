@@ -45,12 +45,13 @@ for pair in retired:
 all_native='\n'.join(sources.values())
 for section,key in sorted(feature_keys):
     if section=='groups': continue
-    escaped=re.escape(key)
+    escaped=re.escape({('ccz','bands'):'ccz_bands'}.get((section,key),key))  # [ccz] bands -> mod_features.ccz_bands (local217)
     use=re.search(r'mod_features\.'+escaped+r'\b|\bf\.'+escaped+r'\b',all_native)
     ok(bool(use),'switch gates nothing: %s.%s'%(section,key))
 ok('split_core_enabled' in split and 'split_pointer_enabled' in split,'publish gates present')
 # User decision 2026-11-03: retired CCZ switches stay OFF; sprites own their paired behavior.
-adapter=sources['native_adapter.cpp']
+from hub_text import hub_text   # 2026-11-16 multi-unit refactor: hub = native_core.inl + native_patch_core.inl + native_adapter.cpp
+adapter=hub_text(P)
 ok('f.population_rate = (std::max)(1u, (std::min)(4u, GetPrivateProfileIntW(L"domestic", L"population_rate", 4, config)))' in adapter and
    'if(mod_features.population_rate<=1)return result;' in sources['native_population.inl'] and
    '(std::min)(60000u,s.before+mod_features.population_rate*(now-s.before))' in sources['native_population.inl'],

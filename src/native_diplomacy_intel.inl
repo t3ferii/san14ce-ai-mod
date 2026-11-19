@@ -344,7 +344,7 @@ static void *replacements[]={reinterpret_cast<void *>(&frame),reinterpret_cast<v
     reinterpret_cast<void *>(&refresh<GA_82F490>),reinterpret_cast<void *>(&redraw<GA_8300B0>),
     reinterpret_cast<void *>(&refresh<GA_82F8F0>),reinterpret_cast<void *>(&redraw<GA_830410>)};
 static CallLink links[sizeof(sites)/sizeof(sites[0])];
-static bool install() {
+bool install() {
     if(!guards_match())return false;
     rate_reduce=rate_reduce_rva();
     log_event("diplomacy_rate_form",rate_reduce!=0,rate_reduce?number(image,rate_reduce):-1);
@@ -381,4 +381,4 @@ static bool install() {
 }
 #endif
 }
-static bool diplomacy_intel_guards_match() {return diplomacy_intel::guards_match();}
+bool diplomacy_intel_guards_match() {return diplomacy_intel::guards_match();}

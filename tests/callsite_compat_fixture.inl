@@ -35,6 +35,15 @@ static void __fastcall capture_update(Obj army) {
         "26C940 mock command update invokes the actual installed 301BD9 caller thunk");
     unsigned short next=3;memcpy(army+0x48,&next,2);
 }
+// local270: the chain probe answers the matching call first with every destination, then the native call itself
+static unsigned chain_calls[2],chain_dests[3];
+static int __fastcall chain_search(SortieNativePath *path,Obj,unsigned from,unsigned *to,int a,int b,int c) {
+    static int whole[]={2,3,4,5,6},first[]={2,3,4};
+    check(native_search_depth==1 && from==2 && to && b==11 && c==13,"chain probe forwards start, flags and slot");
+    if(a==3) {++chain_calls[0];memcpy(chain_dests,to,sizeof(chain_dests));path->data=whole;path->count=5;return 1;}
+    check(a==1 && *to==4,"the native call itself follows unchanged");
+    ++chain_calls[1];path->data=first;path->count=3;return 1;
+}
 static void *callsite_capture_function(unsigned rva) {
     switch(rva) {
     case 0x331780:return reinterpret_cast<void *>(&capture_valid);
@@ -66,6 +75,22 @@ static void restored_capture_tests() {
     check(!memcmp(army+0x2C,saved.bytes,sizeof(saved.bytes)),"campaign trace restores native command fields");
     check(capture_updates==3 && capture_searches==3 && !sortie_trace_output && !campaign_native_trace && !native_search_depth,
         "both capture paths execute original-next and clean up all trace and search scopes");
+    sortie_search_nexts[index]=chain_search;
+    {
+        std::vector<unsigned> cells;const unsigned dests[3]={4,5,6};
+        CampaignChainProbe probe{2,dests,3,&cells,false};campaign_chain_probe=&probe;
+        SortieNativePath path{};unsigned to=4;
+        const auto thunk=reinterpret_cast<SortieSearch>(compat_target(0x303FC9));
+        check(thunk(&path,image+48,2,&to,1,11,13)==1 && path.count==3,"chain probe leaves the native answer to the caller");
+        check(thunk(&path,image+48,2,&to,1,11,13)==1,"a second search under the same probe is the native call alone");
+        campaign_chain_probe=nullptr;
+        check(chain_calls[0]==1 && chain_calls[1]==2 && cells==std::vector<unsigned>({2,3,4,5,6}) && probe.done &&
+              chain_dests[0]==4 && chain_dests[1]==5 && chain_dests[2]==6,"chain probe reads the whole relay chain once");
+        const unsigned twice[3]={4,4,6};CampaignChainProbe again{2,twice,3,&cells,false};cells.clear();campaign_chain_probe=&again;
+        check(thunk(&path,image+48,2,&to,1,11,13)==1 && path.count==3,"a repeated point still leaves the native call");
+        campaign_chain_probe=nullptr;
+        check(chain_calls[0]==1 && chain_calls[1]==3 && cells.empty() && again.done,"no chain search with a leg from a hex to itself");
+    }
     callsite_capture_active=false;*reinterpret_cast<Obj *>(image+0x2780F60)=saved_world;free(root);sortie_search_nexts[index]=saved_next;
 }
 static void callsite_sortie_tests() {

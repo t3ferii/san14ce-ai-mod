@@ -46,15 +46,49 @@ static bool injury_replaceable(GameList &list,Obj keep,unsigned capacity) {
     }
     return true;
 }
-static bool injury_plan_herb(Obj force,GameList &list,Obj advisor) {
-    if(!valid(force) || injury_player_force(force) || !injury_force_needs_herb(force))return false;
+// local264 (user 2026-11-19 "우리 모드에서 부상무장 있으면 본초학 넣는거 코스트 제한 지키면서 넣어야해. 모략에 있는 시정 빼고 남는
+// 코스트로 본초학 넣으면 될거같아"): the government budget is the original's 232500(force,1) (30 + rank stage + 방책), spent by the
+// ruler's policy and every officer of the five rows at 232350(officer,&same,0) = max(1, officer+0x182 + policy+0xA2) less the
+// same-principle discount; the computer plan 263520 makes the same sums (ghidra 263520 / 232350 / 232500). An officer the herb
+// code adds must fit: officers of the 모략 row (category 2, rows[2]) leave, last first, until he does; when the whole row is not
+// enough, he is not added and nothing is removed.
+static int injury_policy_cost(Obj person) {
+    if(!valid(person))return 0;
+    unsigned same=0;
+    return static_cast<int>(fn<unsigned(__fastcall *)(Obj,unsigned *,int)>(GA(GA_232350))(person,&same,0));
+}
+static int injury_plan_cost(Obj force,GameList *rows) {
+    int used=injury_policy_cost(table(0x158,word(force,0x10),6000));
+    for(unsigned r=0;r<5;++r)for(Link *l=list_first(rows[r]);l;l=l->next)used+=injury_policy_cost(l->value);
+    return used;
+}
+static bool injury_fit_budget(Obj force,GameList *rows,int extra) {
+    const int budget=fn<int(__fastcall *)(Obj,int)>(GA(GA_232500))(force,1);
+    int used=injury_plan_cost(force,rows)+extra;
+    if(used<=budget)return true;
+    Obj order[16];unsigned n=0;
+    for(Link *l=list_first(rows[2]);l && n<16;l=l->next)order[n++]=l->value;
+    unsigned drop=0;
+    while(drop<n && used>budget)used-=injury_policy_cost(order[n-1-drop++]);
+    if(used>budget) {
+        log_event("injury_herb_no_budget",word(force,0x10),static_cast<unsigned>(used),static_cast<unsigned>(budget));
+        return false;
+    }
+    for(unsigned i=0;i<drop;++i)personnel_remove(rows[2],order[n-1-i]);
+    log_event("injury_herb_budget",word(force,0x10),drop,static_cast<unsigned>(budget-used));
+    return true;
+}
+static bool injury_plan_herb(Obj force,GameList *rows,Obj advisor) {
+    if(!valid(force) || !rows || injury_player_force(force) || !injury_force_needs_herb(force))return false;
+    GameList &list=rows[4];
     int slots=fn<int(__fastcall *)(Obj,unsigned)>(GA(GA_22ECF0))(force,4);
     if(slots<1 || slots>7)return false;
     // Native force layout: five categories, seven officer IDs per category.
-    // Preserve every existing protected provider even when native AI replans.
+    // Preserve every existing protected provider even when native AI replans (local264: only within the budget).
     for(unsigned i=0;i<7;++i) {
         Obj p=table(0x158,word(force,0xCC+i*2),6000);
         if(injury_owned(p,force) && injury_protected_policy(p) && !injury_list_has(list,p)) {
+            if(!injury_fit_budget(force,rows,injury_policy_cost(p)))continue;
             if(!injury_replaceable(list,p,static_cast<unsigned>(slots)))return false;
             list_add(list,p);
         }
@@ -70,6 +104,8 @@ static bool injury_plan_herb(Obj force,GameList &list,Obj advisor) {
         unsigned level=p[0x182];
         if(!selected || level>best) {selected=p;best=level;}
     }
+    // local264: the budget first (it may let 모략 officers go; nothing changes when it cannot fit), then the slot.
+    if(selected && !injury_fit_budget(force,rows,injury_policy_cost(selected)))return false;
     if(!selected || !injury_replaceable(list,selected,static_cast<unsigned>(slots))) {
         log_event("injury_herb_unavailable",word(force,0x10),static_cast<unsigned>(slots),0);
         return false;
@@ -124,7 +160,7 @@ static Obj __fastcall injury_government_selection(Obj force,Obj layout,GameList 
                 break;
             }
         }
-        injury_plan_herb(force,lists[4],advisor);
+        injury_plan_herb(force,lists,advisor);
     }
     return advisor;
 }
@@ -162,18 +198,28 @@ static void injury_synchronize_city(Obj city) {
     }
     }
     if(!mod_features.injury_herbal)return;
-    GameList list;list_init(list,GA(GA_13466B0));
-    for(unsigned i=0;i<7;++i) {
-        Obj p=table(0x158,word(force,0xCC+i*2),6000);
-        if(valid(p))list_add(list,p);
+    // local264: all five rows (force+0x54, 0x1E bytes each, seven officer ids), so the budget sees them and the 모략 row (2)
+    // can give way; a changed 모략 row is applied before the 인사 row (4).
+    GameList rows[5];
+    for(unsigned r=0;r<5;++r) {
+        list_init(rows[r],GA(GA_13466B0));
+        for(unsigned i=0;i<7;++i) {
+            Obj p=table(0x158,word(force,0x54+r*0x1E+i*2),6000);
+            if(valid(p))list_add(rows[r],p);
+        }
     }
-    if(injury_plan_herb(force,list,nullptr)) {
-        bool changed=injury_list_size(list)>7;unsigned i=0;
-        for(Link *l=list_first(list);l;l=l->next,++i)
-            if(i>=7 || word(force,0xCC+i*2)!=word(l->value,0x10))changed=true;
-        if(changed)fn<void(__fastcall *)(Obj,unsigned,GameList *,int)>(GA(GA_2EFA70))(force,4,&list,0);
+    auto row_changed=[force](GameList &list,unsigned r) {   // against the row's valid officers in order (as built above)
+        Obj now[7];unsigned n=0;
+        for(unsigned i=0;i<7;++i) {Obj p=table(0x158,word(force,0x54+r*0x1E+i*2),6000);if(valid(p))now[n++]=p;}
+        unsigned i=0;
+        for(Link *l=list_first(list);l;l=l->next,++i)if(i>=n || now[i]!=l->value)return true;
+        return i!=n;
+    };
+    if(injury_plan_herb(force,rows,nullptr)) {
+        for(unsigned r:{2u,4u})
+            if(row_changed(rows[r],r))fn<void(__fastcall *)(Obj,unsigned,GameList *,int)>(GA(GA_2EFA70))(force,r,&rows[r],0);
     }
-    list_free(list);
+    for(unsigned r=0;r<5;++r)list_free(rows[r]);
 }
 static uint64_t __fastcall injury_departure_create(Obj node,Obj context,Obj subject) { COST_SCOPE("injury_departure_create");
     if(enabled) {

@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "battle-deaths",
  "title": "battle-deaths",
  "host": "convenience",
@@ -55,7 +55,58 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_25B022",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "battle_deaths",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_25B0EB",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "battle_deaths",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_27F716",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "battle_deaths",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_27F7A9",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "battle_deaths",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_297B6F",
+   "kind": "span",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "battle_deaths",
+   "len": 8,
+   "policy": "refuse",
+   "src": "src/layout_registry.h"
+  }
+ ],
  "registry": {
   "rows": [
    {

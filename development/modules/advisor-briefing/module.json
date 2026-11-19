@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "advisor-briefing",
  "title": "advisor-briefing",
  "host": "convenience",
@@ -18,8 +18,10 @@
   "src/advisor_ps.h",
   "src/advisor_terrain_bridge.h",
   "src/advisor_ambush_bridge.h",
+  "src/advisor_face_files.h",
   "src/advisor_vs.h",
   "src/native_advisor_briefing.inl",
+  "src/native_briefing_sources.inl",
   "tests/advisor_briefing_fixture.cpp",
   "tests/advisor_overlay_fixture.cpp",
   "tests/verify_advisor_briefing.py",
@@ -33,12 +35,16 @@
   "src/advisor_briefing_profile.h",
   "src/advisor_terrain_bridge.h",
   "src/advisor_ambush_bridge.h",
+  "src/advisor_face_files.h",
   "src/native_advisor_briefing.inl",
+  "src/native_briefing_sources.inl",
   "src/native_advisor_overlay.inl",
   "src/advisor_briefing.hlsl",
   "src/advisor_vs.h",
   "src/advisor_ps.h",
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_split_install.inl",
   "src/native_unified_overlay.inl",
   "tests/advisor_briefing_fixture.cpp",
@@ -63,6 +69,7 @@
  "hook_owners": [
   "advisor_hud",
   "scene_yield",
+  "advisor_briefing",
   "kPointerHud"
  ],
  "checks": [
@@ -73,6 +80,10 @@
   {
    "section": "advisor_briefing",
    "key": "collect"
+  },
+  {
+   "section": "advisor_briefing",
+   "key": "collect2"
   },
   {
    "section": "game_flow",
@@ -96,9 +107,492 @@
   ]
  },
  "ui": [],
- "provides": [],
+ "provides": [
+  "advisor_briefing.inbox"
+ ],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_13A5EF0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13A5F48",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13A5F68",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13A5FE0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13A6000",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13D9438",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13D9440",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13D9458",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13D9960",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1430230",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1430248",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1431ED0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1431F30",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1431F38",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1431F50",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1462A80",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1462AA0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1468318",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1477890",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14778B0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1478268",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_hud",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1478280",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "advisor_hud",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1F1DA0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 11,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_1F1E90",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_1F2190",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_28FCE4",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_291256",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_29A31B",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_29A323",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_29A715",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_29A71D",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_306A30",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 11,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_41F8C0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_4421F0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 12,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_4541E0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 15,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_60D702",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_6254A7",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_6793CD",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_6C6B10",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 6,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_6C6DD0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 6,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_6CD573",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_6D5987",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_7216CF",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_7222AF",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_83CB38",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_843B60",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_844860",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 6,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  },
+  {
+   "key": "GA_9332B0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "advisor_briefing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_advisor_briefing.inl"
+  }
+ ],
  "registry": {
   "rows": [
    {

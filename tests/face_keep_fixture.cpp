@@ -115,6 +115,12 @@ int main() {
         k.pending.done[0]=true;ok(k.pending.waiting(9,&job[0])==-1,"wait runs once");
         k.pending.add(4,&job[1]);ok(k.pending.waiting(4,&job[2])==-1,"a different job in the table is not waited on");
         m.add(9);m.release(9);ok(m.loads==1 && m.unloads==0 && m.counts[9]==1,"requested face stays as a pin");
+        {   // local254: a request no army flag consumed becomes due by age, once
+            Pending p;int j=0;p.add(7,&j,1000);
+            ok(!p.due(0,1050,100) && p.due(0,1100,100),"an unconsumed request is due after 100 ms");
+            p.done[0]=true;ok(!p.due(0,5000,100),"a waited request is never due again");
+            p.add(8,&j,2000);ok(p.count==1 && p.ids[0]==8 && p.at[0]==2000,"a done slot is reused with its own time");
+        }
         k.pending.reset(nullptr);ok(k.pending.count==0,"new table drops requests");
         // User decision 2026-10-25: cap remains 256; prefetch replaces an eligible LRU pin.
         Manager full(1000);Keep f;fill(full,f);

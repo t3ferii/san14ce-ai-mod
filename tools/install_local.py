@@ -152,6 +152,11 @@ def prepare(a):
         installed=False,code_signed=False,gameplay_verified=False))
     print(json.dumps(dict(status='prepared',version=a.version,modules=modules,gui=a.gui,backup=str(backup),
         preexisting_selected_overrides=selected_overrides),ensure_ascii=False))
+def installer_missing_keys(exe):   # non-retired installer_map keys not found (UTF-16) in an installer EXE
+    items=json.loads((P/'development'/'installer_map.json').read_text(encoding='utf-8'))
+    items=items if isinstance(items,list) else next(v for v in items.values() if isinstance(v,list))
+    data=Path(exe).read_bytes()
+    return [i['key'] for i in items if not i.get('retired') and i['key'].encode('utf-16-le') not in data]
 def install(a):
     proof=proof_path(a.version); p=read(proof); assert p['status']=='prepared'; unchanged(p)
     stage=Path(p['stage']); manifest=read(stage/'manifest.json'); gui=manifest['gui_installer']['file']
@@ -168,6 +173,10 @@ def install(a):
         if key not in p['modules'] and not (G/name).exists(): continue   # a module never installed (e.g. layout) is not staged
         shutil.copyfile(build/name if key in p['modules'] or (release and key=='loader') else G/name,stage/name)
     shutil.copyfile(GUI_BUILD/gui if p['gui'] else G/gui,stage/gui)
+    # 2026-11-19 (local246): without -Gui the game folder keeps its old installer; local231..local245 left an 11-16 build that lacked
+    # the 게임성 의용병 무리 item. Every installer_map key must be in the staged installer, else install with -Gui.
+    missing=installer_missing_keys(stage/gui)
+    assert not missing,'Installer EXE predates development/installer_map.json (missing keys: %s); install with -Gui.'%', '.join(missing[:8])
     hashes={n:sha(stage/n) for n in NAMES.values() if (stage/n).exists()}
     manifest.update(release_version=a.version,local_diagnostic_only=not release,dll_sha256=hashes['dinput8.dll'])
     manifest['supported_original_exe_sha256_all']=list(KNOWN_ORIGINAL_SHAS)   # 2026-11-05 build table; the legacy single field is kept

@@ -7,13 +7,14 @@
     [switch]$List,
     [switch]$Build,
     [int]$Jobs = 0,
-    [string]$Priority = ''
+    [string]$Priority = '',
+    [string]$Results = ''
 )
 $ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot
 $taskRegistry=Get-Content -LiteralPath (Join-Path $taskProject 'development\features.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 if(($Feature -and $Changed) -or (-not $Feature -and -not $Changed)) {throw 'Specify exactly one of -Feature <name> or -Changed.'}
-if(-not $Changed -and ($Base -or $Paths -or $NoCache)) {throw '-Base, -Paths and -NoCache are only valid with -Changed.'}
+if(-not $Changed -and ($Base -or $Paths)) {throw '-Base and -Paths are only valid with -Changed.'}
 $taskHasRoutes=[bool]$taskRegistry.PSObject.Properties['routes']
 function Get-TaskBuildKind($taskName,$taskItem) {   # features.json build (split|none); every module declares it. Plan D-1: the integrated build kind is retired.
     if($taskItem.PSObject.Properties.Name -contains 'build') {return [string]$taskItem.build}
@@ -57,9 +58,18 @@ if($taskHasRoutes) {   # routes.<name>.subsumes: drop checks another selected ro
 }
 $taskBuildKind=Get-TaskBuildKind $Feature $taskEntry
 if($List) {
-    [PSCustomObject]@{feature=$Feature;tests=$taskRoutes;build=$Build.IsPresent;installs=$false;output='build/development';mode='feature';cache=$false;subsumed=@($taskSubsumed)} | ConvertTo-Json
+    [PSCustomObject]@{feature=$Feature;tests=$taskRoutes;build=$Build.IsPresent;installs=$false;output='build/development';mode='feature';cache=-not $NoCache.IsPresent;subsumed=@($taskSubsumed)} | ConvertTo-Json
     return
 }
+# 2026-11-16 user (검사 빨리): a cache:true route whose input key equals the key of its last pass is skipped as cached (-NoCache runs all)
+$taskSelArgs=@('-B','-X','utf8',(Join-Path $PSScriptRoot 'select_checks.py'),'routes','--names',($taskRoutes -join ','))
+if($NoCache) {$taskSelArgs+='--no-cache'}
+$taskSelOut=@(& python @taskSelArgs)
+if($LASTEXITCODE -ne 0) {throw 'select_checks.py routes failed.'}
+$taskPlan=$taskSelOut[-1] | ConvertFrom-Json
+foreach($taskC in @($taskPlan.routes | Where-Object {$_.action -eq 'cached'})) {Write-Output ('[cached] {0} (inputs unchanged since its last pass)' -f $taskC.name)}
+$taskRoutes=@($taskPlan.routes | Where-Object {$_.action -eq 'run'} | ForEach-Object {$_.name})
+if($taskRoutes.Count -eq 0) {Write-Output 'All selected checks are cached.'}
 }
 # Execution is data-driven: features.json routes.<name>.steps run through tools/run_checks.py (parallel pool, CPU budget, cache record).
 foreach($taskRoute in $taskRoutes) {
@@ -67,17 +77,19 @@ foreach($taskRoute in $taskRoutes) {
     if($taskHasRoutes) {$taskData=$taskRegistry.routes.PSObject.Properties[$taskRoute]}
     if(-not $taskData -or -not ($taskData.Value.PSObject.Properties['steps'] -or $taskData.Value.PSObject.Properties['runner'])) {throw "Unknown fixture route: $taskRoute"}
 }
+if($taskRoutes.Count -eq 0 -and -not $Build) {return}
 $taskRunArgs=@('-B','-X','utf8',(Join-Path $PSScriptRoot 'run_checks.py'),'--routes',($taskRoutes -join ','))
 if($Jobs -gt 0) {$taskRunArgs+=@('--jobs',"$Jobs")}
 if($Priority) {$taskRunArgs+=@('--priority',$Priority)}
+if($Results) {$taskRunArgs+=@('--results',$Results)}
 $taskPlanFile=$null
-if($Changed) {   # the plan carries the cache keys; run_checks records a route only after it passed
+if($taskSelOut) {   # the plan carries the cache keys; run_checks records a route only after it passed
     $taskPlanFile=Join-Path ([IO.Path]::GetTempPath()) ('san14_plan_{0}.json' -f $PID)
     [IO.File]::WriteAllText($taskPlanFile,($taskSelOut[-1]),(New-Object System.Text.UTF8Encoding($false)))
     $taskRunArgs+=@('--plan',$taskPlanFile)
 }
 try {
-    & python @taskRunArgs
+    if($taskRoutes.Count) {& python @taskRunArgs}
     if($LASTEXITCODE -ne 0) {throw 'Selected checks failed (tools/run_checks.py).'}
 } finally {
     if($taskPlanFile -and (Test-Path -LiteralPath $taskPlanFile)) {Remove-Item -LiteralPath $taskPlanFile -Force}

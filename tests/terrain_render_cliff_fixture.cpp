@@ -11,14 +11,19 @@
 #include <vector>
 #include <cmath>
 static bool enabled=true;
-static struct {bool convenience=true,terrain_edit=true;unsigned terrain_diag_mode=0;} mod_features;
+static struct {bool convenience=true,terrain_edit=true;unsigned terrain_diag_mode=0;bool season_map=false,season_tiles=false,season_rain=false,season_cloud=false;unsigned season_probe=0;} mod_features;
+// 2026-11-16: native_terrain_render.inl carries the season bake/probe (local110+); they read the world only when a season switch is on.
+using Obj=unsigned char *;
+static Obj world(){return nullptr;}
+static Obj pointer(Obj p,unsigned off){return *reinterpret_cast<Obj *>(p+off);}
 static unsigned checks;
 static void require(bool ok,const char *label){++checks;if(!ok){fprintf(stderr,"FAIL %s (%u)\n",label,checks);ExitProcess(1);}}
 #ifndef NO_RUNTIME_LOG
 struct Event {const char *name;unsigned a,b,c;};
 static std::vector<Event> events;
-static void log_event(const char *name,unsigned a,unsigned b,unsigned c){events.push_back({name,a,b,c});}
+static void log_event(const char *name,unsigned a,unsigned b,unsigned c=0){events.push_back({name,a,b,c});}
 #endif
+static volatile LONG diagnostic_logging=0;   // native_core.inl's [diagnostics] switch (3f3e1f58 texture-create watch): off, no samples
 #include "../src/native_terrain_render.inl"
 using namespace terrain_render;
 static unsigned encoded(float h,float low,float high) {

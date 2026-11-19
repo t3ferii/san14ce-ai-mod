@@ -344,6 +344,9 @@ static bool screen_hooks_ready() {return hooks_ok;}
 static bool install() {
     load_settings();
     if(!guards_match())return false;
+    // 2026-11-18: IP SortiePresets replaces the same 145B8C0/145B8D8 sortie-screen slots. Yield the whole owner: no
+    // screen hooks, so ambush (which plugs into them) reports ambush_screen_missing and stays off too.
+    if(layout_client::yield_to_peer("tactic_priority",GA(GA_145B8D8))) {mod_features.tactic_priority=false;return true;}
     layout_client::Transaction tx;
     if(!layout_client::call(GA(GA_7DE5BD),reinterpret_cast<void *>(&set_text),reinterpret_cast<void **>(&next_set_text)) ||
        !layout_client::vt(GA(GA_145B8D8),reinterpret_cast<void *>(&update),reinterpret_cast<void **>(&next_update)) ||
@@ -351,6 +354,6 @@ static bool install() {
        !layout_client::call(GA(GA_7EE1C4),reinterpret_cast<void *>(&depart),reinterpret_cast<void **>(&next_dispatch))) {
         log_event("tactic_priority_register_rejected");return false;
     }
-    tx.done=true;hooks_ok=true;log_event("tactic_priority_installed",mod_features.tactic_priority?1u:0u,mod_features.ambush?1u:0u);return true;
+    tx.done=true;hooks_ok=true;log_event("tactic_priority_installed",mod_features.tactic_priority?1u:0u);return true;
 }
 }

@@ -2,6 +2,7 @@
 // startup KIDS foam effects (hash 05641EE9). User 2026-10-30: no reserve pool; the
 // list parser/early/enumeration hooks were removed (scenario-start lag, never matched).
 // Release feature under [features] terrain_edit; logging stays diagnostic-only.
+#include "terrain_core.h"   // engine service gate terrain_core_on()
 #pragma once
 #include "game_addresses.h"
 #ifndef SPLIT_COMBAT
@@ -77,7 +78,8 @@ static constexpr unsigned char SetterBytes[][16]={
     {0x48,0x8B,0xC4,0x48,0x89,0x58,0x10,0x48,0x89,0x78,0x18,0x55,0x48,0x8D,0x68,0x98},
     {0x48,0x8B,0xC4,0x48,0x89,0x78,0x18,0x55,0x48,0x8D,0xA8,0x48,0xFF,0xFF,0xFF,0x48}
 };
-static bool permitted=true,installed=false,transition=false;
+bool permitted=true;
+static bool installed=false,transition=false;
 static SRWLOCK lock=SRWLOCK_INIT;
 static volatile LONG watch=0;
 static bool any_time=false,ui_logged=false;
@@ -93,7 +95,7 @@ struct Goal {unsigned char next,original;bool known,queued,waiting;};
 static Goal goals[HexCount]={};
 static unsigned short dirty[HexCount];
 static unsigned head=0,dirty_count=0;
-static bool active() {return installed && permitted && enabled && mod_features.convenience && mod_features.terrain_edit && !(mod_features.terrain_diag_mode & 1u);}
+bool active() {return installed && permitted && enabled && mod_features.convenience && terrain_core_on() && !(mod_features.terrain_diag_mode & 1u);}
 struct CaptureFields {Obj object;float pos[3],quat[4],scale[3];};
 static bool capture_fields(Obj handle,CaptureFields &out) {
     // 2026-11-02 trace: one zoom frame spent 523ms in 222 post-create probes,
@@ -300,7 +302,7 @@ static uint64_t __fastcall render(Obj a,uintptr_t b,uintptr_t c,uintptr_t d,uint
     TERRAIN_SCOPE(FoamRenderNative);
     return fn<Callback>(GA(GA_E1BB60))(a,b,c,d,e,f,g,h);
 }
-static void restore() {
+void restore() {
     installed=false;before_world_change();
     for(auto &h:hooks)if(h.published) {
         auto slot=reinterpret_cast<void **>(image+h.slot);DWORD old=0,ignored=0;
@@ -315,8 +317,8 @@ static void restore() {
         }
     }
 }
-static void install() {
-    if(installed || !permitted || !enabled || !mod_features.convenience || !mod_features.terrain_edit || (mod_features.terrain_diag_mode & 1u))return;
+void install() {
+    if(installed || !permitted || !enabled || !mod_features.convenience || !terrain_core_on() || (mod_features.terrain_diag_mode & 1u))return;
     if(!guards_match()) {permitted=false;log_event("foam_guard_mismatch",31,0,0);return;}
     for(auto &h:hooks) {
         auto slot=reinterpret_cast<void **>(image+h.slot);DWORD old=0,ignored=0;
@@ -330,5 +332,5 @@ static void install() {
     installed=true;log_event("foam_installed",Count,GetCurrentThreadId(),generation);
 }
 }
-static bool terrain_foam_guards_match() {return terrain_foam::guards_match();}
+bool terrain_foam_guards_match() {return terrain_foam::guards_match();}
 #endif

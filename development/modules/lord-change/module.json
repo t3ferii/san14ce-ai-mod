@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "lord-change",
  "title": "lord-change",
  "host": "convenience",
@@ -45,7 +45,28 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_13E8118",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "lord_change",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_5064FC",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "lord_change",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  }
+ ],
  "registry": {
   "rows": [
    {

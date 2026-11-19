@@ -15,7 +15,8 @@ one of its steps runs), because its outputs or processes were not verified to be
 Scheduling: every step of every selected route is one task in a single pool of --jobs slots (default min(4, cpus)), so the whole run
 never uses more than that many processes. Ready tasks are ordered always-routes first, then the longest estimate first. Children run at
 BELOW_NORMAL priority (--priority idle for IDLE). A failed step skips the rest of its route; unless --keep-going no new task starts
-after the first failure. A route that passes is recorded for the cache through select_checks.py record (keys from --plan).
+after the first failure. A route that passes is recorded for the cache through select_checks.cmd_record after the run (keys
+from --plan).
 Standard library only. Writes only what the steps write (build/...).
 """
 import argparse
@@ -174,8 +175,36 @@ def make_tasks(data, names):
     return tasks
 
 
-def schedule(root, tasks, jobs, priority, keep_going, verbose, on_route_done):
-    """Run the task graph; returns (failed routes list, per-route seconds)."""
+COMMIT = ['']   # source state stamped on every --results line: HEAD, '+dirty' when tracked files differ
+
+
+def source_commit(root):
+    try:
+        head = subprocess.run(['git', '-C', root, 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout.strip()
+        dirty = subprocess.run(['git', '-C', root, 'status', '--porcelain', '--untracked-files=no'], capture_output=True, text=True).stdout.strip()
+        return head + ('+dirty' if dirty else '') if head else 'unknown'
+    except OSError:
+        return 'unknown'
+
+
+def result_of(lines):
+    """The step's result: the last non-empty line, or the trailing JSON block when the output ends with one printed over several lines."""
+    lines = [l for l in lines if l.strip()]
+    if not lines:
+        return ''
+    if lines[-1].strip() in ('}', ']'):
+        for i in range(len(lines) - 1, -1, -1):
+            if lines[i].lstrip().startswith(('{', '[')):
+                try:
+                    return json.dumps(json.loads('\n'.join(lines[i:])), ensure_ascii=False, sort_keys=True)
+                except ValueError:
+                    continue
+    return lines[-1].strip()
+
+
+def schedule(root, tasks, jobs, priority, keep_going, verbose, on_route_done, results=None):
+    """Run the task graph; returns (failed routes list, per-route seconds). results: open file, one JSON line per passed step
+    (route, step, last non-empty output line) for tools/feature_fingerprint.py."""
     by_id = {t.id: t for t in tasks}
     route_tasks = {}
     for t in tasks:
@@ -232,7 +261,14 @@ def schedule(root, tasks, jobs, priority, keep_going, verbose, on_route_done):
                     print('[ok %5.1fs] %s' % (t.secs, label))
                     for l in shown:
                         print('    ' + l[:300])
+                    if results is not None:
+                        results.write(json.dumps({'route': t.route, 'step': t.step['id'], 'cl': 'cl' in t.step, 'ok': True, 'commit': COMMIT[0],
+                                                  'line': result_of(lines)}, ensure_ascii=False) + '\n')
+                        results.flush()
                 else:
+                    if results is not None:   # a failure supersedes an earlier pass of the same step in an appended file
+                        results.write(json.dumps({'route': t.route, 'step': t.step['id'], 'ok': False, 'commit': COMMIT[0], 'line': ''}) + '\n')
+                        results.flush()
                     t.state = 'fail'
                     print('[FAIL %5.1fs rc=%s] %s' % (t.secs, rc, label))
                     for l in lines[-120:]:
@@ -264,6 +300,7 @@ def main(argv=None):
     ap.add_argument('--keep-going', action='store_true')
     ap.add_argument('--verbose', action='store_true')
     ap.add_argument('--list', action='store_true')
+    ap.add_argument('--results', help='append one JSON line per passed step (feature fingerprint input)')
     a = ap.parse_args(argv)
     root = os.path.abspath(a.root)
     jobs = a.jobs if a.jobs > 0 else min(4, os.cpu_count() or 2)
@@ -284,18 +321,31 @@ def main(argv=None):
         with open(a.plan, encoding='utf-8-sig') as f:
             keys = {r['name']: r.get('key') or '' for r in json.load(f).get('routes', [])}
     record = a.plan is not None
-    sel = os.path.join(HERE, 'select_checks.py')
+    passed = []
 
     def on_done(route, secs):
+        # 2026-11-16: recorded after the run, in this process (memoized keys). A per-route record subprocess recomputed the
+        # whole input closure inside the scheduler loop and held back every waiting step (dll-split cold 107 s -> 139 s).
         if record:
-            p = subprocess.run([sys.executable, '-B', '-X', 'utf8', sel, '--root', root, 'record', route, '--key', keys.get(route, ''), '--seconds', str(secs)],
-                               capture_output=True, text=True, encoding='utf-8', errors='replace')
-            print((p.stdout or p.stderr).strip())
+            passed.append((route, secs))
 
     t0 = time.time()
     print('run_checks: %d routes, %d steps, jobs=%d priority=%s' % (len(names), len(tasks), jobs, a.priority))
-    failed, secs = schedule(root, tasks, jobs, a.priority, a.keep_going, a.verbose, on_done)
+    res = open(a.results, 'a', encoding='utf-8', newline='\n') if a.results else None
+    if res is not None:
+        COMMIT[0] = source_commit(root)
+    try:
+        failed, secs = schedule(root, tasks, jobs, a.priority, a.keep_going, a.verbose, on_done, res)
+    finally:
+        if res is not None:
+            res.close()
     print('run_checks: wall %.1fs; routes: %s' % (time.time() - t0, ', '.join('%s=%.0fs' % (r, s) for r, s in sorted(secs.items(), key=lambda kv: -kv[1]))))
+    if passed:   # a route's key is recomputed now; inputs changed during the run -> not cached (select_checks.cmd_record)
+        import select_checks
+        man = select_checks.Manifest(root)
+        with select_checks.route_inputs.frozen():
+            for route, s in passed:
+                select_checks.cmd_record(root, route, keys.get(route, ''), s, man)
     skipped = [t for t in tasks if t.state == 'skip']
     if failed:
         print('run_checks FAILED: %s (%d steps skipped)' % (', '.join(failed), len(skipped)))

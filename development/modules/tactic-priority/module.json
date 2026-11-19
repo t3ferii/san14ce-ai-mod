@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "tactic-priority",
  "title": "tactic-priority",
  "host": "convenience",
@@ -81,7 +81,48 @@
  ],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_145B8C0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "tactic_priority",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_145B8D8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "tactic_priority",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7DE5BD",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "tactic_priority",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7EE1C4",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "tactic_priority",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  }
+ ],
  "registry": {
   "rows": [
    {

@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "dev-tools",
  "title": "dev-tools",
  "host": "tool",
@@ -32,7 +32,10 @@
   "tools/package_input.py",
   "tools/package_mod.py",
   "tools/prepare_public_release.py",
-  "tools/rollback_progress_native.py"
+  "tools/rollback_progress_native.py",
+  "tools/pe_image.py",
+  "tools/runtime_smoke.py",
+  "tools/log_summary.py"
  ],
  "sources": [],
  "tests": [

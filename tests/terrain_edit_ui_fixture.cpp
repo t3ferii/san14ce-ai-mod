@@ -1,3 +1,5 @@
+// 2026-11-16: fixture globals (s, blocked) share names with locals in the season/flood sources; shadowing is harmless here.
+#pragma warning(disable:4459)
 // User/Claude 2026-10-29: standalone fixture instrumentation declaration.
 #ifndef COST_SCOPE
 #define COST_SCOPE(name) do {} while(0)

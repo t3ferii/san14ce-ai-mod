@@ -67,7 +67,7 @@ want = {1: '선봉대 중전차 철갑차', 2: '척후병 중기병 친위대', 
 for f, names in want.items(): ok(' '.join(classes[cls(x)] for x in rows[f]) == names, 'formation %d -> %s' % (f, names))
 for name, want in (('kRulerClass', ['군웅', '영웅', '제왕']), ('kStrategistClass', ['책사교위', '참모중랑', '군사장군'])):
     m = re.search(name+r'\[3\]=\{([^}]*)\}', src); ok(m and [classes[int(x)] for x in m.group(1).split(',')] == want, name)
-ok('else if(main_rtv && post_seen && dsv && dsv!=scene_dsv)' in src and 'h*2==static_cast<unsigned>(want_height))post_seen=true;' in src and 'post_seen=false;' in src and 'fallback_attempted=false;drop(main_rtv);drop(frame_dsv);' in src and 'draw_scene(c,main_rtv,frame_dsv?frame_dsv:scene_dsv)' in src and 'rtv[0]==main_rtv && dsv && dsv!=frame_dsv && !post_seen' in src and 'drop(frame_dsv);' in src and 'ccz_sprites_zoom_fallback' in src and 'ccz_sprites_frame_stall' in src and 'if(draw_scene(c,main_rtv,frame_dsv?frame_dsv:scene_dsv))drawn_this_frame=true;' in src and 'if(scene_drawn || set_table)return;' in src,
+ok('else if(main_rtv && post_seen && dsv && dsv!=scene_dsv && !pre_post_depth(dsv))' in src and 'h*2==static_cast<unsigned>(want_height))post_seen=true;' in src and 'post_seen=false;' in src and 'fallback_attempted=false;drop(main_rtv);drop(frame_dsv);' in src and 'draw_scene(c,main_rtv,frame_dsv?frame_dsv:scene_dsv)' in src and 'rtv[0]==main_rtv && dsv && dsv!=frame_dsv && !post_seen' in src and 'drop(frame_dsv);' in src and 'ccz_sprites_zoom_fallback' in src and 'ccz_sprites_frame_stall' in src and 'if(draw_scene(c,main_rtv,frame_dsv?frame_dsv:scene_dsv))drawn_this_frame=true;' in src and 'if(scene_drawn || set_table)return;' in src,
    'draws into the back buffer at the first non-scene depth bind after post starts (battle effects mid-scene ignored), depth = view bound with the scene colour target; Present only as fallback')
 ok('memcpy(cam,camera,sizeof(cam))' not in src, 'camera copy uses the array size, not a pointer parameter size (local8 bug)')
 gen = [l.split('	') for l in (P/'data/ccz_generals.tsv').read_text(encoding='utf-8').splitlines() if l and not l.startswith('#')]
@@ -135,9 +135,10 @@ ok('if(!far_keep_enabled || armed<=0' in src and 'else if(far_keep_enabled && !c
    'OFF disables stale-camera refresh and far-distance arming')
 ok('bool ccz_far_keep = false;' in adapter and 'f.ccz_far_keep = false;' in adapter,
    'far keep remains OFF regardless of config (user 2026-11-03)')
-ok('ccz_module_abi=3' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8') and
-   'install_sprites(hide,depth,far_keep,fallback)' in bridge and 'ccz_sprites::install(hide,depth,far_keep,fallback)' in module,
-   'ABI 3 carries far/fallback flags; mismatched module is rejected')
+ok('ccz_module_abi=9' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8') and 'kBandMaxMorale' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8') and 'kBandCapture' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8') and
+   'install_sprites(hide,depth,far_keep,fallback)' in bridge and 'ccz_sprites::install(hide,depth,far_keep,fallback)' in module and
+   '!found->bands || !found->bands->configure' in bridge and 'kBandFaceTexture' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8'),
+   'ABI 5 carries far/fallback flags, the band entries (2026-11-17) and the band face texture entry (2026-11-18); mismatched module is rejected')
 ok('ccz_sprites_far_keep' in src and 'ccz_sprites_zoom_recovered' in src and
    'if(submitted)' in src and 'zoom_recovery_pending=false;has_submitted_sprites=true;' in src and
    'submitted_at-last_sprite_submission>=500' in src,
@@ -146,8 +147,69 @@ rescue=src[src.index('// The failed zoom path'):src.index('if(main_rtv && rtv[0]
 ok('far_keep_enabled' not in rescue and 'ccz_sprites_zoom_fallback' in rescue,
    'local14 rescue is independent of far keep')
 render_hook=src[src.index('static void STDMETHODCALLTYPE set_targets('):src.index('static void hook_context(')]
-ok('COST_SCOPE("ccz_set_targets");' in render_hook and hashlib.sha256(render_hook.replace(' COST_SCOPE("ccz_set_targets");','').encode('utf-8')).hexdigest()=='da0c30d9793f771077e39ff774d4b5b11ba817c760ed63fb528e9d6326b784fb',
-   '2026-11-02: entire local14 normal/rescue render-target hook unchanged')
+# Reviewed 2026-11-16: the only changes are the late-depth flag (a back-buffer-sized depth first seen after post-processing is
+# never promoted to scene depth) and the per-frame path signature (drew_ui, rebound_after_draw); draw points are unchanged.
+# 2026-11-16 measurement build: only the diagnostic-only probe_pass line was added (pass id for ccz_draw_probe).
+# 2026-11-16 local198: depth views bound before post-processing never count as the UI layer (pre_views).
+# 2026-11-16 local199: main draw point = scene-depth back-buffer bind after post-processing (drew_after_post).
+ok('COST_SCOPE("ccz_set_targets");' in render_hook and hashlib.sha256(render_hook.replace(' COST_SCOPE("ccz_set_targets");','').encode('utf-8')).hexdigest()=='b6c1211ddfd24ac116843b8be43716044bc97e60545dae5bc3ddb2767b235cb7',
+   'local14 normal/rescue render-target hook unchanged since the 2026-11-16 review')
+ok('note_dsv(dsv,main_rtv && post_seen)' in render_hook and 'if(draw_scene(c,main_rtv,frame_dsv?frame_dsv:scene_dsv))drawn_this_frame=true;' in render_hook,
+   '2026-11-16: late back-buffer-sized depth is not promoted; UI-bind draw point kept')
+ok('else if(main_rtv && post_seen && dsv && dsv!=scene_dsv && !pre_post_depth(dsv)) {' in render_hook and
+   'if(dsv && !post_seen && pre_count<16 && !pre_post_depth(dsv))pre_views[pre_count++]=dsv;' in render_hook and 'pre_count=0;' in src,
+   'local198: a scene depth rebound during post-processing (alternating pair) is not the UI layer; sprites drawn after post')
+after_post=render_hook.find('else if(main_rtv && post_seen && rtv[0]==main_rtv && dsv && dsv==scene_dsv) {')
+ok(0<after_post<render_hook.find('else if(main_rtv && post_seen && dsv && dsv!=scene_dsv && !pre_post_depth(dsv)) {')<render_hook.find('fallback_attempted=true;') and
+   'drew_after_post=drawn_this_frame;' in render_hook and 'drew_after_post=false;' in src and '(window_post_draw?0x4000:0)' in src,
+   'local199: draw at the scene-depth back-buffer rebind after post (before gauges, 1920 pass and 3/8 passes); UI and 3/8 rules stay as fallbacks')
+# 2026-11-16 user: sprites vanish together with the 3D model and never return until CCZ is turned off.
+ok('bool hide=want && !known_failed && ((unit_drawn && recent) || grace || trial);' in src and
+   '(fallback_enabled || !InterlockedCompareExchange(&covered,0,0))' in src and
+   'units[owners[k]].drawn_at=at' in src and 'InterlockedExchange64(&last_submit,' in src,
+   'per-unit proof always on: the model hides only while this unit was drawn within 1 s (or trial/grace), never for a failed cell or a covered batch run')
+ok('ccz_sprites_cell_retry' in src and 'f.retry=now+' in src and 'ccz_sprites_cell_recovered' in src and
+   'GetTickCount64()<resources_retry' in src and 'ccz_sprites_resources_failed' in src,
+   'failed cells and failed GPU resources are retried with back-off')
+present=src[src.index('static void on_present('):src.index('enum Mark {')]
+ok('InterlockedExchange(&drawing,0)' in present and 'ccz_sprites_draw_gap' in present and 'reset_views(true)' in present and
+   'set_table[kSetTargetsSlot]==reinterpret_cast<void *>(original_set)' in present,
+   'present: stuck draw flag cleared, draw-gap watchdog drops cached views, hook re-installed only after a put-back restore')
+ok('const bool nothing=built_this_frame && (why==1 || why==6);' in present and 'built_this_frame=false;' in present and
+   'built_this_frame=true;' in src[src.index('static unsigned build('):src.index('static unsigned build(')+400] and
+   'else if(!fresh_slot && now>u.seen+300)u.first=now;' in src,
+   'watchdog trusts the zero reason only from this frame\'s build; units back after a capture gap get a new trial')
+fault=src[src.index('log_event("ccz_sprites_far_keep"'):]
+fault=fault[:fault.index('#endif')]
+def diag_only(name):   # every code line naming it sits inside an #ifndef NO_RUNTIME_LOG branch
+    stack=[]
+    for line in src.splitlines():
+        s=line.strip()
+        if s.startswith('#ifndef NO_RUNTIME_LOG'):stack.append(True)
+        elif s.startswith('#ifdef NO_RUNTIME_LOG'):stack.append(False)
+        elif s.startswith('#if'):stack.append(None)
+        elif s.startswith('#else') and stack:stack[-1]=None if stack[-1] is None else not stack[-1]
+        elif s.startswith('#endif') and stack:stack.pop()
+        elif name in s and not s.startswith('//') and True not in stack:return False
+    return True
+ok('GetPrivateProfileIntW(L"diagnostics",L"ccz_sprite_fault",0,config)' in fault and diag_only('sprite_fault') and diag_only('depth_never'),
+   'fault switch exists only in diagnostic builds')
+probe=src[src.index('namespace probe {'):]
+probe=probe[:probe.index('\n}\n#endif')]
+ok(diag_only('probe_mode') and diag_only('probe::') and diag_only('probe_show') and diag_only('probe_pass') and diag_only('ccz_draw_probe'),
+   '2026-11-16 draw probe exists only in diagnostic builds')
+ok('GetPrivateProfileIntW(L"diagnostics",L"ccz_draw_probe",0,config)' in fault and 'probe_mode=sprite_fault==0' in fault,
+   'draw probe is an ini switch, never mixed with the fault switch')
+ok('if(current!=hooks[i])' in probe and 'InterlockedCompareExchangePointer(t+kSlots[i],hooks[i],current)==current' in probe and
+   'InterlockedCompareExchangePointer(table+kSlots[i],orig[i],hooks[i])==hooks[i]' in probe and 'probe::unhook();' in src,
+   'draw probe hooks chain by CAS, never over themselves, and put back only their own value')
+ok('if(!ctx || InterlockedCompareExchange(&drawing,0,0))return;' in probe and 'InterlockedIncrement(c==ctx?&imm_draws:&other_draws);' in probe and
+   'if(sampling)note(' in probe and 'all_frames%10==0' in probe and 'static thread_local unsigned probe_pass;' in src,
+   'draw probe skips our own draws, counts every drawing context (local196: scene drawn off the Present thread); state read only in sampled frames')
+ok(probe.count('AcquireSRWLockExclusive(&note_lock);')==2 and probe.count('ReleaseSRWLockExclusive(&note_lock);')==2,
+   'draw probe tables are written by drawing threads and read by Present under one lock')
+ok('if(InterlockedCompareExchange(&probe_show,0,0))hide=false;' in src and 'now-phase_at>=4000' in probe,
+   'draw probe show phase lets the native model through (alternating 4 s)')
 # Original damage stage: attacker is a pointer; defender is INLINE at pair+8.
 g=(P/'research/ghidra_full/1a4a447d14e68c40/c/0017.c').read_text(encoding='utf-8');apply=g[g.index('undefined8 FUN_140175950('):][:1200]
 ok('puVar2 = (ushort *)*param_2;' in apply and 'puVar1 = (ushort *)(param_2 + 1);' in apply and 'victim=field_army(pair+8)' in src,'native attacker/inline defender ABI retained')

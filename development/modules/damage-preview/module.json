@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "damage-preview",
  "title": "damage-preview",
  "host": "convenience",
@@ -23,6 +23,8 @@
   "src/damage_preview.h",
   "src/damage_preview_profile.h",
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_split_install.inl",
   "installer/InstallerGui.cs",
   "distribution/FeatureSelect.ps1",
@@ -62,7 +64,28 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_7F7C51",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "damage_preview",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7FC6CD",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "damage_preview",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  }
+ ],
  "registry": {
   "rows": [
    {

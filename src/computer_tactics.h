@@ -51,4 +51,13 @@ inline unsigned pick3(const unsigned *have,unsigned n,bool martial,unsigned out[
     }
     return k;
 }
+// local226 (user 2026-11-18 "강력전법 1개 + 교역전법 2개로 3개 세트 ... (아수라진,안식사법,구갑대열) ... 교역전법이 없으면 강력전법만"):
+// the strong tactic, then up to two of the officer's usable trade tactics in the order 137, 138, 139 (not the strong one again).
+inline void strong_set(unsigned strong,const unsigned *have,unsigned n,unsigned out[3]) {
+    out[0]=strong;out[1]=out[2]=0;unsigned k=1;
+    for(unsigned id=137;id<=139 && k<3;++id) {
+        if(id==strong)continue;
+        for(unsigned i=0;i<n;++i)if(have[i]==id) {out[k++]=id;break;}
+    }
+}
 }

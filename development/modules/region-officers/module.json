@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "region-officers",
  "title": "region-officers",
  "host": "convenience",
@@ -62,7 +62,68 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_139C9F8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "region_officers",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_139CA08",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "region_officers",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_139CA20",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "region_officers",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_139D368",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "region_officers",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_139D378",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "region_officers",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_139D390",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "region_officers",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  }
+ ],
  "registry": {
   "rows": [
    {

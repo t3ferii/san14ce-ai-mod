@@ -46,7 +46,8 @@ def inspect(symbol_directory=None):
     for name in ('report_masked','report_tail','scene_clean','wheel_block','block_buttons'):
         location=address(name+'@briefing_overlay',optional=True)
         values[name]=u(location) if location else None
-    src=(P/'src/native_adapter.cpp').read_text(encoding='utf-8-sig').split('struct ModFeatures {',1)[1].split('};',1)[0]
+    hub=[(P/'src'/n).read_text(encoding='utf-8-sig') for n in ('native_core.inl','native_adapter.cpp')]   # 2026-11-16: ModFeatures moved to the shared core
+    src=next(t for t in hub if 'struct ModFeatures {' in t).split('struct ModFeatures {',1)[1].split('};',1)[0]
     src=re.sub(r'//[^\n]*|/\*.*?\*/','',src,flags=re.S);fields=[]
     for match in re.finditer(r'\bbool\s+([^;]+);',src):fields+=re.findall(r'\b([A-Za-z_]\w*)\s*=',match[1])
     raw=rd(address('mod_features@@'),len(fields))

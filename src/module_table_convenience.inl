@@ -38,10 +38,12 @@ static const char *const kModuleNames[]={
     "timer_1ms",
     "battle_deaths",
     "trait_hover",
+    "traits9_screens",
     "face_timing",
     "auto_commands",
     "ambush",
     "season_rules",
+    "ccz_bands",
     "ai_trace",
 };
 // Service subscriptions (service, owner, order, gate order); the fixture proves the call order for every registration order.
@@ -66,6 +68,7 @@ static const ModuleSubscription kSubscriptions[]={
     {"sidecars","auto_commands",50,0},
     {"sidecars","ambush",60,0},
     {"sidecars","expert_links",70,0},
+    {"sidecars","ccz_bands",80,0},
 };
 #ifndef MODULE_TABLE_NAMES_ONLY
 // {name, feature id for feature_off logs (0 none), wanted, install (false = refused), refused}
@@ -174,6 +177,9 @@ static const ModuleDesc kModules[]={
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE) && defined(SPLIT_MODPACK)
     {"trait_hover",34,[]{return trait_hover_wanted();},[]{return trait_hover_install();},[]{trait_hover_off=true;log_event("feature_off",34,5);}},
 #endif
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE) && defined(SPLIT_MODPACK)
+    {"traits9_screens",0,[]{return mod_features.traits9;},[]{return traits9_screens_install();},[]{log_event("traits9_screens_off",5,0);}},
+#endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE) && defined(RUNTIME_COST_PROFILE)
     {"face_timing",0,[]{return costprofile::on;},[]{return (face_timing::install(),true);},[]{}},
 #endif
@@ -185,6 +191,9 @@ static const ModuleDesc kModules[]={
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
     {"season_rules",0,[]{return mod_features.season_weather;},[]{return (season_rules::install(),true);},[]{}},
+#endif
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+    {"ccz_bands",96,[]{return mod_features.ccz_bands;},[]{return ccz_bands::install(false);},[]{split_disable(mod_features.ccz_bands,96);}},
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
     {"ai_trace",0,[]{return split_ai_trace_wanted();},[]{return (split_ai_trace_install(),true);},[]{}},
@@ -251,6 +260,9 @@ static void module_subscribe_all() {
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
     merit_sidecars.add(&range_rules::sidecar_plugin,70);
+#endif
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+    if(!merit_sidecars.add(&ccz_bands::sidecar_plugin,80))log_event("sidecar_slot_full",80,0,0);
 #endif
     // svc_install: service id, subscriber count, hash of the owners in call order (tests/core_services_fixture.cpp prints the expected ones)
     log_event("svc_install",1,services::map_tick.count,services::map_tick.order_hash());

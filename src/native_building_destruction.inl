@@ -24,8 +24,8 @@ static bool active() {return enabled && mod_features.convenience && (mod_feature
 // target region, cost): 0 failure, 1 success, 2 great success. A failure (0) of a player officer against a region next to
 // the player's land becomes a success (1) when the ambush module hands over one ticket (ticket_use, set by
 // ambush::install). Every other answer, caster and region keeps the original grade; the roll itself is the original's.
-static bool (*ticket_use)(Obj person,Obj region);
-static bool (*ticket_ready)(Obj person,Obj region);   // same test as ticket_use, nothing spent (local128)
+bool (*ticket_use)(Obj person,Obj region);
+bool (*ticket_ready)(Obj person,Obj region);   // same test as ticket_use, nothing spent (local128)
 static bool ticket_active() {return enabled && mod_features.convenience && mod_features.destruction_ticket;}
 static int __fastcall ticket_roll(Obj person,Obj region,unsigned cost) { COST_SCOPE("building_destruction::ticket_roll");
     const int grade=static_cast<int>(static_cast<unsigned char>(fn<char(__fastcall *)(Obj,Obj,unsigned)>(GA(GA_1ECD20))(person,region,cost)));
@@ -164,7 +164,7 @@ static bool ticket_site_ok() {
     int delta=0;memcpy(&delta,image+site+1,4);
     return site+5+static_cast<unsigned>(delta)==target;
 }
-static bool install() {
+bool install() {
     if(InterlockedCompareExchange(&installed,0,0))return true;
     const bool spread=active(),ticket=ticket_active();
     if(!spread && !ticket)return false;

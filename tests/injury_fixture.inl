@@ -18,6 +18,10 @@ static unsigned __fastcall mock_injury_rumor(Obj,GameList *list,int) {
     for(Obj p:envoys)list_add(*list,p);return static_cast<unsigned>(envoys.size());
 }
 static Obj __fastcall mock_injury_selection(Obj,Obj,GameList *) {return injury_selected_advisor;}
+// local264: policy cost 232350 (2 per officer here) and the force's government budget 232500.
+static int injury_budget=1000;
+static unsigned __fastcall mock_injury_cost(Obj p,unsigned *same,int discount) {expect(discount==0);if(same)*same=0;return p?2u:0u;}
+static int __fastcall mock_injury_budget(Obj,int flag) {expect(flag==1);return injury_budget;}
 static void test_injury() {
     native_functions[0x22ECF0]=reinterpret_cast<void *>(&mock_injury_capacity);
     native_functions[0x330B50]=reinterpret_cast<void *>(&mock_injury_controlled);
@@ -26,6 +30,8 @@ static void test_injury() {
     native_functions[0x6DD230]=reinterpret_cast<void *>(&mock_injury_rumor);
     native_functions[0x263520]=reinterpret_cast<void *>(&mock_injury_selection);
     native_functions[0x330B90]=reinterpret_cast<void *>(&mock_injury_player);
+    native_functions[0x232350]=reinterpret_cast<void *>(&mock_injury_cost);
+    native_functions[0x232500]=reinterpret_cast<void *>(&mock_injury_budget);
     Obj force=object(2201),district=object(10),wounded=object(2202),herb=object(2203);
     Obj naval=object(2204),special=object(2205),ordinary=object(2206),city=object(11),node=object(1);
     district[0x10]=8;slot(0xDF30,8,force);slot(0xE0D0,10,district);
@@ -34,7 +40,8 @@ static void test_injury() {
         p[0xE0]=10;p[0xE6]=4;slot(0x158,word(p,0x10),p);owners[p]=force;
     }
     herb[0x14D]=41;naval[0x14D]=39;special[0x14D]=50;ordinary[0x14D]=40;
-    GameList actors;list_init(actors);
+    GameList herb_rows[5];for(auto &row:herb_rows)list_init(row);   // local264: injury_plan_herb takes the five rows
+    GameList &actors=herb_rows[4];
     put32(node,0x38,1);put32(node,0x3C,2);
     for(unsigned state:{3u,2u,1u,0u}) {
         wounded[0x161]=static_cast<unsigned char>(state);
@@ -66,25 +73,25 @@ static void test_injury() {
     wounded[0x161]=1;injury_capacity=3;
     put16(force,0xCC,2204);put16(force,0xCE,2205);put16(force,0xD0,2206);
     list_add(actors,naval);list_add(actors,special);list_add(actors,ordinary);
-    expect(injury_plan_herb(force,actors,nullptr));
+    expect(injury_plan_herb(force,herb_rows,nullptr));
     expect(contains(actors,naval) && contains(actors,special) && contains(actors,herb) && !contains(actors,ordinary));
     expect(injury_list_size(actors)==3);
     personnel_remove(actors,herb);list_add(actors,ordinary);
-    herb[0x161]=1;expect(!injury_plan_herb(force,actors,nullptr));
+    herb[0x161]=1;expect(!injury_plan_herb(force,herb_rows,nullptr));
     expect(contains(actors,ordinary) && contains(actors,naval) && contains(actors,special));herb[0x161]=0;
-    expect(!injury_plan_herb(force,actors,herb)); // never evict the chosen advisor
+    expect(!injury_plan_herb(force,herb_rows,herb)); // never evict the chosen advisor
     injury_capacity=2;personnel_remove(actors,ordinary);
-    expect(!injury_plan_herb(force,actors,nullptr));
+    expect(!injury_plan_herb(force,herb_rows,nullptr));
     expect(contains(actors,naval) && contains(actors,special));injury_capacity=3;
     personnel_remove(actors,naval);personnel_remove(actors,special);list_add(actors,herb);list_add(actors,ordinary);
-    injury_capacity=2;expect(!injury_plan_herb(force,actors,nullptr));
+    injury_capacity=2;expect(!injury_plan_herb(force,herb_rows,nullptr));
     expect(contains(actors,naval) && contains(actors,special) && !contains(actors,herb));
     injury_capacity=3;
-    wounded[0x161]=0;expect(!injury_plan_herb(force,actors,nullptr));
+    wounded[0x161]=0;expect(!injury_plan_herb(force,herb_rows,nullptr));
     wounded[0x161]=2;
     // A native government replan cannot discard our protected old providers.
     personnel_remove(actors,naval);personnel_remove(actors,special);list_add(actors,ordinary);
-    expect(injury_plan_herb(force,actors,nullptr));
+    expect(injury_plan_herb(force,herb_rows,nullptr));
     expect(contains(actors,naval) && contains(actors,special) && contains(actors,herb));
     for(Obj p:{naval,special,herb})personnel_remove(actors,p);
     GameList plans[5];for(auto &plan:plans)list_init(plan);injury_selected_advisor=special;
@@ -102,7 +109,7 @@ static void test_injury() {
     // Player force: wounded assignments are still released, government untouched.
     expect(word(city,0xCA)==0 && word(city,0xCC)==0 && injury_clears==1 && word(force,0x196)==0);
     expect(injury_applies==0 && word(force,0xD0)==2206);
-    expect(!injury_plan_herb(force,actors,nullptr));
+    expect(!injury_plan_herb(force,herb_rows,nullptr));
     injury_player=nullptr;put16(city,0xCA,2202);put16(city,0xCC,2202);put32(wounded,0x1E8,1);
     put16(force,0x196,2202);force[0x19C]=8;injury_clears=0;
     injury_synchronize_city(city);
@@ -110,7 +117,20 @@ static void test_injury() {
     expect(word(force,0xCC)==2204 && word(force,0xCE)==2205 && word(force,0xD0)==2203 && injury_applies==1);
     injury_synchronize_city(city);expect(injury_applies==1 && injury_clears==1); // idempotent
     wounded[0x161]=0;injury_synchronize_city(city);expect(injury_applies==1); // native may replan once healed
-    envoys.clear();list_free(actors);putptr(root,0x871E8,nullptr);
+    {   // local264: the herb officer must fit the government budget; 모략 (row 2) officers leave last first, or nothing changes.
+        GameList rows[5];for(auto &row:rows)list_init(row);
+        Obj extra=object(2207);extra[0xE0]=10;extra[0xE6]=4;extra[0x14D]=40;slot(0x158,2207,extra);owners[extra]=force;
+        put16(force,0xCC,0);put16(force,0xCE,0);put16(force,0xD0,0);wounded[0x161]=2;herb[0x161]=0;injury_capacity=3;
+        list_add(rows[2],ordinary);list_add(rows[2],extra);injury_budget=4;   // 2+2 spent, the herb officer costs 2
+        expect(injury_plan_herb(force,rows,nullptr));
+        expect(contains(rows[4],herb) && contains(rows[2],ordinary) && !contains(rows[2],extra));
+        personnel_remove(rows[4],herb);list_add(rows[2],extra);injury_budget=1;   // even an empty 모략 row leaves 2 > 1
+        expect(!injury_plan_herb(force,rows,nullptr));
+        expect(!contains(rows[4],herb) && contains(rows[2],ordinary) && contains(rows[2],extra));
+        injury_budget=1000;for(auto &row:rows)list_free(row);
+        slot(0x158,2207,nullptr);owners.erase(extra);free(extra);
+    }
+    envoys.clear();for(auto &row:herb_rows)list_free(row);putptr(root,0x871E8,nullptr);
     for(Obj p:{wounded,herb,naval,special,ordinary}) {slot(0x158,word(p,0x10),nullptr);owners.erase(p);free(p);}
     slot(0xDF30,8,nullptr);slot(0xE0D0,10,nullptr);slot(0x78D50,41,nullptr);
     free(force);free(district);free(city);free(node);free(context);free(definition);

@@ -219,8 +219,8 @@ def c_r6():
 
 @case('R7')
 def c_r7():
-    fh = json.dumps({'schema': 1, 'mods': {'m1': {'label': 'foreign', 'complete': False}},
-                     'sites': [{'id': 'm1_vt_A000', 'mod': 'm1', 'kind': 'vt', 'rva': 'A000', 'len': 8}], 'relations': []})
+    fh = json.dumps({'schema': 2, 'mods': {'m1': {'label': 'foreign', 'complete': False}},
+                     'sites': [{'id': 'm1_vt_A000', 'mod': 'm1', 'kind': 'vt', 'rva': {OLD: 'A000', NEW: '%X' % (0xA000 + NEW_DELTA)}, 'len': 8}], 'relations': []})
     return run_case('r7', edits={'development/foreign_hooks.json': fh})
 
 
@@ -282,6 +282,12 @@ def main():
         g = groups(res, rule, sev)
         oe = other_errors(res, rule)
         check(len(g) == 1 and (sev != 'error' or not oe), '%s fires once (%s findings group%s, other errors: %s)' % (rule, len(g), '' if len(g) == 1 else 's', oe[:2] or 'none'))
+    # schema 1 string = old-build (1fbe6be7) RVA: never read as a current-build address (the 2026-11-16 R7 blind spot)
+    fh = json.dumps({'schema': 1, 'mods': {'m1': {'label': 'foreign', 'complete': False}},
+                     'sites': [{'id': 'm1_vt_old', 'mod': 'm1', 'kind': 'vt', 'rva': '%X' % (0xA000 + NEW_DELTA), 'len': 8}], 'relations': []})
+    res = run_case('r7_old_string', edits={'development/foreign_hooks.json': fh})
+    r7n = [f for f in res['findings'] if f['rule'] == 'R7' and f.get('build') == NEW]
+    check(not r7n, 'old-build RVA string is not compared at the current build (%d R7 findings at %s)' % (len(r7n), NEW))
     # policy suppression: the R1 defect becomes suppressed, the entry is counted, exit status would be 0
     pol = {'schema': 1, 'entries': [{'rule': 'R1', 'sites': ['GA_A000'], 'owners': ['alpha', 'd'], 'kind': 'accepted', 'reason': 'self test', 'decided': '2026-11-06', 'evidence': 'tests/verify_hook_map.py'}]}
     res = run_case('policy', edits={'src/native_adapter.cpp': lambda o: o.replace('#include "native_c.inl"', '#include "native_c.inl"\n#include "native_d.inl"'),

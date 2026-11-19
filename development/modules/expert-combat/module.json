@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "expert-combat",
  "title": "expert-combat",
  "host": "convenience",
@@ -31,6 +31,7 @@
   "split-module"
  ],
  "hook_owners": [
+  "expert_ingame",
   "expert_links"
  ],
  "checks": [
@@ -62,7 +63,328 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_141EAD8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_141ED58",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_141ED88",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_141EDB0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_141EF18",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_141F250",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_141F270",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_142C748",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_142C780",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_142C7B8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_142C828",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_174AF4",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "expert",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_expert_links.inl"
+  },
+  {
+   "key": "GA_2AAF30",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "expert",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_expert_links.inl"
+  },
+  {
+   "key": "GA_2B1C3E",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "expert",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_expert_links.inl"
+  },
+  {
+   "key": "GA_2B2E28",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "expert",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_expert_links.inl"
+  },
+  {
+   "key": "GA_5F3957",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_5F3D3A",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_5F8357",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_5F841A",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_609543",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_609980",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_609A18",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_609CC5",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_60F2E8",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_60F333",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_60F365",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_638B8B",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_64477C",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_6447A7",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_6447D8",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_644816",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_6610BD",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "expert_links",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  }
+ ],
  "registry": {
   "rows": [],
   "subscriptions": [],

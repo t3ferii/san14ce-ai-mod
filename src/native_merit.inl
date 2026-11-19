@@ -584,15 +584,58 @@ static unsigned merit_effect_state_slow(Obj current,unsigned config) {
     return state;
 }
 [[maybe_unused]] static bool merit_effects() {return merit_effect_state()!=0;}
+#if !defined(NO_RUNTIME_LOG) && defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+// local265 diagnostics (user 2026-11-19, performance proposal 3.3-3): which original paths read abilities this often. One call
+// in 65,536 keeps the five frames above merit_query (exe rva; anything else 0xFFFFFFFF); every 256 samples the eight most
+// frequent stacks are logged as merit_caller (samples, frame0, frame1) and merit_caller2 (frame2, frame3, frame4), frame0
+// being the caller of 2ABDE0 (2ABF60 or 263520). Reads return addresses only.
+namespace merit_sample {
+constexpr unsigned kFrames=5,kSlots=32,kFlush=256;
+struct Stack {unsigned frame[kFrames];unsigned count;};
+static Stack stacks[kSlots];static unsigned used,samples;static SRWLOCK lock=SRWLOCK_INIT;static volatile LONG calls;
+static unsigned code(void *address) {
+    const uintptr_t a=reinterpret_cast<uintptr_t>(address),base=reinterpret_cast<uintptr_t>(image);
+    auto pe=reinterpret_cast<IMAGE_NT_HEADERS64 *>(image+reinterpret_cast<IMAGE_DOS_HEADER *>(image)->e_lfanew);
+    return a>=base && a<base+pe->OptionalHeader.SizeOfImage?static_cast<unsigned>(a-base):0xFFFFFFFFu;
+}
+__declspec(noinline) static void take() {
+    void *frames[kFrames]={};
+    const USHORT got=RtlCaptureStackBackTrace(2,kFrames,frames,nullptr);   // skip take() and merit_query()
+    unsigned now[kFrames];for(unsigned i=0;i<kFrames;++i)now[i]=i<got?code(frames[i]):0;
+    AcquireSRWLockExclusive(&lock);
+    unsigned i=0;while(i<used && memcmp(stacks[i].frame,now,sizeof now))++i;
+    if(i<used)++stacks[i].count;
+    else if(used<kSlots) {memcpy(stacks[used].frame,now,sizeof now);stacks[used++].count=1;}
+    if(++samples>=kFlush) {
+        for(unsigned rank=0;rank<8 && rank<used;++rank) {
+            unsigned best=rank;for(unsigned k=rank+1;k<used;++k)if(stacks[k].count>stacks[best].count)best=k;
+            std::swap(stacks[rank],stacks[best]);const Stack &s=stacks[rank];
+            log_event("merit_caller",s.count,s.frame[0],s.frame[1]);
+            log_event("merit_caller2",s.frame[2],s.frame[3],s.frame[4]);
+        }
+        used=samples=0;
+    }
+    ReleaseSRWLockExclusive(&lock);
+}
+}
+#endif
 static uint64_t __fastcall merit_query(Obj person,unsigned effect) {
-    COST_SCOPE("merit_query");
+    // local265 (performance proposal 3.3-1): a hot scope, timed only with [diagnostics] call_trace; about 150,000 calls a
+    // second made the plain scope's own cost most of what it showed.
+    COST_SCOPE_HOT("merit_query");
+#if !defined(NO_RUNTIME_LOG) && defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+    // take() is called from here directly: its frame skip of 2 counts take() and this function.
+    // local268 (Fable advice): a per-thread count instead of one interlocked counter shared by every AI thread (~150,000 calls/s).
+    static thread_local unsigned sample_calls;
+    if(diagnostic_logging && ((++sample_calls)&0xFFFFu)==0)merit_sample::take();
+#endif
     if(enabled && person && person[0x1C2] && person[0x1C3])merit_dual_note(person);
     if(enabled) {
         unsigned state=merit_effect_state_cached();
         if(!state) {static volatile LONG warned;if(!InterlockedExchange(&warned,1))log_event("merit_effect_table_rejected",merit_effect_reject_step,merit_effect_reject_index);}
     }
     uint64_t result;
-    {COST_SCOPE("native_merit_query");result=original_merit_query(person,effect);}
+    result=original_merit_query(person,effect);   // local204: no inner scope (about 80,000 calls a game day; merit_query keeps one)
     if(enabled && result && valid(person) && person[0x1C2] && person[0x1C3]) {
         unsigned military=person[0x1C2],civil=person[0x1C3];
         unsigned off=merit_civil_route(military,civil)?merit_route_part(1,military,effect):merit_route_part(4,civil,effect);

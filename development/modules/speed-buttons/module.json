@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "speed-buttons",
  "title": "speed-buttons",
  "host": "convenience",
@@ -54,7 +54,48 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_13D9728",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "speed_buttons",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1476FE0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "speed_buttons",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1477190",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "speed_buttons",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_89ABF7",
+   "kind": "jump",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "speed_buttons",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  }
+ ],
  "registry": {
   "rows": [
    {

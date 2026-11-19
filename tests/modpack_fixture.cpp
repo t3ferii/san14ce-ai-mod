@@ -14,7 +14,13 @@ int main() {
        !check(statgrowth::advance(100,30000,9800,10000)==200) ||
        !check(statgrowth::advance(199,29999,9800,10000)==199) ||
        !check(statgrowth::advance(200,UINT32_MAX,9800,10000)==200) ||
-       !check(statgrowth::threshold(200,0,UINT32_MAX)>UINT32_MAX))return 1;
+       !check(statgrowth::threshold(200,0,UINT32_MAX)>UINT32_MAX) ||
+       // 2026-11-18 v1.9 safety: unusable rows stop growth at 100, and a need past 32 bits stops it where it overflows
+       !check(statgrowth::advance(100,UINT32_MAX,0,10000)==100) ||
+       !check(statgrowth::advance(100,UINT32_MAX,10000,10000)==100) ||
+       !check(statgrowth::advance(100,UINT32_MAX,9000,0xF0000000u)==100) ||
+       !check(statgrowth::advance(100,UINT32_MAX,1000,20000000)==100) ||
+       !check(statgrowth::advance(100,UINT32_MAX,0xEF000000u,0xEF900000u)==129))return 1;
     printf("{\"status\":\"modpack_fixture_passed\",\"checks\":%u,\"gameplay_verified\":false}\n",checks);
     return 0;
 }

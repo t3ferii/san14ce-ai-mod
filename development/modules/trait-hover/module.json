@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "trait-hover",
  "title": "trait-hover",
  "host": "convenience",
@@ -24,6 +24,7 @@
   "src/layout_registry.h",
   "src/native_layout_core.inl",
   "src/native_layout_client.inl",
+  "src/core_services.h",
   "tests/trait_hover_fixture.cpp",
   "tools/build_trait_hover_fixture.ps1"
  ],
@@ -57,7 +58,1568 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_13AFFA8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13AFFC8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13AFFE0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13B01D0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13B0918",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13B0938",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13B0950",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13B0B08",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13DAEC0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13DAEE0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13DAEF8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13DB0E8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13EF168",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13EF188",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13EF1A0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F29D8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F29F8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F2A10",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F2BC8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F2BE8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F2C00",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F2DB8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F2DD8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F2DF0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F2FA8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F2FC8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F2FE0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F3198",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F3380",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F3568",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F3750",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F5DA0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F5DC0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F5DD8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F5F90",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F5FB0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F5FC8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6180",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F61A0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F61B8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6370",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6390",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F63A8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6560",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6580",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6598",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6750",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6770",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6788",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6940",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6960",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6978",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6B30",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6B50",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6B68",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6D20",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F6F08",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F70F0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F72D8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F74C0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F76A8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F7890",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13F7A78",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1424AE8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1424B08",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1424B20",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1424CD8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1424CF8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1424D10",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1424EC8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1424EE8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1424F00",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14250B8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14250D8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14250F0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14252A8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1425490",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1425678",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1425860",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1426D00",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1426D20",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1426D38",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1426EF0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1426F10",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1426F28",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14270E0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1427100",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1427118",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14272D0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14272F0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1427308",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14274C0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14276A8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1427890",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1427A78",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1448820",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1448840",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1448858",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144BE10",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144BFF8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144C018",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144C030",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144C258",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144C278",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144C290",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144C4B8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144C710",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144DE90",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144DEB0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144DEC8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144E080",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144E0A0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144E0B8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144E270",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144E290",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144E2A8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144E460",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144E480",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144E498",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144E650",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144E838",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144EA20",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_144EC08",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_145D4E0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_145D500",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_145D518",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_145D6D0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_145D6F0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_145D708",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_145D8C0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_145DAA8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1463070",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1463090",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14630A8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1463550",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1463570",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1463588",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14B3078",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14B3098",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14B30B0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14B3268",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14B3288",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14B32A0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14B3458",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14B3478",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14B3490",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14B3648",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14B3830",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14B3A18",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14BBD78",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14BBD98",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14BBDB0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_809461",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_8097C1",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_80A4A2",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_80A78C",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "trait_hover",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  }
+ ],
  "registry": {
   "rows": [
    {

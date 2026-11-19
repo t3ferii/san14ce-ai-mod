@@ -1,0 +1,12 @@
+{
+ "schema": 1,
+ "doc": "Hand-written source of module services (docs/MOD_INTEROP_SPEC.md section 3). A module provides a named service (an API other modules call or a table they read) and lists who uses it. tools/gen_module_manifests.py copies these into development/modules/<id>/module.json provides/uses. soft = the user works without the service (it only adds detail). Only cross-module calls seen in source are listed (feature_deps D1/D2/D4 edges, 2026-11-16).",
+ "services": {
+  "advisor_briefing.inbox": {"module": "advisor-briefing", "symbols": ["advisor_briefing::add_item"], "users": [{"module": "auto-commands", "soft": true}]},
+  "season_mobility": {"module": "terrain-edit", "symbols": ["SeasonMobility", "season_mobility_shared.h"], "users": [{"module": "ai", "soft": true}, {"module": "ambush-combat", "soft": true}]},
+  "terrain_core": {"module": "terrain-edit", "symbols": ["terrain_edit::flood_sync", "terrain_render::season_sync", "terrain_render::active"], "users": []},
+  "native_ui.officer_notice": {"module": "ui-common", "symbols": ["native_ui::officer_notice"], "users": [{"module": "merit", "soft": false}]},
+  "ambush_hook": {"module": "ambush-combat", "symbols": ["ambush_hook::active", "ambush_hook::contact", "ambush_hook::slow"], "users": [{"module": "ai", "soft": true}]},
+  "corps_domestic": {"module": "corps-domestic", "symbols": ["corps_domestic::arm", "corps_domestic::skip_second_search", "corps_domestic::learn_instead", "ctac::pick3"], "users": [{"module": "ai", "soft": true}, {"module": "personnel", "soft": true}]}
+ }
+}

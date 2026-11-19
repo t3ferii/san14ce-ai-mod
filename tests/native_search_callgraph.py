@@ -24,8 +24,9 @@ PLANNERS = (0x49900, 0x478A0, 0x4C6A0, 0x4B830, 0x45790, 0x1EDC30)
 
 def source_capture_roots(project):
     """Audit every active capture scope and its local helper closure."""
-    names = ('native_sortie.inl', 'native_campaign_routes.inl', 'native_ai_core.inl', 'native_adapter.cpp')
-    sources = {name: (project/'src'/name).read_text(encoding='utf-8-sig') for name in names}
+    # hub = native_core.inl + native_patch_core.inl + native_adapter.cpp (2026-11-16 multi-unit refactor; shared helpers are inline)
+    names = ('native_sortie.inl', 'native_campaign_routes.inl', 'native_ai_core.inl', 'native_core.inl', 'native_patch_core.inl', 'native_adapter.cpp')
+    sources = {name: (project/'src'/name).read_text(encoding='utf-8-sig') for name in names if (project/'src'/name).exists()}
     # Mask comments and quoted strings without changing source offsets.
     mask = re.compile(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', re.S)
     clean = {name: mask.sub(lambda m: ' ' * len(m[0]), text) for name, text in sources.items()}
@@ -47,7 +48,7 @@ def source_capture_roots(project):
 
     def body(name):
         for text in clean.values():
-            match = re.search(r'^static[^\n;{}]*\b'+re.escape(name)+r'\s*\([^;{}]*\)\s*\{', text, re.M)
+            match = re.search(r'^(?:static|inline)[^\n;{}]*\b'+re.escape(name)+r'\s*\([^;{}]*\)\s*\{', text, re.M)
             if not match:
                 continue
             start = match.end(); depth = 1

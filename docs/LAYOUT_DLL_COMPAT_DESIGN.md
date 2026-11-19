@@ -526,7 +526,7 @@ P3 구현자는 이 절을 보고 바로 코딩한다. 판단 근거는 §6의 �
 | 43 | merit | 1413600 | vt | 908820 | C | 육아가 우리 설치를 기다렸다가 뒤에 체인한다(V6) [문자열]. | **필수**(Convenience) |
 | 44 | merit | 1413488 | vt | 878810 | C | 참조 없음 | 권장 |
 | – | merit_scroll | WH_GETMESSAGE | 훅 아님 | – | – | Layout 관리 대상이 아니다(P2 공존). | – |
-| 45 | traits9 | 8DF198, 8DF1F5, 907294, 8CDD40, 8E0148, 8E01D0, 907D9C, 2BF033 | blk(인라인 JMP) | – | Y | 참조 없음. 길이와 기대 바이트는 `traits9_payloads.h` 값을 그대로 쓴다. 16바이트 블록 안에 들어가는지는 구현 때 확인한다. | – |
+| 45 | traits9 | 8E1628, 8E1685, 909734, 8D0320, 8E25D8, 8E2660, 90A23C, 2C13B3 (1a4a447d; 옛 8DF198 …) | blk(인라인 JMP) | – | Y | 참조 없음. 길이와 기대 바이트는 `src/traits9_sites.h` 값을 쓴다(local235: 옛 고정 생성물 `traits9_payloads.h` 대체, 중계 코드는 `native_traits9.inl`이 실행 때 만든다). | – |
 | 46 | traits9 | 4A6CF3, 4A7313, 22558F, 23064A, 232D97 (5→9) | 바이트 패치 | – | Y | R1 SAN14_Traits9.dll이 4A6CF3과 22558F를 보관하고(o2/o1, i2) "ALREADY_APPLIED"를 남긴다 [바이트][문자열]. 같은 패치다. | – |
 | 47 | traits9 | 2E111D (D) | E8 | 2337B0 | Y C | IC i1 o1, 용도 미검증(8.5 N3). **행은 2026-11-06 local10에서 제거됐고, W8(2026-11-08)에서 주소표 id도 삭제했다.** | – |
 | 48 | **trait_hover** | E8 806D51, 8070B1, 807D92, 80807C + `hover_slots[]` 약 150칸(13ACF58, 13EFD48, 1460000, 1460018, 14604E0, 14604F8 등) | imp | – | Y (가져온 apply 전체를 실행하지 않음) | R1 SAN14_TraitHover.dll과 v2가 E8 4곳을 i10으로 참조한다. 13ACF58은 R1 SAN14_Traits9_UI도 참조한다. 우리 가져온 코드는 R1 f14 비-v2(sha 8cfad1a6…)와 바이트가 같다 [바이트]. **§2.3의 "traits9 (modpack)" 행은 실제로 f14 hover다.** | – |
@@ -561,7 +561,24 @@ P3 구현자는 이 절을 보고 바로 코딩한다. 판단 근거는 §6의 �
 | mediation_plus | 발탁 1.8 / 육아 1.1 | **70E9C1로 옮기면 감지가 필요 없다(8.4).** 옮기지 않으면 6D7D90만 양보하고 조건은 다음과 같다. (`<game>\SAN14_Batteki.dll` 파일 존재 AND `<game>\San14ModSettings.ini [Batteki] Mediation≠0`, 키가 없으면 1) OR (`<game>\SAN14_Yuga.dll` 파일 존재 AND `[Yuga] Enable≠0` AND `[Yuga] Mediation≠0`, 키가 없으면 1). | **바꿈.** GetModuleHandle을 파일 검사로 바꾼다(xinput1_3 로드 시점과 경합). 발탁의 `Enabled`는 "새 발견" 스위치라 조건이 아니다. | 발탁 사용안내: 게임 폴더 파일 `xinput1_3.dll`·`SAN14_Batteki.dll`; `[Batteki] Enabled=1 ; 0이면 새 발견을 하지 않음`, `Mediation=1 ; 중개 무장 목록에 발탁장수를 넣음`. 육아 사용안내: "[Yuga], 없으면 모두 켬", `Enable 모드 전체`, `Mediation 중개 후보에 아이`. 키 문자열은 두 DLL에서 확인했다. |
 | speed_buttons (Q8) | R1 IC 진행 배속 확장 | `<game>\SAN14Mods\modules\IntegratedConvenience_GreenlandCompat.ini` `[Mod] Enabled≠0` AND `<game>\San14ModSettings.ini` `[Convenience] ProgressSpeedModule≠0` | **새 규칙.** 1단계에서 빠졌던 "R1 진행속도 확장"이 이것이다. 키가 없으면 꺼짐으로 본다(설치기는 6번을 고를 때 1을 쓴다). IC의 기본값은 미검증이다. | Spec.cs 6번 → `Convenience\tProgressSpeedModule=1`. IC 모듈 ini는 payload/base(`File=SAN14_IntegratedConvenience.dll`). IC 안의 UTF-16 문자열 "ProgressSpeedModule", "배속 확장", "San14ModSettings.ini", "Convenience". |
 | (로그만) speed_buttons | R1 f19 FPS120 | `<game>\SAN14Mods\modules\FPS120.ini` `[Mod] Enabled≠0` | 새 규칙(양보 아님). Q8대로 로그만 남긴다. | manifest `when="19"` |
+| traits9 (local234) | 통합패치 R43.42 9번 | `<game>\SAN14Mods\modules\Mod09_Traits9Check.ini` `[Mod] Enabled≠0` | **이름 추가.** R43.42에서 Traits9Check.ini가 이 이름으로 바뀌었다. 옛 이름 줄도 둔다. | R43.42 `installer101/Spec.cs` |
+| stats200 (local234) | 통합패치 R43.42 17번 Stats200New | `<game>\SAN14Mods\modules\Stats200New.ini` `[Mod] Enabled≠0` | **새 줄.** R43.42의 ModPackBridge.ini는 늘 `Stats200=0`을 쓴다(Engine.cs:269). 옛 ModPackBridge 줄로는 양보하지 못한다. | R43.42 `src/stats200_new.cpp`, Engine.cs |
+| expert_ingame (local234) | 통합패치 1번 ModSettings | `ModSettings.ini` `[Mod] Enabled≠0` AND `<game>\San14ModSettings.ini [Modules] ModSettingsUI≠0`(없으면 1) | **새 규칙.** ModSettings는 141F250/141F270이 원작이어야 한다. 141ED58은 우리가 먼저 걸고 ModSettings가 뒤에 잇는다(그대로 둔다). 양보하면 게임 중 확인 버튼 두 칸만 빠진다. | R43.42 `src/mod_settings.cpp` 584-615 |
+| tactic_priority (local234) | 통합패치 16번 SortiePresets | `SortiePresets.ini` `[Mod] Enabled≠0` | **새 규칙.** 출진 화면 슬롯 145B8C0/145B8D8이 같다. install 첫머리에서 양보하므로 화면 훅이 없고, 거기에 붙는 ambush(군사제안수행)도 `ambush_screen_missing`으로 함께 꺼진다. | R43.42 `우리자리.tsv` |
+| drag_learn (local234) | 통합패치 30번 DragLearn | `DragLearn.ini` `[Mod] Enabled≠0` | **새 규칙.** 7423B5, 74A574, 74A5E9, 74C5E8, 74C62A가 같다. | R43.42 `우리자리.tsv` |
+| scene_yield (local234) | 통합패치 4번 SceneSkip | 위 SceneSkip ini 규칙을 advisor `guards_match`에서도 본다 | **넓힘.** 우리가 SceneSkip DLL보다 먼저 걸리므로 DLL 감지만으로는 늦다. 양보하면 첫머리 두 곳과 함께 재해 push/yield 호출 4곳(29A31B, 29A323, 29A715, 29A71D)도 건너뛴다(짝이라 4곳 모두). | C2 행 |
 | (후보, Q2 밖) fast_menu, layout_keep | R1 f30 FastMenu | `<game>\SAN14Mods\Ext\SAN14_FastMenu.ini` `[FastMenu] Enabled≠0` AND `<game>\SAN14Mods\modules\ExtBridge.ini` `[Mod] Enabled≠0` AND `[Ext] FastMenu≠0`. layout_keep에는 `[FastMenu] PinSlowLayouts≠0`도 붙인다. | Q2에 없다. 기능이 겹치므로 **양보할지 사용자가 정한다.** | payload ini `[FastMenu] Enabled=1 SkipOutWait=1 PinSlowLayouts=1 SkipInWait=1`. ExtBridge.ini 주석 "R39 남의 DLL 불러오기 다리 (26·27·28·30 FastMenu)". |
+
+### 8.2.1 통합편의(IC) 확인 뒤에 걸기 (local234, 2026-11-18)
+
+통합패치의 `SAN14_IntegratedConvenience.dll`(1~7번)은 시작할 때 원작 함수 몸체 2,346곳을 원래 모양과 비교하고(최대 약 3분), 하나라도 다르면 1~7번을 모두 끈다. 그 구간 안을 고치는 우리 자리는 IC 확인이 끝난 뒤에 건다(`src/ic_gate.h`).
+
+- 감지는 통합패치 `ic_after_restore.h`와 같다. `<game>\SAN14_IntegratedConvenience.dll`이 있고, `SAN14Mods\modules\IntegratedConvenience_GreenlandCompat.ini`가 있으며 `[Mod] Enabled`(없으면 1)가 0이 아니어야 한다.
+- 기다리는 방법도 같다. 모듈이 60초 안에 올라오기를 기다리고, export `SAN14_WaitConvenienceV1`이 0이 아닐 때까지 최대 10분 묻는다. 모듈이 없거나 export가 없거나 시간이 넘으면 그냥 건다(예전 동작).
+- 늦게 거는 것은 네 가지다. ① 전투 DLL 공개 전체(출진 호출 184FF9·26AB48·303FC9, route_hook 44E50D). ② convenience 표의 path_fast·path_count·ccz_bands 줄(표 순서대로). ③ 군사 브리핑의 9332B0 글자 연결 한 곳. ④ 로그 `ic_gate_ready(how, ms)`, `ic_gate_row_deferred/late`, `advisor_text_late`, `combat_installed(1,1)`.
+- 184FF9는 IC 후크 36과 같은 호출이다. IC 확인 뒤에도 원작 그대로면 건너뛰고(`sortie_call_skip …,4`), IC가 이미 바꿨으면 그 뒤에 잇는다(`sortie_call_chained_late`). 우리가 먼저 걸면 IC가 자기 후크를 거부하기 때문이다.
+- 나머지는 평소대로 바로 건다. 전체를 늦추지 않는 이유는 3FA342(논공 저장) 때문이다. 통합패치 MeritTraits는 우리가 먼저일 때만 그 뒤에 잇는다.
+- 남은 충돌은 둘이다. DomesticTalent(22번)는 13D9458(군사 브리핑 user frame)이 원작이어야 해서, 우리가 먼저면 팝업을 띄운다. IC 6번이 하루 진행 프레임 슬롯 13D9728을 바꾸면 그 안의 route_hook 44E50D가 우회될 수 있다(진단 로그 `ic_day_frame_slot`, 1 = 원작 그대로).
 
 ### 8.3 Q6 입구 패치 대체
 

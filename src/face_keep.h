@@ -33,20 +33,23 @@ inline void add_pin(Pins &p,int id) {
     if(!p.touch(id) && p.count<kMax) {p.ids[p.count]=id;p.used[p.count++]=++p.sequence;}
 }
 // Requested jobs whose wait was skipped. Before the face is set, the original wait runs for it once.
+// local254: at = GetTickCount64 of the request; a request no face setter consumed is waited on by age (native drain_pending).
 struct Pending {
-    const void *table=nullptr;int ids[kMax];const void *jobs[kMax];bool done[kMax];size_t count=0;
+    const void *table=nullptr;int ids[kMax];const void *jobs[kMax];bool done[kMax];unsigned long long at[kMax];size_t count=0;
     void reset(const void *t) {if(t!=table) {table=t;count=0;}}
     void forget(int id) {
         for(size_t i=0;i<count;++i)if(ids[i]==id) {
-            --count;ids[i]=ids[count];jobs[i]=jobs[count];done[i]=done[count];return;
+            --count;ids[i]=ids[count];jobs[i]=jobs[count];done[i]=done[count];at[i]=at[count];return;
         }
     }
-    void add(int id,const void *job) {
+    void add(int id,const void *job,unsigned long long now=0) {
         forget(id);
         size_t i=0;while(i<count && !done[i])++i;
         if(i==count) {if(count==kMax)return;++count;}
-        ids[i]=id;jobs[i]=job;done[i]=false;
+        ids[i]=id;jobs[i]=job;done[i]=false;at[i]=now;
     }
+    // Requests not consumed by a setter for age_ms: the ones whose skipped wait must run now.
+    bool due(size_t i,unsigned long long now,unsigned long long age_ms) const {return i<count && !done[i] && now-at[i]>=age_ms;}
     // Index of an unfinished request for id (and the same job still in the table), or -1.
     long waiting(int id,const void *job) const {
         for(size_t i=0;i<count;++i)if(ids[i]==id)return !done[i] && jobs[i]==job?static_cast<long>(i):-1;

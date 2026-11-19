@@ -51,7 +51,7 @@ python -B -X utf8 AI_TacticsMod/tools/install_local.py install <버전>
 
 문서만 수정하면 링크·파일 경로·지침·변경 차이를 확인하며 DLL 빌드/설치와 기존 ZIP 재생성을 하지 않는다. 문서 경로를 옮기면 배포 도구의 입력 경로도 확인한다. 역사 보관 ZIP은 과거 기록이며 소스/현재 설정을 대신하지 않는다.
 
-인계 시 `python -X utf8 AI_TacticsMod/tools/generate_handoff.py`로 CURRENT를 갱신한다. 파일 해시 일치·fixture·현재 EXE 검사·실게임 관찰을 구분하며 실행하지 않은 검사를 통과했다고 기록하지 않는다. Computer Use와 Codex Bridge는 금지한다.
+인계 시 `python -X utf8 AI_TacticsMod/tools/generate_handoff.py`로 CURRENT를 갱신한다. 파일 해시 일치·fixture·현재 EXE 검사·실게임 관찰을 구분하며 실행하지 않은 검사를 통과했다고 기록하지 않는다. Computer Use는 금지한다.
 
 
 과거 기능·세션 전용 설치 스크립트는 기록용이며 현재 설치에 재사용하지 않는다. 공용 설치 규칙을 바꿔야 하면 전투 AI(총괄) 세션에 넘긴다. 보관 도구는 `backup/workspace_history_20261020.zip` 등 해당 기록의 원래 위치를 유지한다.

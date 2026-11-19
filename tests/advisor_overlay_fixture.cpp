@@ -10,6 +10,7 @@
 #include <vector>
 #include <cstdio>
 #include <cstdlib>
+#include <thread>
 #define COST_SCOPE(name) do {} while(0)
 namespace unified_overlay {static int buffer_width=1920,buffer_height=1080;}
 #ifndef NO_RUNTIME_LOG
@@ -330,7 +331,27 @@ int main() {
     pixels=composited_pixels;
     check((pixels[1000*1920+74]&0xffffffu)==0x34485fu,"portrait RGB stays visible even when captured source alpha is zero");
     check((pixels[520*1920+130]&0xffffffu)==0x516f66u,"사용자 결정 2026-10-28 드래그 헤드: outside the bubble shadow has exactly the 18 percent focus dim");
-    check((pixels[800*1920+152]&0xffffffu)<0x303030u,"ink background is dark instead of washed-out gray");
+    {const unsigned ink=pixels[800*1920+152];check(((ink>>16)&255)<0x40 && ((ink>>8)&255)<0x40 && (ink&255)<0x40,"ink background is dark instead of washed-out gray");}
+    {   // local228: before the frame file arrives the overlay draws its own gold lines; then the original list window cell (the briefing
+        // fixture's dump of the real archive cell when this machine has the game, else a synthetic stand-in of the same shape)
+        const Rect p=panel_rect(head.x);const int px0=static_cast<int>(p.x),py0=static_cast<int>(p.y),ph=static_cast<int>(p.h);
+        const auto at=[&](int x,int y){return pixels[static_cast<size_t>(py0+y)*1920+px0+x];};
+        check(((at(60,1)>>16)&255)>150 && ((at(60,4)>>16)&255)>150 && ((at(7,8)>>16)&255)<0x50,"no frame file: the overlay's own gold double line along the top, no corner knot");
+        std::vector<unsigned char> cell(64*64*4,0);DWORD got=0;
+        HANDLE f=CreateFileA("advisor_frame_file.rgba",GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+        const bool real=f!=INVALID_HANDLE_VALUE && ReadFile(f,cell.data(),static_cast<DWORD>(cell.size()),&got,nullptr) && got==cell.size();
+        if(f!=INVALID_HANDLE_VALUE)CloseHandle(f);
+        if(!real)for(unsigned y=0;y<64;++y)for(unsigned x=0;x<64;++x) {
+            unsigned char *q=cell.data()+(y*64+x)*4;if(x<4 || y<4 || x>59 || y>59){q[0]=q[1]=q[2]=q[3]=0;continue;}
+            const bool line=y==5 || y==8 || y==58 || y==55,knot=(x>=10 && x<=14 && y>=10 && y<=14) || (x>=49 && x<=53 && y>=10 && y<=14) || (x>=10 && x<=14 && y>=49 && y<=53) || (x>=49 && x<=53 && y>=49 && y<=53);
+            if(line || knot){q[0]=208;q[1]=190;q[2]=119;q[3]=255;}else{q[0]=41;q[1]=35;q[2]=18;q[3]=191;}
+        }
+        offer_frame(cell.data(),64,64);frame();c->CopyResource(readback,back);
+        check(SUCCEEDED(c->Map(readback,0,D3D11_MAP_READ,0,&mapped)),"framed overlay pixels mapped");
+        for(unsigned y=0;y<1080;++y)memcpy(pixels.data()+y*1920,static_cast<unsigned char *>(mapped.pData)+y*mapped.RowPitch,1920*4);c->Unmap(readback,0);
+        check(((at(7,8)>>16)&255)>150 && ((at(60,1)>>16)&255)>150 && ((at(1,60)>>16)&255)<0x50,real?"the original frame cell: a gold corner knot, the top line, no side line":"the synthetic frame cell: a gold corner knot, the top line, no side line");
+        const unsigned fill=at(200,ph-40);check(((fill>>16)&255)<0x40 && ((fill>>8)&255)<0x40,"the frame's fill stays the dark panel");
+    }
     bitmap("advisor_briefing_preview.bmp",pixels,1920,1080);
     // The panel is look::kPanelOpacity translucent: a glyph pixel is the name colour at that opacity plus at most the rest of the scene (<= 18 per channel).
     unsigned colored_pixels=0;
@@ -355,7 +376,7 @@ int main() {
     check(bubble.w==1160 && bubble.h==1000,"user 2026-10-27: window width and height double independently");
     check(widget(1252,79,true)==2 && widget(1000,79,true)==3 && widget(1168,79,true)==4,"user 2026-10-27: top-right arrows and close hit boxes match the header controls");
     check(widget(208,985,true)==9 && widget(260,985,true)==9,"old footer arrow positions no longer dispatch navigation");
-    check(widget(1078,985,true)==5 && widget(1194,985,true)==6 && widget(400,800,true)==9 && widget(1198,205,true)==7,"deletion, real-estate and body input stay within the redesigned bubble");
+    check(widget(1078,985,true)==5 && widget(1194,985,true)==6 && widget(400,800,true)==9 && widget(1198,230,true)==7,"deletion, real-estate and body input stay within the redesigned bubble");
     toast(L"지금부터 낙양의 토목공사를 시작합니다.");
     check(!toast_text.empty() && toast_at && raster_toast(c,toast_text) && toast_view,"the 5-second military toast rasterizes through the real device");
     toast_text.clear();toast_at=0;
@@ -471,6 +492,167 @@ int main() {
         check(SUCCEEDED(c->Map(readback,0,D3D11_MAP_READ,0,&mapped)),"scrolled report tables preview mapped");for(unsigned y=0;y<1080;++y)memcpy(pixels.data()+y*1920,static_cast<unsigned char *>(mapped.pData)+y*mapped.RowPitch,1920*4);c->Unmap(readback,0);bitmap("advisor_tables_scrolled_preview.bmp",pixels,1920,1080);scrolling.reset();
         publish(m,true,false);opened_at=GetTickCount64()-300;frame();
     }
+    {   // local222 report view preview (user 2026-11-17 reference screen): the same 22 messages as rows with name squares, chips and the detail panel
+        std::vector<Event> all;
+        auto add=[&](Kind kind,unsigned day,const wchar_t *text){Event e;e.kind=kind;e.day=day;e.text=text;all.push_back(e);};
+        add(Kind::News,10,L"정욱, 양양의 탐색에 실패");add(Kind::Treasure,10,L"최림, 격려의 서 발견");add(Kind::Diplomacy,8,L"전령\n보고드립니다.\n김선군의 사자가\n조조님께 알현을 요청하였습니다.");
+        {Event e;e.kind=Kind::Treasure;e.day=8;e.text=e.report=L"한기가 여궁에서 명승을 발견했습니다.";e.row=discovery_scene_row(0,L"한기",L"여궁",L"",true);all.push_back(e);}
+        add(Kind::News,10,L"조휴부대, 병사감소에 의해 퇴각");add(Kind::Weather,7,L"천시가 변했습니다.");add(Kind::Treasure,10,L"채염, 교란의 서 발견");add(Kind::Diplomacy,9,L"전령\n보고드립니다.\n유도군의 사자가\n조조님께 알현을 요청하였습니다.");
+        add(Kind::Diplomacy,10,L"조조군, 유도군의 교환요청 거부");add(Kind::Treasure,6,L"서서, 풍운의 서 발견");add(Kind::News,9,L"한현군, 유비군에 항복");add(Kind::Diplomacy,5,L"조조군, 유표군의 공격요청 승낙");
+        add(Kind::News,4,L"장합부대, 비어에 의해 출진불가");add(Kind::News,4,L"황개, 시상의 탐색에 실패");add(Kind::Disaster,3,L"홍수가 발생했습니다.");add(Kind::Treasure,3,L"조운, 청룡의 서 발견");
+        add(Kind::Diplomacy,2,L"조조군, 손권군측과 동맹 실패");add(Kind::Treasure,9,L"곽가, 모략의 서 발견");add(Kind::Diplomacy,2,L"전령\n유도군의 사자가 찾아왔습니다.");add(Kind::News,1,L"가후가 새 임무를 받았습니다.");add(Kind::Recruitment,10,L"조조, 유도의 등용에 성공");add(Kind::News,6,L"최림, 완의 탐색을 단념");
+        std::stable_sort(all.begin(),all.end(),[](const Event &a,const Event &b){return a.day<b.day;});
+        Model rm=m;rm.report=true;rm.open=true;rm.title=L"전체 소식 · 22건";rm.names.clear();
+        {   // local229: the tabs as the hud makes them, one per topic in the list order: these 22 messages have ten (한기's row is a 명품 row) -> two lines
+            Inbox ib;ib.begin(1,1);ib.append(all);
+            for(const auto &card:ib.tabs())rm.tabs.push_back(std::wstring(report_tab_caption(card.tab))+L" "+std::to_wstring(card.events.size()));
+        }
+        rm.tabs.push_back(L"전체 22");rm.page=static_cast<unsigned>(rm.tabs.size()-1);rm.pages=static_cast<unsigned>(rm.tabs.size());
+        const unsigned tab_n=static_cast<unsigned>(rm.tabs.size());
+        check(tab_n==11 && rm.tabs[0]==L"명품 6" && rm.tabs[9]==L"사자 3" && tab_lines(tab_n)==2,"local229 preview: ten topic tabs and 전체 take two lines");
+        for(size_t i=0;i<all.size();++i){ReportRow r=report_row(all[i],starts_with(all[i].text,L"전령\n")?std::wstring(L"전령"):std::wstring());r.unread=all[i].day>=9;rm.rows.push_back(r);}
+        for(size_t i=0;i<rm.rows.size();++i)if(rm.rows[i].name==L"전령" && rm.rows[i].day==L"2일차")rm.selected=static_cast<unsigned>(i);
+        const ReportRow &chosen=rm.rows[rm.selected];
+        rm.facts=report_info(rm.rows,rm.rows.size(),1,10,0);rm.detail_title=report_detail_title(chosen);rm.detail_caption=report_detail_caption(chosen);rm.detail_body=chosen.detail;rm.records=report_records(rm.rows,chosen);rm.kinds=report_kinds(rm.rows);
+        check(rm.kinds && rm.detail_title==L"전령" && rm.detail_caption==chosen.topic+L", 2일차","local228 preview: 전체 shows 구분; the detail heading is the name and \"topic, day\"");
+        check(chosen.name==L"전령" && chosen.person==0 && rm.records.size()==2 && starts_with(rm.records[0],L"9일차\t") && starts_with(rm.records[1],L"8일차\t"),"preview: the chosen row's other messages under the same name are its records, newest first");
+        ++rm.generation;publish(rm,true,false);opened_at=GetTickCount64()-300;hover=armed=0;frame();
+        check(row_view_first()==0,"the UI thread sees which rows are on screen");
+        D3D11_TEXTURE2D_DESC rows_desc{};body_texture->GetDesc(&rows_desc);
+        check(rows_desc.Width==static_cast<UINT>(rows_rect(panel_rect(head.x),tab_n).w) && max_scroll==22*kRowPitch-(kRowsHeight-kTabHeight-kTabGap),"rows view: the body texture is the rows panel width and scrolls over every row (two tab lines: six rows shown)");
+        c->CopyResource(readback,back);
+        check(SUCCEEDED(c->Map(readback,0,D3D11_MAP_READ,0,&mapped)),"report view preview mapped");for(unsigned y=0;y<1080;++y)memcpy(pixels.data()+y*1920,static_cast<unsigned char *>(mapped.pData)+y*mapped.RowPitch,1920*4);c->Unmap(readback,0);bitmap("advisor_report_preview.bmp",pixels,1920,1080);
+        const Rect rp=panel_rect(head.x);const unsigned tabs=tab_n;
+        for(unsigned i=0;i<tabs;++i){const Rect t=tab_rect(rp,i,tabs);check(widget(t.x+t.w/2,t.y+t.h/2,true)==40+static_cast<int>(i),"each tab is its own hit target (both lines)");}
+        {   // local229 geometry: six tabs a line, the second line under the first; the info bar, its buttons, the header and the rows one line lower
+            const Rect a=tab_rect(rp,0,tabs),b=tab_rect(rp,6,tabs),last=tab_rect(rp,tabs-1,tabs);
+            check(b.x==a.x && b.y==a.y+kTabHeight+kTabGap && last.y==b.y && a.w==b.w && tab_rect(rp,5,tabs).y==a.y,"two lines: 6 + 5, the same width, the second line one tab line lower");
+            check(info_rect(rp,tabs).y==info_rect(rp).y+kTabHeight+kTabGap && column_rect(rp,tabs).y==column_rect(rp).y+kTabHeight+kTabGap && rows_rect(rp,tabs).y+rows_rect(rp,tabs).h==rows_rect(rp).y+rows_rect(rp).h,"the info bar and header move down, the rows end where they did (the detail panel stays)");
+            for(unsigned id:{7u,8u,13u}){const Rect bt=control(id,rp,tab_shift(tabs));check(bt.y==control(id,rp).y+kTabHeight+kTabGap && widget(bt.x+bt.w/2,bt.y+bt.h/2,true)==static_cast<int>(id),"the info bar's buttons move with it and stay clickable");}
+            for(unsigned n=1;n<=kTabsPerLine;++n){const Rect t=tab_rect(rp,n-1,n);const float width=(std::min)(static_cast<float>(kTabMaxWidth),(rp.w-48-kTabGap*static_cast<float>(n-1))/n);
+                check(tab_shift(n)==0 && t.y==rp.y+kTabTop && t.w==width && t.x==rp.x+24+static_cast<float>(n-1)*(width+kTabGap),"nine tabs or fewer: one line exactly as before");}
+            check(tab_lines(kReportTabs)==2 && tab_rect(rp,kReportTabs-1,kReportTabs).x+tab_rect(rp,kReportTabs-1,kReportTabs).w<=rp.x+rp.w-24+0.5f,"eighteen tabs fit two lines");
+        }
+        for(unsigned i=0;i<6;++i){const Rect r=row_rect(rp,i,0,tabs);check(widget(r.x+r.w/2,r.y+r.h/2,true)==1000+static_cast<int>(i),"each visible row is its own hit target");}
+        const Rect detail=detail_rect(rp);check(widget(detail.x+40,detail.y+40,true)==9,"the detail panel is body, not a row");
+        const Rect five=control(5,rp);check(widget(five.x+five.w/2,five.y+five.h/2,true)!=5,"전체 hides the delete button");
+        const auto raster_before=raster_calls,uploads_before=panel_uploads;
+        for(int frame_index=0;frame_index<30;++frame_index){hover=frame_index%2?1000+frame_index%7:40+frame_index%static_cast<int>(tabs);animation_at=GetTickCount64()-16;frame();}
+        scrolling.wheel(120,max_scroll);for(int frame_index=0;frame_index<20;++frame_index){animation_at=GetTickCount64()-16;frame();}
+        check(raster_calls==raster_before && panel_uploads==uploads_before && scrolling.shown>0,"row and tab hover and row scrolling reuse the rasters");
+        const Rect first=row_rect(rp,0,scrolling.shown,tabs);
+        check(widget(rp.x+200,rows_rect(rp,tabs).y+5,true)==1000+static_cast<int>((5+scrolling.shown)/kRowPitch) && first.y<rows_rect(rp,tabs).y,"row hit targets follow the scroll");
+        hover=armed=0;scrolling.reset();
+        {   // local235 (user 2026-11-18): 로그 (log_view) has no detail panel; the rows run to its bottom edge and take its clicks
+            Model lm=rm;lm.log_view=true;++lm.generation;publish(lm,true,false);opened_at=GetTickCount64()-300;hover=armed=0;frame();
+            const Rect tall=rows_rect(rp,tabs,true);
+            check(tall.y==rows_rect(rp,tabs).y && tall.y+tall.h==detail.y+detail.h && max_scroll==22*kRowPitch-static_cast<int>(tall.h),"로그: the rows reach the detail panel's bottom edge and scroll over every row");
+            check(widget(detail.x+40,detail.y+40,true)>=1000 && widget(detail.x+40,detail.y+40,true)<1022,"로그: the former detail area holds rows (hit targets)");
+            c->CopyResource(readback,back);check(SUCCEEDED(c->Map(readback,0,D3D11_MAP_READ,0,&mapped)),"log view preview mapped");
+            for(unsigned y=0;y<1080;++y)memcpy(pixels.data()+y*1920,static_cast<unsigned char *>(mapped.pData)+y*mapped.RowPitch,1920*4);c->Unmap(readback,0);
+            bitmap("advisor_report_log_preview.bmp",pixels,1920,1080);
+            ++rm.generation;publish(rm,true,false);opened_at=GetTickCount64()-300;hover=armed=0;frame();
+            check(max_scroll==22*kRowPitch-(kRowsHeight-kTabHeight-kTabGap) && widget(detail.x+40,detail.y+40,true)==9,"a topic tab: the detail panel is back");
+        }
+        {   // local222 detail text in its own window (long diplomacy message, income table) and clicks through the real input path
+            const int saved_w=unified_overlay::buffer_width,saved_h=unified_overlay::buffer_height;
+            HWND report_input=CreateWindowExW(0,L"STATIC",L"report input fixture",WS_POPUP,0,0,1920,1080,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);
+            check(report_input!=nullptr,"hidden report input fixture window");unified_overlay::buffer_width=1920;unified_overlay::buffer_height=1080;
+            auto at_point=[](float x,float y){return MAKELPARAM(static_cast<int>(x),static_cast<int>(y));};
+            const std::wstring keep_body=rm.detail_body;const unsigned keep_selected=rm.selected;
+            std::wstring long_text=L"전령\n보고드립니다.";
+            for(int i=1;i<=14;++i)long_text+=L"\n"+std::to_wstring(i)+L"번째 전갈: 유도군의 사자가 조조님께 동맹을 청하며 예물 목록을 올렸습니다.";
+            rm.detail_body=long_text;++rm.generation;publish(rm,true,false);opened_at=GetTickCount64()-300;hover=armed=0;frame();
+            const Rect tw=detail_text_rect(rp,detail_has_face(rm));
+            D3D11_TEXTURE2D_DESC dd{};if(detail_texture)detail_texture->GetDesc(&dd);
+            check(detail_view && dd.Width==static_cast<UINT>(tw.w) && detail_max>0 && detail_height==detail_max+static_cast<int>(tw.h),"a long detail gets its own taller texture and a scroll range");
+            const auto rasters=raster_calls;
+            check(input(report_input,WM_MOUSEWHEEL,MAKEWPARAM(0,static_cast<WORD>(-WHEEL_DELTA)),at_point(tw.x+tw.w/2,tw.y+tw.h/2)),"the wheel over the detail text is consumed");
+            for(int frame_index=0;frame_index<300 && (frame_index<20 || detail_scroll.active());++frame_index){animation_at=GetTickCount64()-16;frame();}   // until it settles
+            check(detail_scroll.shown>0 && !detail_scroll.active() && scrolling.shown==0 && raster_calls==rasters,"the wheel over the detail text scrolls the detail only, without a raster");
+            c->CopyResource(readback,back);check(SUCCEEDED(c->Map(readback,0,D3D11_MAP_READ,0,&mapped)),"detail scroll preview mapped");
+            for(unsigned y=0;y<1080;++y)memcpy(pixels.data()+y*1920,static_cast<unsigned char *>(mapped.pData)+y*mapped.RowPitch,1920*4);c->Unmap(readback,0);
+            bitmap("advisor_report_detail_preview.bmp",pixels,1920,1080);
+            const Rect rows=rows_rect(rp,tabs);const double detail_before=detail_scroll.shown;
+            check(input(report_input,WM_MOUSEWHEEL,MAKEWPARAM(0,static_cast<WORD>(-WHEEL_DELTA)),at_point(rows.x+300,rows.y+60)),"the wheel over the rows is consumed");
+            for(int frame_index=0;frame_index<20;++frame_index){animation_at=GetTickCount64()-16;frame();}
+            check(scrolling.shown>0 && detail_scroll.shown==detail_before && raster_calls==rasters,"the wheel over the rows scrolls the rows only");
+            rm.selected=(keep_selected+1)%static_cast<unsigned>(rm.rows.size());publish(rm,true,false);
+            check(detail_scroll.shown==0 && detail_scroll.target==0,"another row's detail starts at the top");
+            rm.detail_body=L"• 10일차 · "+income;publish(rm,true,false);frame();
+            check(detail_view && detail_height>=static_cast<int>(tw.h),"an income table is drawn in the detail window");
+            // local232 (user 2026-11-18 "좌하단의 그 전체내역 글자가 너무 커서 … 레이아웃에 맞춰서 넘치지 않게"): the small table fits, no scroll
+            check(detail_max==0,"the income table fits the detail window in the small detail type (no scroll range)");
+            c->CopyResource(readback,back);check(SUCCEEDED(c->Map(readback,0,D3D11_MAP_READ,0,&mapped)),"income detail preview mapped");   // local232
+            for(unsigned y=0;y<1080;++y)memcpy(pixels.data()+y*1920,static_cast<unsigned char *>(mapped.pData)+y*mapped.RowPitch,1920*4);c->Unmap(readback,0);
+            bitmap("advisor_report_income_detail_preview.bmp",pixels,1920,1080);
+            rm.selected=keep_selected;rm.detail_body=keep_body;publish(rm,true,false);scrolling.reset();detail_scroll.reset();hover=armed=0;frame();
+            unsigned seen=0;
+            const Rect row2=row_rect(rp,2,0,tabs);const LPARAM row2_point=at_point(row2.x+300,row2.y+row2.h/2);
+            check(input(report_input,WM_LBUTTONDOWN,0,row2_point) && armed==1002,"a press on row 2 arms it");
+            check(input(report_input,WM_LBUTTONUP,0,row2_point) && take(seen)==1002 && seen==rm.generation && !GetCapture(),"down and up on row 2 post 1002 through the real input path");
+            const Rect tab0=tab_rect(rp,0,tabs);const LPARAM tab_point=at_point(tab0.x+tab0.w/2,tab0.y+tab0.h/2);
+            check(input(report_input,WM_LBUTTONDOWN,0,tab_point) && input(report_input,WM_LBUTTONUP,0,tab_point) && take(seen)==40,"down and up on the first tab post 40");
+            const Rect tab8=tab_rect(rp,8,tabs);const LPARAM tab8_point=at_point(tab8.x+tab8.w/2,tab8.y+tab8.h/2);   // local229: the second line
+            check(input(report_input,WM_LBUTTONDOWN,0,tab8_point) && input(report_input,WM_LBUTTONUP,0,tab8_point) && take(seen)==48,"down and up on a second-line tab post its own number");
+            const Rect row1=row_rect(rp,1,0,tabs);
+            input(report_input,WM_LBUTTONDOWN,0,at_point(row1.x+300,row1.y+row1.h/2));
+            check(input(report_input,WM_MOUSEMOVE,0,at_point(row1.x+300,row1.y+row1.h/2-20)) && scrolling.dragging,"moving a pressed row 20px drags the rows");
+            check(input(report_input,WM_LBUTTONUP,0,at_point(row1.x+300,row1.y+row1.h/2-20)) && take(seen)==0 && scrolling.shown>0 && !GetCapture(),"a press that scrolls the rows selects nothing");
+            scrolling.reset();hover=armed=0;DestroyWindow(report_input);unified_overlay::buffer_width=saved_w;unified_overlay::buffer_height=saved_h;frame();
+        }
+        {   // local222 row faces: synthetic 512x512 BC3 faces (flat colours, 4 mip levels) offered one at a time, copied by draw()
+            auto bc3_face=[&](unsigned short colour)->ID3D11Texture2D * {
+                D3D11_TEXTURE2D_DESC fd{};fd.Width=fd.Height=512;fd.MipLevels=4;fd.ArraySize=1;fd.Format=DXGI_FORMAT_BC3_UNORM;fd.SampleDesc.Count=1;fd.Usage=D3D11_USAGE_DEFAULT;fd.BindFlags=D3D11_BIND_SHADER_RESOURCE;
+                std::vector<std::vector<unsigned char>> levels(4);D3D11_SUBRESOURCE_DATA init[4]{};
+                for(unsigned level=0;level<4;++level) {
+                    const unsigned blocks=(512u>>level)/4;levels[level].assign(blocks*blocks*16,0);
+                    for(unsigned b=0;b<blocks*blocks;++b){unsigned char *k=levels[level].data()+b*16;k[0]=k[1]=255;k[8]=k[10]=static_cast<unsigned char>(colour&255);k[9]=k[11]=static_cast<unsigned char>(colour>>8);}
+                    init[level].pSysMem=levels[level].data();init[level].SysMemPitch=blocks*16;
+                }
+                ID3D11Texture2D *t=nullptr;check(SUCCEEDED(d->CreateTexture2D(&fd,init,&t)),"synthetic BC3 face created");return t;
+            };
+            rm.rows[4].person=101;rm.rows[3].person=103;rm.rows[rm.selected].person=7;   // two rows on screen (six rows with two tab lines), the chosen messenger
+            ++rm.generation;publish(rm,true,false);opened_at=GetTickCount64()-300;frame();
+            const auto faces_raster_before=raster_calls;
+            struct TestFace {unsigned first;unsigned short second;};
+            const TestFace faces[]{{101,0xF800},{103,0x07E0},{7,0x001F}};
+            for(const auto &f:faces) {
+                check(!row_face_busy() && !row_face_ready(f.first),"one face offer at a time, none copied yet");
+                ID3D11Texture2D *t=bc3_face(f.second);check(offer_row_face(t,f.first) && row_face_busy() && !offer_row_face(t,f.first),"a second offer waits for the first to be copied");
+                frame();check(row_face_ready(f.first) && !row_face_busy(),"draw copies the offered face and tells the UI thread");
+            }
+            check(raster_calls==faces_raster_before,"a face arriving is a quad, not a raster");
+            c->CopyResource(readback,back);check(SUCCEEDED(c->Map(readback,0,D3D11_MAP_READ,0,&mapped)),"faces preview mapped");
+            for(unsigned y=0;y<1080;++y)memcpy(pixels.data()+y*1920,static_cast<unsigned char *>(mapped.pData)+y*mapped.RowPitch,1920*4);c->Unmap(readback,0);
+            bitmap("advisor_report_faces_preview.bmp",pixels,1920,1080);
+            auto at=[&](Rect r){return pixels[static_cast<int>(r.y+r.h/2)*1920+static_cast<int>(r.x+r.w/2)]&0xffffffu;};
+            check(at(face_rect(rp,4,0,tabs))==0xff0000u && at(face_rect(rp,3,0,tabs))==0x00ff00u,"each row's face fills its square (the mip 3 head crop)");
+            check(at(detail_face_rect(rp))==0x0000ffu && at(face_rect(rp,rm.selected,0,tabs))==0x0000ffu,"the selected row's face also fills the detail square");
+            check(at(face_rect(rp,5,0,tabs))!=0xff0000u && at(face_rect(rp,5,0,tabs))!=0x00ff00u,"a row without a person keeps its drawn initial");
+            {   // local224: a face-file head (96 + 48 px RGBA) goes the same way and fills its square
+                std::vector<unsigned char> file_head(face_files::kPixelBytes);
+                for(size_t i=0;i<file_head.size();i+=4){file_head[i]=255;file_head[i+1]=255;file_head[i+2]=0;file_head[i+3]=255;}
+                rm.rows[1].person=111;++rm.generation;publish(rm,true,false);frame();
+                check(!offer_row_face_pixels(file_head.data(),file_head.size()-4,111),"a head of the wrong size is refused");
+                check(offer_row_face_pixels(file_head.data(),file_head.size(),111) && row_face_busy() && !offer_row_face_pixels(file_head.data(),file_head.size(),111),"a file head takes the one offer slot too");
+                frame();check(row_face_ready(111) && !row_face_busy(),"draw makes the file head's texture and tells the UI thread");
+                c->CopyResource(readback,back);check(SUCCEEDED(c->Map(readback,0,D3D11_MAP_READ,0,&mapped)),"file face mapped");
+                for(unsigned y=0;y<1080;++y)memcpy(pixels.data()+y*1920,static_cast<unsigned char *>(mapped.pData)+y*mapped.RowPitch,1920*4);c->Unmap(readback,0);
+                check(at(face_rect(rp,1,0,tabs))==0xffff00u,"the file head fills its row square");
+            }
+            {   // local229 glyph warm-up: the face worker's call draws with its own fonts and leaves the overlay's fonts alone
+                HFONT before[8];for(unsigned k=0;k<8;++k)before[k]=fonts[k];
+                std::wstring words=L"전체 소식 · 인사 이동 · 세력 흥망 · 영토 변화 0123456789";
+                unsigned drawn=0;std::thread worker([&]{drawn=warm_glyphs(words,0xFFu);});worker.join();
+                bool same=true;for(unsigned k=0;k<8;++k)same=same && before[k]==fonts[k];
+                check(drawn==words.size() && same && warm_glyphs(std::wstring(),0xFFu)==0,"warm_glyphs on another thread draws every character and touches no overlay font");
+            }
+            forget_row_faces();check(!row_face_ready(101),"a world change forgets the faces at once");frame();
+            check(!row_face_ready(101) && !row_faces[0].view,"draw drops the old textures");
+        }
+        publish(m,true,false);opened_at=GetTickCount64()-300;frame();
+    }
     portrait_attempt_at=0;request_portrait({10,10,88,88},4);frame();
     for(int attempt=0;attempt<60 && !captured(4);++attempt){c->Flush();Sleep(2);frame();}
     check(captured(4),"asynchronous portrait validation completes on a later Present");
@@ -497,7 +679,10 @@ int main() {
     for(unsigned y=0;y<1080;++y)memcpy(clipped_pixels.data()+y*1920,static_cast<unsigned char *>(mapped.pData)+y*mapped.RowPitch,1920*4);
     c->Unmap(readback,0);
     const unsigned paper_pixel=sampled(reading.x+reading.w-6,reading.y+reading.h/2)&0xffffffu;   // body background (translucent navy over the dimmed scene), no text there
-    check((header_pixel&0xffffffu)!=paper_pixel && (footer_pixel&0xffffffu)!=paper_pixel,"Claude 2026-10-28: 종이 영역 밖 표본 — header and footer are chrome, not the body background");
+    // local228: the body is the panel's own fill inside a gold rule (the original list window has no separate paper), so the header and
+    // footer samples can share its colour; they must still lie outside the reading viewport.
+    (void)header_pixel;(void)footer_pixel;(void)paper_pixel;
+    check(scrolled_panel.y+100<reading.y && scrolled_panel.y+scrolled_panel.h-40>=reading.y+reading.h,"Claude 2026-10-28: 종이 영역 밖 표본 — the header and footer samples lie outside the reading viewport");
     // Draw the identical production frame with only ScissorEnable changed.
     auto *enabled_scissor=scissor_state;scissor_state=raster_state;frame();scissor_state=enabled_scissor;
     c->CopyResource(readback,back);check(SUCCEEDED(c->Map(readback,0,D3D11_MAP_READ,0,&mapped)),"unclipped comparison frame mapped");

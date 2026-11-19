@@ -53,7 +53,32 @@ static bool mod_ini_path(wchar_t *out,const wchar_t *file) {
     return !wcscat_s(out,MAX_PATH,L"\\AI_TacticsMod\\") && !wcscat_s(out,MAX_PATH,file);
 }
 #include "native_layout_client.inl"   // 2026-11-05: the army-display slot is registered with SAN14_Layout.dll (whitelist row, body stays here)
+// 2026-11-17 종군 중립군 idle picture: the band day pass publishes its idle record sites here (site+1, 0 = empty), the sprite
+// renderer reads them without a lock (a day pass may hold the band lock across game calls; the render thread must not wait).
+// 2026-11-18: each site also carries its band kind (ccz_band_kinds.h) so the idle picture and the follower picture are the same class.
+// slots[] (moved here from ccz_bands.inl) = live band units by generic commander (4033 + index): unit address (48 bits) | kind << 48
+// | patron force << 56, written once by the band day pass; the renderer checks the address against the army it draws.
+#include "ccz_band_kinds.h"
+#include "ccz_portrait.h"   // 2026-11-18 band flag portrait (ccz_bands.inl; both picture modes since 2026-11-19)
+namespace ccz_idle {
+constexpr unsigned kMax=16,kSlots=68,kFirstGeneric=4033;
+static volatile LONG64 sites[kMax];
+static volatile LONG site_kinds[kMax];
+// 2026-11-19 user "초상화가 차오르는식으로 ... 1000명부터 3000명까지 한달": per site, the grown share in per mille (0 = 1000 troops,
+// 1000 = 3000), written with the site by publish_idle; the flag picture fills from the bottom by this share.
+static volatile LONG site_fill[kMax];
+static volatile LONG64 slots[kSlots];
+constexpr unsigned long long kUnitMask=0x0000FFFFFFFFFFFFull;
+static bool band_of(Obj unit,unsigned &kind,unsigned &force) {
+    if(!unit)return false;
+    const unsigned c=static_cast<unsigned>(*reinterpret_cast<unsigned short *>(unit+0x12))-kFirstGeneric;if(c>=kSlots)return false;
+    const unsigned long long v=static_cast<unsigned long long>(slots[c]);
+    if(!v || reinterpret_cast<Obj>(v&kUnitMask)!=unit)return false;
+    kind=static_cast<unsigned>((v>>48)&0xFF);force=static_cast<unsigned>(v>>56);return true;
+}
+}
 #include "native_ccz_sprites.inl"
+#include "ccz_bands.inl"   // 2026-11-17 종군 중립군(무리) stage 0, 2026-11-18 지역 특색·바싹 따라붙기 (docs/NEUTRAL_BANDITS.md)
 namespace ccz_exports {
 static void __cdecl initialize(Obj base,CczLog log,void (__cdecl *overlay)()) {image=base;log_sink=log;overlay_hook=overlay;
     if(ga::build_index()<0 && ga::state().game_host)ga::resolve_runtime(base);   // unknown game build: own signature resolution (docs/PATCH_RESILIENCE.md)
@@ -63,10 +88,20 @@ static void __cdecl initialize(Obj base,CczLog log,void (__cdecl *overlay)()) {i
     COST_SCOPE("ccz_api_initialize");ccz_sprites::reload_appearance();}
 static bool __cdecl sprites_guards() { COST_SCOPE("ccz_api_sprites_guards");return image && ccz_sprites::guards_match();}
 static bool __cdecl install_sprites(bool hide,bool depth,bool far_keep,bool fallback) { COST_SCOPE("ccz_api_install_sprites");return image && ccz_sprites::install(hide,depth,far_keep,fallback);}
+static bool __cdecl install_idle_flags(bool depth) { COST_SCOPE("ccz_api_install_idle_flags");return image && ccz_sprites::install_idle_only(depth);}
 static bool __cdecl needs_present() { COST_SCOPE("ccz_api_needs_present");return ccz_sprites::needs_present();}
 static void __cdecl on_present(ID3D11Device *d,ID3D11DeviceContext *c,ID3D11Texture2D *back,const D3D11_TEXTURE2D_DESC &desc) { COST_SCOPE("ccz_api_on_present");ccz_sprites::on_present(d,c,back,desc);}
 static void __cdecl configure_combat(bool block,bool critical) { COST_SCOPE("ccz_api_configure_combat");ccz_combat::configure(block,critical);}
-static const CczApi api={sizeof(CczApi),ccz_module_abi,initialize,sprites_guards,install_sprites,needs_present,on_present,configure_combat,ccz_combat::fix};
+static const CczBands bands={{reinterpret_cast<void *>(&ccz_bands::hook_army_force),reinterpret_cast<void *>(&ccz_bands::hook_paint),
+    reinterpret_cast<void *>(&ccz_bands::hook_supply),reinterpret_cast<void *>(&ccz_bands::hook_remove),
+    reinterpret_cast<void *>(&ccz_bands::hook_paint_write),reinterpret_cast<void *>(&ccz_bands::hook_morale),
+    reinterpret_cast<void *>(&ccz_bands::hook_day_move),reinterpret_cast<void *>(&ccz_bands::hook_set_action),
+    reinterpret_cast<void *>(&ccz_bands::hook_set_target),reinterpret_cast<void *>(&ccz_bands::hook_face_texture),
+    reinterpret_cast<void *>(&ccz_bands::hook_unit_target),reinterpret_cast<void *>(&ccz_bands::hook_max_morale),
+    reinterpret_cast<void *>(&ccz_bands::hook_capture)},
+    ccz_bands::configure,ccz_bands::save,ccz_bands::load,ccz_bands::reset,ccz_bands::power,ccz_bands::exchange,ccz_bands::fire};
+static const CczApi api={sizeof(CczApi),ccz_module_abi,initialize,sprites_guards,install_sprites,needs_present,on_present,configure_combat,ccz_combat::fix,&bands,
+    install_idle_flags};
 }
 extern "C" __declspec(dllexport) const CczApi *__cdecl SAN14CczGetApi(unsigned abi) {COST_SCOPE("ccz_api_get");return abi==ccz_module_abi?&ccz_exports::api:nullptr;}
 #if defined(RUNTIME_COST_PROFILE) && !defined(NO_RUNTIME_LOG)

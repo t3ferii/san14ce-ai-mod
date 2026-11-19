@@ -13,9 +13,11 @@
 #include <string>
 // PW25b: native_advisor_overlay.inl (briefing_overlay) is included later in this translation unit by
 // native_unified_overlay.inl; the same-TU forward declaration keeps the toast call here.
-namespace briefing_overlay { static bool available(); static void toast(const std::wstring &); }
-// PW36a: native_advisor_briefing.inl (namespace advisor_briefing) is included later in this same translation unit.
-namespace advisor_briefing { static bool add_item(const std::wstring &text); }
+namespace briefing_overlay { bool available(); void toast(const std::wstring &); }
+// PW36a: the military-report card (add_item in native_advisor_briefing.inl) and its switch [game_flow] advisor_briefing reach this module through
+// these links (module boundary 2026-11-16, feature_deps D1/D4/D5). The split install hub fills them (native_split_install.inl
+// split_bind_links, first thing in split_prepare); the switch goes by address, so a later split_feature_off is seen as before.
+namespace auto_commands_links {static bool (*brief_item)(const std::wstring &text);static const bool *briefing;}
 namespace auto_commands {
 static bool search_on_state=false,reward_on_state=false;
 static int reward_limit=70,popup_value=70,last_date=-1,search_turn=-1;
@@ -94,7 +96,7 @@ static unsigned button_flag_pair(Obj button) { COST_SCOPE("auto_commands:button_
 #endif
 static void show_toggle_toast(unsigned which,const std::wstring &text) { COST_SCOPE("auto_commands:show_toggle_toast");
     bool shown=false;
-    if(mod_features.advisor_briefing && briefing_overlay::available()) {briefing_overlay::toast(text);shown=true;}
+    if(auto_commands_links::briefing && *auto_commands_links::briefing && briefing_overlay::available()) {briefing_overlay::toast(text);shown=true;}
 #ifndef NO_RUNTIME_LOG
     log_event("auto_toast",which,shown?1u:0u,0);
 #else
@@ -282,9 +284,11 @@ static void reward_turn() { COST_SCOPE("auto_commands:reward_turn");
     const unsigned char threshold=static_cast<unsigned char>(auto_commands_policy::clamp_threshold(reward_limit));
     // user 2026-11-09: one award at the ruler's base, paid from that base's gold, for eligible officers of EVERY corps
     // of the force (the native 포상 window lists them all; the old per-base pass skipped other corps, e.g. 곽유지).
-    // Ruler: force object root+0xDF30+force*8 (force < 0x34), ruler person id at +0x52 (717130 reads the same).
+    // Ruler: force object root+0xDF30+force*8 (force < 0x34), ruler person id at +0x10 (San14Sim/docs/orig/structs.md FORCE).
+    // 2026-11-19: this read +0x52 until local257 because 717130 also reads that field; structs.md says +0x52 is the 군사, so the
+    // award ran at the 군사's base whenever the 군사 lived in another city.
     Obj force_object=pointer(root,0xDF30+(force<0x34?force:0u)*8);
-    const unsigned ruler_id=force_object?word(force_object,0x52):0;
+    const unsigned ruler_id=force_object?word(force_object,0x10):0;
     Obj ruler=ruler_id && ruler_id<=6000?table(0x158,ruler_id,6000):nullptr;
     const unsigned short base_id=valid(ruler)?word(ruler,0xE2):0;
     Obj base=base_id?fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32E3B0))(root,base_id):nullptr;
@@ -324,7 +328,7 @@ static void reward_turn() { COST_SCOPE("auto_commands:reward_turn");
     log_event("auto_reward_turn",awarded_bases,awarded_officers,static_cast<unsigned>(reward_limit));
 #endif
     // PW36a (R8d §7-C): report the pass in the military briefing, but only when an award was really issued.
-    if(awarded_officers && mod_features.advisor_briefing) {
+    if(awarded_officers && auto_commands_links::briefing && *auto_commands_links::briefing) {
         const auto officer_name=[](unsigned short id) -> std::wstring {
             Obj p=table(0x158,id,6000);
             if(!valid(p))return {};
@@ -344,7 +348,7 @@ static void reward_turn() { COST_SCOPE("auto_commands:reward_turn");
             else if(!second.empty())text+=first+L", "+second+(n>2?L" 외 "+std::to_wstring(n-2)+L"명":std::wstring())+L"에게 포상했습니다";
             else text+=first+L" 외 "+std::to_wstring(n-1)+L"명에게 포상했습니다";
         } else text+=L"장수 "+std::to_wstring(n)+L"명에게 포상했습니다";
-        [[maybe_unused]] const bool added=advisor_briefing::add_item(text);
+        [[maybe_unused]] const bool added=auto_commands_links::brief_item && auto_commands_links::brief_item(text);
 #ifndef NO_RUNTIME_LOG
         log_event("auto_reward_brief",n,static_cast<unsigned>(text.size()),added?1u:0u);
 #endif

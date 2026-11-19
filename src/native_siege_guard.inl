@@ -190,7 +190,8 @@ static CallLink calls[4];
 static Obj relay;
 static bool ready;
 
-// why[0] fort, why[1] band: 0 chosen/not reached, 1 the region has one, 2 no definition, 3 money, 4 spacing, 5 original permission.
+// why[0] fort, why[1] band: 0 chosen/not reached, 1 the region has one, 2 no definition, 3 money, 4 spacing, 5 original permission
+// (build_possible: 27A8D0 with the unlock check on, local214/216).
 static unsigned pick(Obj army, Obj tile, unsigned hex, unsigned *why) { COST_SCOPE("camp_hook:pick");
     Obj area = fn<Obj(__fastcall *)(Obj)>(GA(GA_22B8E0))(tile);
     Obj person = table(0x158, word(army, 0x12), 6000);
@@ -210,7 +211,7 @@ static unsigned pick(Obj army, Obj tile, unsigned hex, unsigned *why) { COST_SCO
         const int cost = fn<int(__fastcall *)(Obj, Obj)>(GA(GA_2AD6C0))(force, definition);
         if (cost < 0 || resource(origin) < cost) { reason = 3; continue; }
         if (military_spacing_blocked(army, kind, hex)) { reason = 4; continue; }
-        if (!fn<int(__fastcall *)(GameList *, Obj, Obj)>(GA(GA_27A8D0))(&people, tile, definition)) { reason = 5; continue; }
+        if (!build_possible(&people, tile, definition)) { reason = 5; continue; }
         chosen = kind; break;
     }
     list_free(people);

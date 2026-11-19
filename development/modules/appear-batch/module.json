@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "appear-batch",
  "title": "appear-batch",
  "host": "convenience",
@@ -20,6 +20,8 @@
   "src/appear_batch.h",
   "src/native_appear_batch.inl",
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_split_install.inl",
   "tests/appear_batch_fixture.cpp",
   "tests/verify_appear_batch.py",
@@ -51,7 +53,18 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_13DA350",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "appear_batch",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_appear_batch.inl"
+  }
+ ],
  "registry": {
   "rows": [
    {

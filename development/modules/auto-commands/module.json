@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "auto-commands",
  "title": "auto-commands",
  "host": "convenience",
@@ -52,8 +52,74 @@
  },
  "ui": [],
  "provides": [],
- "uses": [],
- "hooks": [],
+ "uses": [
+  {
+   "service": "advisor_briefing.inbox",
+   "soft": true
+  }
+ ],
+ "hooks": [
+  {
+   "key": "GA_13D90E0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "auto_buttons",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13D9268",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "auto_buttons",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_445FA6",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "auto_buttons",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_44616D",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "auto_buttons",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_44EDD1",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "auto_commands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_auto_commands.inl"
+  },
+  {
+   "key": "GA_44F281",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "auto_commands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_auto_commands.inl"
+  }
+ ],
  "registry": {
   "rows": [
    {

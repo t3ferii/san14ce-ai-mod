@@ -50,11 +50,15 @@ static bool prepare_modpack_growth() {
     modpack_relay=allocate_near(image+GA(GA_2BC30A));if(!modpack_relay)return false;
     Obj p=modpack_relay;
     // Native RSP is aligned here. R13/R15/RSI/RDI remain native nonvolatile state.
-    const unsigned char code[]={0x41,0x83,0xFD,0x64,0x72,0x3A,0x48,0x83,0xEC,0x20,
-        0x48,0x89,0xF1,0x89,0xFA,0x48,0xB8};
-    memcpy(p,code,sizeof(code));*reinterpret_cast<void **>(p+17)=reinterpret_cast<void *>(&modpack_extended_growth);
-    const unsigned char done[]={0xFF,0xD0,0x48,0x83,0xC4,0x20};memcpy(p+25,done,sizeof(done));
-    absolute_jump(p+31,image+GA(GA_2BC3C8));
+    // 2026-11-18 fix: 2BC0D0 saves the caller's R14 at 2BC163 (mov [rsp+48h],r14) and restores it only at 2BC313
+    // (mov r14,[rsp+48h]); the epilogue does not. The >=100 path below leaves for 2BC3C8, past that restore, so it
+    // reloads R14 itself first (4C 8B 74 24 48). Same fix as the integrated patch's Stats200New GrowBridge (R43).
+    const unsigned char code[]={0x41,0x83,0xFD,0x64,0x72,0x3A,   // cmp r13d,100; jb +3Ah (-> 64, native path)
+        0x4C,0x8B,0x74,0x24,0x48,                                 // mov r14,[rsp+48h]
+        0x48,0x83,0xEC,0x20,0x48,0x89,0xF1,0x89,0xFA,0x48,0xB8};  // sub rsp,20h; mov rcx,rsi; mov edx,edi; mov rax,imm64
+    memcpy(p,code,sizeof(code));*reinterpret_cast<void **>(p+22)=reinterpret_cast<void *>(&modpack_extended_growth);
+    const unsigned char done[]={0xFF,0xD0,0x48,0x83,0xC4,0x20};memcpy(p+30,done,sizeof(done));   // call rax; add rsp,20h
+    absolute_jump(p+36,image+GA(GA_2BC3C8));   // ends at 50, before the native path at 64
     memcpy(p+64,image+GA(GA_2BC30A),4); // LEA EBX,[R13+1]
     p[68]=0xE8;*reinterpret_cast<int *>(p+69)=static_cast<int>((image+GA(GA_337C40))-(p+73));
     absolute_jump(p+73,image+GA(GA_2BC313));

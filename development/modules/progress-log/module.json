@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "progress-log",
  "title": "progress-log",
  "host": "convenience",
@@ -18,6 +18,8 @@
  ],
  "sources": [
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_crash_diagnostic.inl",
   "src/native_adjacency.inl",
   "src/native_progress.inl",

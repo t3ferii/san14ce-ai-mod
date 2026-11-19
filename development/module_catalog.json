@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "generated_by": "tools/gen_module_manifests.py",
  "modules": {
   "address-table": {
@@ -16,7 +16,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "advisor-briefing": {
    "title": "advisor-briefing",
@@ -35,6 +39,10 @@
     {
      "section": "advisor_briefing",
      "key": "collect"
+    },
+    {
+     "section": "advisor_briefing",
+     "key": "collect2"
     },
     {
      "section": "game_flow",
@@ -57,7 +65,16 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [
+    "advisor_briefing.inbox"
+   ],
+   "uses": [],
+   "hook_policy": {
+    "chain": 22,
+    "refuse_if_changed": 26
+   },
+   "foreign_overlap": []
   },
   "advisor_briefing": {
    "title": "advisor_briefing",
@@ -74,7 +91,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "ai": {
    "title": "ai",
@@ -180,6 +201,10 @@
     {
      "section": "combat",
      "key": "retake_build"
+    },
+    {
+     "section": "combat",
+     "key": "ship_repair_strike"
     },
     {
      "section": "combat",
@@ -350,6 +375,10 @@
      },
      {
       "section": "combat",
+      "key": "ship_repair_strike"
+     },
+     {
+      "section": "combat",
       "key": "supply_relay"
      },
      {
@@ -370,7 +399,27 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [
+    {
+     "service": "ambush_hook",
+     "soft": true
+    },
+    {
+     "service": "corps_domestic",
+     "soft": true
+    },
+    {
+     "service": "season_mobility",
+     "soft": true
+    }
+   ],
+   "hook_policy": {
+    "chain": 76,
+    "refuse_if_changed": 12
+   },
+   "foreign_overlap": []
   },
   "ai-trace": {
    "title": "ai-trace",
@@ -388,7 +437,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "ambush": {
    "title": "ambush",
@@ -408,7 +461,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "ambush-combat": {
    "title": "ambush-combat",
@@ -444,7 +501,20 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [
+    "ambush_hook"
+   ],
+   "uses": [
+    {
+     "service": "season_mobility",
+     "soft": true
+    }
+   ],
+   "hook_policy": {
+    "refuse_if_changed": 3
+   },
+   "foreign_overlap": []
   },
   "appear-batch": {
    "title": "appear-batch",
@@ -471,7 +541,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "refuse_if_changed": 1
+   },
+   "foreign_overlap": []
   },
   "area-index": {
    "title": "area-index",
@@ -501,7 +577,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "refuse_if_changed": 1
+   },
+   "foreign_overlap": []
   },
   "auto-commands": {
    "title": "auto-commands",
@@ -535,7 +617,19 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [
+    {
+     "service": "advisor_briefing.inbox",
+     "soft": true
+    }
+   ],
+   "hook_policy": {
+    "chain": 4,
+    "refuse_if_changed": 2
+   },
+   "foreign_overlap": []
   },
   "awards": {
    "title": "awards",
@@ -593,7 +687,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "refuse_if_changed": 13
+   },
+   "foreign_overlap": []
   },
   "battle-deaths": {
    "title": "battle-deaths",
@@ -623,7 +723,14 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 4,
+    "refuse": 1
+   },
+   "foreign_overlap": []
   },
   "building-destruction": {
    "title": "building-destruction",
@@ -660,7 +767,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "refuse_if_changed": 4
+   },
+   "foreign_overlap": []
   },
   "campaign-revision": {
    "title": "campaign-revision",
@@ -683,7 +796,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "ccz-sprites": {
    "title": "ccz-sprites",
@@ -700,6 +817,18 @@
     "shared-overlay"
    ],
    "ini": [
+    {
+     "section": "ccz",
+     "key": "band_morale"
+    },
+    {
+     "section": "ccz",
+     "key": "band_troops"
+    },
+    {
+     "section": "ccz",
+     "key": "bands"
+    },
     {
      "section": "ccz",
      "key": "ccz_block"
@@ -727,6 +856,22 @@
     {
      "section": "ccz",
      "key": "sprite_fallback"
+    },
+    {
+     "section": "diagnostics",
+     "key": "band_dev_spawn"
+    },
+    {
+     "section": "diagnostics",
+     "key": "ccz_draw_probe"
+    },
+    {
+     "section": "diagnostics",
+     "key": "ccz_sprite_fault"
+    },
+    {
+     "section": "groups",
+     "key": "diagnostics"
     }
    ],
    "installer": {
@@ -761,10 +906,42 @@
      {
       "section": "ccz",
       "key": "ccz_critical"
+     },
+     {
+      "section": "ccz",
+      "key": "bands"
+     },
+     {
+      "section": "ccz",
+      "key": "band_troops"
+     },
+     {
+      "section": "diagnostics",
+      "key": "band_dev_spawn",
+      "retired": true
+     },
+     {
+      "section": "ccz",
+      "key": "band_morale"
+     },
+     {
+      "section": "diagnostics",
+      "key": "ccz_sprite_fault"
+     },
+     {
+      "section": "diagnostics",
+      "key": "ccz_draw_probe"
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 8,
+    "refuse_if_changed": 17
+   },
+   "foreign_overlap": []
   },
   "checks": {
    "title": "checks",
@@ -783,7 +960,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "combat-rebuild": {
    "title": "combat-rebuild",
@@ -799,7 +980,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "convenience-misc": {
    "title": "convenience-misc",
@@ -850,7 +1035,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "refuse_if_changed": 6
+   },
+   "foreign_overlap": []
   },
   "core": {
    "title": "core",
@@ -868,7 +1059,13 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "refuse_if_changed": 7
+   },
+   "foreign_overlap": []
   },
   "corps-domestic": {
    "title": "corps-domestic",
@@ -913,7 +1110,15 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [
+    "corps_domestic"
+   ],
+   "uses": [],
+   "hook_policy": {
+    "refuse_if_changed": 3
+   },
+   "foreign_overlap": []
   },
   "damage-preview": {
    "title": "damage-preview",
@@ -942,7 +1147,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 2
+   },
+   "foreign_overlap": []
   },
   "dev-tools": {
    "title": "dev-tools",
@@ -958,7 +1169,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "diplomacy-intel": {
    "title": "diplomacy-intel",
@@ -993,7 +1208,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "refuse_if_changed": 20
+   },
+   "foreign_overlap": []
   },
   "dispatch-days": {
    "title": "dispatch-days",
@@ -1022,7 +1243,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 1
+   },
+   "foreign_overlap": []
   },
   "district-intercept": {
    "title": "district-intercept",
@@ -1054,7 +1281,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "refuse_if_changed": 2
+   },
+   "foreign_overlap": []
   },
   "dll-split": {
    "title": "dll-split",
@@ -1086,7 +1319,13 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "refuse_if_changed": 31
+   },
+   "foreign_overlap": []
   },
   "domestic": {
    "title": "domestic",
@@ -1147,7 +1386,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 2
+   },
+   "foreign_overlap": []
   },
   "drag_learn": {
    "title": "drag_learn",
@@ -1181,7 +1426,14 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 1,
+    "refuse_if_changed": 6
+   },
+   "foreign_overlap": []
   },
   "expert-combat": {
    "title": "expert-combat",
@@ -1216,7 +1468,14 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 28,
+    "refuse_if_changed": 4
+   },
+   "foreign_overlap": []
   },
   "face-keep": {
    "title": "face-keep",
@@ -1254,7 +1513,14 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 4,
+    "refuse_if_changed": 9
+   },
+   "foreign_overlap": []
   },
   "fast-menu": {
    "title": "fast-menu",
@@ -1283,7 +1549,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 3
+   },
+   "foreign_overlap": []
   },
   "field-activity": {
    "title": "field-activity",
@@ -1310,7 +1582,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "field-io-revision": {
    "title": "field-io-revision",
@@ -1338,7 +1614,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "injury": {
    "title": "injury",
@@ -1377,7 +1657,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "refuse_if_changed": 16
+   },
+   "foreign_overlap": []
   },
   "installer": {
    "title": "installer",
@@ -1395,7 +1681,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "installer-gui": {
    "title": "installer-gui",
@@ -1411,7 +1701,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "layout": {
    "title": "layout",
@@ -1431,7 +1725,14 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 3,
+    "refuse_if_changed": 2
+   },
+   "foreign_overlap": []
   },
   "layout-registry": {
    "title": "layout-registry",
@@ -1449,7 +1750,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "layout-wait": {
    "title": "layout-wait",
@@ -1482,7 +1787,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 4
+   },
+   "foreign_overlap": []
   },
   "lord-change": {
    "title": "lord-change",
@@ -1511,7 +1822,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 2
+   },
+   "foreign_overlap": []
   },
   "mediation-plus": {
    "title": "mediation-plus",
@@ -1540,14 +1857,23 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 7,
+    "refuse": 1
+   },
+   "foreign_overlap": []
   },
   "merit": {
    "title": "merit",
    "host": "convenience",
    "status": "active",
    "hub": false,
-   "depends": [],
+   "depends": [
+    "ui-common"
+   ],
    "conflicts": [],
    "checks": [
     "merit",
@@ -1591,7 +1917,19 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [
+    {
+     "service": "native_ui.officer_notice",
+     "soft": false
+    }
+   ],
+   "hook_policy": {
+    "chain": 6,
+    "refuse_if_changed": 14
+   },
+   "foreign_overlap": []
   },
   "modpack-v16": {
    "title": "modpack-v16",
@@ -1639,7 +1977,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "yield": 19
+   },
+   "foreign_overlap": []
   },
   "module-manifests": {
    "title": "module-manifests",
@@ -1655,7 +1999,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "name-lookup": {
    "title": "name-lookup",
@@ -1682,7 +2030,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "refuse_if_changed": 1
+   },
+   "foreign_overlap": []
   },
   "officer-rotation": {
    "title": "officer-rotation",
@@ -1711,7 +2065,11 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "patch-next": {
    "title": "patch-next",
@@ -1729,7 +2087,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "path-count": {
    "title": "path-count",
@@ -1750,7 +2112,13 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "refuse_if_changed": 1
+   },
+   "foreign_overlap": []
   },
   "path-fast": {
    "title": "path-fast",
@@ -1784,7 +2152,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "refuse_if_changed": 2
+   },
+   "foreign_overlap": []
   },
   "personnel": {
    "title": "personnel",
@@ -1819,7 +2193,16 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [
+    {
+     "service": "corps_domestic",
+     "soft": true
+    }
+   ],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "progress-log": {
    "title": "progress-log",
@@ -1845,7 +2228,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "progress-native": {
    "title": "progress-native",
@@ -1896,7 +2283,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "refuse_if_changed": 5
+   },
+   "foreign_overlap": []
   },
   "progress-study": {
    "title": "progress-study",
@@ -1913,7 +2306,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "recruitment": {
    "title": "recruitment",
@@ -1950,7 +2347,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 4
+   },
+   "foreign_overlap": []
   },
   "region-officers": {
    "title": "region-officers",
@@ -1986,7 +2389,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 6
+   },
+   "foreign_overlap": []
   },
   "shared-overlay": {
    "title": "shared-overlay",
@@ -2004,7 +2413,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "small-army-campaign": {
    "title": "small-army-campaign",
@@ -2028,7 +2441,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "sortie": {
    "title": "sortie",
@@ -2090,7 +2507,11 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "speed-buttons": {
    "title": "speed-buttons",
@@ -2124,7 +2545,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 4
+   },
+   "foreign_overlap": []
   },
   "stat-exp": {
    "title": "stat-exp",
@@ -2153,7 +2580,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 31
+   },
+   "foreign_overlap": []
   },
   "tactic-priority": {
    "title": "tactic-priority",
@@ -2191,7 +2624,13 @@
      "owner": "tactic_priority",
      "entry": ""
     }
-   ]
+   ],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 4
+   },
+   "foreign_overlap": []
   },
   "terrain-edit": {
    "title": "terrain-edit",
@@ -2314,7 +2753,16 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [
+    "season_mobility",
+    "terrain_core"
+   ],
+   "uses": [],
+   "hook_policy": {
+    "refuse_if_changed": 1
+   },
+   "foreign_overlap": []
   },
   "terrain-profile": {
    "title": "terrain-profile",
@@ -2330,7 +2778,11 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   },
   "trait-hover": {
    "title": "trait-hover",
@@ -2361,7 +2813,13 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 156
+   },
+   "foreign_overlap": []
   },
   "traits9-captive": {
    "title": "traits9-captive",
@@ -2374,7 +2832,9 @@
    "conflicts": [],
    "checks": [
     "split-module",
-    "traits9-save"
+    "traits9-save",
+    "layout-registry",
+    "address-table"
    ],
    "ini": [
     {
@@ -2390,7 +2850,14 @@
      }
     ]
    },
-   "ui": []
+   "ui": [],
+   "provides": [],
+   "uses": [],
+   "hook_policy": {
+    "chain": 82,
+    "yield": 14
+   },
+   "foreign_overlap": []
   },
   "ui-common": {
    "title": "ui-common",
@@ -2406,7 +2873,13 @@
    "installer": {
     "items": []
    },
-   "ui": []
+   "ui": [],
+   "provides": [
+    "native_ui.officer_notice"
+   ],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
   }
  }
 }

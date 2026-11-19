@@ -16,7 +16,9 @@ static SortieSearch original_sortie_search;
 struct SortieTrace {std::vector<unsigned> cells;unsigned count;};
 static __declspec(thread) SortieTrace *sortie_trace_output;
 static int sortie_search_next(SortieSearch next,SortieNativePath *path,Obj context,unsigned from,unsigned *to,int a,int b,int c) {
-    COST_SCOPE("sortie_search");
+    // local265 (performance proposal 3.2): the scope holds the native 185710 and the path_fast searches inside it; reports must
+    // not add it to path_fast.
+    COST_SCOPE("sortie_search(incl. path_fast)");
     // 1EC890 calls this even when 2B50D0 returns the no-destination sentinel.
     // Its caller accepts a failed path; 183A30 does not accept an invalid tile.
     if(!strcmp(native_phase,"sortie_dispatch") && a==1 &&
@@ -30,6 +32,19 @@ static int sortie_search_next(SortieSearch next,SortieNativePath *path,Obj conte
     native_search_flags=static_cast<unsigned>(b);native_search_buffer=static_cast<unsigned>(c);
     NativePhase phase("native_path_search");
     ++native_search_depth;
+    // local270 (see CampaignChainProbe): the whole relay chain first, then the native call itself
+    CampaignChainProbe *chain_probe=campaign_chain_probe;
+    if(chain_probe && !chain_probe->done && a==1 && to && from==chain_probe->from && chain_probe->count>1 &&
+       chain_probe->count<=8 && *to==chain_probe->dests[0]) {
+        chain_probe->done=true;
+        unsigned dests[8];memcpy(dests,chain_probe->dests,chain_probe->count*sizeof(unsigned));
+        // 185710 reads the second node of every later leg unchecked: no leg from a hex to itself
+        bool distinct=dests[0]!=from;
+        for(unsigned i=1;i<chain_probe->count;++i)distinct=distinct && dests[i]!=dests[i-1];
+        SortieNativePath chain{};
+        if(distinct && next(&chain,context,from,dests,static_cast<int>(chain_probe->count),b,c) && chain.data && chain.count<=48400)
+            chain_probe->cells->assign(chain.data,chain.data+chain.count);
+    }
     int result=next(path,context,from,to,a,b,c);
     --native_search_depth;
     native_search_caller=previous_caller;native_search_from=previous_from;
@@ -51,9 +66,19 @@ static __declspec(thread) unsigned sortie_auto_departure_scope;
 static __declspec(thread) unsigned sortie_cohort_dispatch_scope;
 // Dry run of a native planner (sortie_plan): every dispatch is recorded and refused, so the mod can
 // see how many soldiers the original AI meant to send before anything leaves the city.
-struct SortieProbe {unsigned calls,soldiers;bool foreign;};
+// largest / largest_city (local226): the biggest single command of the dry plan and the officer's home city.
+struct SortieProbe {unsigned calls,soldiers;bool foreign;unsigned largest;Obj largest_city;};
+// local226 (user 2026-11-18 "원작의 출진이 1부대에 2만명을 줄려고하면 뺏어서 우리모드가 편성하게"): one native command of this many
+// soldiers or more is taken over by the mod's siege roster (from that officer's city), whatever the city's stock rule says.
+static constexpr unsigned sortie_big_army=20000;
+static bool sortie_big_single(const SortieProbe &probe) {return probe.calls && !probe.foreign && probe.largest>=sortie_big_army && probe.largest_city;}
 static __declspec(thread) SortieProbe *sortie_probe;
 constexpr unsigned sortie_split_threshold=40000;
+// local212 (user 2026-11-17 "성에 4만명이상이 있는데 ... 병사수만 4만이상이면 가용병력 따지지 말고 우리모드 공성편성이 나가자"; the
+// local211 20,000 plan rule is withdrawn): a source city holding 40,000+ soldiers (+0x3C, before the 4,000 kept home) re-forms
+// any native plan against the target, whatever its size; a plan of 40,000+ does as before. Each source city needs 40,000
+// soldiers, and sends its stock above 4,000 up to max(plan, 40,000). The saturated departure keeps its own rule.
+static bool sortie_city_ready(Obj city) {return valid(city) && dword(city,0x3C)>=sortie_split_threshold;}
 struct SortieGroup {
     Obj root,group,army[7];
     unsigned short commander[7],city,center,destination,site,motion_hex;
@@ -222,6 +247,33 @@ static void sortie_escort_clear(unsigned id);
 // delegated, 2350F0; demo play counts as computer) carries the three tactics of the officer that its formation can use
 // (tactic +0x6C formation bit, the native command builder's rule) in the computer order: unique, trade, tribe, then the
 // martial or intellect list. command = the native departure struct (1EDC30): [0] person, [3] formation, [5..7] tactics.
+// local209 (user 2026-11-17 "전법의 효과1,2중에 피해 AND 효과량이 15이상인 전법 OR 효과가 전상태이상인 전법 OR 효과가 전능력상승인 전법 은
+// 해당전법 1개만 선택해서 출진 ... 게임 시작할때 캐싱 ... 병기나 그런건 당연히 제외"): a tactic is strong when one of its two effects is
+// damage (kind 1) with power 15+, all three gauges (kind 23) or all five abilities up (kind 21); siege weapons (21 정란, 22 충차,
+// 23 투석, 136 전상돌격) and ship tactics (24..26) never count. Read once per game root from the tactic table (runtime entry: kinds
+// +0x62/+0x63, power +0x66/+0x67 = 16E5E0; record +0x50/+0x54 plus 0x12), with a self-check on 분전 (damage 10).
+// local210 (user 2026-11-17 "위력 15이상, 전능상승, 전능하강 장수들 1개 전법 고정은 아수라진 구갑대열 안식사법 (교역전법)까지는 허용 ...
+// 최대 2개"): all five abilities down (kind 22, KB rules_combat_effects E3) counts too, and a usable trade tactic (137..139)
+// rides along as the second one.
+static bool computer_tactic_strong(unsigned t) { COST_SCOPE("sortie:computer_tactic_strong");
+    static Obj built_root;static unsigned char strong[201];static bool layout_ok;
+    Obj root=world();
+    if(root!=built_root) {
+        built_root=root;layout_ok=false;memset(strong,0,sizeof(strong));
+        Obj probe=table(0x774D0,1,200);
+        if(valid(probe) && probe[0x62]==1 && probe[0x66]==10) {
+            layout_ok=true;unsigned n=0;
+            for(unsigned id=1;id<=200;++id) {
+                Obj e=table(0x774D0,id,200);if(!valid(e) || id==136 || (id>=21 && id<=26))continue;
+                for(unsigned i=0;i<2;++i) {const unsigned k=e[0x62+i],p=e[0x66+i];if((k==1 && p>=15) || k==21 || k==22 || k==23)strong[id]=1;}
+                n+=strong[id];
+            }
+            log_event("ai_tactic_strong_table",n,0,0);
+        }
+        else log_event("ai_tactic_strong_layout",valid(probe)?probe[0x62]:255u,valid(probe)?probe[0x66]:255u,0);
+    }
+    return layout_ok && t && t<=200 && strong[t];
+}
 static void computer_tactic_order(unsigned *command) { COST_SCOPE("sortie:computer_tactic_order");
     if(!mod_features.ai_tactic_order || !command || !command[0] || command[0]>=6000 || command[3]>20)return;
     Obj person=table(0x158,command[0],6000);if(!valid(person))return;
@@ -238,6 +290,12 @@ static void computer_tactic_order(unsigned *command) { COST_SCOPE("sortie:comput
     if(!n)return;   // nothing usable: the original choice stays
     const bool martial=fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(person,1,0xFFF)>=fn<int(__fastcall *)(Obj,unsigned,unsigned)>(GA(GA_231770))(person,2,0xFFF);
     unsigned chosen[3];ctac::pick3(have,n,martial,chosen);
+    // local209: an officer holding a usable strong tactic leaves with that one only (the best by the computer order when several).
+    {unsigned best=0,best_rank=ctac::kUnknown+1;
+     for(unsigned i=0;i<n;++i)if(computer_tactic_strong(have[i])) {const unsigned r=ctac::rank(have[i],martial);if(!best || r<best_rank) {best=have[i];best_rank=r;}}
+     // local226 (user 2026-11-18 "강력전법 1개 + 교역전법 2개로 3개 세트 ... 교역전법이 없으면 강력전법만"): up to two usable trade
+     // tactics ride along, in the order 아수라진 137, 안식사법 138, 구갑대열 139; none = the strong one alone.
+     if(best)ctac::strong_set(best,have,n,chosen);}
 #ifndef NO_RUNTIME_LOG
     static volatile LONG lines;
     if(InterlockedIncrement(&lines)<=2000 && (chosen[0]!=command[5] || chosen[1]!=command[6] || chosen[2]!=command[7]))
@@ -255,7 +313,11 @@ static Obj __fastcall sortie_dispatch(unsigned *command,int spend) {
     if(sortie_probe) {
         if(command && command[0]) {
             ++sortie_probe->calls;sortie_probe->soldiers+=command[2];
-            if(!sortie_auto_person(table(0x158,command[0],6000)))sortie_probe->foreign=true;
+            Obj probe_person=table(0x158,command[0],6000);
+            if(!sortie_auto_person(probe_person))sortie_probe->foreign=true;
+            if(command[2]>sortie_probe->largest && valid(probe_person)) {   // local226
+                sortie_probe->largest=command[2];sortie_probe->largest_city=campaign_goal(word(probe_person,0xE2));
+            }
         }
         return nullptr;
     }
@@ -308,19 +370,25 @@ static Obj sortie_issue(unsigned *cmd,int spend) { COST_SCOPE("sortie:sortie_iss
     ++sortie_auto_departure_scope;Obj army=sortie_dispatch(cmd,spend);--sortie_auto_departure_scope;return army;
 }
 // cap: soldiers the original planner meant to send (sortie_plan probe); 0 = mod's own stock rule.
-static bool sortie_departure_from(Obj node,Obj target,const std::vector<Obj> &sources,unsigned cap=0) {
+// take_over (local226): the 20,000 single-army takeover - the city's 40,000 rule is not asked, the stock still caps it.
+static bool sortie_departure_from(Obj node,Obj target,const std::vector<Obj> &sources,unsigned cap=0,bool take_over=false) {
     COST_SCOPE("sortie_departure_from");
     if(!valid(target) || !word(target,0x4E) || word(target,0x4E)>61)return false;
     Obj target_owner=fn<Obj(__fastcall *)(Obj)>(GA(GA_22E3E0))(target);if(!valid(target_owner))return false;
     unsigned target_force=(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(target_owner,0)+0x60))(target_owner);
+    // local209 (user 2026-11-17 "공성군세가 작동안하는것처럼 보여"; log 11-16 09:09 on: 297 sortie_split_unavailable, no departure): why each
+    // source city is passed over - value = reason | available soldiers << 4 (1 not hostile, 2 under the threshold / stock rule,
+    // 3 no roster, 4 officers of different corps or no corps, 5 corps sortie slots, 6 soldiers not allocated, 7 formation data,
+// 8 gold, 9 no free army / group slot); army = city id, hex = target.
+    auto skip=[&](Obj city,unsigned reason,unsigned stock){log_event("sortie_split_skip",word(city,0x4E),reason|((std::min)(stock,0x0FFFFFFFu)<<4),word(target,0x4E));};
     for(Obj city:sources) {
         if(!valid(city))continue;
         Obj owner=fn<Obj(__fastcall *)(Obj)>(GA(GA_22E3E0))(city);if(!valid(owner))continue;
         unsigned source_force=(*reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(owner,0)+0x60))(owner);
-        if(!fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(source_force,target_force))continue;
         unsigned stock=campaign::available(dword(city,0x3C));
-        if(cap) {if(stock<sortie_split_threshold)continue;if(stock>cap)stock=cap;}
-        else if(!campaign::siege_departure(stock,dword(target,0x3C)))continue;
+        if(!fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(source_force,target_force)) {skip(city,1,stock);continue;}
+        if(cap) {if(!take_over && !sortie_city_ready(city)) {skip(city,2,stock);continue;}if(stock>cap)stock=cap;}   // local212, local226
+        else if(!campaign::siege_departure(stock,dword(target,0x3C))) {skip(city,2,stock);continue;}
         GameList people;list_init(people,GA(GA_13466B0));
         fn<void(__fastcall *)(Obj,GameList *)>(GA(GA_2D9530))(city,&people);
         fn<void(__fastcall *)(GameList *)>(GA(GA_2A26B0))(&people);
@@ -362,7 +430,7 @@ static bool sortie_departure_from(Obj node,Obj target,const std::vector<Obj> &so
             ++strong;
         }
         unsigned chosen[7],capacities[7]={},soldiers[7],commands[7][30],number=0;
-        if(!sortie::roster(facts,strong,chosen,stock) && !sortie::roster(facts,count,chosen,stock))continue;
+        if(!sortie::roster(facts,strong,chosen,stock) && !sortie::roster(facts,count,chosen,stock)) {skip(city,3,stock);continue;}
         {   // At least one middle/rear seat (2,4) in 안행 (formation 3) to cover 방원/어린 fronts.
             bool wedge=false;for(unsigned i:{2u,4u,6u})if(chosen[i]<count && (facts[chosen[i]].mask&(1u<<3)))wedge=true;
             if(!wedge) {
@@ -386,10 +454,10 @@ static bool sortie_departure_from(Obj node,Obj target,const std::vector<Obj> &so
             Obj d=table(0xE0D0,actors[chosen[i]][0xE0],51);
             if(district && district!=d) {number=0;break;}district=d;
         }
-        if(!number || !valid(district))continue;
+        if(!number || !valid(district)) {skip(city,4,stock);continue;}
         if(district[0x14]<number) {
             for(unsigned slot:{4u,2u,5u,3u,1u})if(capacities[slot] && number>district[0x14]) {capacities[slot]=0;--number;}
-            if(number<2 || number>district[0x14])continue;
+            if(number<2 || number>district[0x14]) {skip(city,5,stock);continue;}
         }
         unsigned front_mask=0;
         for(unsigned i=0;i<7;++i)if(capacities[i]) {
@@ -423,7 +491,7 @@ static bool sortie_departure_from(Obj node,Obj target,const std::vector<Obj> &so
             list_free(nearby);
             unsigned paired[7];if(spare && available_bases && sortie::allocate(capacities,stock-1000,paired,front_mask))companion_budget=1000;
         }
-        if(!sortie::allocate(capacities,stock-companion_budget,soldiers,front_mask))continue;
+        if(!sortie::allocate(capacities,stock-companion_budget,soldiers,front_mask)) {skip(city,6,stock);continue;}
         unsigned cost=0,total=0;bool ready=true;
         for(unsigned i=0;i<7;++i)if(capacities[i]) {
             unsigned f=commands[i][3];commands[i][2]=soldiers[i];
@@ -434,7 +502,7 @@ static bool sortie_departure_from(Obj node,Obj target,const std::vector<Obj> &so
         auto money=*reinterpret_cast<int(__fastcall **)(Obj)>(pointer(city,0)+0x90);
         unsigned free_armies=0,free_groups=0;
         for(unsigned i=1;i<=500;++i) {if(!valid(table(0x7E838,i,500)))++free_armies;if(!valid(table(0x7F8D8,i,500)))++free_groups;}
-        if(!ready || money(city)<static_cast<int>(cost) || free_armies<number || free_groups<number+1)continue;
+        if(!ready || money(city)<static_cast<int>(cost) || free_armies<number || free_groups<number+1) {skip(city,!ready?7:money(city)<static_cast<int>(cost)?8:9,stock);continue;}
         GameList created;list_init(created);SortieGroup g={};Obj temporary[7]={};
         bool issued=true;
         for(unsigned i=0;i<7;++i)if(capacities[i]) {
@@ -585,8 +653,8 @@ static uint64_t sortie_plan(Obj node,Obj context,Obj subject,unsigned index) {
     // [combat] sortie_formation=0: native planners only (no mod groups, so group steps stay idle).
     if(!enabled || !mod_features.sortie_formation)return original_sortie_planners[index](node,context,subject);
     Obj previous=sortie_planner_node;sortie_planner_node=node;
-    // The original AI decides whether and how much to send. Only a plan of 40,000+ soldiers is
-    // re-formed into the mod's front/middle/rear roster from the same source cities and target.
+    // The original AI decides whether to send. A plan of 40,000+ soldiers, or any plan from source cities of which one holds
+    // 40,000+ soldiers (local212), is re-formed into the mod's front/middle/rear roster from the same source cities and target.
     unsigned before=sortie_group_count(node);
     SortieProbe probe={};sortie_probe=&probe;
     uint64_t dry=original_sortie_planners[index](node,context,subject);
@@ -596,11 +664,21 @@ static uint64_t sortie_plan(Obj node,Obj context,Obj subject,unsigned index) {
     if(probe.calls)log_event("sortie_native_plan",probe.calls,probe.soldiers,goal);
     if(after!=before)log_event("sortie_probe_group_changed",before,after,goal);
     bool created=false;
-    if(probe.calls && !probe.foreign && probe.soldiers>=sortie_split_threshold && after==before) {
+    if(probe.calls && !probe.foreign && after==before) {
         Obj list=pointer(node,0x78);std::vector<Obj> sources;
         if(list)for(Link *l=list_first(*reinterpret_cast<GameList *>(list));l;l=l->next)sources.push_back(l->value);
-        created=sortie_departure_from(node,target,sources,probe.soldiers);
-        log_event(created?"sortie_split_departed":"sortie_split_unavailable",probe.calls,probe.soldiers,goal);
+        bool city_ready=false;for(Obj c:sources)if(sortie_city_ready(c))city_ready=true;
+        if(probe.soldiers>=sortie_split_threshold || city_ready) {
+            if(probe.soldiers<sortie_split_threshold)log_event("sortie_split_city_ready",probe.calls,probe.soldiers,goal);   // local212
+            created=sortie_departure_from(node,target,sources,(std::max)(probe.soldiers,sortie_split_threshold));
+            log_event(created?"sortie_split_departed":"sortie_split_unavailable",probe.calls,probe.soldiers,goal);
+        }
+        // local226: the original about to send one army of 20,000+ soldiers - the mod forms the siege roster from that
+        // officer's city instead (cap = the original plan's total). Two armies of 10,000 do not count.
+        if(!created && sortie_big_single(probe)) {
+            created=sortie_departure_from(node,target,{probe.largest_city},probe.soldiers,true);
+            log_event(created?"sortie_split_big_army":"sortie_split_big_unavailable",word(probe.largest_city,0x4E),probe.largest,goal);
+        }
     }
     uint64_t result=created?1:probe.calls?original_sortie_planners[index](node,context,subject):dry;
     if(!created && mod_features.support)for(Link *l=list_first(*reinterpret_cast<GameList *>(node+0x98));l;l=l->next)
@@ -624,12 +702,26 @@ static bool sortie_valid_group(const SortieGroup &g) { COST_SCOPE("sortie:sortie
     }
     return sortie_hostile(g.army[6],g.city);
 }
-static float sortie_movement_next(SortieMovement next,Obj army,Obj formation,int preview,int modifier,Obj tile) {
+#ifndef NO_RUNTIME_LOG
+// local268 diagnostics (user 2026-11-19 "페이블 조언 다해봐", Fable advice): per 2B2550 call site (index of the 49 thunks, 49 =
+// other callers), how often the group branch below runs and how many extra native calls it makes; logged with
+// sortie_movement_site as sortie_movement_site_group (site rva, group branches, extra native calls).
+static volatile LONG sortie_site_groups[50],sortie_site_extra[50];
+#endif
+static float sortie_movement_next(SortieMovement next,Obj army,Obj formation,int preview,int modifier,Obj tile,unsigned site=49) {
     COST_SCOPE("sortie_movement");
     float native;
     {COST_SCOPE("native_sortie_movement");native=next(army,formation,preview,modifier,tile);}
     SortieGroup g;unsigned id;
     if(!enabled || !(native>0) || !sortie_snapshot(army,g,id) || !sortie_valid_group(g))return native;
+#ifndef NO_RUNTIME_LOG
+    if(site<50) {
+        LONG extra=1;for(Obj other:g.army)if(other)++extra;
+        InterlockedIncrement(&sortie_site_groups[site]);InterlockedExchangeAdd(&sortie_site_extra[site],extra);
+    }
+#else
+    (void)site;
+#endif
     static __declspec(thread) Obj terrain_root=nullptr,neutral=nullptr;
     if(terrain_root!=world()) {terrain_root=world();neutral=nullptr;
         for(unsigned h=0;h<48400;++h) {Obj t=table(0xE270,h,48399);if(valid(t) && t[0x10]==1) {neutral=t;break;}}}
@@ -645,7 +737,7 @@ static float sortie_movement_next(SortieMovement next,Obj army,Obj formation,int
     // Impassable terrain still returns native zero before this branch.
     return slowest>0?slowest:native;
 }
-namespace ambush_hook {static bool active(Obj army);static void contact(Obj army);static bool slow(Obj army);}   // native_ambush_combat.inl (links slot, later in this unit)
+#include "ambush_hook.h"   // native_ambush_combat.inl (links slot, later in this unit)
 // local135 (season_mobility_shared.h): the season rules' fixed mobility change (river ice -3, lying snow -1) on the cell the native
 // getter weighs - its tile argument, or the army's own cell when none. Never below 1; native zero (impassable) stays zero.
 namespace season_mobility {
@@ -677,6 +769,15 @@ static float apply(float value,Obj army,Obj tile) {
     const float v=value+static_cast<float>(delta);return v<1.0f?1.0f:v;
 }
 }
+#if defined(SPLIT_COMBAT) && !defined(SPLIT_MODULE_FIXTURE)
+// local135: the convenience module hands the season rules' mobility change over at its season install (season_mobility_shared.h).
+// Moved 2026-11-16 from native_ambush_combat.inl next to the getter it feeds (feature_deps D1/D10); same export, same body.
+extern "C" __declspec(dllexport) bool __cdecl SAN14CombatSeasonMobility(unsigned version,SeasonMobility source) {
+    if(version!=kSeasonMobilityVersion)return false;
+    InterlockedExchangePointer(reinterpret_cast<PVOID volatile *>(&season_mobility::source),reinterpret_cast<PVOID>(source));
+    log_event("season_mobility_source",source?1u:0u,0,0);return true;
+}
+#endif
 static float __fastcall sortie_movement(Obj army,Obj formation,int preview,int modifier,Obj tile) { COST_SCOPE_HOT("sortie_movement");
     const float value=sortie_movement_next(original_sortie_movement?original_sortie_movement:fn<SortieMovement>(GA(GA_2B2550)),army,formation,preview,modifier,tile);
     // [game_flow] ambush (docs/AMBUSH.md): a hidden player army moves at half its formation mobility.

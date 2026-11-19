@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "mediation-plus",
  "title": "mediation-plus",
  "host": "convenience",
@@ -46,7 +46,88 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_6BCDF7",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "mediation_plus",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_6BCDFF",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "mediation_plus",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_710CD1",
+   "kind": "block",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "mediation_plus",
+   "len": 10,
+   "policy": "refuse",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_710DEC",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "mediation_plus",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7373BB",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "mediation_plus",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7373C5",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "mediation_plus",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_799303",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "mediation_plus",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_79930B",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "mediation_plus",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  }
+ ],
  "registry": {
   "rows": [
    {

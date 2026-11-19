@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "personnel",
  "title": "personnel",
  "host": "convenience",
@@ -53,7 +53,12 @@
  },
  "ui": [],
  "provides": [],
- "uses": [],
+ "uses": [
+  {
+   "service": "corps_domestic",
+   "soft": true
+  }
+ ],
  "hooks": [],
  "registry": {
   "rows": [],

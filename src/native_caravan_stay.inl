@@ -63,7 +63,7 @@ static void __fastcall cancel(Obj unit) { COST_SCOPE("caravan_stay::cancel");
     fn<void(__fastcall *)(Obj)>(kCancel)(unit);
 }
 static CallLink links[3];
-static bool install() {
+bool install() {
     if(!guards_match()) {log_event("caravan_stay_guard_rejected");return false;}
     Obj relay=allocate_near(image+kSendCall);if(!relay)return false;
     absolute_jump(relay,reinterpret_cast<void *>(&send_move));

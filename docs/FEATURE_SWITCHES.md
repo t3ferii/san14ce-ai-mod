@@ -85,7 +85,7 @@
 | 기타(개발용) | diagnostics.ai_trace_original | 0 | groups.diagnostics + diagnostics.ai_trace | 원작만 추적 (모드 훅 연결 안 함) |
 | 기타(개발용) | diagnostics.layout_wait | 0 | groups.diagnostics | 화면 레이아웃 대기 기록 |
 | 기타(개발용) | diagnostics.day_stage | 0 | groups.diagnostics | 하루 처리 단계 기록: 하루 처리 단계별 머문 시간·계산 시간(day_stage), 진단판·진행 속도 버튼 필요 (2026-10-25) |
-| 기타(개발용) | diagnostics.cost_profile | 0 | groups.diagnostics | 함수 시간 측정 (CSV): function_cost_*.csv(모드 함수), node_cost_*.csv(원작 판단 노드), 부대 깃발 얼굴 지정 1B91E0 호출 지점 7곳(face_1B91E0_*, 2026-10-25), 원작 하루 진행 44DEE0의 단계 호출 33곳·순/월 처리 7곳(day_c*/xun_*/month_*, local159), 50ms 이상 걸린 최상위 범위의 자식별 시간(function_stall_*.csv, local159), 진단판에서만 동작 |
+| 기타(개발용) | diagnostics.cost_profile | 0 | groups.diagnostics | 함수 시간 측정 (CSV): function_cost_*.csv(모드 함수), node_cost_*.csv(원작 판단 노드), 부대 깃발 얼굴 지정 1B91E0 호출 지점 7곳(face_1B91E0_*, 2026-10-25), 원작 하루 진행 44DEE0의 단계 호출 33곳·순/월 처리 7곳(day_c*/xun_*/month_*, local159), 50ms 이상 걸린 최상위 범위의 자식별 시간(function_stall_*.csv, local159), 화면 멈춤(Present 간격 80ms 이상) 때 렌더·하루 진행·창·바쁜 스레드의 호출 스택 표본(render_stall_*.csv, local203, 읽기만 함, 요약 `tools/render_stall_report.py`), 진단판에서만 동작 |
 | 기타(개발용) | diagnostics.area_index_verify | 0 | groups.diagnostics | 진단판 매 호출 원작 결과 대조, 불일치 기록 후 원작 결과 반환 (2026-10-25) |
 | 기타(개발용) | diagnostics.path_count | 0 | groups.diagnostics | 경로 탐색 호출 횟수 기록: 진단 로그 ON 및 기존 세력 AI 시간 래퍼 필요(cost_profile=1), 원작 경로·결과 변경 없음 (2026-10-25) |
 | 기타(개발용) | diagnostics.gpu_profile | 0 | groups.diagnostics | GPU 시간 기록 |

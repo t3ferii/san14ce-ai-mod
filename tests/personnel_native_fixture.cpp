@@ -20,6 +20,7 @@ static std::map<unsigned,Obj> values;
 static std::map<Obj,Obj> owners;
 static std::vector<Obj> family,envoys;
 static std::vector<std::pair<unsigned,unsigned>> batch_orders;
+static std::vector<unsigned> batch_waits;
 static std::map<std::pair<unsigned,unsigned>,bool> advice;
 static Obj batch_city,batch_district;
 static bool reject_batch;
@@ -75,7 +76,7 @@ static Obj __fastcall mock_order_district(Obj) {return batch_district;}
 static int __fastcall mock_cost() {return batch_cost;}
 static int __fastcall mock_player(Obj) {return 1;}
 static int __fastcall mock_command_valid(PersonnelEmployCommand *c) {
-    return valid(c->target) && valid(c->actor) && !(word(c->actor,0x15E)&1) && c->mode==0;
+    return valid(c->target) && valid(c->actor) && !(word(c->actor,0x15E)&1) && (c->mode==0 || c->mode==10 || c->mode==30);
 }
 static Obj __fastcall mock_advice(Obj,int type,unsigned *recommended,int *score,unsigned *,
                                 int actor,int target,int,Obj,int) {
@@ -87,7 +88,7 @@ static void __fastcall mock_issue(PersonnelEmployCommand *c,int player) {
     if(reject_batch)return;
     put16(c->actor,0x15E,word(c->actor,0x15E)|1);
     batch_district[0x14]=static_cast<unsigned char>(batch_district[0x14]-batch_cost);
-    batch_orders.emplace_back(word(c->target,0x10),word(c->actor,0x10));
+    batch_orders.emplace_back(word(c->target,0x10),word(c->actor,0x10));batch_waits.push_back(c->mode);
     if(batch_issue_observer)batch_issue_observer(c);
 }
 static void expect(bool ok) {++checks;if(!ok) {fprintf(stderr,"Personnel native fixture failed at %u\n",checks);exit(1);}}
@@ -119,6 +120,15 @@ static void test_auto_employ(Obj district,Obj force) {
     expect(batch_orders[1]==std::make_pair(302u,203u));
     expect(batch_orders[2]==std::make_pair(303u,204u));
     expect(district[0x14]==1 && !(word(a,0x15E)&1));
+    // User 2026-11-15: extras follow the screen's 10/30-day wait; anything else is no wait.
+    for(unsigned wait:{30u,10u,7u}) {
+        for(Obj actor:envoys)put16(actor,0x15E,0);
+        district[0x14]=4;batch_orders.clear();batch_waits.clear();
+        result=personnel_auto_employ(district,selected,nullptr,0,0,nullptr,wait);
+        expect(result.sent==3 && batch_waits.size()==3);
+        for(unsigned got:batch_waits)expect(got==(wait==7u?0u:wait));
+    }
+    district[0x14]=1;
     // User decision 2026-10-25: reserve the native screen actors and their
     // cost before sending extras. The last otherwise eligible target must
     // report no_orders, without consuming the native screen's order budget.

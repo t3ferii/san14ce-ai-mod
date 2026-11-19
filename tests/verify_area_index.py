@@ -72,7 +72,8 @@ ok((0x6CAF0-0xE270)//8==48400 and 0x6CAE8==0xE270+48399*8,'48,400 pointer slots 
 ok(raw(0x2CC1E0,8)!=rd(0x2CC1E0,8),'Steam text encrypted; no false claim of on-disk decoded instructions')
 for at,size in [(0x232000,0x68)]:
     ok(rd(at,size)==captured[at-0x1000:at-0x1000+size],'end iterator decoded/capture bytes agree')
-adapter=(P/'src/native_adapter.cpp').read_text(encoding='utf-8-sig')
+from hub_text import hub_text   # 2026-11-16 multi-unit refactor: hub = native_core.inl + native_patch_core.inl + native_adapter.cpp
+adapter=hub_text(P)
 split=(P/'src/native_split_install.inl').read_text(encoding='utf-8-sig')
 ok('f.area_index = fast && feature_key(config, L"performance", L"area_index", false);' in adapter,'feature guarded by performance group and safe missing-key default')
 ok('if(f.area_index && !area_index_guards_match())split_disable(f.area_index,22)' in split,'per-feature incompatibility disables only area_index')

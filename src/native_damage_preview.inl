@@ -172,7 +172,7 @@ template<unsigned I> static void __fastcall refresh(Obj panel,Obj unit,Obj targe
     next_pick(next_refresh[I],GA(GA_7FC700))(panel,unit,target);
     refresh_after(panel,unit,target);
 }
-static bool install() {
+bool install() {
     if(InterlockedCompareExchange(&installed,0,0) || !guards_match()) {log_event("damage_preview_guard_rejected");return false;}
     layout_client::Transaction tx;
     if(layout_client::call(GA(GA_7F7C51),reinterpret_cast<void *>(&refresh<0>),reinterpret_cast<void **>(&next_refresh[0]))<=0 ||

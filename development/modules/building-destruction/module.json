@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "building-destruction",
  "title": "building-destruction",
  "host": "convenience",
@@ -20,6 +20,8 @@
   "src/native_building_destruction.inl",
   "src/building_destruction_profile.h",
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_split_install.inl",
   "installer/InstallerGui.cs",
   "distribution/FeatureSelect.ps1",
@@ -65,7 +67,48 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_1FA581",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "building_destruction",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_building_destruction.inl"
+  },
+  {
+   "key": "GA_1FB293",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "building_destruction",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_building_destruction.inl"
+  },
+  {
+   "key": "GA_1FB9E6",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "building_destruction",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_building_destruction.inl"
+  },
+  {
+   "key": "GA_2F5AA0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "building_destruction",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_building_destruction.inl"
+  }
+ ],
  "registry": {
   "rows": [
    {

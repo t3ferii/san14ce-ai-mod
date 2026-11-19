@@ -79,7 +79,8 @@ static Obj campaign_paid_single(Obj source,Obj target,unsigned hex,unsigned want
         if(retake || intercept) {   // local86: the way around hostile armies decides the side the unit comes out on
             std::vector<unsigned> way;unsigned points[5];
             const unsigned castle=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(source),own=campaign_city_owner(source);
-            if(!retake_path(own,castle,hex,way,avoid_area)) {reason=3;return nullptr;}
+            // local269: a 조타 ship's departure way prices land kHelmLandMul times (its first relays were on land: 27259, 28350)
+            if(!retake_path(own,castle,hex,way,avoid_area,helm?kHelmLandMul:1u)) {reason=3;return nullptr;}
             const unsigned count=campaign_relay_points(way,static_cast<unsigned>(way.size()-1),points);
             for(unsigned i=0;i<count;++i)cmd[8+i]=points[i];
         }

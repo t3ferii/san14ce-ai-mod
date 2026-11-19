@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "diplomacy-intel",
  "title": "diplomacy-intel",
  "host": "convenience",
@@ -22,6 +22,8 @@
   "src/diplomacy_intel.h",
   "src/diplomacy_intel_profile.h",
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_split_install.inl",
   "tests/diplomacy_intel_fixture.cpp",
   "tests/verify_diplomacy_intel.py",
@@ -64,7 +66,208 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_1460C50",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_1460C58",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_1460C70",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_14622F0",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_14622F8",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_14624D8",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_14624E0",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_14626C0",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_14626C8",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_14628A8",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_14628B0",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_1462A50",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_813A6D",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_818A0E",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_818A4D",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_818E96",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_818EC6",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_82FEC3",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_830223",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  },
+  {
+   "key": "GA_830583",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "diplomacy_intel",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_diplomacy_intel.inl"
+  }
+ ],
  "registry": {
   "rows": [
    {

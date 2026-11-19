@@ -82,7 +82,7 @@ template<unsigned I> static void __fastcall timed(Obj self,unsigned a,unsigned b
 [[maybe_unused]] static unsigned long long __fastcall wrapper(Obj self,unsigned a,unsigned b,Obj parent,const char *name,int async,unsigned long long tail) { COST_SCOPE("layout_wait::wrapper");
     timed_call(next_pick(next_load[0],kLoad),self,a,b,parent,name,0,async,tail);return 1;   // original 86E0C0: 86C570(...,name,0,async,tail); return 1
 }
-static bool install() {
+bool install() {
     wchar_t path[MAX_PATH];
     if(!GetModuleFileNameW(self_module,path,MAX_PATH))return false;
     wchar_t *slash=wcsrchr(path,L'\\');if(!slash)return false;*slash=0;

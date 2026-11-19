@@ -41,7 +41,7 @@ static int live_key=-1,ready_key=-1;   // state shown, state waiting in the spar
 // G1b: the season rules (SAN14_ModPack.dll) hand their IniParams list (rain, snowfall, river ice, disasters) through this entry while
 // they run; each change of the list is baked as soon as the bake before it is done. Null = the calendar-only picture as before.
 static const int kParams=7460;
-static unsigned (__cdecl *weather_params)(float *out,int count);
+unsigned (__cdecl *weather_params)(float *out,int count);
 static unsigned live_epoch;
 static float weather_buf[kParams*4];
 static bool live_shader=false,game_dirty=false;   // the shown state is in our D/A maps; the game maps hold a baked state

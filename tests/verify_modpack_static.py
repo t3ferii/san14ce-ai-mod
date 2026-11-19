@@ -3,8 +3,8 @@ import sys as _s, os as _o; _s.path.insert(0, _o.path.dirname(_o.path.abspath(__
 from pathlib import Path
 import hashlib,json,re,struct,sys
 P=Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(P/'legacy/FogMod_Source/tools'))
-from audit_native_game import PEImage
+sys.path.insert(0,str(P/'tools'))
+from pe_image import PEImage   # tracked copy (2026-11-16); was the untracked legacy audit_native_game
 checks=0
 # the ModPack v1.6 payload DLLs (research/modpack_v16) carry RVAs of the former reference build 1fbe6be7: m() moves them to 1a4a447d through the
 # id map of the re-base (development/addr_promote/1fbe6be7_to_1a4a447d/idmap.tsv, ids are named by their RVA)
@@ -47,7 +47,7 @@ new.update([0x13aa260,0x13a9e28,0x13d5f70,0x13d5f90,0x144a278])
 # docs/HISTORY.md 4-3 (S3, 2026-11-06): the registry's "trait_hover" rows must equal the blob tables (same slots, same originals, same order),
 # and no other owner may use those slots/sites. The overlap scan below skips layout_registry.h because it is the owner of these rows.
 reg=(P/'src/layout_registry.h').read_text(encoding='utf-8')
-reg_body=reg[reg.index('static const LayoutRow layout_rows[]'):reg.index('static const unsigned layout_row_count')]
+reg_body=reg[reg.index('const LayoutRow layout_rows[]'):reg.index('static const unsigned layout_row_count')]
 reg_rows=[(m.group(1),m.group(2),int(m.group(3),16),int(m.group(4),16)) for m in
     re.finditer(r'\{"(\w+)",(LR_\w+),\s*0x([0-9A-Fa-f]+),\s*0x([0-9A-Fa-f]+),\s*[\w|]+\}',reg_body)]
 th_vt=[(r,o) for ow,k,r,o in reg_rows if ow=='trait_hover' and k=='LR_VT']

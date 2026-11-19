@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "awards",
  "title": "awards",
  "host": "convenience",
@@ -81,7 +81,138 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_134C1D0",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "awards",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_awards_links.inl"
+  },
+  {
+   "key": "GA_1EEEF0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "awards",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_awards_links.inl"
+  },
+  {
+   "key": "GA_1F16B0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "awards",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_awards_links.inl"
+  },
+  {
+   "key": "GA_1F2B10",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "awards",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_awards_links.inl"
+  },
+  {
+   "key": "GA_360930",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "awards",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_awards_links.inl"
+  },
+  {
+   "key": "GA_6CF900",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "awards",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_awards_links.inl"
+  },
+  {
+   "key": "GA_6D8C30",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "awards",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_awards_links.inl"
+  },
+  {
+   "key": "GA_6D9DB0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "awards",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_awards_links.inl"
+  },
+  {
+   "key": "GA_6E3730",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "awards",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_awards_links.inl"
+  },
+  {
+   "key": "GA_736FB0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "awards",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_awards_links.inl"
+  },
+  {
+   "key": "GA_74D3D0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "awards",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_awards_links.inl"
+  },
+  {
+   "key": "GA_756280",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "awards",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_awards_links.inl"
+  },
+  {
+   "key": "GA_93650",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "awards",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_awards_links.inl"
+  }
+ ],
  "registry": {
   "rows": [],
   "subscriptions": [

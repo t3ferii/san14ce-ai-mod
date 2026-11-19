@@ -190,8 +190,9 @@ static void climate_turn(int t)
         if (cl_land(c)) { float sC = vis_snow(t, dT, c), sN = vis_snow(nextt, dT, c);   /* v26k12: the white cover spreads here during this turn - the snow falls first */
             if (sN >= 0.20f && (sC < 0.20f ? sN - sC > 0.02f : sN - sC >= 0.15f)) willCov[c] = 1; }
         if (vterr[c] == T_GREATRIVER) { int coast = ((r[7] >> 5) & 3) == 2;         /* the Liaodong west coast is new: no table for it, the rule decides */
-            if (coast ? f1 : (f0 == f1 ? frozen_wanted(t, c) : f1)) cFrz[c >> 3] |= (u8)(1 << (c & 7));
-            u8 s2, f2, s3, f3; snow_ice_of(nextt, 0.0f, c, &s2, &f2); snow_ice_of(nextt, dT, c, &s3, &f3); if (coast ? f3 : (f2 == f3 ? frozen_wanted(nextt, c) : f3)) cFrzN[c >> 3] |= (u8)(1 << (c & 7)); }
+            /* AI_TacticsMod local209: a cell the editor set freezes by its table only (no warm / cold year flip) */
+            if (se_ice_set[c] ? frozen_wanted(t, c) : coast ? f1 : (f0 == f1 ? frozen_wanted(t, c) : f1)) cFrz[c >> 3] |= (u8)(1 << (c & 7));
+            u8 s2, f2, s3, f3; snow_ice_of(nextt, 0.0f, c, &s2, &f2); snow_ice_of(nextt, dT, c, &s3, &f3); if (se_ice_set[c] ? frozen_wanted(nextt, c) : coast ? f3 : (f2 == f3 ? frozen_wanted(nextt, c) : f3)) cFrzN[c >> 3] |= (u8)(1 << (c & 7)); }
         if (!swe_init && cSnow[c] && NSt && fcatch[c]) swe[c] = cSnow[c] >= 2 ? 80 : 30;   /* v26k14: a load in winter starts with the snow already lying */
         if (cSnow[c]) YS.snowA++; if (nw_hill(c) ? s0 : snw[t][c]) YS.snowN++;   /* v26k12: the northwest hills' normal is the rule's normal year */   /* v26k11 ledger */
         if (vterr[c] == T_GREATRIVER && ((r[7] >> 5) & 3) == 1) { if (frz_cur(c)) YS.iceA++; if (frozen_wanted(t, c)) YS.iceN++; }
@@ -751,10 +752,27 @@ static void stretch_set(u8 *d, int s, int L, int kind, int t)
 static int test_reflood;   /* 1 = the Yellow River's test flood should come back once after it drains ("다시 범람") */
 static void force_flood(u8 *d, int rv, int L, int nearCell, int t, int kind, int holdDays);
 #endif
+/* AI_TacticsMod local209: the editor's flood stages (SeasonEdits.txt, se_load in season_engine.c) over the river stretches. A cell
+   without a stretch takes the stretch of the nearest stretch cell within 6 rings (none: the edit waits). Run before each flood day,
+   so the minor rivers' rebuild (sr_minor_rivers) cannot undo it; cheap - edited cells only. */
+static void se_flood(void)
+{
+    if (!se_n || !NSt || !fstr || !fneed) return;
+    for (int i = 0; i < se_n; i++) { int c = se_cell[i], L = se_fl[i]; if (L == 255) continue;
+        if (!L) { fstr[c] = 0; fneed[c] = 0; floodz[c] = 0; continue; }
+        int s = fstr[c];
+        if (s < 1 || s > NSt) { s = 0; int bd = 1 << 30;
+            int cx0 = c % 220, cy0 = c / 220;
+            for (int y = cy0 - 6; y <= cy0 + 6; y++) for (int x = cx0 - 6; x <= cx0 + 6; x++) { if (x < 0 || y < 0 || x >= 220 || y >= 220) continue;
+                int q = y * 220 + x, sq = fstr[q]; if (sq < 1 || sq > NSt || !fneed[q]) continue; int dd = cdist2(c, q); if (dd < bd) { bd = dd; s = sq; } }
+            if (!s) continue; }
+        fstr[c] = (u8)s; fneed[c] = (u8)L; floodz[c] = (u8)((sdesc[s - 1].river << 4) | L); }
+}
 static int sr_hist(int s);
 static void sr_hist_extend(void);
 static void floods_day(u8 *d, int t)
 {
+    se_flood();
     if (!NSt) return;
     sr_minor_rivers(d);
 #ifdef SEASON_TEST

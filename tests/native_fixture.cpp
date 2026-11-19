@@ -163,11 +163,18 @@ static void __fastcall mock_finalize(Obj army) {
     put16(army,0x48,permitted?(wrong_waypoint?48400:next):48400);
 }
 static int __fastcall mock_cost(Obj, Obj) { return 100; }
+static unsigned locked_facilities = 0;   // local214/216: kinds the original refuses with the unlock check on (not unlocked)
+static int seen_policy = -1;
+static bool __fastcall capture_permission(Obj, Obj, Obj, int policy) { seen_policy = policy; return true; }
 static bool mock_native_build_hook;
 static int __fastcall mock_possible(GameList *people, Obj tile, Obj def) {
     if(mock_native_build_hook && !build_permission(table(0xDF30,2,51),tile,def,7))return 0;
+    if(build_unlock_scope && (locked_facilities & (1u << word(def, 0x10))))return 0;   // local216: unlock checked only inside our scope
     return list_first(*people) && (legal_facilities & (1u << word(def, 0x10)));
 }
+// local264: the person's force (22E450) and the original unlock check 2C6D40 alone (catapult open -> no watchtower).
+static Obj __fastcall mock_person_force(Obj) { return table(0xDF30, 2, 51); }
+static int __fastcall mock_unlocked(Obj force, Obj def) { return force && !(locked_facilities & (1u << word(def, 0x10))); }
 static void __fastcall mock_candidates(Obj, Obj, Obj def, GameList *out, Obj, Obj, Obj next) {
     if (next) abort(); candidates_requested.push_back(word(def, 0x10)); list_add(*out, table(0xE270, 105, 48399));
 }
@@ -208,6 +215,7 @@ static void setup() {
     BIND(0x2F05A0,mock_waypoint);
     BIND(0x22BFE0,mock_origin); BIND(0x22D4E0,mock_district); BIND(0x32E3B0,mock_goal); BIND(0x22E3E0,mock_goal_force);
     BIND(0x2AD6C0,mock_cost); BIND(0x27A8D0,mock_possible); BIND(0xBA100,mock_candidates); BIND(0x2315A0,mock_building); BIND(0x2AE450,mock_maximum);
+BIND(0x22E450,mock_person_force); BIND(0x2C6D40,mock_unlocked);
     BIND(0x201C0,mock_original); BIND(0x1F380,mock_original); BIND(0x69AB0,mock_original); BIND(0xB7100,mock_resolve);
     BIND(0x1137FF0,mock_blackboard); BIND(0xB28D20,mock_variable);
     BIND(0x61C90,mock_original); BIND(0x32DD00,mock_day); BIND(0x22F190,mock_goal_hex);
@@ -486,6 +494,16 @@ int main() {
         check(attempt(110) && p->facility && word(army,0x42)==105,"mission_v2: a site five hexes from the castle builds");
         check(attempt(111) && p->facility,"mission_v2: a site six hexes from the castle builds");
         check(!attempt(112) && !p->facility,"mission_v2: a site seven hexes from the castle is beyond siege ground");
+        {   // local264 (user 2026-11-19): a watchtower only while the catapult is not unlocked, a camp only while the fort is not
+            Obj tower=object(5);slot(0x73958,5,tower);   // the watchtower definition, for this block only
+            const unsigned saved_legal=legal_facilities;legal_facilities=(1u<<5)|(1u<<3);   // only watchtower and camp sites pass
+            check(!attempt(110) && !p->facility,"local264: an unlocked catapult/fort without a site leaves no watchtower or camp");
+            locked_facilities=(1u<<6)|(1u<<4);
+            check(attempt(110) && p->facility==5,"local264: a catapult the force has not unlocked lets the watchtower take its place");
+            locked_facilities=1u<<4;legal_facilities=1u<<3;
+            check(attempt(110) && p->facility==3,"local264: a fort the force has not unlocked lets the camp take its place");
+            locked_facilities=0;legal_facilities=saved_legal;slot(0x73958,5,nullptr);free(tower);
+        }
         Obj saved_owner=goal_owner,own=object(2);putptr(own,0,pointer(force,0));put16(own,0x10,2);goal_owner=own;
         check(!attempt(110),"mission_v2: without a hostile goal castle the army builds nothing");goal_owner=saved_owner;
         *reinterpret_cast<short *>(ruler+0x180)=20;
@@ -504,6 +522,9 @@ int main() {
     put16(building,0x14,1000); check(!continue_build(army,*p) && !p->facility,"completed building releases army"); put16(tile,0x1A,0);
     p->credit=true; money=0; check(!try_build(army,*p) && p->credit,"insufficient money does not issue building"); money=10000;
     fixture_day+=10;legal_facilities=~0u; check(try_build(army,*p) && p->facility==6,"catapult has first priority after temporary resource retry");
+    p->facility=0;p->credit=true;locked_facilities=1u<<6;
+    check(try_build(army,*p) && p->facility && p->facility!=6,"local214: a catapult the force has not unlocked (one original check with the unlock on) falls through to the next missing type");
+    locked_facilities=0;
     p->facility=0; p->credit=true; put16(ai_enemy,0x2A,105);
     check(!try_build(army,*p),"occupied hex is rejected"); put16(ai_enemy,0x2A,0);
     army[0x37]=4; army[0x38]=5; p->credit=false;
@@ -1199,6 +1220,13 @@ int main() {
           "actual installed native entry refuses both AI wall definitions");
     check(installed_permission(player,center,earth,7) && !installed_permission(player,center,stone,0),
           "actual installed native entry preserves human eligibility and native rejection");
+    {   // local216: the fourth argument the hook hands to the original
+        const BuildPermission keep=original_build_permission;original_build_permission=&capture_permission;
+        ++build_unlock_scope;build_permission(player,center,earth,0);const int inside=seen_policy;
+        build_permission(player,center,earth,7);const int inside_kept=seen_policy;--build_unlock_scope;
+        build_permission(player,center,earth,0);const int outside=seen_policy;original_build_permission=keep;
+        check(inside==1 && inside_kept==7 && outside==0,"local216: inside the mod's own build check 0 becomes 1 (unlock check on); other calls keep their argument");
+    }
     check(installed_permission(ai_force,center,table(0x73958,6,30),7),
           "actual installed native entry preserves AI catapult eligibility");
     adj_score=0;check(original_adjacency(center,2,&adj_score)==1.72f && adj_score==300,

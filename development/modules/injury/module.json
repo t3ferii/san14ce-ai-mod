@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "injury",
  "title": "injury",
  "host": "convenience",
@@ -61,7 +61,168 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_13487B8",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "injury",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_injury_links.inl"
+  },
+  {
+   "key": "GA_1349B20",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "injury",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_injury_links.inl"
+  },
+  {
+   "key": "GA_1349BC8",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "injury",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_injury_links.inl"
+  },
+  {
+   "key": "GA_1349C78",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "injury",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_injury_links.inl"
+  },
+  {
+   "key": "GA_134A340",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "injury",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_injury_links.inl"
+  },
+  {
+   "key": "GA_134A550",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "injury",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_injury_links.inl"
+  },
+  {
+   "key": "GA_134AA50",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "injury",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_injury_links.inl"
+  },
+  {
+   "key": "GA_134AF48",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "injury",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_injury_links.inl"
+  },
+  {
+   "key": "GA_134BCF8",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "injury",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_injury_links.inl"
+  },
+  {
+   "key": "GA_134BDB8",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "injury",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_injury_links.inl"
+  },
+  {
+   "key": "GA_134C110",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "injury",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_injury_links.inl"
+  },
+  {
+   "key": "GA_134C580",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "injury",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_injury_links.inl"
+  },
+  {
+   "key": "GA_134CEB0",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "injury",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_injury_links.inl"
+  },
+  {
+   "key": "GA_1355B18",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "injury",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_injury_links.inl"
+  },
+  {
+   "key": "GA_2F849",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "injury",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_injury_links.inl"
+  },
+  {
+   "key": "GA_53CB2",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "injury",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_injury_links.inl"
+  }
+ ],
  "registry": {
   "rows": [],
   "subscriptions": [

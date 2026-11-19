@@ -8,7 +8,7 @@ static SRWLOCK lock=SRWLOCK_INIT;
 static std::vector<Picture> pictures;static std::wstring heading,hint;
 static volatile LONG visible,dirty=1,release_pending;static ID3D11Texture2D *texture;static DXGI_FORMAT format=DXGI_FORMAT_UNKNOWN;
 static unsigned width,height;static std::vector<unsigned> pixels;
-static bool needs_draw(){return InterlockedCompareExchange(&visible,0,0)!=0 || InterlockedCompareExchange(&release_pending,0,0)!=0;}
+bool needs_draw(){return InterlockedCompareExchange(&visible,0,0)!=0 || InterlockedCompareExchange(&release_pending,0,0)!=0;}
 static void hide(){InterlockedExchange(&visible,0);AcquireSRWLockExclusive(&lock);pictures.clear();heading.clear();hint.clear();ReleaseSRWLockExclusive(&lock);InterlockedExchange(&dirty,1);InterlockedExchange(&release_pending,1);}
 static void set(std::wstring title,std::vector<Picture> next,std::wstring note=L""){AcquireSRWLockExclusive(&lock);heading=std::move(title);hint=std::move(note);pictures=std::move(next);ReleaseSRWLockExclusive(&lock);InterlockedExchange(&dirty,1);InterlockedExchange(&visible,1);}
 static Picture picture(ccz_catalog::Reader &catalog,unsigned cell,const std::wstring &label){
@@ -69,7 +69,7 @@ static bool raster(unsigned w,unsigned h){
     GdiFlush();for(size_t i=0;i<static_cast<size_t>(w)*h;++i)out[i]|=0xFF000000u;
     pixels.assign(out,out+static_cast<size_t>(w)*h);SelectObject(dc,old_font);DeleteObject(large);DeleteObject(normal);DeleteObject(font_small);SelectObject(dc,old);DeleteObject(bm);DeleteDC(dc);return true;
 }
-static void draw(ID3D11Device *device,ID3D11DeviceContext *context,ID3D11Texture2D *back,const D3D11_TEXTURE2D_DESC &desc,bool rgba){
+void draw(ID3D11Device *device,ID3D11DeviceContext *context,ID3D11Texture2D *back,const D3D11_TEXTURE2D_DESC &desc,bool rgba){
     if(!needs_draw())return;
     if(!InterlockedCompareExchange(&visible,0,0)){if(texture){texture->Release();texture=nullptr;}std::vector<unsigned>().swap(pixels);InterlockedExchange(&release_pending,0);return;}
     InterlockedExchange(&release_pending,0);

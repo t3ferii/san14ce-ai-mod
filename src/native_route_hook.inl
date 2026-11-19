@@ -20,14 +20,18 @@ struct Orders {
     unsigned char action = 0, kind = 0;
     unsigned short id = 0, relay[5] = {48400, 48400, 48400, 48400, 48400};
 };
-enum Kind : unsigned char {none = 0, hold = 1, build = 2, breach = 3};
+enum Kind : unsigned char {none = 0, hold = 1, build = 2, breach = 3, ship = 4};
 struct Entry {
     Obj root = nullptr, army = nullptr;
     unsigned commander = 0, troops = 0;
     Kind kind = none;
-    unsigned band = 0, hex = 48400, wall = 0;   // band id / hold or build hex / wall building id
+    unsigned band = 0, hex = 48400, wall = 0;   // band id / hold or build hex / wall building id (ship: the facility)
     unsigned goal = 0;                          // breach: the group goal (city/gate id) the wall blocks
     bool hit = false;                           // local108: breach for the hit response (no group goal)
+    unsigned stand = 48400;                     // local226: the hex the army hits the wall / facility from (48400 = where it is)
+    bool forced = false;                        // local226: no way around the wall, so it is broken even under tower fire
+    unsigned repairer = 0;                      // local226 ship: the hostile army repairing the facility
+    int day = 0;                                // local226 ship: start day
     Orders original, mine;
 };
 static Entry entries[501];
@@ -149,7 +153,9 @@ static void morale_member(Obj a, Entry &e) {
     if (!p || p->facility || !valid(area) || (local_facilities(a, area) & (1u << 7))) return;
     const bool credit = p->credit, chain = p->build_chain; const unsigned short center = p->build_center;
     p->build_chain = true; p->build_center = word(area, 0x3A);
+    band_way_goal = goal;   // local211: sites on the way to the goal, no mountain
     const bool built = try_build(a, *p, 48400, 7);
+    band_way_goal = 48400;
     p->credit = credit; p->build_chain = chain; p->build_center = center;
     if (!built) return;
     Entry next; next.root = world(); next.army = a; next.commander = word(a, 0x12); next.troops = word(a, 0x58);
@@ -207,6 +213,124 @@ static bool wall_near(unsigned from, unsigned goal) {
     }
     return false;
 }
+// ---- local226 stands: outside hostile tower range (path_wall / hit response), and the 누선 repair strike ----
+// Tower ranges are the original ones (KB rules_domestic 4, 192110 / 2AD8F0: 투석대 2..3, 망루 1..2 hexes, finished
+// facilities only). The army's reach is the original combat radius (2C9080(force, formation) != 0) + 1 (KB
+// rules_combat 1: 안행·누선 2, others 1). A stand two hexes away keeps the army on the same land/water kind, so its
+// formation (and with it the radius) does not change on the way.
+static bool water_hex(unsigned hex) {
+    Obj t = hex < 48400 ? table(0xE270, hex, 48399) : nullptr;
+    return valid(t) && (t[0x10] == 14 || t[0x10] == 24);
+}
+static int strike_reach(Obj a) {
+    Obj force = fn<Obj(__fastcall *)(Obj)>(GA(GA_22E2A0))(a);
+    if (!valid(force)) return 1;
+    Obj formation = fn<Obj(__fastcall *)(Obj)>(GA(GA_22CAD0))(a);
+    return fn<int(__fastcall *)(Obj, Obj)>(GA(GA_2C9080))(force, formation) ? 2 : 1;
+}
+static std::vector<tower_reach::Tower> hostile_towers(unsigned own) {
+    std::vector<tower_reach::Tower> out;
+    if (!own) return out;
+    for (unsigned id = 62; id <= 3000; ++id) {
+        Obj b = table(0x6DA98, id, 3000);
+        if (!valid(b) || !word(b, 0x14) || word(b, 0x10) >= 48400 || !(b[0x16] & 1)) continue;
+        const unsigned kind = b[0x12], holder = b[0x13];
+        if ((kind != 5 && kind != 6) || !holder || holder == own) continue;
+        if (!fn<int(__fastcall *)(unsigned, unsigned)>(GA(GA_2CC630))(own, holder)) continue;
+        out.push_back({word(b, 0x10), static_cast<unsigned char>(kind == 6 ? 2 : 1), static_cast<unsigned char>(kind == 6 ? 3 : 2)});
+    }
+    return out;
+}
+// The hex outside every hostile tower range the army hits the wall from (its own hex when that already does), or 48400.
+static unsigned wall_stand(Obj a, unsigned wall_hex, const std::vector<tower_reach::Tower> &towers) {
+    if (!valid(a) || wall_hex >= 48400) return 48400;
+    const unsigned here = word(a, 0x2A);
+    const bool wet = water_hex(here);
+    auto open = [&](unsigned h) { return intercept_open(h, a) && (distance(h, wall_hex) < 2 || water_hex(h) == wet); };
+    const unsigned s = tower_reach::stand(wall_hex, here < 48400 ? here : wall_path::cells, strike_reach(a), towers, open);
+    return s < 48400 ? s : 48400;
+}
+static unsigned wall_stand(Obj a, unsigned wall_hex) { return valid(a) ? wall_stand(a, wall_hex, hostile_towers(army_force(a))) : 48400; }
+static bool wall_has_stand(Obj a, unsigned wall_hex) { return wall_stand(a, wall_hex) < 48400; }   // refresh_path_wall
+// The breach order: attack the wall, walking over the stand first when the army is not on it.
+static void breach_write(Obj a, Entry &e) {
+    Orders o; o.action = 6; o.kind = 11; o.id = static_cast<unsigned short>(e.wall);
+    if (e.stand < 48400 && e.stand != word(a, 0x2A)) o.relay[0] = static_cast<unsigned short>(e.stand);
+    write(a, o);
+    e.mine = read(a);
+}
+
+// [combat] ship_repair_strike (local226, user 2026-11-18 "컴퓨터가 누선일때 플레이어가 수리하면 달라붙어서 플레이어 수리하는
+// 부대도 동시에 쳤으면해 누선 사거리가 안행처럼 주변 2헥스"): a computer-side 누선 (water formation 13 on 대하/격류) attacking a
+// hostile facility (original order 6/11) within 8 hexes, while a hostile army stands next to that facility repairing it
+// (order 8 or 9 on it), moves to a water hex within 2 of both, so the original combat (every hostile unit and facility
+// within the radius, up to 3 records) hits the facility and the repairer together. Hexes outside hostile tower range
+// first, then the nearest. Held until the repair stops, the facility falls, the ship leaves the water or its 누선
+// formation, retreats, or 10 days pass. Player direct armies and delegated corps never take it.
+static bool ship_ready(Obj a) {
+    if (!mod_features.ship_repair_strike || !valid(a) || a[0x140] || !computer_side_army(a) || word(a, 0x16) < 1000) return false;
+    if (a[0x1C] != 13 || !water_hex(word(a, 0x2A)) || a[0x37] == 11 || a[0x37] == 12 || campaign_castle_locked(a)) return false;
+    return strike_reach(a) >= 2;
+}
+static Obj ship_repairer(unsigned own, unsigned facility, unsigned facility_hex) {
+    for (unsigned i = 1; i <= 500; ++i) {
+        Obj r = table(0x7E838, i, 500);
+        if (!valid(r) || word(r, 0x2A) >= 48400 || !word(r, 0x16)) continue;
+        if ((r[0x37] != 8 && r[0x37] != 9) || r[0x38] != 11 || word(r, 0x3A) != facility) continue;
+        if (distance(word(r, 0x2A), facility_hex) > 1) continue;
+        if (!fn<int(__fastcall *)(unsigned, unsigned)>(GA(GA_2CC630))(own, army_force(r))) continue;
+        return r;
+    }
+    return nullptr;
+}
+static Obj ship_facility(Obj a) {
+    if (a[0x37] != 6 || a[0x38] != 11) return nullptr;
+    const unsigned id = word(a, 0x3A);
+    Obj f = id && id <= 3000 ? table(0x6DA98, id, 3000) : nullptr;
+    if (!valid(f) || !word(f, 0x14) || word(f, 0x10) >= 48400 || !f[0x13]) return nullptr;
+    return fn<int(__fastcall *)(unsigned, unsigned)>(GA(GA_2CC630))(army_force(a), f[0x13]) ? f : nullptr;
+}
+static void ship_check(Obj a) { COST_SCOPE("route_hook:ship_check");
+    if (!ship_ready(a)) return;
+    Entry *e = entry(a);
+    if (!e || e->kind != none) return;
+    Obj f = ship_facility(a);
+    if (!f) return;
+    const unsigned fid = word(a, 0x3A), fhex = word(f, 0x10), here = word(a, 0x2A), own = army_force(a);
+    if (distance(here, fhex) > 8) return;
+    Obj r = ship_repairer(own, fid, fhex);
+    if (!r) return;
+    const unsigned rhex = word(r, 0x2A);
+    if (distance(here, fhex) <= 2 && distance(here, rhex) <= 2) return;   // already hits both
+    const std::vector<tower_reach::Tower> towers = hostile_towers(own);
+    auto open = [&](unsigned h) { return water_hex(h) && intercept_open(h, a); };
+    const unsigned s = tower_reach::stand(fhex, here, 2, towers, open, rhex, false);
+    if (s >= 48400) {
+        static volatile LONG misses;
+        if (InterlockedIncrement(&misses) <= 200) log_event("ship_repair_no_stand", army_id(a), fid, rhex);
+        return;
+    }
+    Entry next; next.root = world(); next.army = a; next.commander = word(a, 0x12); next.troops = word(a, 0x58);
+    next.kind = ship; next.wall = fid; next.hex = fhex; next.repairer = army_id(r); next.stand = s; next.day = game_day();
+    next.original = read(a);
+    breach_write(a, next);
+    *e = next;
+    log_event("ship_repair_strike", army_id(a), fid | (army_id(r) << 16), s);
+}
+// Keeps or ends a ship entry; true while it holds.
+static bool ship_keep(Obj a, Entry &e) {
+    Obj r = e.repairer && e.repairer <= 500 ? table(0x7E838, e.repairer, 500) : nullptr;
+    Obj f = table(0x6DA98, e.wall, 3000);
+    const bool repairing = valid(r) && word(r, 0x2A) < 48400 && (r[0x37] == 8 || r[0x37] == 9) && r[0x38] == 11 &&
+                           word(r, 0x3A) == e.wall && valid(f) && word(f, 0x14) && word(f, 0x10) == e.hex;
+    const bool alive = mod_features.ship_repair_strike && a[0x1C] == 13 && water_hex(word(a, 0x2A)) && a[0x37] != 11 && a[0x37] != 12 &&
+                       word(a, 0x16) >= 1000 && game_day() - e.day <= 10;
+    if (repairing && alive) return true;
+    log_event("ship_repair_done", army_id(a), e.wall, repairing ? 2u : 1u);
+    finish(a, e, "ship_repair_released");
+    return false;
+}
+
 static unsigned plain_hexes(unsigned c) { return c == neutral_breach::none ? 65535u : (c / 240u > 65534u ? 65534u : c / 240u); }
 // local108 (user 2026-11-13 "중립건물 돌파에 이 기능을 자연스럽게 넣어줄 수 있나? 2칸이상 돌아가면 부수면 좋겠어", "망루나
 // 투석대도"): the hit response is a breach entry. A computer-side army hit within 10 days by the player's 안행 / water
@@ -244,12 +368,18 @@ static void hit_check(Obj a) { COST_SCOPE("route_hook:hit_check");
     if (plan.closed != neutral_breach::none && plan.closed < plan.free + kHitDetour * 240u) return;   // walk around
     Obj wall = table(0x6DA98, wall_id, 3000);
     if (!valid(wall) || !neutral_wall(wall)) return;
+    // local226: the wall is broken from outside hostile tower range; with no such stand the army walks around, unless
+    // there is no way around at all (then as before).
+    const bool forced = plan.closed == neutral_breach::none;
+    const unsigned stand = wall_stand(a, plan.wall_hex);
+    if (stand >= 48400 && !forced) { log_event("route_breach_no_stand", id, wall_id, plan.wall_hex); return; }
     Entry next; next.root = world(); next.army = a; next.commander = word(a, 0x12); next.troops = word(a, 0x58);
     next.kind = breach; next.hit = true; next.wall = wall_id; next.hex = plan.wall_hex; next.goal = 0; next.original = read(a);
-    order(a, 6, 11, static_cast<int>(wall_id));
-    next.mine = read(a);
+    next.stand = stand; next.forced = forced;
+    breach_write(a, next);
     *e = next;
     log_event("route_breach_hit", id, wall_id | (static_cast<unsigned>(wall[0x12]) << 16), plan.wall_hex);
+    log_event("route_breach_stand", id, stand | (forced ? (1u << 16) : 0u), plan.wall_hex);
 }
 static void breach_group(Obj troops, unsigned tid) { COST_SCOPE("route_hook:breach_group");
     if (!mod_features.path_wall || !route_hook_breach || !tid || tid > 500) return;
@@ -296,24 +426,35 @@ static void breach_group(Obj troops, unsigned tid) { COST_SCOPE("route_hook:brea
     log_event("route_breach_plan", tid, hexes(plan.closed), hexes(plan.free) | (hexes(plan.open) << 16));
     if (!neutral_breach::breach(plan)) return;
     gp.wall = grid_wall[plan.wall_hex];
-    // Breaker = the member nearest the wall (any army may cross water by boat).
-    Obj breaker = nullptr; int best = 1 << 20;
+    // Breaker = the member nearest the wall (any army may cross water by boat). local226: it must have a stand outside
+    // hostile tower range (wall_stand); none = the group walks around, unless no way around exists (then as before).
+    const bool forced = plan.closed == neutral_breach::none;
+    const std::vector<tower_reach::Tower> towers = hostile_towers(army_force(lead));
+    Obj breaker = nullptr; int best = 1 << 20; unsigned breaker_stand = 48400;
     for (unsigned i = 1; i <= 500; ++i) {
         Obj a = table(0x7E838, i, 500);
         if (!valid(a) || a[0x140] || !belongs_to_troops(a, troops) || !computer_side_army(a) || word(a, 0x16) < 1000) continue;
         if (owns(a)) continue;
         int range = distance(word(a, 0x2A), plan.wall_hex);
-        if (range < best) { best = range; breaker = a; }
+        if (range >= best) continue;
+        const unsigned s = wall_stand(a, plan.wall_hex, towers);
+        if (s >= 48400 && !forced) continue;
+        best = range; breaker = a; breaker_stand = s;
     }
-    if (!breaker) return;
+    if (!breaker) {
+        log_event("route_breach_no_stand", tid, gp.wall, plan.wall_hex);
+        gp.wall = 0;
+        return;
+    }
     Entry *e = entry(breaker);
     if (!e) return;
     Entry next; next.root = world(); next.army = breaker; next.commander = word(breaker, 0x12); next.troops = tid;
     next.kind = breach; next.wall = gp.wall; next.hex = plan.wall_hex; next.goal = goal_id; next.original = read(breaker);
-    order(breaker, 6, 11, static_cast<int>(gp.wall));
-    next.mine = read(breaker);
+    next.stand = breaker_stand; next.forced = forced;
+    breach_write(breaker, next);
     *e = next;
     log_event("route_breach_start", army_id(breaker), gp.wall | (static_cast<unsigned>(table(0x6DA98, gp.wall, 3000)[0x12]) << 16), plan.wall_hex);   // value = wall id | kind (9 토성 / 10 석벽 / 16 철쇄) << 16
+    log_event("route_breach_stand", army_id(breaker), breaker_stand | (forced ? (1u << 16) : 0u), plan.wall_hex);
 }
 // local55 (user 2026-11-11 "출진하는 5번째 부대마다 중립건물 파괴명령 코드 다시 부활", "부수다가 뒤로가다가"): the
 // every-fifth-army pick (refresh_path_wall, PW14/PW15) comes back, but its order is no longer written once from the
@@ -335,12 +476,15 @@ static bool assign_fifth(Obj a, unsigned wall_hex) {
     if (!wall) return false;
     Entry *e = entry(a);
     if (!e || e->kind != none) return false;
+    const unsigned stand = wall_stand(a, wall_hex);   // local226: never under hostile tower fire (refresh_path_wall picks such walls only)
+    if (stand >= 48400) { log_event("route_breach_no_stand", army_id(a), wall, wall_hex); return false; }
     Entry next; next.root = world(); next.army = a; next.commander = word(a, 0x12); next.troops = word(a, 0x58);
     next.kind = breach; next.wall = wall; next.hex = wall_hex; next.goal = goal; next.original = read(a);
-    order(a, 6, 11, static_cast<int>(wall));
-    next.mine = read(a);
+    next.stand = stand;
+    breach_write(a, next);
     *e = next;
     log_event("route_breach_fifth", army_id(a), wall | (static_cast<unsigned>(table(0x6DA98, wall, 3000)[0x12]) << 16), wall_hex);
+    log_event("route_breach_stand", army_id(a), stand, wall_hex);
     return true;
 }
 static bool wall_standing(const Entry &e) {
@@ -404,7 +548,8 @@ static unsigned leaving_point(Obj a, Obj r) {
     }
     return 48400;
 }
-static unsigned behind_tile(Obj a, Obj r, unsigned force, unsigned toward) {
+// wet (local269): a 조타 ship's tile behind is river water (helm_water terrain 13, 14, 24) only; a land tile took it ashore.
+static unsigned behind_tile(Obj a, Obj r, unsigned force, unsigned toward, bool wet = false) {
     const unsigned here = word(a, 0x2A);
     static unsigned queue[256]; unsigned head = 0, tail = 0;
     queue[tail++] = here;
@@ -412,7 +557,7 @@ static unsigned behind_tile(Obj a, Obj r, unsigned force, unsigned toward) {
     while (head < tail) {
         const unsigned hex = queue[head++];
         Obj t = tile_at(hex);
-        if (valid(t) && t[0x14] == force) {
+        if (valid(t) && t[0x14] == force && (!wet || t[0x10] == 13 || t[0x10] == 14 || t[0x10] == 24)) {
             Obj tr = region_at(hex);
             if (valid(tr) && tr != r && region_owner(tr) == force && !campaign_mountain(hex)) {
                 const int score = distance(here, hex) + distance(hex, toward);
@@ -441,6 +586,10 @@ static void supply_check(Obj a) { COST_SCOPE("route_hook:supply_check");
     const unsigned id = army_id(a);
     if (!id || id > 500) return;
     if (progress[id].army == a && progress[id].regional_worker && progress[id].retake) return;   // local85: a retake unit writes its own relays
+    // local263 (user 2026-11-19 "병참차단 하고 목표 바뀌면 가까운 아군타일 중계점 찍은다음 이동하고 (모드에서 점령하는 로직만 뺀)"): a
+    // 조타 ship gets the own tile behind as before (v16.3.1) but never the local53 base capture below (local262 had dropped both;
+    // 18:41:57 supply_relay_capture army 33 put a ship onto a land base).
+    const bool helm_ship = progress[id].army == a && progress[id].regional_worker && progress[id].helm;
     Bridge &b = bridges[id];
     const unsigned now = packed_order(a);
     if (b.root != world() || b.army != a || b.commander != word(a, 0x12)) {   // first sight: no change yet
@@ -469,14 +618,14 @@ static void supply_check(Obj a) { COST_SCOPE("route_hook:supply_check");
     if (!hostile(force, owner) || !officer_takes(r, owner) || !last_in_region(a, r, owner)) return;
     const unsigned out = leaving_point(a, r);
     if (out >= 48400) return;
-    const unsigned hex = behind_tile(a, r, force, out);
+    const unsigned hex = behind_tile(a, r, force, out, helm_ship);
     // local53 (user 2026-11-11 "자동점령이 발생하는 지역 거점을 지역 버프 잇는것보다 먼저 할 수 있다면. 동률이어도 점령이
     // 우선"): when the region's own base hex (no building on it, not a mountain, within the 6-hex search) is no farther than
     // the own tile behind, the relay goes over that base instead; the army takes the region before the officer's land take
     // and then follows its new mission.
     const unsigned base = word(r, 0x3A);
     Obj base_tile = base < 48400 ? tile_at(base) : nullptr;
-    if (valid(base_tile) && !word(base_tile, 0x1A) && base_tile[0x14] == owner && !campaign_mountain(base) &&
+    if (!helm_ship && valid(base_tile) && !word(base_tile, 0x1A) && base_tile[0x14] == owner && !campaign_mountain(base) &&
         distance(here, base) <= kBehind && (hex >= 48400 || distance(here, base) <= distance(here, hex))) {
         put_relay(a, base);
         b.tile = base; b.target = now; b.day = today;
@@ -512,10 +661,16 @@ static void after(Obj troops) { COST_SCOPE("route_hook:after");
             if (hit ? !ranged_hit_ready(a, 20) : (!attack_mode(word(troops, 0x14)) || word(troops, 0x16) != e->goal)) {
                 finish(a, *e, "route_breach_released"); continue;
             }
-            e->original = read(a);
-            if (!same(e->original, e->mine)) { order(a, 6, 11, static_cast<int>(e->wall)); e->mine = read(a); }
+            const Orders now = read(a);
+            if (!same(now, e->mine)) { e->original = now; breach_write(a, *e); }   // local226: keeps the stand relay
             continue;
         }
+        if (e->kind == ship) {   // local226 ship_repair_strike
+            if (ship_keep(a, *e)) { const Orders now = read(a); if (!same(now, e->mine)) { e->original = now; breach_write(a, *e); } }
+            continue;
+        }
+        if (e->kind == none) ship_check(a);
+        if (e->kind == ship) continue;
         morale_member(a, *e);
         supply_check(a);
     }
@@ -583,6 +738,7 @@ static void __fastcall daily(int slot) {
     if (diagnostic_logging) { watch_young(); AI_TRACE_DAILY(); }
     if (mod_features.supply_relay) for (unsigned i = 1; i <= 500; ++i) supply_check(table(0x7E838, i, 500));
     if (route_hook_hit) for (unsigned i = 1; i <= 500; ++i) hit_check(table(0x7E838, i, 500));   // local108
+    if (mod_features.ship_repair_strike) for (unsigned i = 1; i <= 500; ++i) ship_check(table(0x7E838, i, 500));   // local226
     for (unsigned i = 1; i <= 500; ++i) {
         Entry &e = entries[i];
         if (e.kind == none) continue;
@@ -606,18 +762,28 @@ static void __fastcall daily(int slot) {
                 continue;
             }
             if (hit && !ranged_hit_ready(a, 20)) { finish(a, e, "route_breach_released"); continue; }
+            // local226: the stand is judged again each day (towers may be built or fall, the army moves); with no stand
+            // outside hostile tower range the wall is left to the original AI, unless there is no way around it.
+            bool moved_stand = false;
+            if (!e.forced) {
+                const unsigned s = wall_stand(a, e.hex);
+                if (s >= 48400) { log_event("route_breach_unsafe", i, e.wall, e.hex); finish(a, e, "route_breach_released"); continue; }
+                moved_stand = s != e.stand;
+                e.stand = s;
+            }
             const Orders now = read(a);
-            if (now.action == e.mine.action && now.kind == e.mine.kind && now.id == e.mine.id) continue;
+            const bool relay_ok = e.stand >= 48400 || e.stand == word(a, 0x2A) || now.relay[0] == e.stand;
+            if (now.action == e.mine.action && now.kind == e.mine.kind && now.id == e.mine.id && relay_ok && !moved_stand) continue;
             Obj t = table(0x7F8D8, word(a, 0x58), 500);
             const bool alive = now.action != 11 && now.action != 12 && word(a, 0x16) >= 1000;
             const bool keep = alive && (hit || (word(a, 0x58) == e.troops && valid(t) && attack_mode(word(t, 0x14)) && word(t, 0x16) == e.goal));
             if (!keep) { log_event("route_breach_released", i, packed_order(a), group_state(a)); e = Entry{}; continue; }
             log_event("route_breach_reapply", i, packed_order(a), e.wall);
-            e.original = now;
-            order(a, 6, 11, static_cast<int>(e.wall));
-            e.mine = read(a);
+            if (!same(now, e.mine)) e.original = now;
+            breach_write(a, e);
             continue;
         }
+        if (e.kind == ship) { if (ship_keep(a, e) && !same(read(a), e.mine)) breach_write(a, e); continue; }   // local226
         if (!same(read(a), e.mine)) { e = Entry{}; continue; }   // someone else (original/player) wrote: let go
         if (e.kind == hold) {
             if (!mod_features.morale || a[0x1A] >= 100 || !campaign_band(a, e.band)) finish(a, e, "route_morale_done");
@@ -635,7 +801,7 @@ static CallLink calls[4];
 static Obj relay;
 static bool ready;
 static bool hit_wanted() { return mod_features.obstacle && mod_features.hit_response; }   // local108
-static bool wanted() { return mod_features.morale || mod_features.path_wall || mod_features.supply_relay || hit_wanted(); }
+static bool wanted() { return mod_features.morale || mod_features.path_wall || mod_features.supply_relay || hit_wanted() || mod_features.ship_repair_strike; }
 // 0 = prepared (or off), 1 = a CALL no longer targets its original function, 2 = prepare failed.
 static unsigned prepare() { COST_SCOPE("route_hook:prepare");
     for (auto &c : calls) c = CallLink{};
@@ -675,7 +841,7 @@ static bool publish() { COST_SCOPE("route_hook:publish");
     if (!ok) restore();
     else { route_hook_morale = mod_features.morale; route_hook_breach = mod_features.path_wall; route_hook_hit = hit_wanted(); route_hook_owns = &owns; }
 #ifndef NO_RUNTIME_LOG
-    log_event("route_hook_installed", ok ? 1u : 0u, route_hook_morale, (route_hook_breach ? 1u : 0u) | (route_hook_hit ? 2u : 0u));
+    log_event("route_hook_installed", ok ? 1u : 0u, route_hook_morale, (route_hook_breach ? 1u : 0u) | (route_hook_hit ? 2u : 0u) | (ok && mod_features.ship_repair_strike ? 4u : 0u));
 #endif
     return ok;
 }

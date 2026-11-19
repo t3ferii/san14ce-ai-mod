@@ -139,6 +139,7 @@
 #include "native_ccz_bridge.inl"
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+#include "native_ccz_bands.inl"
 #include "native_ccz_editor.inl"
 #include "native_ccz_title.inl"
 #include "native_tactic_priority.inl"

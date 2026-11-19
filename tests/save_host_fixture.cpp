@@ -123,19 +123,19 @@ int main() {
         list.clear();check(list.add(&plugin_c,30) && list.add(&plugin_a,10) && list.add(&plugin_b,20),"register");
         check(list.rows[0]==&plugin_a && list.rows[1]==&plugin_b && list.rows[2]==&plugin_c,"plugins run in position order");
     }
-    // the registry rows put the sidecars in the historical order for every registration order: terrain, tactic memory, merit, warehouse, auto commands (PW36e), ambush, ranges (local105)
+    // the registry rows put the sidecars in the historical order for every registration order: terrain, tactic memory, merit, warehouse, auto commands (PW36e), ambush, ranges (local105), bands (local217)
     {
         std::vector<const ModuleSubscription *> rows;
         for(const auto &s:kSubscriptions)if(!strcmp(s.service,"sidecars"))rows.push_back(&s);
-        check(rows.size()==7,"seven sidecar plugins registered by the registry");
-        static SidecarPlugin dummies[7];
-        for(unsigned i=0;i<7;++i) {dummies[i]=plugin_a;dummies[i].name=rows[i]->owner;}
-        std::vector<unsigned> permutation={0,1,2,3,4,5,6};unsigned cases=0;
+        check(rows.size()==8,"eight sidecar plugins registered by the registry");
+        static SidecarPlugin dummies[8];
+        for(unsigned i=0;i<8;++i) {dummies[i]=plugin_a;dummies[i].name=rows[i]->owner;}
+        std::vector<unsigned> permutation={0,1,2,3,4,5,6,7};unsigned cases=0;
         do {
             Plugins<8> registered;
             for(unsigned index:permutation)check(registered.add(&dummies[index],rows[index]->order),"register");
             check(std::string(registered.rows[0]->name)=="terrain_edit" && std::string(registered.rows[1]->name)=="tactic_priority" &&
-                  std::string(registered.rows[2]->name)=="merit" && std::string(registered.rows[3]->name)=="awards" && std::string(registered.rows[4]->name)=="auto_commands" && std::string(registered.rows[5]->name)=="ambush" && std::string(registered.rows[6]->name)=="expert_links","sidecar plugin order for permutation "+std::to_string(cases));
+                  std::string(registered.rows[2]->name)=="merit" && std::string(registered.rows[3]->name)=="awards" && std::string(registered.rows[4]->name)=="auto_commands" && std::string(registered.rows[5]->name)=="ambush" && std::string(registered.rows[6]->name)=="expert_links" && std::string(registered.rows[7]->name)=="ccz_bands","sidecar plugin order for permutation "+std::to_string(cases));
             ++cases;
         } while(std::next_permutation(permutation.begin(),permutation.end()));
     }

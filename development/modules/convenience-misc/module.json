@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "convenience-misc",
  "title": "convenience-misc",
  "host": "convenience",
@@ -73,7 +73,68 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_13D7038",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "occupy_fast",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_occupy_fast.inl"
+  },
+  {
+   "key": "GA_1DB8D2",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "caravan_stay",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_caravan_stay.inl"
+  },
+  {
+   "key": "GA_1F5B6E",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "caravan_stay",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_caravan_stay.inl"
+  },
+  {
+   "key": "GA_2950AE",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "caravan_stay",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_caravan_stay.inl"
+  },
+  {
+   "key": "GA_42D827",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "occupy_fast",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_occupy_fast.inl"
+  },
+  {
+   "key": "GA_9361FB",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "save_codec",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_save_codec.inl"
+  }
+ ],
  "registry": {
   "rows": [
    {

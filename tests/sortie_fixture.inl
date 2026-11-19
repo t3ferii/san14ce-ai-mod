@@ -290,6 +290,28 @@ static void sortie_tests() {
         check(!first && !second && probe.calls==3 && probe.soldiers==36000 && probe.foreign && sortie_last_command[2]==0,
             "planner dry run records native dispatches (and a player-corps officer) without issuing any army");
     }
+    {   // local226: one native command of 20,000+ soldiers is taken over; two of 10,000 are not
+        unsigned c10[30]={};c10[0]=200;c10[2]=10000;c10[3]=1;
+        SortieProbe two={};sortie_probe=&two;sortie_dispatch(c10,1);sortie_dispatch(c10,1);sortie_probe=nullptr;
+        check(two.soldiers==20000 && two.largest==10000 && !sortie_big_single(two),"big army takeover: two 10,000 armies do not count");
+        unsigned c20[30]={};c20[0]=200;c20[2]=20000;c20[3]=1;
+        SortieProbe one={};sortie_probe=&one;sortie_dispatch(c20,1);sortie_probe=nullptr;
+        check(one.largest==20000 && one.largest_city==campaign_goal(word(sortie_people[0],0xE2)) && sortie_big_single(one)==(one.largest_city!=nullptr),
+              "big army takeover: one 20,000 army counts, from its officer's city");
+        SortieProbe mixed={};sortie_probe=&mixed;sortie_dispatch(c20,1);sortie_people[0][0xE0]=1;sortie_dispatch(c10,1);sortie_people[0][0xE0]=2;sortie_probe=nullptr;
+        check(!sortie_big_single(mixed),"big army takeover: a plan with a player-corps officer is left to the original");
+    }
+    {   // local226 ctac::strong_set: the strong tactic plus up to two trade tactics (137 아수라진, 138 안식사법, 139 구갑대열)
+        unsigned out[3];
+        const unsigned a[]={50,6,139,137};ctac::strong_set(50,a,4,out);
+        check(out[0]==50 && out[1]==137 && out[2]==139,"strong set: strong tactic, then the trade tactics in 137..139 order");
+        const unsigned b[]={50,6,12};ctac::strong_set(50,b,3,out);
+        check(out[0]==50 && out[1]==0 && out[2]==0,"strong set: no trade tactic - the strong one alone");
+        const unsigned c[]={137,138,139};ctac::strong_set(138,c,3,out);
+        check(out[0]==138 && out[1]==137 && out[2]==139,"strong set: a trade tactic as the strong one is not repeated");
+        const unsigned d[]={137,138,139,50};ctac::strong_set(50,d,4,out);
+        check(out[0]==50 && out[1]==137 && out[2]==138,"strong set: at most two trade tactics");
+    }
     sortie_auto_departure_scope=1;command[14]=6;sortie_dispatch(command,1);
     check(sortie_last_command[2]==8000 && sortie_last_command[3]==9,"ordinary automatic command scope also caps gate siege soldiers");
     sortie_auto_departure_scope=0;

@@ -64,7 +64,7 @@ def prepare():
         existing_diagnostic_baseline_verified=True,installed=False,code_signed=False,gameplay_verified=False)
     save(PROOF,p); print(json.dumps(dict(status=p['status'],backup=str(backup))))
 def exports(path):
-    from audit_native_game import PEImage
+    from pe_image import PEImage   # tools/pe_image.py (2026-11-16)
     pe=PEImage(path); opt=struct.unpack_from('<I',pe.data,0x3c)[0]+24
     header=pe.read(struct.unpack_from('<I',pe.data,opt+112)[0],40)
     count,table=struct.unpack_from('<I',header,24)[0],struct.unpack_from('<I',header,32)[0]

@@ -24,7 +24,7 @@ static void *next_expert_destroy,*next_expert_list_bind,*next_expert_row_destroy
     *next_expert_choice,*next_expert_number_event,*next_expert_number_confirm,*next_expert_number_current,*next_expert_number_factory;
 static void *next_expert_populate[3];
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
-namespace briefing_overlay { static bool available(); static void toast(const std::wstring &); }
+namespace briefing_overlay { bool available(); void toast(const std::wstring &); }
 #endif
 template<class T> static T expert_next(void *next,unsigned rva) {return next?reinterpret_cast<T>(next):fn<T>(rva);}
 // local101 (user 2026-11-13): 설정3 gets two rows of the mod's own battle rules. 63 = 연계 거리 (shown in the user's
@@ -502,6 +502,8 @@ static void __fastcall expert_ingame_frame(Obj state,Obj second,Obj third,Obj fo
 }
 static bool expert_ingame_install() {
     if(!mod_features.expert_ingame || expert_ingame_installed)return true;
+    // 2026-11-18: IP 1번 ModSettings needs the native 141F250/141F270 slots (it chains on 141ED58, which stays ours).
+    if(layout_client::yield_to_peer("expert_ingame",GA(GA_141F250))) {mod_features.expert_ingame=false;return true;}
     layout_client::Transaction tx;
     if(layout_client::vt(GA(GA_141F250),reinterpret_cast<void *>(&expert_ingame_build),
                          reinterpret_cast<void **>(&next_expert_ingame_build))<=0 ||

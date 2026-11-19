@@ -32,11 +32,18 @@ ok(len(terrain_subs) == 1 and 'terrain_render::on_device(d);terrain_render::on_p
    'kOverlayContext' not in terrain_subs[0].split('[](')[0] and ',nullptr,services::kOverlayTerrain)' in terrain_subs[0],
    'one terrain subscription: device observation, upload immediately after, dirty gate probe, no context requirement and no per-frame needs filter (as the former unconditional calls), always active')
 ok(b'terrain_render::' not in overlay, 'shared overlay source names no terrain renderer')
-ok(hashlib.sha256(overlay).hexdigest() == '264419e3a46fc1b2df68da2512ab94c83ac7b12933b4dc4ed7fee2fd9926f77f',
-   'shared overlay source hash matches (re-pinned 2026-11-07 for the overlay service loop)')
+# 2026-11-16 multi-unit refactor: the two unified_overlay::install definitions lost `static` (the terrain unit calls it through
+# tu_terrain_api.h); the pin is kept and proves that dropped keyword is the only change.
+ok(overlay.count(b'\nvoid install() {') == 2 and b'\nstatic void install() {' not in overlay, 'both overlay install definitions are external')
+# 2026-11-16 ui unit: show and take_click are called by the main unit (tu_ui_api.h); again only `static` dropped.
+ok(overlay.count(b'\nvoid show(bool value) {') == 1 and overlay.count(b'\nbool take_click(){') == 1, 'overlay show/take_click are external')
+ok(hashlib.sha256(overlay.replace(b'\nvoid install() {', b'\nstatic void install() {').replace(b'\nvoid show(bool value) {', b'\nstatic void show(bool value) {')
+                  .replace(b'\nbool take_click(){', b'\nstatic bool take_click(){')).hexdigest() == '264419e3a46fc1b2df68da2512ab94c83ac7b12933b4dc4ed7fee2fd9926f77f',
+   'shared overlay source hash matches (re-pinned 2026-11-07 for the overlay service loop; 2026-11-16 only `static` dropped from install, show, take_click)')
 ok(b'} else current->Release();\n    for(unsigned i=0;i<services::overlay.count;++i) {' in overlay, 'observers run right after device acquisition')
 native = read('src/native_terrain_render.inl')
-adapter = read('src/native_adapter.cpp')
+from hub_text import hub_text   # 2026-11-16 multi-unit refactor: hub = native_core.inl + native_patch_core.inl + native_adapter.cpp
+adapter = hub_text(P)
 split = read('src/native_split_install.inl')
 terrain = read('src/native_terrain_edit.inl')
 import registry_text as R   # W5: includes come from the generated per-DLL lists
@@ -59,7 +66,20 @@ rollback = split.split('static void split_rollback() {', 1)[1].split('static boo
 ok(rollback.index('split_terrain_render_slot.restore();') < rollback.index('if(!split_install.attempted)return;'), 'runtime rollback also handles pending split publication')
 ok('struct Lifetime {~Lifetime(){restore();}};' in native, 'DLL lifetime restores owned slot')
 ok('InterlockedCompareExchangePointer(s.table+CreateTexture2DSlot,reinterpret_cast<void *>(s.original),reinterpret_cast<void *>(&create_texture_2d))' in native, 'restore never overwrites foreign owner')
-ok('if(!dev || !active())return;' in native and 'enabled && mod_features.convenience && mod_features.terrain_edit' in native, 'existing feature gates installation')
+ok('if(!active()) {if(probe_on() || season_bake::on())install_device(dev,false);return;}' in native and 'enabled && mod_features.convenience && terrain_core_on()' in native, 'terrain engine service gates installation')
+ok('#define SAN14_TERRAIN_CORE_USERS (mod_features.terrain_edit || (mod_features.season_tiles && season_tiles_runnable))' in hub_text(P),
+   'terrain engine users: 부동산 개발, or 4계절 disaster tiles while the season rules can run (interop 2026-11-16)')
+# interop 2026-11-16: off / DLL absent = original. The season tiles join the engine only after can_run() at the first guard pass,
+# decided before any terrain guard or install, and a failed rules install takes them out again.
+_split = (P / 'src' / 'native_split_install.inl').read_text(encoding='utf-8-sig')
+_guards = _split.split('static void split_feature_guards() {', 1)[1]
+ok('season_tiles_runnable=f.season_tiles && season_rules::can_run();' in _guards and
+   _guards.index('season_rules::can_run()') < _guards.index('terrain_core_on()'), 'season tiles engine user decided before the terrain guards')
+_modpack = (P / 'src' / 'native_modpack_dll.inl').read_text(encoding='utf-8-sig')
+ok('\nvoid install() {if(!install_rules())season_tiles_runnable=false;}' in _modpack and   # external since the 2026-11-16 ui unit
+   'GetFileAttributesW(path)!=INVALID_FILE_ATTRIBUTES' in _modpack.split('\nbool can_run() {', 1)[1].split('\n}', 1)[0],
+   'missing SAN14_ModPack.dll or a failed rules install leaves the engine as with 부동산 개발 off')
+
 # User 2026-10-29 local36: initialized assets only; all large BC share the quota.
 ok('MaxTextures=64' in native and 'record_count<MaxTextures' in native and
    'MaxBCTextures=4' in native and 'bc_count<MaxBCTextures' in native,
@@ -77,11 +97,11 @@ native_scan = native
 for forbidden in ['WriteProcessMemory', 'CreateRemoteThread', 'fn<', 'world()', '->GetDesc(']:
     ok(forbidden not in native_scan, 'no texture/game mutation or original game call: ' + forbidden)
 wrapper = native.split('static HRESULT STDMETHODCALLTYPE create_texture_2d(', 1)[1].split('static bool guards_locked()', 1)[0]
-ok(wrapper.index('HRESULT result=original(dev,(capture || height_capture || mask_capture)?&writable:desc,create_initial,out);') < wrapper.index('#ifndef NO_RUNTIME_LOG\n    if(SUCCEEDED'), 'native create/retry completes before observation')
+ok(wrapper.index('HRESULT result=original(dev,(capture || height_capture || mask_capture || season_kind>=0)?&writable:desc,create_initial,out);') < wrapper.index('#ifndef NO_RUNTIME_LOG\n    if(SUCCEEDED'), 'native create/retry completes before observation')
 ok('return result;' in wrapper, 'native HRESULT returned unchanged')
 ok('GetCurrentThreadId()' in wrapper and 'true,GetCurrentThreadId()' in wrapper, 'creation thread retained internally for initialized assets')
 ok('UINT words[4]' in wrapper and 'memcpy(words,initial[0].pSysMem,sizeof(words))' in wrapper and
-   wrapper.index('HRESULT result=original(dev,(capture || height_capture || mask_capture)?&writable:desc,create_initial,out);') < wrapper.index('memcpy(words,'),
+   wrapper.index('HRESULT result=original(dev,(capture || height_capture || mask_capture || season_kind>=0)?&writable:desc,create_initial,out);') < wrapper.index('memcpy(words,'),
    'exactly four u32 input words copied after native call, accepting unaligned input')
 ok('log_event("terrain_texture_data",words[0],words[1],words[2])' in wrapper and
    'log_event("terrain_texture_pitch",pitch,desc->Format,words[3])' in wrapper and
@@ -109,7 +129,7 @@ ok('CreateThread(nullptr,0,initialize_modules' in loader and
 ok('initialize(nullptr);' in adapter.split('SAN14ConvenienceInitialize', 1)[1].split('#endif', 1)[0] and
    'terrain_render::install_early' not in adapter.split('BOOL WINAPI DllMain', 1)[1],
    'convenience initializer runs install flow, DllMain does not invoke early probe')
-early = native.split('static void install_early() {', 1)[1].split('static void on_device(', 1)[0]
+early = native.split('\nvoid install_early() {', 1)[1].split('\nvoid on_device(', 1)[0]   # 2026-11-16: external (tu_terrain_api.h)
 ok('LoadLibraryW(system)' in early and 'GetProcAddress(library,"D3D11CreateDevice")' in early and
    'D3D_DRIVER_TYPE_HARDWARE' in early and 'D3D11CreateDeviceAndSwapChain' not in native and 'CreateWindow' not in native,
    'early probe uses system hardware device without a window or swapchain')
@@ -144,7 +164,7 @@ ok('terrain_render::mark(hex,terrain,original);' in terrain and
    'terrain_render::mark(c.hex,c.next,c.original);' in read('src/native_terrain_edit_save.inl'), 'apply and save restore deliver goals')
 for r in ['log_event("terrain_render_capture",desc->Format,saved?1:0,0)',
           'log_event("terrain_render_present",1,0,0)',
-          'log_event("terrain_render_upload",cells,pixels,0)']:
+          'log_event("terrain_render_upload",cells,pixels,work_counts)']:   # local268: third field = work texture counts
     ok(r in native, 'required diagnostic: ' + r)
 print(json.dumps({'terrain_render_r2_source_checks': checks, 'failed': 0}))
 
@@ -159,17 +179,18 @@ ok('native_create(ctrl_device,&d,nullptr,&readback_texture)' in reader, 'staging
 ok('D3D11_USAGE_STAGING' in reader and 'D3D11_CPU_ACCESS_READ' in reader and
    'd.Width=d.Height=d.MipLevels=d.ArraySize=d.SampleDesc.Count=1' in reader, 'staging is one pixel, read-only CPU access')
 ok('if(readback_texture){readback_texture->Release();readback_texture=nullptr;}' in native, 'readback resource released with captured resource')
-boundary = native.split('static void before_world_change()', 1)[1].split('static void restore()', 1)[0]
+boundary = native.split('static void before_world_change()', 1)[1].split('\nvoid restore()', 1)[0]
 ok('clear_queue_locked()' in boundary and 'clear_targets_locked()' not in boundary, 'R2b world boundary retains targets')
 ok('world_transition && goal==RestoreOriginal' in native, 'CPU world rollback cannot erase retained render targets')
-ok('patched={shadow.data(),CtrlPitch,0}' in wrapper and 'write_cell(shadow,base,hex,goals[hex])' in wrapper and
-   wrapper.index('write_cell(shadow,base,hex,goals[hex])') < wrapper.index('HRESULT result=original('), 'preserved goals applied to private initial buffer before native create')
+ok('patched={shadow.data(),CtrlPitch,0}' in wrapper and 'write_cell(shadow,base,hex,cell_goal(hex))' in wrapper and
+   wrapper.index('write_cell(shadow,base,hex,cell_goal(hex))') < wrapper.index('HRESULT result=original('), 'preserved goals applied to private initial buffer before native create')
 ok('log_event("terrain_render_initial",initial_cells,0,0)' in wrapper, 'initial application count diagnostic')
 # User/Claude 2026-10-29 local48: resetting a target must also reset its cliff profile.
-ok('goals[hex]=RestoreOriginal;has_goal[hex]=false;height_delta[hex]=0.0f;carve_delta[hex]=0.0f;cliff[hex]=false;cpu_cell_locked(hex);enqueue_locked(hex)' in native, 'full UI resync restores targets and cliff flags missing from new sidecar')
+# The season ice flag reset (if(ice_flag[hex]>0){...}) now sits between the cliff reset and the CPU/queue refresh.
+ok('goals[hex]=RestoreOriginal;has_goal[hex]=false;height_delta[hex]=0.0f;carve_delta[hex]=0.0f;cliff[hex]=false;if(ice_flag[hex]>0){ice_flag[hex]=0;--ice_count;}cpu_cell_locked(hex);enqueue_locked(hex)' in native, 'full UI resync restores targets and cliff flags missing from new sidecar')
 print(json.dumps({'terrain_render_r2b_source_checks': checks, 'failed': 0}))
 
-cpu = native.split('static void cpu_cell_locked(unsigned hex) {', 1)[1].split('static void heightfield_created', 1)[0]
+cpu = native.split('static void cpu_cell_locked(unsigned hex) {', 1)[1].split('\nvoid heightfield_created', 1)[0]
 gpu = native.split('static unsigned height_cell_locked(', 1)[1].split('#ifndef NO_RUNTIME_LOG', 1)[0]
 ok('float height=height_at(x,z)' in cpu and 'shadow_height[at]=height_at(x,z)' in gpu,
    'CPU collision and GPU textures both evaluate production height_at')
@@ -192,6 +213,10 @@ dump = native.split('#ifndef NO_RUNTIME_LOG\nstatic bool mask_dump_attempted;', 
 ok('CREATE_NEW' in dump and 'WriteFile(file,data.data(),bytes,&written,nullptr)' in dump and
    'mask_dump_attempted=true' in dump and 'L"water_mask"' in dump and 'L"ground_height"' in dump,
    'raw original dumps are diagnostic only, never overwrite and run once')
+# local217 (user 2026-11-17 "덤프 끄기"): the 33 MB pair runs only with [diagnostics] water_diag=1.
+ok('#elif defined(SAN14_WATER_DIAG_INCLUDED)\n    if(!water_diag::wanted())return;\n#else\n    return;\n#endif' in dump and
+   dump.index('if(!water_diag::wanted())return;') < dump.index('write_mask_raw(directory,L"water_mask"'),
+   'mask dump only behind the water_diag switch, before any file write')
 ok('static void restore_mask_writes_locked' in native and 'water_diag is off by default' in native and
    'mask_selected=accepted?selected:-1;mask_ready=accepted>0;' in native and 'if(!mask_overflow)' in native and 'confirm_release_masks_locked(context);' in native,
    'every build selects the newest passing candidate and restores writes to a replaced one')

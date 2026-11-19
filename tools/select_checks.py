@@ -261,7 +261,32 @@ def plan(root, base=None, paths=None, no_cache=False, impact_fn=default_impact):
         addroute(r, 'always')
     for r, reason in extra_routes.items():
         addroute(r, reason)
+    entries = route_entries(root, man, order, why, no_cache, warnings)
+    return {'base': base_label, 'changed': changed, 'modules': [{'name': n, 'reason': r} for n, r in mods.items()],
+            'routes': entries, 'unowned': unowned, 'warnings': warnings}
 
+
+def routes_plan(root, names, no_cache=False):
+    """Cache-aware plan of an explicit route list (tools/check_feature.ps1 -Feature, 2026-11-16 user 검사 빨리): a cache:true route
+    whose input key equals the key of its last passing run is 'cached'; subsumed routes are dropped as in plan()."""
+    man = Manifest(root)
+    warnings, order, why = [], [], {}
+    for r in names:
+        if r not in man.routes:
+            raise SystemExit('unknown route: ' + r)
+        if r not in why:
+            order.append(r)
+            why[r] = 'selected'
+    return {'base': None, 'changed': [], 'modules': [], 'routes': route_entries(root, man, order, why, no_cache, warnings, keep_order=True),
+            'unowned': [], 'warnings': warnings}
+
+
+def route_entries(root, man, order, why, no_cache, warnings, keep_order=False):
+    with route_inputs.frozen():   # every key of one plan sees one stamp of each external input
+        return _route_entries(root, man, order, why, no_cache, warnings, keep_order)
+
+
+def _route_entries(root, man, order, why, no_cache, warnings, keep_order=False):
     subsumed = {}
     for r in order:
         for s in (man.routes.get(r, {}).get('subsumes') or []):
@@ -290,9 +315,9 @@ def plan(root, base=None, paths=None, no_cache=False, impact_fn=default_impact):
     def sort_key(it):
         est = it['est_s'] if it['est_s'] is not None else (it['last_s'] if it['last_s'] is not None else 60)
         return (0 if it['name'] in man.always else 1, est, it['name'])
-    entries.sort(key=sort_key)
-    return {'base': base_label, 'changed': changed, 'modules': [{'name': n, 'reason': r} for n, r in mods.items()],
-            'routes': entries, 'unowned': unowned, 'warnings': warnings}
+    if not keep_order:
+        entries.sort(key=sort_key)
+    return entries
 
 
 def print_table(p):
@@ -306,8 +331,8 @@ def print_table(p):
         print('warning: ' + w)
 
 
-def cmd_record(root, route, key, seconds):
-    man = Manifest(root)
+def cmd_record(root, route, key, seconds, man=None):
+    man = man or Manifest(root)
     ent = man.routes.get(route, {})
     stored = None
     if ent.get('cache'):
@@ -353,6 +378,9 @@ def main(argv=None):
     pl.add_argument('--paths')
     pl.add_argument('--no-cache', action='store_true')
     pl.add_argument('--json', action='store_true')
+    rp = sub.add_parser('routes')
+    rp.add_argument('--names', required=True)
+    rp.add_argument('--no-cache', action='store_true')
     k = sub.add_parser('key')
     k.add_argument('route')
     r = sub.add_parser('record')
@@ -369,6 +397,9 @@ def main(argv=None):
         if not a.json:
             print_table(p)
         print(json.dumps(p, ensure_ascii=True))
+        return 0
+    if a.cmd == 'routes':
+        print(json.dumps(routes_plan(root, [n.strip() for n in a.names.split(',') if n.strip()], a.no_cache), ensure_ascii=True))
         return 0
     if a.cmd == 'key':
         print(route_key(root, Manifest(root), a.route))

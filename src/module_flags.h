@@ -115,4 +115,6 @@
     X(officer_rotation) \
     X(ai_learn) \
     X(ambush) \
-    X(destruction_ticket)
+    X(destruction_ticket) \
+    X(ccz_bands) \
+    X(ship_repair_strike)

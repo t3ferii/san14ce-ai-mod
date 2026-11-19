@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "merit",
  "title": "merit",
  "host": "convenience",
@@ -7,7 +7,9 @@
  "status": "active",
  "hub": false,
  "alias_of": "",
- "depends": [],
+ "depends": [
+  "ui-common"
+ ],
  "conflicts": [],
  "owns": [
   "src/merit_bond.h",
@@ -82,8 +84,214 @@
  },
  "ui": [],
  "provides": [],
- "uses": [],
- "hooks": [],
+ "uses": [
+  {
+   "service": "native_ui.officer_notice",
+   "soft": false
+  }
+ ],
+ "hooks": [
+  {
+   "key": "GA_13A9BF0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "merit_prisoner",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13E9188",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "merit_save",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13E9A30",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "merit_save",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13EA960",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "start_guard",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1416518",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "merit",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1416690",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "merit",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1ED8F0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "merit",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_merit_links.inl"
+  },
+  {
+   "key": "GA_21CCC0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "merit",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_merit_links.inl"
+  },
+  {
+   "key": "GA_229060",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "merit",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_merit_links.inl"
+  },
+  {
+   "key": "GA_22FDA0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "merit",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_merit_links.inl"
+  },
+  {
+   "key": "GA_234880",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "merit",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_merit_links.inl"
+  },
+  {
+   "key": "GA_273100",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "merit",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_merit_links.inl"
+  },
+  {
+   "key": "GA_2ABDE0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "merit",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_merit_links.inl"
+  },
+  {
+   "key": "GA_3589B0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "merit",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_merit_links.inl"
+  },
+  {
+   "key": "GA_3FA342",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "merit",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_merit_links.inl"
+  },
+  {
+   "key": "GA_3FCAC4",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "merit",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_merit_links.inl"
+  },
+  {
+   "key": "GA_6C6810",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "merit",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_merit_links.inl"
+  },
+  {
+   "key": "GA_6DBAA0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "merit",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_merit_links.inl"
+  },
+  {
+   "key": "GA_7726B0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "merit",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_merit_links.inl"
+  },
+  {
+   "key": "winhook:WH_GETMESSAGE",
+   "kind": "winhook",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "merit_scroll",
+   "len": 0,
+   "policy": "refuse_if_changed",
+   "src": "src/native_merit_scroll.inl"
+  }
+ ],
  "registry": {
   "rows": [],
   "subscriptions": [

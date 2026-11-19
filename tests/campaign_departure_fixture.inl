@@ -1,4 +1,46 @@
 #include "campaign_priority_fixture.inl"
+// local271: a ship's own way (retake_path water_only), the reason when there is none, the launch hex of a ship on land and
+// the points an order still sails through. Map x 100..124, y 110..118: land (1) with water (14) rows y=110 and y=118 and a
+// water column x=110 joining them; uniform hex cost (mock_hex_cost), distance = revision_distance.
+static void helm_way_tests() {
+    std::vector<unsigned> placed;
+    auto put_tile=[&](unsigned x,unsigned y,unsigned char terrain) {
+        const unsigned h=y*220+x;Obj t=table(0xE270,h,48399);
+        if(!valid(t)) {t=object(h);slot(0xE270,h,t);placed.push_back(h);}
+        t[0x10]=terrain;t[0x11]=0;t[0x14]=0;
+    };
+    for(unsigned y=110;y<=118;++y)for(unsigned x=100;x<=124;++x)put_tile(x,y,(y==110 || y==118 || x==110)?14:1);
+    const unsigned a=118*220+102,b=110*220+102;std::vector<unsigned> cells;unsigned why=99;
+    bool all_water=retake_path(2,a,b,cells,0,1,true,&why) && why==kPathFound && cells.size()>2 && cells.front()==a && cells.back()==b;
+    for(unsigned c:cells)all_water=all_water && helm_water(c);
+    check(all_water && cells.size()>10,"water-only way sails round by the channel instead of crossing the land between two river hexes");
+    const bool crossed=retake_path(2,a,b,cells,0,1);
+    bool any_land=false;for(unsigned c:cells)any_land=any_land || !helm_water(c);
+    check(crossed && any_land && cells.size()<=10,"the plain way still takes the short land crossing");
+    for(unsigned y=111;y<=117;++y)put_tile(110,y,1);   // the channel closed: the two rows meet only over land
+    why=99;check(!retake_path(2,a,b,cells,0,1,true,&why) && why==kPathNone,"water-only way with no water connection fails as searched without a way");
+    why=99;bool land_ok=retake_path(2,a,b,cells,0,kHelmLandMul,false,&why);any_land=false;for(unsigned c:cells)any_land=any_land || !helm_water(c);
+    check(land_ok && why==kPathFound && any_land,"a land hex costing kHelmLandMul times is still crossed when no water way exists (local270 건업 island)");
+    why=99;check(!retake_path(2,a,120*220+102,cells,0,1,true,&why) && why==kPathTarget,"a target with no passable tile is reported as target closed");
+    put_tile(120,130,1);
+    why=99;check(!retake_path(2,130*220+120,b,cells,0,1,true,&why) && why==kPathStart,"a start with every neighbour closed is reported as start closed");
+    why=99;check(!retake_path(2,110*220+100,110*220+160,cells,0,1,true,&why) && why==kPathRange,"a way over forty hexes is reported as out of range");
+    // a bank goal (land next to the y=110 row): the target itself may be land
+    why=99;check(retake_path(2,110*220+106,111*220+102,cells,0,1,true,&why) && why==kPathFound && cells.back()==111*220+102,"water-only way may end on a bank hex");
+    unsigned steps=99;const unsigned inland=114*220+105,launch=helm_launch(2,inland,&steps);
+    check(launch<48400 && helm_water(launch) && revision_distance(static_cast<int>(inland),static_cast<int>(launch))==4 && steps==4,
+        "a ship inland walks to the nearest water hex first (four hexes to either river row)");
+    check(helm_launch(2,a,&steps)>=48400 && steps==0,"a ship afloat has no launch hex");
+    Obj ship=object(77);
+    for(unsigned j=0;j<5;++j)put16(ship,0x2C+2*j,48400);
+    put16(ship,0x2C,a);put16(ship,0x2E,b);put16(ship,0x30,b+1);
+    unsigned ahead[6];const unsigned na=helm_points_ahead(ship,b+1,ahead);
+    check(na==3 && ahead[0]==a && ahead[1]==b && ahead[2]==b+1,"points ahead are the relays not yet reached, the goal once at the end");
+    put16(ship,0x2C,48400);put16(ship,0x2E,48400);put16(ship,0x30,48400);
+    check(helm_points_ahead(ship,b,ahead)==1 && ahead[0]==b,"an order with no relay left sails to its goal alone");
+    free(ship);
+    for(unsigned h:placed) {Obj t=table(0xE270,h,48399);slot(0xE270,h,nullptr);free(t);}
+}
 static void campaign_departure_tests() {
     check(!campaign::siege_departure(19999,0),"under twenty thousand available does not create a siege cohort");
     check(campaign::siege_departure(20000,25000),"twenty thousand can depart against exactly twenty-five thousand");
@@ -77,6 +119,7 @@ static void campaign_departure_tests() {
         unsigned h=y*220+x;Obj tile=object(h);tile[0x14]=x<56?2:1;put16(tile,0x12,x<56?10:x<72?12:13);slot(0xE270,h,tile);
     }
     campaign_priority_tests(actor,home_area,neighbor,target_area);
+    helm_way_tests();
     auto saved_force=campaign_departure_force[2],saved_city=campaign_departure_city[2];
     campaign_departure_force[2]={};campaign_departure_city[2]={};first[0xA9]=0;
     *reinterpret_cast<unsigned *>(sortie_city+0x3C)=28000;*reinterpret_cast<unsigned *>(goal+0x3C)=9999;

@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "progress-native",
  "title": "progress-native",
  "host": "convenience",
@@ -30,7 +30,9 @@
   "src/native_progress_profile.h",
   "src/progress_distance_kernel.asm",
   "src/progress_distance_kernel.h",
-  "src/native_adapter.cpp"
+  "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl"
  ],
  "tests": [
   "progress-native",
@@ -86,7 +88,58 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_2ACB80",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "progress",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_progress.inl"
+  },
+  {
+   "key": "GA_4403E0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "progress",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_progress.inl"
+  },
+  {
+   "key": "GA_440455",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "progress",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_progress.inl"
+  },
+  {
+   "key": "GA_4404D2",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "progress",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_progress.inl"
+  },
+  {
+   "key": "GA_440878",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "progress",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_progress.inl"
+  }
+ ],
  "registry": {
   "rows": [
    {

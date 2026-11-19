@@ -9,6 +9,25 @@ static void ui_expect(bool ok,unsigned line) {
     ++checks;if(!ok) {fprintf(stderr,"Recruitment UI fixture failed at line %u (check %u)\n",line,checks);exit(1);}
 }
 #define expect(value) ui_expect((value),__LINE__)
+// The column keeps each line for 1.5 s; facts change between checks here.
+#define recruit_reason_text(target) (recruit_line_cache_clear(),recruit_reason_text(target))
+static std::map<Obj,std::wstring> ui_names;
+static unsigned ui_probe_calls;
+static bool __fastcall ui_status(Obj person,unsigned status) {return person[0xE6]==status;}
+// Mirror of 279DE0's early exits for the synthetic world (order: ban/loyalty, a
+// relative in another force, a relative in ours = join, ruler dislike, 의리+loyalty).
+static int __fastcall ui_native_judge(Obj target,Obj envoy,int *roll) {
+    ++ui_probe_calls;expect(roll && *roll==kRecruitProbeRoll);
+    Obj district=table(0xE0D0,1,51),force=table(0xDF30,district[0x10],51);
+    expect(envoy==table(0x158,word(force,0x10),6000)); // the ruler stands in for every envoy
+    unsigned reason=personnel_recruitment_reason(target,district,nullptr);
+    if(reason&(personnel::ServiceBan|personnel::HighLoyalty|personnel::ForeignSpouse|personnel::ForeignSwornSibling))return 0;
+    const wchar_t *relation=nullptr;
+    if(recruit_kin_in_force(target,force,target[0xE6]==6,relation))return 1;
+    if(reason&personnel::DislikedRuler)return 0;
+    if(static_cast<short>(word(target,0x16C))/5+static_cast<int>(target[0xE8])>95)return 0;
+    *roll=37;return 1;
+}
 // User decision 2026-10-25: replace the removed automatic button tests
 // with native target multi-selection, close-hook and dispatch tests.
 // User decision 2026-10-25: the decision event bypasses the confirm functor;
@@ -16,6 +35,7 @@ static void ui_expect(bool ok,unsigned line) {
 static Obj ui_district,ui_layout,ui_dialog,ui_target,ui_actor,ui_body,ui_widget;
 static unsigned ui_original_calls,ui_setup_calls,ui_layout_calls,ui_collect_calls,ui_close_calls;
 static bool ui_accept=true,ui_send=true,ui_poison_layout=false,ui_keep_current=false;
+static bool ui_reuse_selector=false;static Obj ui_reuse_seen; // local217: cached target selector shown again
 static int ui_cost=1;
 static Obj ui_closed_dialog;
 static unsigned ui_closed_code,ui_label_node=2;
@@ -52,6 +72,7 @@ static Obj __fastcall ui_label_lookup(Obj graph,unsigned id) {
     expect(graph==ui_widget+0x130 && id==2);return ui_label_node==2?ui_widget:nullptr;
 }
 static const wchar_t *__fastcall ui_person_name(Obj person) {
+    auto named=ui_names.find(person);if(named!=ui_names.end())return named->second.c_str();
     expect(person==recruit_multi.people[0]);return ui_name.c_str();
 }
 static void __fastcall ui_preview_text(Obj graph,unsigned id,const wchar_t *text,int flag) {
@@ -92,7 +113,11 @@ static void __fastcall ui_state_native(Obj state) {
     }
     expect(recruit_target_pick==(operation==2));
     expect(recruit_pick_layout==(operation==2?layout:nullptr));
-    if(operation==2) {
+    if(operation==2 && ui_reuse_selector) {
+        // local217: 74FDD0 shows the cached selector again (45E090 -> vt+200, no vt+1F8 init); its rows draw on the
+        // dialog thread, outside this TLS scope.
+        RecruitScope dialog_thread(nullptr);ui_reuse_seen=recruit_display_district();
+    } else if(operation==2) {
         GameList out;list_init(out,0x13466B0);
         unsigned char config[0x400]={};
         putptr(config,8,image+0x1A34310);putptr(config,16,image+0x1A2E830);
@@ -148,6 +173,9 @@ static void test_ui() {
     native_functions[0x1F1DA0]=reinterpret_cast<void *>(&ui_result_notice);
     native_functions[0x9332B0]=reinterpret_cast<void *>(&ui_preview_text);
     native_functions[0x6D5A50]=reinterpret_cast<void *>(&ui_order_cost);
+    native_functions[0x279DE0]=reinterpret_cast<void *>(&ui_native_judge);
+    native_functions[0x234FF0]=reinterpret_cast<void *>(&ui_status);
+    ui_names[ui_actor]=L"관우";
     // Exercise isolated column data: literal heading, native alias entries,
     // terminated tab lists, original caller settings and pointers preserved.
     for(unsigned i=0;i<213;++i)put32(image+0x1A2E830,i*0x60,i);
@@ -159,7 +187,7 @@ static void test_ui() {
     expect(dword(recruit_columns[13],0)==8 && dword(recruit_columns[213],0)==213);
     expect(wcscmp(*reinterpret_cast<const wchar_t **>(recruit_columns[213]+8),L"등용가능성")==0);
     for(unsigned i=0;i<3;++i)expect(recruit_tabs[i].ids[0]==0 && recruit_tabs[i].ids[3]==213 && recruit_tabs[i].ids[4]==-1);
-    expect(dword(recruit_columns[213],0x10)==240);
+    expect(dword(recruit_columns[213],0x10)==300);
     unsigned char config[0x400]={};putptr(config,8,image+0x1A34310);putptr(config,16,image+0x1A2E830);
     put32(config,0x18,1);put32(config,0x1C,1);
     {RecruitScope scope(ui_district);expect(recruit_selector_init(ui_dialog,config)==1);}
@@ -170,22 +198,41 @@ static void test_ui() {
     recruit_selector_init(ui_dialog,config);expect(pointer(ui_config_copy,16)==image+0x1A2E830);
     expect(wcscmp(recruit_reason_text(ui_target),L"")==0);
     {RecruitScope scope(ui_district);
-        expect(wcscmp(recruit_reason_text(ui_target),L"가능성 있음")==0);
+        const unsigned probes=ui_probe_calls;
+        expect(wcscmp(recruit_reason_text(ui_target),L"청해 볼 만합니다")==0 && ui_probe_calls==probes+1);
         put16(ui_target,0xD0,word(force,0x10));
-        expect(wcsstr(recruit_reason_text(ui_target),L"군주 혐오")!=nullptr);
+        expect(wcscmp(recruit_reason_text(ui_target),L"우리 군에 불순한 자입니다")==0);
+        // A spouse already serving us makes the original rules accept despite the dislike: name them.
         put16(ui_target,0xBA,word(ui_actor,0x10));
-        expect(wcscmp(recruit_reason_text(ui_target),L"가족 권고 시 가능성 있음")==0);
+        expect(wcscmp(recruit_reason_text(ui_target),L"관우의 배필입니다")==0);
         for(unsigned loyalty:{100u,101u,120u,140u,255u}) {
             ui_target[0xE8]=static_cast<unsigned char>(loyalty);
             expect(personnel_recruitment_reason(ui_target,ui_district,ui_actor)==personnel::HighLoyalty);
-            expect(wcscmp(recruit_reason_text(ui_target),L"불가: 충성도 100↑")==0);
+            expect(wcscmp(recruit_reason_text(ui_target),L"충성심이 높군요")==0);
             expect(personnel::recruitment_blocked(personnel::HighLoyalty));
         }
         ui_target[0xE8]=99;
-        expect(wcscmp(recruit_reason_text(ui_target),L"가족 권고 시 가능성 있음")==0);
+        expect(wcscmp(recruit_reason_text(ui_target),L"관우의 배필입니다")==0);
         ui_target[0xE8]=0;
-        ui_actor[0x161]=1;expect(wcsstr(recruit_reason_text(ui_target),L"군주 혐오")!=nullptr);ui_actor[0x161]=0;
+        // Whether the relative can be sent does not matter to the original rule.
+        ui_actor[0x161]=1;expect(wcscmp(recruit_reason_text(ui_target),L"관우의 배필입니다")==0);ui_actor[0x161]=0;
         owners[ui_actor]=object(20);expect(!recruit_family_available(ui_target,ui_district));owners[ui_actor]=force;
+        // The line cache answers repeated sort compares without another original call.
+        {recruit_line_cache_clear();const unsigned before=ui_probe_calls;const wchar_t *first=(recruit_reason_text)(ui_target);
+         expect((recruit_reason_text)(ui_target)==first && ui_probe_calls==before+1);}
+        put16(ui_target,0xBA,0);put16(ui_target,0xD0,0);
+        // 279DE0 rule 13 (의리/5 + loyalty > 95) refuses today, but loyalty loss lifts it:
+        // user 2026-11-15 counts it as possible for everyone, prisoners included.
+        put16(ui_target,0x16C,100);ui_target[0xE8]=80;
+        {const unsigned before=ui_probe_calls;
+         expect(wcscmp(recruit_reason_text(ui_target),L"청해 볼 만합니다")==0 && ui_probe_calls==before+1);}
+        ui_target[0xE6]=6;expect(wcscmp(recruit_reason_text(ui_target),L"청해 볼 만합니다")==0);
+        ui_target[0xE8]=75;expect(wcscmp(recruit_reason_text(ui_target),L"청해 볼 만합니다")==0);
+        // A prisoner's parent in our service is named too; a free officer's parent is not.
+        put16(ui_target,0xB4,word(ui_actor,0x10));
+        expect(wcscmp(recruit_reason_text(ui_target),L"관우의 자식입니다")==0);
+        ui_target[0xE6]=0;expect(wcscmp(recruit_reason_text(ui_target),L"청해 볼 만합니다")==0);
+        put16(ui_target,0xB4,0);put16(ui_target,0x16C,0);ui_target[0xE8]=0;
     }
     put16(ui_target,0xBA,0);put16(ui_target,0xD0,0);
     Obj enemy_force=object(501),enemy_ruler=object(502),spouse=object(503),brother=object(504);
@@ -194,51 +241,53 @@ static void test_ui() {
     {RecruitScope scope(ui_district);
         put16(ui_target,0xBA,503);
         expect(personnel_recruitment_reason(ui_target,ui_district,nullptr)==personnel::ForeignSpouse);
-        expect(wcsstr(recruit_reason_text(ui_target),L"타세력 배우자")!=nullptr);
+        expect(wcscmp(recruit_reason_text(ui_target),L"배필이 있군요")==0);
         owners[spouse]=nullptr;expect(personnel_recruitment_reason(ui_target,ui_district,nullptr)==personnel::ForeignSpouse);
         spouse[0xE6]=9;expect(personnel_recruitment_reason(ui_target,ui_district,nullptr)==personnel::Eligible);
         spouse[0xE6]=0;owners[spouse]=force;expect(personnel_recruitment_reason(ui_target,ui_district,nullptr)==personnel::Eligible);
         put16(ui_target,0xBA,0);put16(ui_target,0xBC,100);put16(brother,0xBC,100);family={brother};
         expect(personnel_recruitment_reason(ui_target,ui_district,nullptr)==personnel::ForeignSwornSibling);
+        expect(wcscmp(recruit_reason_text(ui_target),L"의형제라...")==0);
         owners[brother]=force;expect(personnel_recruitment_reason(ui_target,ui_district,nullptr)==personnel::Eligible);
+        ui_names[brother]=L"장비";expect(wcscmp(recruit_reason_text(ui_target),L"장비의 의형제입니다")==0);
         put16(ui_target,0xBC,0);family.clear();
         put16(enemy_ruler,0xC0,401);expect(personnel_recruitment_reason(ui_target,ui_district,nullptr)==personnel::Eligible);
         put16(ui_target,0xC0,502);
         expect(personnel_recruitment_reason(ui_target,ui_district,nullptr)==personnel::LikesCurrentRuler);
-        expect(wcscmp(recruit_reason_text(ui_target),L"주의: 상대군주 친애")==0);
+        expect(wcscmp(recruit_reason_text(ui_target),L"주군을 흠모합니다")==0);
         expect(!personnel::recruitment_blocked(personnel::LikesCurrentRuler));
         for(unsigned loyalty:{0u,1u,97u,99u,100u,101u,255u}) {
             ui_target[0xE8]=static_cast<unsigned char>(loyalty);
             unsigned reason=personnel_recruitment_reason(ui_target,ui_district,nullptr);
             expect((reason & personnel::LikesCurrentRuler)!=0);
             expect(personnel::recruitment_blocked(reason)==(loyalty>=100));
-            expect(wcscmp(recruit_reason_text(ui_target),loyalty>=100?
-                L"불가: 상대군주 친애(100↑)":L"주의: 상대군주 친애")==0);
+            // 96..99 trips 279DE0 rule 13 only until loyalty drops: still possible.
+            expect(wcscmp(recruit_reason_text(ui_target),loyalty>=100?L"주군을 바꿀 사람이 아닙니다":L"주군을 흠모합니다")==0);
         }
         ui_target[0xE8]=97;
         // A caution must never hide a separate actual relationship blocker.
         put16(ui_target,0xD0,word(force,0x10));
         expect(personnel::recruitment_blocked(personnel_recruitment_reason(ui_target,ui_district,nullptr)));
-        expect(wcsstr(recruit_reason_text(ui_target),L"군주 혐오")!=nullptr);
+        expect(wcscmp(recruit_reason_text(ui_target),L"우리 군에 불순한 자입니다")==0);
         put16(ui_target,0xD0,0);
         put16(ui_target,0xBA,402);
         expect(personnel_recruitment_reason(ui_target,ui_district,ui_actor)==
                (personnel::FamilyEnvoyException|personnel::LikesCurrentRuler));
-        expect(wcscmp(recruit_reason_text(ui_target),L"주의: 상대군주 친애")==0);
+        expect(wcscmp(recruit_reason_text(ui_target),L"관우의 배필입니다")==0);
         ui_target[0xE8]=100;
         expect(personnel_recruitment_reason(ui_target,ui_district,ui_actor)==
                (personnel::HighLoyalty|personnel::LikesCurrentRuler));
         // Native ban comparison precedes the family exception and loyalty.
         put16(ui_target,0x162,word(force,0x10));
-        expect(wcscmp(recruit_reason_text(ui_target),L"불가: 현 세력 사관금지")==0);
+        expect(wcscmp(recruit_reason_text(ui_target),L"원한이 있어 보입니다")==0);
         ui_target[0xE8]=0;
         for(unsigned timer:{0u,1u,12u,24u,255u}) {
             ui_target[0x164]=static_cast<unsigned char>(timer);ui_target[0x165]=0xA5;
             expect(personnel_recruitment_reason(ui_target,ui_district,ui_actor)==
                    (personnel::ServiceBan|personnel::LikesCurrentRuler));
             expect(!recruit_family_available(ui_target,ui_district) ||
-                   wcscmp(recruit_reason_text(ui_target),L"불가: 현 세력 사관금지")==0);
-            expect(wcscmp(recruit_reason_text(ui_target),L"불가: 현 세력 사관금지")==0);
+                   wcscmp(recruit_reason_text(ui_target),L"원한이 있어 보입니다")==0);
+            expect(wcscmp(recruit_reason_text(ui_target),L"원한이 있어 보입니다")==0);
             expect(personnel::recruitment_hard_blocked(personnel::ServiceBan));
         }
         // An unrelated ruler, or a force slot that happens to match the ban,
@@ -260,7 +309,7 @@ static void test_ui() {
     // Later paint/sort callbacks retain the selector context outside TLS.
     {RecruitScope scope(ui_district);recruit_selector_init(ui_dialog,config);}
     expect(recruit_district==nullptr && recruit_display_district()==ui_district);
-    expect(wcscmp(recruit_reason_text(ui_target),L"가능성 있음")==0);
+    expect(wcscmp(recruit_reason_text(ui_target),L"청해 볼 만합니다")==0);
     Obj prior_world=world();putptr(image,0x2780F60,image);
     expect(recruit_display_district()==nullptr);putptr(image,0x2780F60,prior_world);
     Obj prior_district=table(0xE0D0,1,51);slot(0xE0D0,1,nullptr);
@@ -377,6 +426,18 @@ static void test_ui() {
         recruit_multi=before;
     }
     list_free(selected);
+    // local217 (user 2026-11-17): after the actor selector (another config unbinds the column context) the reused target
+    // selector still draws the 등용가능성 lines.
+    {
+        unsigned char actor_config[0x400]={};putptr(actor_config,8,image+0x1A31390);putptr(actor_config,16,image+0x1A2B8B0);
+        {RecruitScope scope(ui_district);recruit_selector_init(ui_dialog,actor_config);}
+        expect(recruit_display_district()==nullptr);
+        Obj kept_target=pointer(ui_layout,0x188);unsigned kept_operation=dword(ui_layout,0x180);
+        ui_reuse_selector=true;ui_reuse_seen=nullptr;put32(ui_layout,0x180,2);recruit_state_update(state);ui_reuse_selector=false;
+        expect(ui_reuse_seen==ui_district && recruit_district==nullptr && recruit_display_district()==ui_district);
+        expect(wcscmp(recruit_reason_text(ui_target),L"청해 볼 만합니다")==0);
+        putptr(ui_layout,0x188,kept_target);put32(ui_layout,0x180,kept_operation);
+    }
     // Native state selection releases its output; the copied snapshot lives on.
     ui_pick_list={ui_target,second,last};putptr(ui_layout,0x1A8,ui_widget);
     ui_cost=1;ui_district[0x14]=12;put32(ui_layout,0x180,2);recruit_state_update(state);

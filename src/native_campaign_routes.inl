@@ -76,6 +76,13 @@ static unsigned campaign_relay_points(const std::vector<unsigned> &cells,unsigne
     return count;
 }
 static __declspec(thread) std::vector<unsigned> *campaign_native_trace;
+// local270: 303EA0 searches only to the next relay (param_3 1 -> 2B7450, which returns relay 0 while +0x3C is 0xFF), so the
+// route of an order through relays is never in one native call. With campaign_chain_probe set, sortie_search_next answers the
+// matching call (from the army's hex to dests[0], one destination) first with the whole chain: the same 185710 call target,
+// context, flags and slot, all destinations at once (185710's own leg loop, legs joined without the repeated relay hex), into
+// cells. The native call then runs as before (it rewrites the slot buffer), so the army keeps the native answer.
+struct CampaignChainProbe {unsigned from;const unsigned *dests;unsigned count;std::vector<unsigned> *cells;bool done;};
+static __declspec(thread) CampaignChainProbe *campaign_chain_probe;
 static bool campaign_generated_path(Obj army,const CampaignRoute &route) { COST_SCOPE("campaign_routes:campaign_generated_path");
     if(native_search_depth)return false;
     fn<void(__fastcall *)(Obj)>(GA(GA_26E260))(army);

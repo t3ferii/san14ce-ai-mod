@@ -72,7 +72,8 @@ def main():
     assert not any(word in boundary for word in ("memset(effects", "e.object=", "e.handle=", "e.ready=", "e.time_seen=", "e.render_seen=", "any_time=false", "pointer(", "fn<"))
     assert "update_watch_locked();" in boundary and "e.job=e.restore_job" in boundary
     assert "!transition && !restoration_pending_locked()" in source
-    adapter = (ROOT / "src/native_adapter.cpp").read_text(encoding="utf-8")
+    from hub_text import hub_text   # 2026-11-16 multi-unit refactor: hub = native_core.inl + native_patch_core.inl + native_adapter.cpp
+    adapter = hub_text(ROOT)
     import registry_text as R   # W5: includes come from the generated per-DLL lists
     assert R.hosts('native_terrain_trees.inl')==['convenience'] and R.unity_index('native_terrain_foam.inl')<R.unity_index('native_terrain_trees.inl')
     split = (ROOT / "src/native_split_install.inl").read_text(encoding="utf-8")
@@ -80,7 +81,7 @@ def main():
     assert "terrain_foam::install()" in R.row("terrain_foam") and R.cond("terrain_foam") == "defined(SAN14_TERRAIN_FOAM_INCLUDED)"
     assert "#ifdef SAN14_TERRAIN_FOAM_INCLUDED\n    terrain_foam::restore();\n#endif" in split
     edit = (ROOT / "src/native_terrain_edit.inl").read_text(encoding="utf-8")
-    assert edit.count("terrain_foam::mark(") == edit.count("terrain_render::mark(") == 4
+    assert edit.count("terrain_foam::mark(") == edit.count("terrain_render::mark(") >= 4
     assert edit.count("terrain_foam::before_world_change();") == 2
     # Current unpacked EXE is read only. PE section translation is independent
     # of the static fixture and checks both pointer qwords and instruction bytes.

@@ -168,7 +168,9 @@ static bool __fastcall build_permission(Obj force, Obj tile, Obj definition, int
         return false;
     }
     if(enabled && mod_features.ai_catapult_block)log_catapult_allowed(force,tile,definition);
-    if(!original_build_permission(force,tile,definition,check_policy))return false;
+    // local216: inside the mod's own check (build_possible) the original runs with the unlock check 2C6D40 on (27A8D0 passes
+    // 0; 27AAC0 skips 2C6D40 only for 0, so a non-zero argument is kept).
+    if(!original_build_permission(force,tile,definition,build_unlock_scope && !check_policy?1:check_policy))return false;
     return !strict_build_blocked(force,tile,definition);
 }
 static bool cancel_wall_order(Obj army, Progress &p) { COST_SCOPE("ai_wall:cancel_wall_order");

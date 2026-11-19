@@ -1,0 +1,8 @@
+{
+  "base": "baseline-local199.json",
+  "new": "refactor-terrain.json",
+  "allow": ["route:tactic-priority/s0"],
+  "reason": {
+    "route:tactic-priority/s0": "tools/check_log_side_effects.py counts the source files it scans: 198 -> 201 are the three files the terrain unit added (src/native_core.inl, src/tu_convenience_terrain.cpp, src/tu_terrain_api.h; git diff --diff-filter=A 548733a 03633e2 -- src). Hits stay 0."
+  }
+}

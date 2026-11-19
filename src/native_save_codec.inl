@@ -53,7 +53,7 @@ static unsigned long long __fastcall encode(uint8_t *rank,void *notify,unsigned 
     return 1;
 }
 static CodeLink link;
-static bool install() {
+bool install() {
     if(image[kCall]!=0xE8 || kCall+5+*reinterpret_cast<int *>(image+kCall+1)!=kEncoder ||
        fingerprint(kEncoder,0x3B3)!=kEncoderHash || fingerprint(kDecoder,0x184)!=kDecoderHash) {log_event("fast_save_guard_rejected");return false;}
     Obj relay=allocate_near(image+kCall);if(!relay)return false;

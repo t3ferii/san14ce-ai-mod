@@ -2,27 +2,27 @@
 // Avoid the normal log lock, CRT formatting, heap allocation and game calls:
 // an exception can arrive while any of those facilities is already locked.
 #include "game_addresses.h"
-static __declspec(thread) const char *native_phase="outside_mod_callback";
-static __declspec(thread) const char *native_search_caller="none";
-static __declspec(thread) unsigned native_search_from,native_search_flags,native_search_buffer;
+inline __declspec(thread) const char *native_phase="outside_mod_callback";
+inline __declspec(thread) const char *native_search_caller="none";
+inline __declspec(thread) unsigned native_search_from,native_search_flags,native_search_buffer;
 struct NativePhase {
     const char *previous;
     explicit NativePhase(const char *name):previous(native_phase) {native_phase=name;}
     ~NativePhase() {native_phase=previous;}
 };
-static unsigned crash_image_size,crash_module_size;
-static volatile LONG crash_records;
-static void crash_text(char *line,unsigned &used,const char *text) {
+inline unsigned crash_image_size,crash_module_size;
+inline volatile LONG crash_records;
+inline void crash_text(char *line,unsigned &used,const char *text) {
     for(unsigned i=0;text[i] && used<700;++i)line[used++]=text[i];
 }
-[[maybe_unused]] static void crash_hex(char *line,unsigned &used,uintptr_t value) {
+[[maybe_unused]] inline void crash_hex(char *line,unsigned &used,uintptr_t value) {
     static const char digits[]="0123456789ABCDEF";
     crash_text(line,used,"0x");
     for(int shift=static_cast<int>(sizeof(value)*8)-4;shift>=0;shift-=4)
         line[used++]=digits[(value>>shift)&15];
 }
 #if defined(RUNTIME_COST_PROFILE) && !defined(NO_RUNTIME_LOG)
-static void crash_decimal(char *line,unsigned &used,unsigned value) {
+inline void crash_decimal(char *line,unsigned &used,unsigned value) {
     char digits[10];unsigned n=0;do {digits[n++]=static_cast<char>('0'+value%10);value/=10;} while(value);
     while(n && used<700)line[used++]=digits[--n];
 }
@@ -32,13 +32,13 @@ static void crash_decimal(char *line,unsigned &used,unsigned value) {
 // No writes to game memory, symbols, game calls, retry or exception suppression.
 using CrashLookup=PRUNTIME_FUNCTION(WINAPI *)(DWORD64,PDWORD64,PUNWIND_HISTORY_TABLE);
 using CrashUnwind=PVOID(WINAPI *)(DWORD,DWORD64,DWORD64,PRUNTIME_FUNCTION,PCONTEXT,PVOID *,PDWORD64,PKNONVOLATILE_CONTEXT_POINTERS);
-static CrashLookup crash_lookup;static CrashUnwind crash_unwind;
-static void crash_prepare_unwind() {
+inline CrashLookup crash_lookup;inline CrashUnwind crash_unwind;
+inline void crash_prepare_unwind() {
     HMODULE ntdll=GetModuleHandleW(L"ntdll.dll");
     crash_lookup=reinterpret_cast<CrashLookup>(GetProcAddress(ntdll,"RtlLookupFunctionEntry"));
     crash_unwind=reinterpret_cast<CrashUnwind>(GetProcAddress(ntdll,"RtlVirtualUnwind"));
 }
-static void crash_stack(HANDLE file,const CONTEXT &fault) {
+inline void crash_stack(HANDLE file,const CONTEXT &fault) {
     auto lookup=crash_lookup;auto unwind=crash_unwind;
     if(!lookup || !unwind)return;
     CONTEXT current=fault;
@@ -61,25 +61,25 @@ static void crash_stack(HANDLE file,const CONTEXT &fault) {
         if(current.Rip==prior_ip || current.Rsp<=prior_sp || current.Rsp-prior_sp>1048576)break;
     }
 }
-static bool crash_read(const void *address,void *value,SIZE_T size) {
+inline bool crash_read(const void *address,void *value,SIZE_T size) {
     SIZE_T read=0;return address && ReadProcessMemory(GetCurrentProcess(),address,value,size,&read) && read==size;
 }
-static uintptr_t crash_vtable_rva(uintptr_t object) {
+inline uintptr_t crash_vtable_rva(uintptr_t object) {
     uintptr_t table=0,base=reinterpret_cast<uintptr_t>(image);
     if(!crash_read(reinterpret_cast<const void *>(object),&table,sizeof(table)) || table<base || table-base>=crash_image_size)return 0;
     return table-base;
 }
 #ifdef RUNTIME_COST_PROFILE
 struct CrashCczRing {const costprofile::CrumbRing *rings;unsigned size;};
-static CrashCczRing cached_ccz_ring;
-[[maybe_unused]] static void crash_cache_ccz(HMODULE module) {
+inline CrashCczRing cached_ccz_ring;
+[[maybe_unused]] inline void crash_cache_ccz(HMODULE module) {
     using GetRing=void (__cdecl *)(const costprofile::CrumbRing **,unsigned *);
     auto get=module?reinterpret_cast<GetRing>(GetProcAddress(module,"SAN14CczDiagCrumbs")):nullptr;
     CrashCczRing r={};if(get)get(&r.rings,&r.size);
     if(r.rings && r.size==64)cached_ccz_ring=r;
 }
-static CrashCczRing crash_ccz_ring() {return cached_ccz_ring;}
-static bool crash_rings(HANDLE file,const costprofile::CrumbRing *rings,uintptr_t match,const char *prefix,const char *reg=nullptr) {
+inline CrashCczRing crash_ccz_ring() {return cached_ccz_ring;}
+inline bool crash_rings(HANDLE file,const costprofile::CrumbRing *rings,uintptr_t match,const char *prefix,const char *reg=nullptr) {
     if(!rings)return false;bool found=false;DWORD current=GetCurrentThreadId();
     for(unsigned i=0;i<64;++i) {
         LONG owner=0,end=0;
@@ -108,11 +108,11 @@ static bool crash_rings(HANDLE file,const costprofile::CrumbRing *rings,uintptr_
     }
     return found;
 }
-static bool crash_ccz_crumbs(HANDLE file,const CrashCczRing &r,uintptr_t match) {
+inline bool crash_ccz_crumbs(HANDLE file,const CrashCczRing &r,uintptr_t match) {
     return crash_rings(file,r.rings,match,"native_crumb_ccz");
 }
 #endif
-static void crash_crumbs(HANDLE file) {
+inline void crash_crumbs(HANDLE file) {
 #ifdef RUNTIME_COST_PROFILE
     crash_rings(file,costprofile::crumb_rings,0,"native_crumb");
 #else
@@ -121,7 +121,7 @@ static void crash_crumbs(HANDLE file) {
 }
 
 #endif
-static LONG CALLBACK observe_native_exception(EXCEPTION_POINTERS *info) {
+inline LONG CALLBACK observe_native_exception(EXCEPTION_POINTERS *info) {
 #ifdef NO_RUNTIME_LOG
     (void)info;return EXCEPTION_CONTINUE_SEARCH;
 #else

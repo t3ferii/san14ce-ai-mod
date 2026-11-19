@@ -1,4 +1,5 @@
 #include "game_addresses.h"
+#include "ic_gate.h"   // 2026-11-18: 184FF9 is IC hook 36 when the integrated patch's IC is installed
 #include <array>
 #include <utility>
 struct SortieEntry {unsigned rva,size;unsigned char bytes[16];void *replacement;void **gate;};
@@ -82,10 +83,33 @@ static float tribe_path(float value,Obj army,Obj formation,Obj tile) {
     if(army[0x1A]<kTribeMoraleFloor)return value;
     return computer_side_army(army) && tribe_foe_near(army)?value*kTribePathFactor:value;
 }
+#ifndef NO_RUNTIME_LOG
+// local265 diagnostics (user 2026-11-19, performance proposal 3.1-1): which of the 49 native 2B2550 calls run so often. Every
+// 262,144 calls the ten busiest sites since the previous report are logged as sortie_movement_site (site rva, calls, rank).
+static volatile LONG sortie_site_calls[49];static volatile LONG sortie_site_total;
+static void sortie_site_note(unsigned k) {
+    InterlockedIncrement(&sortie_site_calls[k]);
+    if((static_cast<unsigned>(InterlockedIncrement(&sortie_site_total))&0x3FFFFu)!=0)return;
+    unsigned count[49],groups[50],extra[50];for(unsigned i=0;i<49;++i)count[i]=static_cast<unsigned>(InterlockedExchange(&sortie_site_calls[i],0));
+    for(unsigned i=0;i<50;++i) {   // local268 (see sortie_site_groups)
+        groups[i]=static_cast<unsigned>(InterlockedExchange(&sortie_site_groups[i],0));extra[i]=static_cast<unsigned>(InterlockedExchange(&sortie_site_extra[i],0));
+    }
+    for(unsigned rank=0;rank<10;++rank) {
+        unsigned best=0;for(unsigned i=1;i<49;++i)if(count[i]>count[best])best=i;
+        if(!count[best])break;
+        log_event("sortie_movement_site",sortie_movement_sites[best],count[best],rank);
+        log_event("sortie_movement_site_group",sortie_movement_sites[best],groups[best],extra[best]);count[best]=0;
+    }
+    if(groups[49])log_event("sortie_movement_site_group",0,groups[49],extra[49]);   // callers outside the 49 thunks
+}
+#endif
 template<unsigned K> static float __fastcall sortie_movement_site(Obj a,Obj f,int p,int m,Obj t) {
+#ifndef NO_RUNTIME_LOG
+    sortie_site_note(K);
+#endif
     // local67 (user 2026-11-12 "계속 기동력 그대로 표시되는데"): every native 2B2550 call goes through these 49 call-site
     // thunks, not through sortie_movement(), so the ambush half was never applied to real movement or to the panel.
-    const float value=sortie_movement_next(sortie_movement_nexts[K],a,f,p,m,t);
+    const float value=sortie_movement_next(sortie_movement_nexts[K],a,f,p,m,t,K);
     const float v=season_mobility::apply(value>0 && ambush_hook::slow(a)?value*0.5f:value,a,t);   // local68: half only until the first ZOC day; local135 snow / ice
     return tribe_path_site(K)?tribe_path(v,a,f,t):v;
 }
@@ -130,6 +154,19 @@ static bool sortie_guards_match() { COST_SCOPE("sortie_links:sortie_guards_match
     for(unsigned i=0;i<5;++i)if(sortie_call_target(sortie_plan_sites[i],sortie_entries[i].rva))return true;
     return false;
 }
+static unsigned sortie_native(unsigned k) {return k<5?sortie_entries[k].rva:k<kSortieSearchEnd?GA(GA_185710):GA(GA_2B2550);}
+// One CALL of the family: its current target becomes next, the CALL is prepared to point at stub (which holds the tail jump).
+// Shared by prepare_sortie and the late rebind, so the family keeps one call_prepare. 0 = ready, 1 = no usable target, 2 = not preparable.
+static unsigned sortie_call_bind(CallLink &c,unsigned k,Obj stub) { COST_SCOPE("sortie_links:sortie_call_bind");
+    unsigned site=k<5?sortie_plan_sites[k]:k<kSortieSearchEnd?sortie_search_sites[k-5]:sortie_movement_sites[k-kSortieSearchEnd];
+    Obj next=sortie_call_target(site,sortie_native(k));
+    if(!next || next==stub)return 1;
+    if(!call_prepare(c,site,stub))return 2;
+    if(k<5)original_sortie_planners[k]=reinterpret_cast<SortiePlanner>(next);
+    else if(k<kSortieSearchEnd)sortie_search_nexts[k-5]=reinterpret_cast<SortieSearch>(next);
+    else sortie_movement_nexts[k-kSortieSearchEnd]=reinterpret_cast<SortieMovement>(next);
+    return 0;
+}
 static bool prepare_sortie(SortieCode &code,Obj relay) { COST_SCOPE("sortie_links:prepare_sortie");
     code={};
     if(!sortie_addr_ok)return true;
@@ -141,16 +178,13 @@ static bool prepare_sortie(SortieCode &code,Obj relay) { COST_SCOPE("sortie_link
     unsigned planners=0;
     // [4096,4096+kSortieCallCount*16): 16-byte tail jumps; native entries intact.
     for(unsigned k=0;k<kSortieCallCount;++k) {
-        unsigned site=k<5?sortie_plan_sites[k]:k<kSortieSearchEnd?sortie_search_sites[k-5]:sortie_movement_sites[k-kSortieSearchEnd];
-        unsigned native=k<5?sortie_entries[k].rva:k<kSortieSearchEnd?GA(GA_185710):GA(GA_2B2550);
-        Obj next=sortie_call_target(site,native),stub=relay+4096+k*16;
-        if(!next) {log_event("sortie_call_skip",site,native,0);continue;}
+        Obj stub=relay+4096+k*16;
         void *replacement=k<5?sortie_entries[k].replacement:k<kSortieSearchEnd?reinterpret_cast<void *>(searches[k-5]):reinterpret_cast<void *>(movements[k-kSortieSearchEnd]);
         absolute_jump(stub,replacement);
-        if(!call_prepare(code.calls[k],site,stub)) {log_event("sortie_call_skip",site,native,1);continue;}
-        if(k<5) {original_sortie_planners[k]=reinterpret_cast<SortiePlanner>(next);++planners;}
-        else if(k<kSortieSearchEnd)sortie_search_nexts[k-5]=reinterpret_cast<SortieSearch>(next);
-        else sortie_movement_nexts[k-kSortieSearchEnd]=reinterpret_cast<SortieMovement>(next);
+        if(const unsigned rc=sortie_call_bind(code.calls[k],k,stub)) {
+            const unsigned site=k<5?sortie_plan_sites[k]:k<kSortieSearchEnd?sortie_search_sites[k-5]:sortie_movement_sites[k-kSortieSearchEnd];
+            log_event("sortie_call_skip",site,sortie_native(k),rc-1);continue;}
+        if(k<5)++planners;
         code.ready[k]=true;
     }
     // 1EC890 retains its original six-byte entry gate at [2432,2496).
@@ -164,12 +198,24 @@ static bool prepare_sortie(SortieCode &code,Obj relay) { COST_SCOPE("sortie_link
     if(!code.dispatch_ready)log_event("sortie_call_skip",e.rva,e.rva,2);
     return planners!=0;
 }
+// The CALL changed between prepare and publish (with the IC gate the combat publish runs after IC's start-up check, minutes
+// later): take its new target as next and point at the same stub. False = not an E8 any more, or no usable target.
+static bool sortie_call_rebind(unsigned k,CallLink &c) { COST_SCOPE("sortie_links:sortie_call_rebind");
+    return sortie_call_bind(c,k,image+c.site+5+c.redirected)==0;
+}
 static bool publish_sortie(SortieCode &code) { COST_SCOPE("sortie_links:publish_sortie");
     if(!sortie_addr_ok)return true;
     unsigned planners=0;
+    const bool ic=ic_gate::installed();
     for(unsigned k=0;k<kSortieCallCount;++k)if(code.ready[k]) {
-        if(sortie_call_publish(code.calls[k])) {if(k<5)++planners;}
-        else log_event("sortie_call_skip",code.calls[k].site,0,3);
+        CallLink &c=code.calls[k];
+        // 2026-11-18: IC hook 36 replaces the 184FF9 movement CALL when its feature is on. Chain behind it; never take the
+        // site first (IC would then refuse its own hook). Still original after IC's check = IC left it alone: skip this one site.
+        if(ic && c.site==GA(GA_184FF9) && sortie_call_target(c.site,sortie_native(k))==image+sortie_native(k)) {
+            log_event("sortie_call_skip",c.site,0,4);continue;}
+        if(sortie_call_publish(c)) {if(k<5)++planners;continue;}
+        if(sortie_call_rebind(k,c) && sortie_call_publish(c)) {if(k<5)++planners;log_event("sortie_call_chained_late",c.site,0,0);continue;}
+        log_event("sortie_call_skip",c.site,0,3);
     }
     if(code.dispatch_ready && !publish_link(code.dispatch))log_event("sortie_call_skip",GA(GA_1EDC30),0,3);
     return planners!=0;

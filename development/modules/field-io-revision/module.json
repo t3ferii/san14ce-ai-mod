@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "field-io-revision",
  "title": "field-io-revision",
  "host": "convenience",
@@ -15,6 +15,8 @@
  "owns": [],
  "sources": [
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_sortie.inl",
   "src/native_campaign.inl",
   "src/native_campaign_routes.inl",

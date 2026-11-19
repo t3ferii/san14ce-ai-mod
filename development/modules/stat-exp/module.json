@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "stat-exp",
  "title": "stat-exp",
  "host": "convenience",
@@ -45,7 +45,318 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_7F7F5C",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7F7F6C",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7F7F85",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7F7F96",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7F7FAF",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7F7FC0",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7F7FD9",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7F7FEA",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7F8003",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7F8014",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_85E907",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_909896",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_9098A6",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_9098C1",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_9098D4",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_9098EF",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_909902",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_90991D",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_909930",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_90994B",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_90995E",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_90A419",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_90A429",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_90A445",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_90A458",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_90A474",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_90A487",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_90A4A3",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_90A4B6",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_90A4D2",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_90A4E5",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stat_exp",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  }
+ ],
  "registry": {
   "rows": [
    {

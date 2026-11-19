@@ -56,5 +56,7 @@ def split_install_text():
 
 
 def adapter_text():
-    """native_adapter.cpp plus the lists its unity slots pull: what the former hand-written include lines said."""
-    return (ROOT / 'src' / 'native_adapter.cpp').read_text(encoding='utf-8-sig') + '\n' + unity()
+    """The hub (native_core.inl + native_patch_core.inl + native_adapter.cpp since the 2026-11-16 multi-unit refactor, see
+    hub_text.py) plus the lists its unity slots pull: what the former hand-written include lines said."""
+    from hub_text import hub_text
+    return hub_text(ROOT) + '\n' + unity()

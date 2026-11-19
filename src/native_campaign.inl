@@ -1,7 +1,6 @@
 #include "game_addresses.h"
 /* Included after the native adapter helpers. All orders run on the game's AI
  * thread. Dates use its own 30-day calendar conversion, not wall-clock time. */
-static int game_day();
 static bool construction_completed(const Progress &p) { COST_SCOPE("campaign:construction_completed");
     if(p.finished_build || p.finished_demolition)return game_day()<=p.return_deadline_day;
     if(!p.facility || p.construction_hex>=48400)return false;
@@ -355,12 +354,22 @@ static bool retake_tower_covers(unsigned own,unsigned hex) { COST_SCOPE("campaig
     }
     return false;
 }
-static bool retake_path(unsigned own,unsigned from,unsigned target,std::vector<unsigned> &cells,unsigned avoid_area=0) { COST_SCOPE("campaign:retake_path");
+// land_mul (local269): a ship's own way (helm_route, helm departures) prices every hex outside helm_water (terrain 13, 14, 24)
+// land_mul times its terrain cost.
+// water_only (local271): every hex outside the river (13, 14, 24) and the ports (kRetakePortTerrain) is closed, except the
+// target (a bank goal): a ship already afloat never crosses land (local270 log: a land hex costing 8 times still crossed the
+// 건업 island, 3000 -> 882 soldiers, never on water).
+// why (local271): 0 found, 1 out of range (off the map, over 40 hexes, outside the box), 2 target closed (no cost, next to a
+// hostile army, threat region), 3 every neighbour of the start closed, 4 searched without a way.
+enum : unsigned {kPathFound=0,kPathRange=1,kPathTarget=2,kPathStart=3,kPathNone=4};
+static bool retake_path(unsigned own,unsigned from,unsigned target,std::vector<unsigned> &cells,unsigned avoid_area=0,unsigned land_mul=1,
+                        bool water_only=false,unsigned *why=nullptr) { COST_SCOPE("campaign:retake_path");
     cells.clear();
-    if(from>=48400 || target>=48400)return false;
+    if(why)*why=kPathFound;
+    if(from>=48400 || target>=48400) {if(why)*why=kPathRange;return false;}
     if(from==target) {cells.push_back(from);return true;}
     const int x0=static_cast<int>(from%220),y0=static_cast<int>(from/220),x1=static_cast<int>(target%220),y1=static_cast<int>(target/220);
-    if(distance(from,target)>40)return false;
+    if(distance(from,target)>40) {if(why)*why=kPathRange;return false;}
     const int lx=(std::max)(0,(std::min)(x0,x1)-12),hx=(std::min)(219,(std::max)(x0,x1)+12);
     const int ly=(std::max)(0,(std::min)(y0,y1)-12),hy=(std::min)(219,(std::max)(y0,y1)+12);
     const int w=hx-lx+1,h=hy-ly+1;
@@ -376,7 +385,11 @@ static bool retake_path(unsigned own,unsigned from,unsigned target,std::vector<u
         Obj tile=table(0xE270,static_cast<unsigned>(y*220+x),48399);
         Obj terrain=valid(tile)?fn<Obj(__fastcall *)(Obj)>(GA(GA_233310))(tile):nullptr;
         const int c=valid(terrain)?fn<int(__fastcall *)(Obj)>(GA(GA_BF1B0))(terrain):0;
-        cost[static_cast<size_t>((y-ly)*w+(x-lx))]=c>0?static_cast<unsigned>(c):0u;
+        unsigned step=c>0?static_cast<unsigned>(c):0u;
+        const bool river=valid(tile) && (tile[0x10]==13 || tile[0x10]==14 || tile[0x10]==24);
+        if(step && water_only && !river && !(valid(tile) && tile[0x10]==kRetakePortTerrain) && static_cast<unsigned>(y*220+x)!=target)step=0;
+        if(step && land_mul>1 && !river)step*=land_mul;
+        cost[static_cast<size_t>((y-ly)*w+(x-lx))]=step;
         if(avoid_area && valid(tile) && word(tile,0x12)==avoid_area)heavy[static_cast<size_t>((y-ly)*w+(x-lx))]=1;
     }
     for(unsigned id=62;id<=3000;++id) {   // facilities the original path search never crosses
@@ -415,7 +428,7 @@ static bool retake_path(unsigned own,unsigned from,unsigned target,std::vector<u
         }
     }
     const int start=index(from),goal=index(target);
-    if(start<0 || goal<0)return false;
+    if(start<0 || goal<0) {if(why)*why=kPathRange;return false;}
     // local90: the largest threat region is not entered at all; a unit already inside it pays the 10 hexes instead.
     const bool leaving=heavy[static_cast<size_t>(start)]!=0;
     using Node=std::pair<unsigned,int>;
@@ -434,7 +447,15 @@ static bool retake_path(unsigned own,unsigned from,unsigned target,std::vector<u
             if(total<best[static_cast<size_t>(next)]) {best[static_cast<size_t>(next)]=total;back[static_cast<size_t>(next)]=now.second;open.push({total,next});}
         }
     }
-    if(best[static_cast<size_t>(goal)]==0xFFFFFFFFu)return false;
+    if(best[static_cast<size_t>(goal)]==0xFFFFFFFFu) {
+        if(why) {
+            auto closed=[&](int k) {return !cost[static_cast<size_t>(k)] || danger[static_cast<size_t>(k)]<=1 || (heavy[static_cast<size_t>(k)] && !leaving);};
+            bool open_start=false;
+            for(unsigned d=0;d<6 && !open_start;++d) {const int k=index(sortie::neighbor(from,d));open_start=k>=0 && !closed(k);}
+            *why=closed(goal)?kPathTarget:!open_start?kPathStart:kPathNone;
+        }
+        return false;
+    }
     for(int k=goal;k>=0;k=back[static_cast<size_t>(k)])cells.push_back(static_cast<unsigned>((k/w+ly)*220+(k%w+lx)));
     std::reverse(cells.begin(),cells.end());
     return cells.size()>=2 && cells.front()==from;
@@ -614,7 +635,7 @@ static constexpr int kHelmScan=20;   // half side of the box searched for the po
 static constexpr unsigned kHelmMinimum=1000;
 static constexpr int kHelmNear=15;   // local152: the attackers' penalty applies only once the ship is this close to one
 static constexpr int kHelmSweep=12;  // local161: farthest target (hexes); the way there is what the ship paints
-static constexpr int kHelmRingBonus=3;      // enemy tile 4..6 hexes from the attackers: counts 3+3 on the way (local162)
+static constexpr int kHelmRingBonus=3;      // enemy tile 4..7 hexes from the attackers: counts 3+3 on the way (local162; local263 4..7)
 static constexpr int kHelmRingGoal=40;       // goal on that ring (local162)
 static bool helm_water(unsigned hex) {
     Obj tile=hex<48400?table(0xE270,hex,48399):nullptr;
@@ -659,7 +680,7 @@ static Obj helm_area_object(unsigned area) {Obj a=area && area<=500?table(0x6CAF
 // hostile neighbour, +10 on water (the 조타 ship ignores ZOC there), -200 within 3 hexes of a hostile army, minus 2 per hex
 // of the way. left = hexes of the region still to paint (0 = the region is whole again).
 static unsigned helm_pick(unsigned own,unsigned area_id,unsigned here,Obj self,int *best_score=nullptr,unsigned *left=nullptr,
-                          int reach=12,const unsigned *avoid=nullptr,unsigned navoid=0,bool allow_far=true) { COST_SCOPE("campaign:helm_pick");
+                          int reach=12,const unsigned *avoid=nullptr,unsigned navoid=0,bool allow_far=true,int near_min=0,bool water_only=false) { COST_SCOPE("campaign:helm_pick");
     if(left)*left=0;
     Obj area=helm_area_object(area_id);
     const unsigned port=area?word(area,0x3A):48400;
@@ -696,7 +717,7 @@ static unsigned helm_pick(unsigned own,unsigned area_id,unsigned here,Obj self,i
     // and a goal on that ring gets +kHelmRingGoal, so the ship circles the attackers and turns the tiles their supply runs over.
     auto in_ring=[&](unsigned q)->bool {
         int m=99;for(unsigned i=0;i<nf;++i)m=(std::min)(m,distance(q,foes[i]));
-        return m>=4 && m<=6;
+        return m>=4 && m<=7;   // local263 (was 4..6)
     };
     auto sweep=[&](unsigned to,int &near_foes,int &tower_steps)->int {
         near_foes=0;tower_steps=0;
@@ -728,19 +749,21 @@ static unsigned helm_pick(unsigned own,unsigned area_id,unsigned here,Obj self,i
             Obj t=table(0xE270,h,48399);
             if(!valid(t) || word(t,0x12)!=area_id || t[0x14]==own || !helm_goal_ok(own,h) || helm_tower_hit(towers,nt,h))continue;   // local170
             ++count;
+            if(water_only && !helm_water(h))continue;   // local273: relays are water hexes (count = the region's hexes left, banks too)
             if(!intercept_open(h,self))continue;
             if(here<48400 && distance(here,h)>reach) {   // out of one sweep (e.g. the castle at departure): nearest first
                 const int far_score=-1000+(hostile(h)?30:10)-2*distance(here,h);
                 if(allow_far && far_score>far_top) {far_top=far_score;far_best=h;}
                 continue;
             }
+            if(near_min && here<48400 && distance(here,h)<near_min)continue;   // local263: the first point at least near_min hexes on
             {bool near_avoid=false;for(unsigned i=0;i<navoid;++i)if(distance(h,avoid[i])<=3)near_avoid=true;if(near_avoid)continue;}
             int closest=99;for(unsigned i=0;i<nf;++i)closest=(std::min)(closest,distance(h,foes[i]));
             int near_foes=0,tower_steps=0;
             int score=100+(hostile(h)?30:10)+10*sweep(h,near_foes,tower_steps);
             score-=40*tower_steps;   // local170: each step in a 투석대/망루 range
             if(helm_water(h))score+=10;
-            if(hostile(h) && closest>=4 && closest<=6)score+=kHelmRingGoal;
+            if(hostile(h) && closest>=4 && closest<=7)score+=kHelmRingGoal;   // local263 (was 4..6)
             if(foe_close) {if(closest<=3)score-=200;score-=40*near_foes;}
             else if(nf)score+=kHelmScan+4-(std::min)(closest,kHelmScan+4);
             if(score>top) {top=score;best=h;}
@@ -756,35 +779,192 @@ static unsigned helm_pick(unsigned own,unsigned area_id,unsigned here,Obj self,i
 // 2F05A0 per relay, 26E260); a refused order (no first step) is restored and the plain way to the goal is taken instead.
 static constexpr int kHelmLeg=6;
 static constexpr unsigned kHelmRelays=5;
-static bool helm_chain_order(Obj army,Progress &p,const unsigned *chain,unsigned n) { COST_SCOPE("campaign:helm_chain_order");
-    const unsigned goal=chain[n-1];
-    if(n<2 || campaign_castle_locked(army) || native_search_depth)return retake_route_order(army,p,goal);
-    const unsigned here=word(army,0x2A);
+// local263 (user 2026-11-19 "조타이거 내 생각하고 다르네.. v16.3.1 버전으로 되돌아가는 형식으로 가자"): the helm code is the v16.3.1
+// one (local186) again - no prey (local208/209), no supply marks (local210), no 20-hex pads (local261), adjacency rules of
+// v16.3.1 (penalty within 3 hexes) - with: ring bonus 4..7 hexes (was 4..6) and the first point at least kHelmFirstMin hexes on.
+static constexpr int kHelmFirstMin=8;
+// local269 (user 2026-11-19 "조타 장수들이 육지를 가로질러가는 경로를 찍네 중계점은 대하에 찍혀있는데 중간에 육지를 거쳐가는 경로를
+// 찍어서 육지위로 올라가버려"): the native search between two relays takes land whenever land is cheaper (terrain cost 대하 300,
+// 평지 225, 가도 150, then the formation's mobility per hex, 187880), so river relays alone never kept a ship on the river. Every
+// helm move order goes through helm_route instead of helm_chain_order / retake_route_order:
+// - the ship's own way through the asked points in order: retake_path with every land hex costing kHelmLandMul (hostile army
+//   rings and tower ranges as before); an intermediate asked point on land is passed by; a point with no way ends the way there;
+// - relays every kHelmStride hexes of that way (five relays and a goal at most; local269 3 hexes = 18 hexes, local270 below);
+// - the order's native route is read back: the whole way through the relays, the way the native movement will search it
+//   leg by leg (local270: 26E260 -> 303EA0 searches only to the first relay, 2B7450; the chain probe asks the same 185710 call
+//   for all legs at once, CampaignChainProbe). A hex on land that the own way does not cross, or a leg the native search does
+//   not find, marks its leg; the legs before it stay and the rest is laid again at the next shorter stride, down to hex by hex
+//   (a one-hex leg has no other way). Still land then: the order ends before that leg, or the ship holds when it is the first
+//   leg. A route that cannot be read (empty, or not from the ship) is never taken as checked: the points are laid hex by hex.
+// - no own way, or no first step: no order (the caller holds); never the plain retake way (it crosses land the same way).
+// local270: relays every 6 hexes first (36 hexes at most, local268's reach: a ship on 대하 sails about 4 / 8 / 12.5 hexes a 순
+// as 주가 / 몽충 / 누선, twice that with the force's water bonus), then 3, 2 and 1 from the leg that went over land.
+// local271 (user 2026-11-20 "조타는 매순마다 끊임없이 움직여야하는데"): only the first leg of a ship standing on land may cross land
+// (kHelmLandMul, to its first point: helm_step makes that the nearest water hex, helm_launch); every other leg is water only
+// (retake_path water_only: river and ports, the leg's own point may be a bank).
+static constexpr unsigned kHelmLandMul=8;
+static constexpr unsigned kHelmStride=6;
+// local271: why the last helm_route on this thread gave no order: 1..4 retake_path's reason for the first leg (kPathRange ..
+// kPathNone), 5 the first hex goes over land (blocked), 6 no first step (refused), 7 not routed (castle lock, inside a search).
+enum : unsigned {kHelmWhyBlocked=5,kHelmWhyRefused=6,kHelmWhyLocked=7};
+static __declspec(thread) unsigned helm_route_why;
+// The ship stands in the castle it left from (local87: the departure order stands there).
+static bool helm_in_castle(Obj army,unsigned here) {
     Obj origin=fn<Obj(__fastcall *)(Obj)>(GA(GA_22BFE0))(army);
-    if(valid(origin) && fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(origin)==here)return retake_route_order(army,p,goal);   // local87: departure stands
-    unsigned char saved[0x34];memcpy(saved,army+0x2C,sizeof(saved));
-    const unsigned flags=dword(army,0x1F0);const unsigned short future=word(army,0x1F8);
+    return valid(origin) && fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(origin)==here;
+}
+// local271: the nearest water hex a ship on land reaches, by the shortest own way (natural terrain cost) of the nearest ring
+// that has a way to one (kHelmLaunchTries ways asked at most); 48400 when afloat or none within kHelmLaunchScan hexes.
+static constexpr int kHelmLaunchScan=6;
+static constexpr unsigned kHelmLaunchTries=8;
+static constexpr unsigned kHelmPicks=3;   // local271: picks tried in a day before the ship holds
+static constexpr int kHelmTopUp=16;       // local271: a kept order with this many hexes or fewer left goes on past its goal
+static unsigned helm_launch(unsigned own,unsigned here,unsigned *steps) { COST_SCOPE("campaign:helm_launch");
+    if(steps)*steps=0;
+    if(here>=48400 || helm_water(here))return 48400;
+    const int cx=static_cast<int>(here%220),cy=static_cast<int>(here/220);
+    std::vector<unsigned> cells;unsigned tries=0;
+    for(int d=1;d<=kHelmLaunchScan && tries<kHelmLaunchTries;++d) {
+        unsigned best=48400;size_t len=~size_t(0);
+        for(int y=(std::max)(0,cy-d);y<=(std::min)(219,cy+d) && tries<kHelmLaunchTries;++y)
+            for(int x=(std::max)(0,cx-2*d);x<=(std::min)(219,cx+2*d) && tries<kHelmLaunchTries;++x) {
+                const unsigned h=static_cast<unsigned>(y*220+x);
+                if(distance(here,h)!=d || !helm_water(h))continue;
+                ++tries;
+                if(retake_path(own,here,h,cells) && cells.size()<len) {len=cells.size();best=h;}
+            }
+        if(best<48400) {if(steps)*steps=static_cast<unsigned>(len-1);return best;}
+    }
+    return 48400;
+}
+// local271: the points an order still sails through: the relays not yet reached (2B7450: relay[0] at +0x2C is the next one,
+// reached ones shift out) and the goal.
+static unsigned helm_points_ahead(Obj army,unsigned goal,unsigned *out) {
+    unsigned n=0;
+    for(unsigned j=0;j<5;++j) {const unsigned r=word(army,0x2C+2*j);if(r<48400 && r!=goal)out[n++]=r;}
+    if(goal<48400)out[n++]=goal;
+    return n;
+}
+static void helm_order_write(Obj army,const unsigned *pts,unsigned np,std::vector<unsigned> *trace) {
     fn<void(__fastcall *)(Obj)>(GA(GA_A3370))(army);
     fn<void(__fastcall *)(Obj,int)>(GA(GA_2ECEA0))(army,1);
-    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2ECF00))(army,9,static_cast<int>(goal));
-    for(unsigned i=0;i+1<n;++i)fn<void(__fastcall *)(Obj,int,unsigned)>(GA(GA_2F05A0))(army,static_cast<int>(i),chain[i]);
+    fn<void(__fastcall *)(Obj,int,int)>(GA(GA_2ECF00))(army,9,static_cast<int>(pts[np-1]));
+    for(unsigned i=0;i+1<np;++i)fn<void(__fastcall *)(Obj,int,unsigned)>(GA(GA_2F05A0))(army,static_cast<int>(i),pts[i]);
+    if(trace)trace->clear();
+    // local270: one point = the native route is the whole way; with relays it reaches only pts[0], so the chain probe reads
+    // the whole way in the same call (local269 compared the first leg with the goal: every chain counted as unreadable)
+    CampaignChainProbe probe{word(army,0x2A),pts,np,trace,false};
+    auto prior=campaign_native_trace;auto prior_probe=campaign_chain_probe;
+    campaign_native_trace=np==1?trace:nullptr;campaign_chain_probe=trace && np>1?&probe:nullptr;
     fn<void(__fastcall *)(Obj)>(GA(GA_26E260))(army);
-    if(word(army,0x48)>=48400 || distance(here,word(army,0x48))!=1) {
+    campaign_native_trace=prior;campaign_chain_probe=prior_probe;
+#ifndef NO_RUNTIME_LOG
+    // value = probe answered (the matching 185710 call came) | chain cells << 1 | points << 13; hex = the ship
+    if(trace && np>1)log_event("helm_route_probe",army_id(army),(probe.done?1u:0u)|
+        (static_cast<unsigned>((std::min)(trace->size(),size_t(4095)))<<1)|(np<<13),word(army,0x2A));
+#endif
+}
+// The leg (0-based, the one ending at pts[leg]) whose native route first steps on land the own way does not cross, jumps
+// (185710 goes on with the next leg when one is not found) or ends short of the goal; np = none, np + 1 = cannot be read.
+static unsigned helm_dry_leg(const std::vector<unsigned> &trace,unsigned here,const unsigned *pts,unsigned np,const std::vector<unsigned> &way) {
+    if(trace.size()<2 || trace.front()!=here)return np+1;
+    unsigned leg=0;
+    for(size_t i=1;i<trace.size();++i) {
+        const unsigned c=trace[i];
+        if(distance(trace[i-1],c)!=1 || (!helm_water(c) && std::find(way.begin(),way.end(),c)==way.end()))return (std::min)(leg,np-1);
+        if(leg<np && c==pts[leg])++leg;
+    }
+    return leg<np?leg:np;
+}
+static bool helm_route(Obj army,Progress &p,const unsigned *ask,unsigned nask) { COST_SCOPE("campaign:helm_route");
+    helm_route_why=kHelmWhyLocked;
+    if(!nask || ask[nask-1]>=48400 || campaign_castle_locked(army) || native_search_depth)return false;
+    const unsigned own=army_force(army),here=word(army,0x2A),end=ask[nask-1];
+    if(here==end) {helm_route_why=0;return true;}
+    // local87: inside the castle the departure order stands (rewriting it moves the side the ship comes out on)
+    if(helm_in_castle(army,here)) {const bool out=army[0x37]==1 && word(army,0x48)<48400;helm_route_why=out?0u:kHelmWhyLocked;return out;}
+    std::vector<unsigned> way{here},leg;
+    const bool afloat=helm_water(here);unsigned first_why=0;
+    for(unsigned i=0;i<nask;++i) {
+        const unsigned to=ask[i];
+        if(to>=48400 || to==way.back() || (i+1<nask && !helm_water(to)))continue;
+        const bool landing=!afloat && way.size()==1;   // local271: only the first leg of a ship on land crosses land
+        unsigned why=0;
+        if(!retake_path(own,way.back(),to,leg,0,landing?kHelmLandMul:1u,!landing,&why) || leg.size()<2) {if(way.size()==1)first_why=why;break;}
+        way.insert(way.end(),leg.begin()+1,leg.end());
+    }
+    if(way.size()<2) {
+        helm_route_why=first_why?first_why:kPathNone;
+        // value = the ship's hex | why << 16 (1 range, 2 target closed, 3 start closed, 4 no way; local271), hex = goal
+        log_event("helm_route_none",army_id(army),here|(helm_route_why<<16),end);return false;
+    }
+    unsigned pts[kHelmRelays+1];size_t at[kHelmRelays+1];unsigned np=0;
+    auto lay=[&](unsigned keep,unsigned stride) {   // pts[0..keep-1] stay; then a point every stride hexes of the way
+        np=keep;size_t k=keep?at[keep-1]:0;
+        while(np<kHelmRelays+1 && k+1<way.size()) {
+            k=(std::min)(k+stride,way.size()-1);
+            // local270: never a point equal to the one before (a way turning back through it): 185710 reads the second node
+            // of every later leg without a check
+            if(way[k]==(np?pts[np-1]:here))continue;
+            pts[np]=way[k];at[np++]=k;
+        }
+    };
+    unsigned char saved[0x34];memcpy(saved,army+0x2C,sizeof(saved));
+    const unsigned flags=dword(army,0x1F0);const unsigned short future=word(army,0x1F8);
+    auto refused=[&]() {return word(army,0x48)>=48400 || distance(here,word(army,0x48))!=1;};
+    std::vector<unsigned> trace;
+    unsigned stride=kHelmStride,tries=0,dry=0,first_dry=15;bool blocked=false;
+    lay(0,stride);
+    for(;;) {
+        helm_order_write(army,pts,np,&trace);++tries;
+        if(refused())break;
+        dry=helm_dry_leg(trace,here,pts,np,way);
+        if(first_dry==15)first_dry=dry>np?14u:dry==np?15u:(std::min)(dry,13u);
+        if(dry==np)break;
+        if(dry>np) {if(stride==1)break;stride=1;lay(0,1);continue;}   // unreadable: hex by hex, taken as it is
+        if(stride==1) {   // land even on a one-hex leg: end the order before that leg
+            if(!dry) {blocked=true;break;}   // local270: the first hex itself goes over land: hold (local269 kept the order)
+            np=dry;helm_order_write(army,pts,np,nullptr);++tries;
+            break;
+        }
+        stride=stride>3u?3u:stride==3u?2u:1u;lay(dry,stride);
+    }
+    if(blocked || refused()) {
         memcpy(army+0x2C,saved,sizeof(saved));*reinterpret_cast<unsigned *>(army+0x1F0)=flags;
         *reinterpret_cast<unsigned short *>(army+0x1F8)=future;
-        return retake_route_order(army,p,goal);
+        log_event(blocked?"helm_route_blocked":"helm_route_refused",army_id(army),pts[np-1],here);
+        helm_route_why=blocked?kHelmWhyBlocked:kHelmWhyRefused;
+        return false;
     }
+    helm_route_why=0;
     *reinterpret_cast<unsigned *>(army+0x1F0)|=2;
+    const unsigned goal=pts[np-1];
     p.region_target=static_cast<unsigned short>(goal);p.region_owner=table(0xE270,goal,48399)[0x14];
-    p.retake_day=game_day();p.returning=false;
-    log_event("helm_chain",army_id(army),n-1,goal);
+    p.retake_day=game_day();p.returning=false;p.helm_routed=true;
+    // value = points | last stride << 4 | tries << 8 | first check (leg 0..13, 14 unreadable, 15 clean) << 12 | final check << 16
+    //         | own way hexes << 20; hex = goal
+    const unsigned last=dry>np?14u:dry==np?15u:(std::min)(dry,13u);
+    log_event("helm_route",army_id(army),np|(stride<<4)|((std::min)(tries,15u)<<8)|(first_dry<<12)|(last<<16)|
+              (static_cast<unsigned>((std::min)(way.size(),size_t(4095)))<<20),goal);
+#ifndef NO_RUNTIME_LOG
+    {unsigned q[kHelmRelays+1];for(unsigned i=0;i<kHelmRelays+1;++i)q[i]=i<np?pts[i]:48400u;
+     log_event("helm_route_pts",army_id(army),q[0]|(q[1]<<16),q[2]|(q[3]<<16));
+     if(np>4)log_event("helm_route_pts2",army_id(army),q[4]|(q[5]<<16),here);}
+#endif
     return true;
+}
+// local269: a sailing order is left as it is while it came from helm_route and its next hex is water (or the goal); 303EA0
+// searches again from the ship's hex during the turn, so helm_step looks at this every turn.
+static bool helm_sailing_ok(Obj army,const Progress &p,unsigned target) {
+    if(army[0x37]!=1 || army[0x38]!=9 || word(army,0x3A)!=target)return false;
+    const unsigned next=word(army,0x48);
+    return next<48400 && p.helm_routed && (helm_water(next) || next==target);
 }
 // local167 delayed retreat (user 2026-11-15 "우리 조타 요격나가는거 퇴각하는상황이 될때 지연 퇴각하게해 플래그 달아서 2턴동안
 // 적타일 뒤집다가 퇴각하게 해줘"): the first reason to go home (worn, port lost, region whole) sets p.helm_delay for
 // kHelmDelayDays (2 turns); meanwhile the ship sails to the hostile tile within kHelmLeg hexes whose straight way turns the
 // most hostile tiles (each step and its six neighbours, +10 on water), never a tile within 3 hexes of a hostile army, and
-// waits in place when there is none. At the end it goes home as before. The garrison recall (castle under attack) still
+// waits in place when there is none (local273: patrols our own water then, helm_delay_patrol). At the end it goes home as before. The garrison recall (castle under attack) still
 // calls it home at once.
 static constexpr int kHelmDelayDays=20;
 static unsigned helm_delay_pick(unsigned own,unsigned here,Obj self,int *best_score) { COST_SCOPE("campaign:helm_delay_pick");
@@ -834,6 +1014,7 @@ static unsigned helm_delay_hostile(unsigned own,Progress &p,unsigned here,Obj ar
 }
 static unsigned helm_ring_lost(unsigned own,unsigned city_id,unsigned *held,unsigned *area);
 struct HelmRing;static const HelmRing *helm_ring_of(unsigned city_id);static unsigned helm_ring_castle(unsigned city_id);
+static bool helm_delay_patrol(Obj army,Progress &p,unsigned own,unsigned here,int day);   // local273, after helm_pad_pick
 // local169: a ship of the river ring counts the ring's lost hexes and looks for attackers near the castle instead.
 static unsigned helm_delay_count(unsigned own,Progress &p,unsigned here,Obj army) {
     if(p.helm_ring)return helm_ring_lost(own,p.helm_ring,nullptr,nullptr);
@@ -863,14 +1044,19 @@ static bool helm_delay_step(Obj army,Progress &p,int day) { COST_SCOPE("campaign
                     intercept_open(target,army) && !retake_hostile_near(own,target,3);
     if(!keep) {
         int score=0;target=helm_delay_pick(own,here,army,&score);
-        p.region_target=static_cast<unsigned short>(target<48400?target:48400);
-        if(target<48400)log_event("helm_delay_target",army_id(army),static_cast<unsigned>(score),target);
+        // local273: with no hostile tile region_target stays as it is (the patrol goal, helm_delay_patrol)
+        if(target<48400) {p.region_target=static_cast<unsigned short>(target);log_event("helm_delay_target",army_id(army),static_cast<unsigned>(score),target);}
     }
     if(target<48400 && here!=target) {
-        if(army[0x37]==1 && army[0x38]==9 && word(army,0x3A)==target)return true;   // already sailing there
-        if(retake_route_order(army,p,target))return true;
+        // already sailing there (local269: on a helm_route order whose next hex is water; else laid again, kept only over water)
+        const bool sailing=army[0x37]==1 && army[0x38]==9 && word(army,0x3A)==target && word(army,0x48)<48400;
+        if(sailing && helm_sailing_ok(army,p,target))return true;
+        if(sailing && p.helm_routed && p.retake_day==day)return true;   // local271: today's order stands (helm_step runs twice a day)
+        if(helm_route(army,p,&target,1))return true;
+        if(sailing && helm_water(word(army,0x48)))return true;
         p.region_target=48400;
     }
+    if(helm_delay_patrol(army,p,own,here,day))return true;   // local273: nothing to turn: patrol our own water
     if(army[0x37]!=13) {   // nothing safe to turn here: wait; the original combat fights in range
         fn<void(__fastcall *)(Obj)>(GA(GA_A3370))(army);
         fn<void(__fastcall *)(Obj,int)>(GA(GA_2ECEA0))(army,13);
@@ -917,11 +1103,13 @@ static bool helm_area_taken(unsigned own,unsigned n,Obj self) {
 }
 // When the ship's region is whole again: the castle's other watched region with the most hexes left to paint, not taken by
 // another ship (0 = none, go home).
-static unsigned helm_next_area(unsigned own,unsigned cur,unsigned here,Obj self) {
+// skip: regions left in this 순 for having no water way (local273), passed by too.
+static bool helm_area_listed(const unsigned short *list,unsigned n,unsigned area) {for(unsigned i=0;i<n;++i)if(list[i]==area)return true;return false;}
+static unsigned helm_next_area(unsigned own,unsigned cur,unsigned here,Obj self,const unsigned short *skip=nullptr,unsigned nskip=0) {
     Obj area=helm_area_object(cur);const unsigned city_id=area?area[0x35]:0;if(!city_id)return 0;
     unsigned best=0,most=0;
     for(unsigned n=1;n<=500;++n) {
-        if(n==cur || !helm_watch_area(own,city_id,n) || helm_area_taken(own,n,self))continue;
+        if(n==cur || helm_area_listed(skip,nskip,n) || !helm_watch_area(own,city_id,n) || helm_area_taken(own,n,self))continue;
         unsigned left=0;helm_pick(own,n,here,self,nullptr,&left,kHelmLeg);
         if(left>most) {most=left;best=n;}
     }
@@ -966,29 +1154,64 @@ static unsigned helm_ring_lost(unsigned own,unsigned city_id,unsigned *held,unsi
 }
 static unsigned helm_ring_castle(unsigned city_id) {const HelmRing *r=helm_ring_of(city_id);return r?r->castle:48400;}
 // local171 (user 2026-11-15 "목표 이동거리가 짧으면 그 목표 주면 아군 타일을 찍어서라도 더 진행했으면"): when the relay chain adds
-// up to fewer than kHelmPadTotal hexes, more relays are added from its end: a free water hex (or bank not held by a hostile
-// force) 3..kHelmLeg hexes on, also one already ours, outside 투석대/망루 ranges and 3 hexes of hostile armies, away from the
-// earlier points; scored by the unheld hexes of its footprint and by the distance from the ship.
+// up to fewer than kHelmPadTotal hexes, more relays are added from its end: a free water hex 3..kHelmLeg hexes on, also one
+// already ours, outside 투석대/망루 ranges and 3 hexes of hostile armies, away from the earlier points; scored by the unheld
+// hexes of its footprint and by the distance from the ship.
+// local273 (user 2026-11-20 "(2)번도 적용해"; local272 log: pads on the 소호 banks, terrain 4, walked the ships ashore and back):
+// water hexes only (before: a bank not held by a hostile force too). anchor < 48400: only hexes within reach of it (the patrol).
 static constexpr int kHelmPadTotal=15;
-static unsigned helm_pad_pick(unsigned own,unsigned from,unsigned here,Obj self,const unsigned *avoid,unsigned navoid,const HelmTower *tw,unsigned ntw) {
+static unsigned helm_pad_pick(unsigned own,unsigned from,unsigned here,Obj self,const unsigned *avoid,unsigned navoid,const HelmTower *tw,unsigned ntw,
+                              unsigned anchor=48400,int reach=0) {
     if(from>=48400)return 48400;
     const int cx=static_cast<int>(from%220),cy=static_cast<int>(from/220);
     unsigned best=48400;int top=-(1<<30);
     for(int y=(std::max)(0,cy-kHelmLeg);y<=(std::min)(219,cy+kHelmLeg);++y)
         for(int x=(std::max)(0,cx-kHelmLeg);x<=(std::min)(219,cx+kHelmLeg);++x) {
             const unsigned h=static_cast<unsigned>(y*220+x);const int d=distance(from,h);
-            if(d<3 || d>kHelmLeg || !helm_goal_ok(own,h) || helm_tower_hit(tw,ntw,h) || !intercept_open(h,self))continue;
+            if(d<3 || d>kHelmLeg || !helm_water(h) || helm_tower_hit(tw,ntw,h) || !intercept_open(h,self))continue;
+            if(anchor<48400 && distance(anchor,h)>reach)continue;
             bool close_to=false;for(unsigned i=0;i<navoid && !close_to;++i)close_to=distance(h,avoid[i])<=2;
             if(close_to)continue;
             int gain=0;
             auto value=[&](unsigned q) {Obj t=q<48400?table(0xE270,q,48399):nullptr;if(valid(t) && t[0x14]!=own)gain+=helm_hostile_tile(own,q)?3:2;};
             value(h);for(unsigned k=0;k<6;++k)value(sortie::neighbor(h,k));
-            const int score=10*gain+3*distance(here,h)+d+(helm_water(h)?5:0);
+            const int score=10*gain+3*distance(here,h)+d;
             if(score<=top)continue;
             if(retake_hostile_near(own,h,3))continue;
             top=score;best=h;
         }
     return best;
+}
+// local273 (user 2026-11-20 "지연퇴각에서 뒤집을 타일이 없으면 아군 물타일을 순찰하면 되잖아"; local272 log: about 23 ship-turns of the
+// delay stood still with no hostile water tile in reach): the delayed ship patrols instead of waiting - up to kHelmRelays + 1
+// water hexes (ours too) picked one after another as the pads are (helm_pad_pick), within kHelmPatrolReach hexes of its port
+// (the ring's castle; anywhere when none is in reach of the ship), sailed to the end within the 순 they were laid in. A hostile
+// tile coming in reach still comes first (helm_delay_step picks it before this).
+static constexpr int kHelmPatrolReach=12;
+static bool helm_delay_patrol(Obj army,Progress &p,unsigned own,unsigned here,int day) { COST_SCOPE("campaign:helm_delay_patrol");
+    if(here>=48400 || helm_in_castle(army,here))return false;
+    const unsigned target=p.region_target;
+    const bool ordered=target<48400 && target!=here && army[0x37]==1 && army[0x38]==9 && word(army,0x3A)==target && word(army,0x48)<48400;
+    if(ordered && p.helm_routed && (p.retake_day==day || (p.retake_day/10==day/10 && helm_sailing_ok(army,p,target))))return true;
+    Obj area=helm_area_object(p.helm_area);
+    const unsigned anchor=p.helm_ring?helm_ring_castle(p.helm_ring):area?word(area,0x3A):48400;
+    HelmTower tw[64];const unsigned ntw=helm_towers(own,here,kHelmLeg*(kHelmRelays+1),tw,64);
+    unsigned chain[kHelmRelays+1],n=0;int total=0;bool anchored=false;
+    for(int pass=0;pass<2 && !n;++pass) {   // pass 1: no anchor (the ship is out of the port's reach)
+        unsigned avoid[kHelmRelays+2],navoid=0;avoid[navoid++]=here;
+        unsigned from=here;total=0;anchored=!pass && anchor<48400;
+        while(n<kHelmRelays+1) {
+            const unsigned next=helm_pad_pick(own,from,here,army,avoid,navoid,tw,ntw,anchored?anchor:48400u,kHelmPatrolReach);
+            if(next>=48400)break;
+            total+=distance(from,next);chain[n++]=next;avoid[navoid++]=next;from=next;
+        }
+        if(anchor>=48400)break;
+    }
+    if(!n || !helm_route(army,p,chain,n))return false;
+    // value = points | hexes through them << 4 | near the port << 16; hex = the patrol goal
+    log_event("helm_patrol",army_id(army),n|(static_cast<unsigned>((std::min)(total,4095))<<4)|(anchored?1u<<16:0u),p.region_target);
+    p.helm_stuck=0;
+    return true;
 }
 // local186 (user 2026-11-15 "원래 출진 성 항구 5칸이내에 적부대가 보이면 시상 지원을 끄고 퇴각하는게 아니라 해당 성의 항구 적부대로
 // 목표 바꾸고 ... 처음부터 건업 방어 임무 받은것처럼 이어갈수 있나? 중간에 로직이 안끊기고 전환"): a ship working for another
@@ -1024,6 +1247,48 @@ static bool helm_step(Obj army,Progress &p);
 static bool helm_switch_again(Obj army,Progress &p) {static int depth;if(depth>=2)return true;++depth;const bool r=helm_step(army,p);--depth;return r;}
 static bool helm_step(Obj army,Progress &p) { COST_SCOPE("campaign:helm_step");
     const unsigned own=army_force(army),here=word(army,0x2A);const int day=game_day();
+#ifndef NO_RUNTIME_LOG
+    if(p.helm_seen_day!=day) {   // local269 (user 2026-11-19 "여전히 한턴에 짧게 움직여 (주창 추적해봐)"): one line per ship and turn (orders
+        // alone did not show where a ship was; local271: the first of the day's two runs only). army = id | commander << 16; value
+        // = hex | hexes moved since the last line << 16 (255 first) | on water << 24 | delay << 25 | returning << 26 | helm_route
+        // order << 27; hex = next hex | action << 16 | target kind << 24.
+        // helm_turn2: value = order target | mission target << 16, hex = soldiers | morale << 16 | days since the last line << 24.
+        // helm_turn3 (local271, a stop with a move order had no cause in the log): value = 혼란 +0x23 | 정지 +0x24 << 8 | 도발 +0x25
+        // << 16 | hostile armies next to the ship << 24 | next hex taken by an army << 28; hex = land formation +0x1B | water
+        // formation +0x1C << 8.
+        unsigned foes=0,taken=0;const unsigned next_hex=word(army,0x48);
+        for(unsigned i=1;i<=500 && here<48400;++i) {
+            Obj a=table(0x7E838,i,500);if(!valid(a) || a==army)continue;
+            const unsigned at=word(a,0x2A);if(at>=48400)continue;
+            if(at==next_hex)taken=1;
+            const unsigned force=army_force(a);
+            if(force && force!=own && distance(at,here)==1 && fn<int(__fastcall *)(unsigned,unsigned)>(GA(GA_2CC630))(own,force))++foes;
+        }
+        log_event("helm_turn3",army_id(army),static_cast<unsigned>(army[0x23])|(static_cast<unsigned>(army[0x24])<<8)|
+                  (static_cast<unsigned>(army[0x25])<<16)|((std::min)(foes,15u)<<24)|(taken<<28),
+                  static_cast<unsigned>(army[0x1B])|(static_cast<unsigned>(army[0x1C])<<8));
+        unsigned moved=255;
+        if(p.helm_seen_day>0 && p.helm_seen_hex<48400 && here<48400)moved=static_cast<unsigned>((std::min)(distance(p.helm_seen_hex,here),254));
+        const unsigned days=p.helm_seen_day>0?static_cast<unsigned>((std::min)(day-p.helm_seen_day,255)):255u;
+        log_event("helm_turn",army_id(army)|(static_cast<unsigned>(word(army,0x12))<<16),
+                  (here&0xFFFFu)|(moved<<16)|(helm_water(here)?1u<<24:0u)|(p.helm_delay?1u<<25:0u)|(p.returning?1u<<26:0u)|(p.helm_routed?1u<<27:0u),
+                  word(army,0x48)|(static_cast<unsigned>(army[0x37])<<16)|(static_cast<unsigned>(army[0x38])<<24));
+        log_event("helm_turn2",army_id(army),word(army,0x3A)|(static_cast<unsigned>(p.region_target)<<16),
+                  word(army,0x16)|(static_cast<unsigned>(army[0x1A])<<16)|(days<<24));
+        // helm_turn4 (local273; "moved" above is the straight distance between two lines, a loop reads short): value = hexes
+        // ahead through the order's relays and goal (0 without a sailing order) | points << 12; hex = straight distance to the goal.
+        {
+            unsigned ahead=0,np=0,goal_gap=0;const unsigned goal=word(army,0x3A);
+            if(army[0x37]==1 && army[0x38]==9 && here<48400) {
+                unsigned pts[kHelmRelays+1];np=helm_points_ahead(army,goal,pts);
+                unsigned c=here;for(unsigned i=0;i<np;++i){ahead+=static_cast<unsigned>(distance(c,pts[i]));c=pts[i];}
+                if(goal<48400)goal_gap=static_cast<unsigned>(distance(here,goal));
+            }
+            log_event("helm_turn4",army_id(army),(std::min)(ahead,4095u)|(np<<12),goal_gap);
+        }
+        p.helm_seen_hex=static_cast<unsigned short>(here<48400?here:48400);p.helm_seen_day=day;
+    }
+#endif
     if(p.returning) {recovery_return(army,p);return true;}
     if(p.helm_delay)return helm_delay_step(army,p,day);
     if(helm_home_call(army,p,own,here))return helm_switch_again(army,p);   // local186
@@ -1053,7 +1318,7 @@ static bool helm_step(Obj army,Progress &p) { COST_SCOPE("campaign:helm_step");
         else {
             if(p.helm_area!=lost_area) {log_event("helm_port_retake",army_id(army),p.helm_area|(lost_area<<16),lost_base);p.helm_area=static_cast<unsigned short>(lost_area);}
             p.region_target=static_cast<unsigned short>(lost_base);
-            if(here!=lost_base && retake_route_order(army,p,lost_base))return true;
+            if(here!=lost_base && helm_route(army,p,&lost_base,1))return true;   // local269 (was retake_route_order)
             if(army[0x37]!=13) {   // on the base or no way there today: wait and fight in range
                 fn<void(__fastcall *)(Obj)>(GA(GA_A3370))(army);
                 fn<void(__fastcall *)(Obj,int)>(GA(GA_2ECEA0))(army,13);
@@ -1063,9 +1328,66 @@ static bool helm_step(Obj army,Progress &p) { COST_SCOPE("campaign:helm_step");
         }
     }
     unsigned target=p.region_target;
+    bool route_failed=false;
+    // local271 (user 2026-11-20 "주창 내가 봤는데 3칸인가 4칸 움직인 날이 있어.. 조타는 매순마다 끊임없이 움직여야하는데.."; local270
+    // log: a ship stood the rest of a 순 at its goal, two 순 on the river when its pick had no way, and one walked the 건업 island
+    // for three 순): the relay chain after its first points, for a new pick and for the top-up of a kept goal.
+    auto grow=[&](unsigned *chain,unsigned n,unsigned *avoid,unsigned navoid,unsigned origin)->unsigned {
+        while(n<kHelmRelays+1) {   // local273: relays on water only (local272: 소호 bank relays walked the ships ashore)
+            const unsigned next=helm_pick(own,p.helm_area,chain[n-1],army,nullptr,nullptr,kHelmLeg,avoid,navoid,false,0,true);
+            if(next>=48400)break;
+            chain[n++]=next;avoid[navoid++]=next;
+        }
+        // local170 (user 2026-11-15 "한턴 이동량을 다 못쓰는 경우 ... 다음 미점령지역을 찍어서 추가로 이동"): a chain cut short by its
+        // region goes on through the castle's other watched regions (and the ring's most lost one) not taken by another ship;
+        // each relay is the best of their picks.
+        if(n<kHelmRelays+1) {
+            unsigned ext[4],ne=0;
+            const unsigned city_id=p.helm_ring?p.helm_ring:area?area[0x35]:0;
+            if(p.helm_ring) {unsigned ra=0;if(helm_ring_lost(own,p.helm_ring,nullptr,&ra) && ra && ra!=p.helm_area && !helm_area_taken(own,ra,army))ext[ne++]=ra;}
+            for(unsigned a=1;a<=500 && ne<4 && city_id;++a)
+                if(a!=p.helm_area && (ne==0 || ext[0]!=a) && helm_watch_area(own,city_id,a) && !helm_area_taken(own,a,army))ext[ne++]=a;
+            const unsigned before=n;
+            while(ne && n<kHelmRelays+1) {
+                unsigned next=48400;int top=-(1<<30);
+                for(unsigned i=0;i<ne;++i) {
+                    int sc=0;const unsigned h=helm_pick(own,ext[i],chain[n-1],army,&sc,nullptr,kHelmLeg,avoid,navoid,false,0,true);
+                    if(h<48400 && sc>top) {top=sc;next=h;}
+                }
+                if(next>=48400)break;
+                chain[n++]=next;avoid[navoid++]=next;
+            }
+            if(n>before)log_event("helm_chain_extend",army_id(army),before|(n<<8),chain[n-1]);
+        }
+        int total=0;for(unsigned i=0;i<n;++i)total+=distance(i?chain[i-1]:origin,chain[i]);
+        if(total<kHelmPadTotal && n<kHelmRelays+1) {   // local171: a short chain goes on over our own water
+            HelmTower tw[64];const unsigned ntw=helm_towers(own,chain[n-1],kHelmLeg*3,tw,64);
+            const unsigned before=n;
+            while(n<kHelmRelays+1 && total<kHelmPadTotal) {
+                const unsigned next=helm_pad_pick(own,chain[n-1],origin,army,avoid,navoid,tw,ntw);
+                if(next>=48400)break;
+                total+=distance(chain[n-1],next);chain[n++]=next;avoid[navoid++]=next;
+            }
+            if(n>before)log_event("helm_chain_pad",army_id(army),before|(n<<8)|(static_cast<unsigned>(total)<<16),chain[n-1]);
+        }
+        return n;
+    };
     if(!why && p.helm_pick_day!=day) {
         p.helm_pick_day=day;
-        int score=0;unsigned left=0;const unsigned best=helm_pick(own,p.helm_area,here,army,&score,&left,kHelmLeg);
+        // local271: a ship on land out of its castle (the departure walk, a bank goal, the 건업 island) sails from the nearest water
+        // hex: that hex is the first point of its order and the picks are made from it (local270: island banks were picked from
+        // the island and reached over it).
+        unsigned launch=48400,launch_steps=0;
+        if(here<48400 && !helm_water(here) && !helm_in_castle(army,here)) {
+            launch=helm_launch(own,here,&launch_steps);
+            // value = launch hex | hexes of the walk there << 16, hex = the ship
+            if(launch<48400)log_event("helm_launch",army_id(army),launch|((std::min)(launch_steps,65535u)<<16),here);
+        }
+        const unsigned from=launch<48400?launch:here;
+        // local263 (user 2026-11-19 "20칸 찍는건 이렇게바꾸자 첫 중계점을 최소 8칸 떨어진곳에 찍기"): the first point is picked kHelmFirstMin..
+        // kHelmSweep hexes on (beyond: the far fallback as before); a region with no such hex falls back to the one-leg pick.
+        int score=0;unsigned left=0;unsigned best=helm_pick(own,p.helm_area,from,army,&score,&left,kHelmSweep,nullptr,0,true,kHelmFirstMin);
+        if(best>=48400)best=helm_pick(own,p.helm_area,from,army,&score,&left,kHelmLeg);
         Obj t=target<48400?table(0xE270,target,48399):nullptr;
         // local170: a goal is kept while the relay order still sails to it, also one in the next region (chain extension);
         // never hostile land or a hex in a 투석대/망루 range.
@@ -1075,7 +1397,7 @@ static bool helm_step(Obj army,Progress &p) { COST_SCOPE("campaign:helm_step");
         // a goal on our own tile (a padded chain) is kept only within the 순 (10 days) it was ordered in; in the next one the
         // ship picks unheld tiles first again.
         const bool same_period=p.retake_day/10==day/10;
-        const bool keep=valid(t) && target!=here && (word(t,0x12)==p.helm_area || sailing) && (t[0x14]!=own || (sailing && same_period)) && intercept_open(target,army) &&
+        const bool keep=launch>=48400 && valid(t) && target!=here && (word(t,0x12)==p.helm_area || sailing) && (t[0x14]!=own || (sailing && same_period)) && intercept_open(target,army) &&
                         helm_goal_ok(own,target) && !helm_tower_hit(towers,nt,target) &&
                         !retake_hostile_near(own,target,3);   // local161: a kept target is dropped once attackers come near it
         if(p.helm_ring && !left) {   // local169: a river-ring ship works until no ring hex is lost, region by region
@@ -1102,55 +1424,90 @@ static bool helm_step(Obj army,Progress &p) { COST_SCOPE("campaign:helm_step");
             if(p.helm_ring && ++p.helm_stuck>=kHelmStuckDays)why="helm_stuck_return";
         }
         else if(!keep) {   // local161: a target is sailed to the end (re-picked only when reached, ours already or blocked)
-            log_event("helm_target",army_id(army),static_cast<unsigned>(score)|((std::min)(left,65535u)<<16),best);
-            target=best;p.region_target=static_cast<unsigned short>(best);
-            // local161: the relay chain from best on (five relays and a goal when the region has room for them).
-            unsigned chain[kHelmRelays+1]={best},n=1,avoid[kHelmRelays+2]={here,best},navoid=2;
-            if(distance(here,best)<=kHelmLeg) {
-                while(n<kHelmRelays+1) {
-                    const unsigned next=helm_pick(own,p.helm_area,chain[n-1],army,nullptr,nullptr,kHelmLeg,avoid,navoid,false);
-                    if(next>=48400)break;
-                    chain[n++]=next;avoid[navoid++]=next;
+            // local271: a pick with no way (helm_route_none, blocked, refused) is followed the same day by the next best pick
+            // (kHelmPicks in all, none within 3 hexes of a failed one), then by the launch hex alone; the hold below only when
+            // none sails (local270 log: 15 picks with no way, 5 holds, one ship two 순 in place on the river).
+            unsigned tried[kHelmPicks],ntried=0,last_failed=0;bool no_way=true;   // local273: every failed pick had no water way
+            for(;;) {
+                log_event("helm_target",army_id(army),static_cast<unsigned>(score)|((std::min)(left,65535u)<<16),best);
+                target=best;p.region_target=static_cast<unsigned short>(best);
+                // local161: the relay chain from best on (five relays and a goal when the region has room for them).
+                unsigned chain[kHelmRelays+1],n=0,avoid[kHelmRelays+4],navoid=0;
+                avoid[navoid++]=here;
+                if(launch<48400) {avoid[navoid++]=launch;if(best!=launch)chain[n++]=launch;}
+                chain[n++]=best;avoid[navoid++]=best;
+                if(distance(from,best)<=kHelmSweep)n=grow(chain,n,avoid,navoid,from);   // local263: relays after a first point up to kHelmSweep on
+                if(helm_route(army,p,chain,n)) {p.helm_stuck=0;return true;}   // local269 (was helm_chain_order)
+                const unsigned failed=helm_route_why;tried[ntried++]=best;last_failed=failed;
+                no_way=no_way && (failed==kPathNone || failed==kPathTarget || failed==kPathRange);
+                if(ntried>=kHelmPicks || failed==kPathStart || failed==kHelmWhyLocked)break;   // the ship itself is shut in
+                unsigned next=helm_pick(own,p.helm_area,from,army,&score,nullptr,kHelmSweep,tried,ntried,false,kHelmFirstMin);
+                if(next>=48400)next=helm_pick(own,p.helm_area,from,army,&score,nullptr,kHelmLeg,tried,ntried,false);
+                if(next>=48400)break;
+                log_event("helm_retry",army_id(army),best|(failed<<16),next);   // value = the pick with no way | why << 16, hex = next pick
+                best=next;
+            }
+            if(launch<48400 && helm_route(army,p,&launch,1)) {p.helm_stuck=0;return true;}
+            route_failed=true;
+            // local273 (user 2026-11-20 "(3) 도 적용해"; local272 log: picks in the 소호 lake, a water body the ship's river does
+            // not reach, ended in helm_route_none and held 서성·정봉·황개 there): when every pick of the region failed for want of a
+            // water way (none, target closed, out of range; not a blocked or refused order, which can pass) it takes the castle's
+            // other watched region with the most hexes left, else the castle's river ring. The regions left this way are kept for
+            // the 순 (up to four) and passed by, so the 소호 regions (80/88/90) are tried once each, not in turn every day; the
+            // same-day re-run (helm_switch_again) tries the next one at once.
+            if(!p.helm_ring && no_way && ntried) {
+                if(p.helm_noway_period!=day/10) {memset(p.helm_noway,0,sizeof(p.helm_noway));p.helm_noway_period=day/10;}
+                const unsigned from_area=p.helm_area;const unsigned cap=sizeof(p.helm_noway)/sizeof(*p.helm_noway);
+                if(!helm_area_listed(p.helm_noway,cap,from_area)) {
+                    unsigned slot=0;while(slot+1<cap && p.helm_noway[slot])++slot;
+                    p.helm_noway[slot]=static_cast<unsigned short>(from_area);   // the last slot is reused when all four are taken
                 }
-                // local170 (user 2026-11-15 "한턴 이동량을 다 못쓰는 경우 ... 다음 미점령지역을 찍어서 추가로 이동"): a chain cut short by
-                // its region goes on through the castle's other watched regions (and the ring's most lost one) not taken by
-                // another ship; each relay is the best of their picks.
-                if(n<kHelmRelays+1) {
-                    unsigned ext[4],ne=0;
-                    const unsigned city_id=p.helm_ring?p.helm_ring:area?area[0x35]:0;
-                    if(p.helm_ring) {unsigned ra=0;if(helm_ring_lost(own,p.helm_ring,nullptr,&ra) && ra && ra!=p.helm_area && !helm_area_taken(own,ra,army))ext[ne++]=ra;}
-                    for(unsigned a=1;a<=500 && ne<4 && city_id;++a)
-                        if(a!=p.helm_area && (ne==0 || ext[0]!=a) && helm_watch_area(own,city_id,a) && !helm_area_taken(own,a,army))ext[ne++]=a;
-                    const unsigned before=n;
-                    while(ne && n<kHelmRelays+1) {
-                        unsigned next=48400;int top=-(1<<30);
-                        for(unsigned i=0;i<ne;++i) {
-                            int sc=0;const unsigned h=helm_pick(own,ext[i],chain[n-1],army,&sc,nullptr,kHelmLeg,avoid,navoid,false);
-                            if(h<48400 && sc>top) {top=sc;next=h;}
-                        }
-                        if(next>=48400)break;
-                        chain[n++]=next;avoid[navoid++]=next;
-                    }
-                    if(n>before)log_event("helm_chain_extend",army_id(army),before|(n<<8),chain[n-1]);
+                const unsigned next=helm_next_area(own,from_area,here,army,p.helm_noway,cap);
+                // helm_noway_switch / helm_noway_ring: value = old region | new region << 16, hex = the ship | last reason << 16
+                if(next) {
+                    log_event("helm_noway_switch",army_id(army),from_area|(next<<16),here|(last_failed<<16));
+                    p.helm_area=static_cast<unsigned short>(next);p.region_target=48400;p.helm_pick_day=-1;p.helm_stuck=0;return helm_switch_again(army,p);
                 }
-                int total=0;for(unsigned i=0;i<n;++i)total+=distance(i?chain[i-1]:here,chain[i]);
-                if(total<kHelmPadTotal && n<kHelmRelays+1) {   // local171: a short chain goes on over our own water
-                    HelmTower tw[64];const unsigned ntw=helm_towers(own,chain[n-1],kHelmLeg*3,tw,64);
-                    const unsigned before=n;
-                    while(n<kHelmRelays+1 && total<kHelmPadTotal) {
-                        const unsigned next=helm_pad_pick(own,chain[n-1],here,army,avoid,navoid,tw,ntw);
-                        if(next>=48400)break;
-                        total+=distance(chain[n-1],next);chain[n++]=next;avoid[navoid++]=next;
-                    }
-                    if(n>before)log_event("helm_chain_pad",army_id(army),before|(n<<8)|(static_cast<unsigned>(total)<<16),chain[n-1]);
+                const unsigned city_id=area?area[0x35]:0;unsigned ring_area=0;
+                if(city_id && city_id<52 && helm_ring_lost(own,city_id,nullptr,&ring_area) && ring_area && ring_area!=from_area &&
+                   !helm_area_listed(p.helm_noway,cap,ring_area) && !helm_area_taken(own,ring_area,army)) {
+                    log_event("helm_noway_ring",army_id(army),from_area|(ring_area<<16),here|(last_failed<<16));
+                    p.helm_ring=static_cast<unsigned char>(city_id);p.helm_area=static_cast<unsigned short>(ring_area);
+                    p.region_target=48400;p.helm_pick_day=-1;p.helm_stuck=0;return helm_switch_again(army,p);
                 }
             }
-            if(!why && helm_chain_order(army,p,chain,n)) {p.helm_stuck=0;return true;}
-            target=p.region_target;
+        }
+        else if(sailing && p.helm_routed) {
+            // local271: the kept order has under kHelmTopUp hexes left through its relays: it goes on past its goal (the relays
+            // still ahead and the goal, then picks from the goal), so the ship does not stand there for the rest of the 순
+            // (local270 log: 1 and 2 hexes, then waiting).
+            unsigned chain[kHelmRelays+1];unsigned n=helm_points_ahead(army,target,chain);
+            int ahead=0;for(unsigned i=0;i<n;++i)ahead+=distance(i?chain[i-1]:here,chain[i]);
+            if(n==kHelmRelays+1) {chain[0]=target;n=1;}   // six points within kHelmTopUp hexes are a short-stride way: laid again from the goal
+            if(n && ahead<=kHelmTopUp) {
+                unsigned avoid[kHelmRelays+4],navoid=0;avoid[navoid++]=here;for(unsigned i=0;i<n;++i)avoid[navoid++]=chain[i];
+                const unsigned before=n;n=grow(chain,n,avoid,navoid,here);
+                // value = hexes left | points before << 8 | points after << 12, hex = the new goal
+                if(n>before && helm_route(army,p,chain,n)) {
+                    log_event("helm_topup",army_id(army),static_cast<unsigned>(ahead)|(before<<8)|(n<<12),p.region_target);
+                    p.helm_stuck=0;return true;
+                }
+            }
         }
     }
     // local161: the relay order already sails to this goal: leave it (re-ordering would drop the relays).
-    if(!why && target<48400 && here!=target && army[0x37]==1 && army[0x38]==9 && word(army,0x3A)==target && word(army,0x48)<48400) {p.helm_stuck=0;return true;}
+    // local269: only while it came from helm_route and the next hex is water (or the goal); otherwise (the departure way on its
+    // first turn out, a supply relay, 303EA0 found land during the turn) the way is laid again; with no own way the old order
+    // is kept only when its next hex is water, else the ship holds.
+    // local271: an order helm_route wrote today stands (helm_step runs twice a day; the second run laid it again to the goal
+    // alone when its next hex was land, dropping the relays: local270 log, a 41-hex way became 13 hexes across the 건업 island),
+    // and on a later 순 it is laid again through the relays still ahead, never the goal alone.
+    if(!why && target<48400 && here!=target && army[0x37]==1 && army[0x38]==9 && word(army,0x3A)==target && word(army,0x48)<48400) {
+        if(helm_sailing_ok(army,p,target) || (p.helm_routed && p.retake_day==day)) {p.helm_stuck=0;return true;}
+        unsigned ahead[kHelmRelays+1];const unsigned na=helm_points_ahead(army,target,ahead);
+        if(helm_route(army,p,ahead,na) || helm_water(word(army,0x48))) {p.helm_stuck=0;return true;}
+        route_failed=true;
+    }
     if(why && (!strcmp(why,"helm_stuck_return") || !strcmp(why,"helm_ring_unreachable"))) {   // local169: nothing reachable: home now
         log_event(why,army_id(army),word(army,0x16),p.helm_area);
         recovery_return(army,p);return true;
@@ -1162,7 +1519,7 @@ static bool helm_step(Obj army,Progress &p) { COST_SCOPE("campaign:helm_step");
         log_event("helm_delay_start",army_id(army),word(army,0x16),static_cast<unsigned>(p.helm_delay_until));
         return helm_delay_step(army,p,day);
     }
-    if(target<48400 && here!=target && retake_route_order(army,p,target)) {p.helm_stuck=0;return true;}
+    if(!route_failed && target<48400 && here!=target && helm_route(army,p,&target,1)) {p.helm_stuck=0;return true;}   // local269 (was retake_route_order)
     if(target<48400 && here!=target) {   // local161: no way there today: pick again tomorrow (local169: counts as a stuck day)
         p.region_target=48400;
         if(p.helm_ring && p.helm_pick_day==day && ++p.helm_stuck>=kHelmStuckDays) {log_event("helm_stuck_return",army_id(army),word(army,0x16),p.helm_area);recovery_return(army,p);return true;}
@@ -1278,8 +1635,8 @@ static void prepare_local_build(Obj army, Progress &p) { COST_SCOPE("campaign:pr
     if(mod_features.mission_v2 && !p.regional_worker && !builder_force(army_force(army))) {
         if(!goal || !hostile_city(army,p.city) || !valid(standing) || standing[0x14]!=army_force(army) ||
            castle>=48400 || distance(word(army,0x2A),castle)>10)return; // 8 -> 10 (user 2026-11-01)
-        // local53: no longer stops at the first siege facility; try_build fills the region's three siege slots
-        // (catapult/watchtower, fort/camp, band) and then one trap per army. A full region stops in try_build.
+        // local53: no longer stops at the first siege facility; try_build builds catapult/watchtower and fort/camp up to
+        // 2 each (local263), a band, and a trap on its roll. A full region stops in try_build.
         if(area_full(area))return;
         if(p.work_reviewed_center==hex)return; // already rejected twice / complete here
         if(p.build_audit_day==game_day() && p.build_audit_mask)return;

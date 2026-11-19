@@ -220,7 +220,7 @@ static void offer_shown() {offer_turn=last_turn;}
 static Obj ruler_base() {
     Obj root=world();const unsigned force=player_force();if(!root || !force)return nullptr;
     Obj force_object=pointer(root,0xDF30+(force<0x34?force:0u)*8);
-    const unsigned ruler_id=force_object?word(force_object,0x52):0;
+    const unsigned ruler_id=force_object?word(force_object,0x10):0;   // ruler +0x10 (structs.md FORCE); +0x52 = 군사, read until local257
     Obj ruler=ruler_id && ruler_id<=6000?table(0x158,ruler_id,6000):nullptr;
     const unsigned base_id=valid(ruler)?word(ruler,0xE2):0;
     Obj base=base_id?fn<Obj(__fastcall *)(Obj,unsigned)>(GA(GA_32E3B0))(root,base_id):nullptr;

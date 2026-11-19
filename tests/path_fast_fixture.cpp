@@ -288,8 +288,62 @@ static void queue_fixture() {
     while(root)check(bst_pop(root)->cell==heap.pop()->cell,"final BST/heap tie order");
     check(heap.heap.empty(),"queue populations agree");
 }
+// local268: uniform (FIFO) searches and the start-region probe return the original's answer and node fields; the callbacks
+// they skip (a reached cell's repeat evaluations) or add (the probe's own) are not compared.
+struct TrialFake:Fake {
+    bool uniform_on=false,failed=false;unsigned probe_at=0,probes=0,region=0;
+    explicit TrialFake(Terrain &t):Fake(t) {}
+    bool uniform() const {return uniform_on;}
+    void uniform_failed() {failed=true;}
+    unsigned probe_after() const {return probe_at;}
+    void probed(unsigned r) {++probes;region=r;}
+};
+static void same_nodes(const Terrain &map,const Storage &fast,const std::vector<Node> &slow,const char *what) {
+    for(unsigned i=first;i<first+map.tiles.size();++i) {
+        Node clean{};const Node &n=fast.generations[i]==fast.generation?fast.nodes[i]:clean;
+        const Node &r=slow[i];
+        check(n.cell==r.cell && n.state==r.state && n.g==r.g && n.f==r.f &&
+              ((!n.parent && !r.parent) || (n.parent && r.parent && n.parent-fast.nodes.data()==r.parent-slow.data())),what);
+    }
+}
+static void trial_fixture(std::mt19937 &random) {
+    Storage fast;std::vector<Node> slow(cells);
+    unsigned uniform_runs=0,broken=0,closed=0,open_probes=0;
+    for(unsigned test=0;test<20000;++test) {
+        Terrain map;map.width=3+random()%12;map.height=3+random()%12;
+        map.ctx2c=test%5==0;map.ctx28=test%7==0;map.native_grid=test%11==0;
+        if(map.native_grid)map.width=220,map.height=2+random()%4;
+        const unsigned size=map.width*map.height;
+        for(unsigned i=0;i<size;++i) {
+            map.tiles.push_back({first+i,1+static_cast<int>(random()%5),random()%4==0,random()%4==0});
+            map.estimates.push_back(static_cast<int>(random()%25));
+        }
+        const unsigned start=first+random()%size,goal=test%13==0?start:first+random()%size;
+        const unsigned flags=test%128;
+        Fake old_s(map);Node *old_node=reference(slow,start,goal,flags,old_s);
+        TrialFake t(map);t.uniform_on=!(flags&5) && test%3!=0;
+        t.probe_at=test%4==0?0:1+static_cast<unsigned>(random()%(test%2?4:size));
+        Node *node=search(fast,start,goal,flags,t);
+        if(t.failed) {
+            ++broken;check(!node,"a broken uniform search returns no result");
+            Fake again(map);node=search(fast,start,goal,flags,again);
+        }
+        else if(t.uniform_on)++uniform_runs;
+        if(t.region) {
+            ++closed;check(!old_node && !node,"a closed start region means the original finds no route");
+            continue;
+        }
+        if(t.probes)++open_probes;
+        check((old_node!=nullptr)==(node!=nullptr) && (!old_node || (old_node->g==node->g && old_node->cell==node->cell)),
+              "trial searches return the original's result");
+        same_nodes(map,fast,slow,"trial searches leave the original's node fields (chain, g, f, state, parent)");
+    }
+    std::printf("trial fixture: uniform %u broken %u closed %u open probes %u\n",uniform_runs,broken,closed,open_probes);
+    check(uniform_runs>1000 && broken>100 && closed>100 && open_probes>1000,"trial fixture covers uniform, broken, closed and open probes");
+}
 int main() {
     diagnostics_fixture();queue_fixture();
+    {std::mt19937 trial_random(0x268);trial_fixture(trial_random);}
     Storage fast;std::vector<Node> slow(cells);
     std::mt19937 random(0x184D60);
     constexpr unsigned cases=40000;

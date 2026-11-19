@@ -1,4 +1,5 @@
 // User/Claude 2026-10-29: ResourceMap edits on the native placement callback only.
+#include "terrain_core.h"   // engine service gate terrain_core_on()
 #pragma once
 #include "game_addresses.h"
 #define SAN14_TERRAIN_TREES_INCLUDED 1
@@ -9,10 +10,13 @@
 namespace terrain_trees {
 #ifndef NO_RUNTIME_LOG
 // Completion counters are sampled/reset by Present, without taking the tree lock.
-alignas(8) static volatile LONG64 perf_calls,perf_total_us,perf_frame_us,perf_max_us;
+alignas(8) volatile LONG64 perf_calls,perf_total_us,perf_frame_us,perf_max_us;
 static const LONGLONG perf_frequency=[] {LARGE_INTEGER f={};QueryPerformanceFrequency(&f);return f.QuadPart?f.QuadPart:1;}();
 #endif
-static const unsigned Slot=GA(GA_1697960),UpdateRva=GA(GA_BB3AC0),SetterRva=GA(GA_B93A90);
+#ifndef SAN14_MULTI_TU   // split builds: tu_terrain_api.h (inline, read at load time by split_pointers in the main unit)
+static const unsigned Slot=GA(GA_1697960),UpdateRva=GA(GA_BB3AC0);
+#endif
+static const unsigned SetterRva=GA(GA_B93A90);
 static constexpr unsigned Size=1024,HexCount=48400,FrameLimit=64;
 static constexpr unsigned char update_bytes[16]={0x40,0x55,0x53,0x56,0x41,0x55,0x41,0x56,0x48,0x8D,0xAC,0x24,0x10,0xE7,0xFF,0xFF};
 static constexpr unsigned char setter_bytes[16]={0x48,0x89,0x5C,0x24,0x18,0x48,0x89,0x74,0x24,0x20,0x48,0x89,0x54,0x24,0x10,0x57};
@@ -23,7 +27,7 @@ static constexpr unsigned char setter_bytes[16]={0x48,0x89,0x5C,0x24,0x18,0x48,0
 // Keep opaque RAX as well, although those callers do not consume it.
 using Update=uint64_t(__fastcall *)(Obj,Obj,Obj,Obj,Obj,unsigned,unsigned,unsigned);
 using Set=void(__fastcall *)(Obj,uint64_t,unsigned char);
-static bool permitted=true;
+bool permitted=true;
 static SRWLOCK lock=SRWLOCK_INIT;
 struct Goal {unsigned char terrain,original;};
 static Goal goals[HexCount]={};
@@ -35,7 +39,7 @@ static unsigned short dirty_hex[HexCount]={};
 static unsigned dirty_head,dirty_count;
 static Obj captured_s,captured_r,captured_data; // Identity only outside the callback.
 static std::vector<unsigned char> original_resource;
-static bool active() {return permitted && enabled && mod_features.convenience && mod_features.terrain_edit;}
+static bool active() {return permitted && enabled && mod_features.convenience && terrain_core_on();}
 static bool guards_match() {
     return pointer(image,Slot)==image+UpdateRva &&
         !ga::mcmp_at(image,UpdateRva,update_bytes,sizeof(update_bytes)) &&
@@ -145,8 +149,16 @@ static bool resource(Obj s,Obj &r,Obj &data) {
 }
 // Only the original placement callback calls this function. Keep its SRW lock
 // through native setters so UI goals cannot change halfway through a hex.
+#ifndef NO_RUNTIME_LOG
+// local268 (Fable advice): cells the mod applied in the update call before a tree spike (tree_spike_applied: cells, writes, 0);
+// a spike after zero applied cells is the game's own streaming.
+static volatile LONG last_apply_cells,last_apply_writes;
+#endif
 static void apply_pending(Obj s) {
     TERRAIN_SCOPE(TreesApply);
+#ifndef NO_RUNTIME_LOG
+    InterlockedExchange(&last_apply_cells,0);InterlockedExchange(&last_apply_writes,0);
+#endif
     if(!active())return;
     // s is the live callback object; its R slot is read before R itself, so a
     // replaced R or data buffer still takes the validating path below.
@@ -182,6 +194,7 @@ static void apply_pending(Obj s) {
     if(!dirty_count && !world_transition)InterlockedExchange(&work_pending,0);
     ReleaseSRWLockExclusive(&lock);
 #ifndef NO_RUNTIME_LOG
+    InterlockedExchange(&last_apply_cells,static_cast<LONG>(cells));InterlockedExchange(&last_apply_writes,static_cast<LONG>(writes));
     if(captured)log_event("terrain_trees_capture",static_cast<unsigned>(reinterpret_cast<uintptr_t>(s)),1,0);
     if(cells)log_event("terrain_trees_apply",cells,writes,0);
 #else
@@ -292,6 +305,8 @@ static void leave(LONG64 us) {
         if(k==used && used<Max)bins[used++]={a,c,1};
     }
     log_event("tree_spike",static_cast<unsigned>(us/1000),static_cast<unsigned>(n),used);
+    log_event("tree_spike_applied",static_cast<unsigned>(InterlockedCompareExchange(&last_apply_cells,0,0)),
+              static_cast<unsigned>(InterlockedCompareExchange(&last_apply_writes,0,0)),0);
     for(unsigned t=0;t<6 && used;++t) {
         unsigned best=0;for(unsigned k=1;k<used;++k)if(bins[k].n>bins[best].n)best=k;
         if(!bins[best].n)break;
@@ -327,7 +342,7 @@ static void leave(LONG64 us) {
 }
 }
 #endif
-static uint64_t __fastcall update(Obj s,Obj second,Obj context,Obj view,Obj fifth,unsigned sixth,unsigned seventh,unsigned eighth) { COST_SCOPE("terrain_trees::update");
+uint64_t __fastcall update(Obj s,Obj second,Obj context,Obj view,Obj fifth,unsigned sixth,unsigned seventh,unsigned eighth) { COST_SCOPE("terrain_trees::update");
     TERRAIN_SCOPE(TreesUpdate);
 #ifndef NO_RUNTIME_LOG
     static volatile LONG thread_logged=0;
@@ -356,4 +371,4 @@ static uint64_t __fastcall update(Obj s,Obj second,Obj context,Obj view,Obj fift
     return fn<Update>(UpdateRva)(s,second,context,view,fifth,sixth,seventh,eighth);
 }
 }
-static bool terrain_trees_guards_match() {return terrain_trees::guards_match();}
+bool terrain_trees_guards_match() {return terrain_trees::guards_match();}

@@ -158,7 +158,8 @@ ok('target && target==opening_tile' in ui, 'only recorded opening tile expands n
 ok('reset_ui_context();' in save, 'load cleanup retains only transient picker state')
 ok('#ifndef NO_RUNTIME_LOG\n    if(hex==HexCount && tile)hex=tile_hex(tile);\n    log_event("terrain_domestic_click"' in ui, 'regional diagnostic removed in release')
 ok('if(f.terrain_edit && !terrain_edit_guards_match())split_disable(f.terrain_edit,27);' in source, 'isolated guard disable')
-adapter = (P / 'src/native_adapter.cpp').read_text(encoding='utf-8-sig')
+from hub_text import hub_text   # 2026-11-16 multi-unit refactor: hub = native_core.inl + native_patch_core.inl + native_adapter.cpp
+adapter = hub_text(P)
 import registry_text as R   # W5: includes come from the generated per-DLL lists
 ok(R.hosts('native_terrain_edit_ui.inl')==['convenience'], 'UI excluded from combat compilation')
 ok('feature_key(config, L"real_estate", L"terrain_edit", false)' in adapter, 'runtime config section')
@@ -179,10 +180,12 @@ ok('static_assert(' in ui and 'picker_rows_valid()' in ui, 'compile-time picker 
 ok('지형개발' not in ui and 'action_stop' not in ui and 'actions[i]=static_cast<int>(e.terrain)' in ui, 'groups and Close have no terrain action without a mode')
 ok('dword(state,0x4B8)==0x54454431' in ui, 'terrain picker opens only in the advisor-opened city state (2026-11-08 user)')
 note = '군사의 열흘 보고 창에 「부동산 개발」 버튼을 추가합니다. 보유한 성 목록에서 성을 고르면 그 성의 지역내정으로 들어가고, 땅을 클릭해 바닥·높이·나무·절벽·수면을 무료로 바꿀 수 있습니다. 일반 지역내정의 땅클릭은 원작 그대로이며, 이 버튼으로 들어왔을 때만 지형 변경이 열립니다. 끄면 버튼과 지형 변경이 모두 사라집니다.'
+map_row = next(r for r in json.loads((P / 'development/installer_map.json').read_text(encoding='utf-8-sig'))['items'] if r['key'] == 'terrain_edit')
+map_note, map_label = map_row['note'], map_row['label']
 for rel in ['installer/InstallerGui.cs', 'distribution/FeatureSelect.ps1', 'FeatureSelect.ps1']:
     text = (P / rel).read_text(encoding='utf-8-sig')
     line = next(line for line in text.splitlines() if 'terrain_edit' in line)
-    ok('real_estate' in line and '게임성' in line and note in line, rel + ' catalog')
+    ok('real_estate' in line and map_note.split('\n')[1] in line and map_label in line, rel + ' catalog')
 contract = next(json.loads(line) for line in (P / 'research/ui_atlas/contracts.jsonl').read_text(encoding='utf-8').splitlines()
                 if json.loads(line)['id'] == 'city.menu')
 ok(contract['facts']['record_stride'] == 32 and contract['facts']['create_slot'] == 0x188, 'retained menu contract')

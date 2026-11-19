@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "layout-wait",
  "title": "layout-wait",
  "host": "convenience",
@@ -53,7 +53,48 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_678E27",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "layout_wait",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_86F355",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "layout_wait",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_870279",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "layout_wait",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_87049C",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "layout_keep_wrap",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  }
+ ],
  "registry": {
   "rows": [
    {

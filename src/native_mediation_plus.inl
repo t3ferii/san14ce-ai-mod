@@ -174,7 +174,7 @@ static Obj build_filter_relay() {
     }
     return relay;
 }
-static bool install() {
+bool install() {
     if(!guards_match()) {log_event("mediation_plus_guard_rejected");return false;}
     Obj relay=build_filter_relay();if(!relay)return false;
     layout_client::Transaction tx;

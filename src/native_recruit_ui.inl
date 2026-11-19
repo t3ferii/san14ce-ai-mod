@@ -90,24 +90,7 @@ struct RecruitScope {
     explicit RecruitScope(Obj district):previous(recruit_district) {recruit_district=district;}
     ~RecruitScope() {recruit_district=previous;}
 };
-static const wchar_t *recruit_reason_label(unsigned reason,bool family_available=false) {
-    if(reason & personnel::MissingContext)return L"";
-    if(reason & personnel::ServiceBan)return L"불가: 현 세력 사관금지";
-    if(reason & personnel::HighLoyalty)return (reason & personnel::LikesCurrentRuler)?
-        L"불가: 상대군주 친애(100↑)":L"불가: 충성도 100↑";
-    if((reason & personnel::FamilyEnvoyException) || family_available)return (reason & personnel::LikesCurrentRuler)?
-        L"주의: 상대군주 친애":L"가족 권고 시 가능성 있음";
-    static const wchar_t *labels[]={
-        L"가능성 있음",L"불가: 군주 혐오",
-        L"불가: 타세력 배우자",L"불가: 혐오·배우자",
-        L"불가: 타세력 의형제",L"불가: 혐오·의형제",
-        L"불가: 타세력 가족",L"불가: 혐오·가족"
-    };
-    // Keep genuine remaining blockers visible; friendship alone is caution.
-    if(reason&7)return labels[reason&7];
-    return (reason & personnel::LikesCurrentRuler)?L"주의: 상대군주 친애":labels[0];
-}
-static bool recruit_family_available(Obj target,Obj district) {
+[[maybe_unused]] static bool recruit_family_available(Obj target,Obj district) {
     Obj own_force=valid(district)?table(0xDF30,district[0x10],51):nullptr;
     if(!valid(target) || !valid(own_force))return false;
     GameList candidates;list_init(candidates,GA(GA_13466B0));
@@ -122,13 +105,85 @@ static bool recruit_family_available(Obj target,Obj district) {
     }
     list_free(candidates);return found;
 }
+// User 2026-11-15: the column tells only what the original rules make impossible
+// (279DE0's early "never" exits), never the day's success or failure, in short
+// period-drama lines (10 characters at most).
+// 279DE0(target, envoy, int *roll): roll != -1 replaces the day's draw (3FDAF0 is a
+// pure hash of ids + date, so the outcome is fixed per day). Success is
+// roll < clamp(score,0,100) and the score holds (9-roll/5)*5 + roll; with this roll
+// those terms cancel to 45 and every clamped score clears it, so 0 comes only from
+// an early "never" exit. The ruler as envoy keeps envoy-only exits (dislike of the
+// envoy) out of the column, as the user asked.
+static constexpr int kRecruitProbeRoll=-1000000;
+// 1 never, 0 possible, -1 the original function is not resolved in this build.
+static int recruit_native_never(Obj target,Obj ruler) {
+    if(!GA(GA_279DE0) || !valid(ruler))return -1;
+    int roll=kRecruitProbeRoll;
+    return fn<int(__fastcall *)(Obj,Obj,int *)>(GA(GA_279DE0))(target,ruler,&roll)==0?1:0;
+}
+static bool recruit_status(Obj person,unsigned status) {
+    return fn<bool(__fastcall *)(Obj,unsigned)>(GA(GA_234FF0))(person,status);
+}
+// 279DE0 rule 10/12: a spouse or sworn sibling (a parent too, for a prisoner) already
+// serving the recruiting force makes the target join. User: show that person's name.
+static Obj recruit_kin_in_force(Obj target,Obj force,bool prisoner,const wchar_t *&relation) {
+    auto ours=[&](unsigned id) {
+        Obj person=id<=6000?table(0x158,id,6000):nullptr;
+        return valid(person) && person!=target && person[0xE6]!=7 && person[0xE6]!=9 && personnel_force(person)==force?person:nullptr;
+    };
+    if(Obj spouse=ours(word(target,0xBA))) {relation=L"배필입니다";return spouse;}
+    Obj found=nullptr;
+    GameList siblings;list_init(siblings,GA(GA_13466B0));
+    fn<unsigned(__fastcall *)(Obj,GameList *)>(GA(GA_2B79A0))(target,&siblings);
+    unsigned scanned=0;
+    for(Link *link=list_first(siblings);link && scanned<64;link=link->next,++scanned)
+        if(valid(link->value) && (found=ours(word(link->value,0x10))))break;
+    list_free(siblings);
+    if(found) {relation=L"의형제입니다";return found;}
+    if(prisoner)for(unsigned field:{0xB4u,0xB6u})if(Obj parent=ours(word(target,field))) {relation=L"자식입니다";return parent;}
+    return nullptr;
+}
+static const wchar_t *recruit_reason_line(Obj target,Obj district,wchar_t *buffer,size_t size) {
+    unsigned reason=personnel_recruitment_reason(target,district,nullptr);
+    if(reason & personnel::MissingContext)return L"";
+    Obj force=table(0xDF30,district[0x10],51),ruler=table(0x158,word(force,0x10),6000);
+    const bool prisoner=recruit_status(target,6);
+    int never=recruit_native_never(target,ruler);
+    if(never<0)never=personnel::recruitment_blocked(reason)?1:0; // unresolved build: mod rules only
+    if(never) {
+        if(reason & personnel::ServiceBan)return L"원한이 있어 보입니다";
+        if(reason & personnel::HighLoyalty)
+            return (reason & personnel::LikesCurrentRuler)?L"주군을 바꿀 사람이 아닙니다":L"충성심이 높군요";
+        if(reason & personnel::ForeignSpouse)return L"배필이 있군요";
+        if(reason & personnel::ForeignSwornSibling)return L"의형제라...";
+        if(reason & personnel::DislikedRuler)return L"우리 군에 불순한 자입니다";
+        // User 2026-11-15: show only the fixed "never" cases above. Any other native
+        // refusal (279DE0 rule 13: 의리/5 + loyalty > 95, which loyalty loss lifts)
+        // counts as possible; success or failure is the strategist's to tell.
+    }
+    const wchar_t *relation=nullptr;
+    if(Obj kin=recruit_kin_in_force(target,force,prisoner,relation)) {
+        const wchar_t *name=fn<const wchar_t *(__fastcall *)(Obj)>(GA(GA_230950))(kin);
+        if(name && *name) {_snwprintf_s(buffer,size,_TRUNCATE,L"%s의 %s",name,relation);return buffer;}
+    }
+    if(reason & personnel::LikesCurrentRuler)return L"주군을 흠모합니다";
+    return L"청해 볼 만합니다";
+}
+// The column sort compares every pair, so keep each target's line for a moment.
+struct RecruitLineCache {Obj world,district;unsigned long long tick;const wchar_t *text;wchar_t buffer[32];};
+static RecruitLineCache recruit_line_cache[6001];
+[[maybe_unused]] static void recruit_line_cache_clear() {for(auto &entry:recruit_line_cache)entry.text=nullptr;}
 static const wchar_t *__fastcall recruit_reason_text(Obj target) { COST_SCOPE("recruit_ui_recruit_reason_text");
     Obj district=enabled?recruit_display_district():nullptr;
-    if(!district)return recruit_reason_label(personnel::MissingContext);
-    unsigned reason=personnel_recruitment_reason(target,district,nullptr);
-    bool family=!personnel::recruitment_hard_blocked(reason) &&
-                personnel::recruitment_blocked(reason) && recruit_family_available(target,district);
-    return recruit_reason_label(reason,family);
+    if(!district || !valid(target))return L"";
+    const unsigned id=word(target,0x10);
+    if(id>6000) {static wchar_t scratch[32];return recruit_reason_line(target,district,scratch,32);}
+    RecruitLineCache &cache=recruit_line_cache[id];
+    const unsigned long long now=GetTickCount64();
+    if(cache.text && cache.world==world() && cache.district==district && now-cache.tick<1500)return cache.text;
+    cache.text=recruit_reason_line(target,district,cache.buffer,32);
+    cache.world=world();cache.district=district;cache.tick=now;
+    return cache.text;
 }
 static int __fastcall recruit_reason_compare(Obj left,Obj right) { COST_SCOPE("recruit_ui_recruit_reason_compare");
     return wcscmp(recruit_reason_text(left),recruit_reason_text(right));
@@ -163,7 +218,7 @@ static bool recruit_prepare_columns() {
     Obj column=recruit_columns[213];memcpy(column,recruit_columns[3],0x60);
     *reinterpret_cast<unsigned *>(column)=213;
     *reinterpret_cast<const wchar_t **>(column+8)=L"등용가능성";
-    *reinterpret_cast<unsigned *>(column+0x10)=240;
+    *reinterpret_cast<unsigned *>(column+0x10)=300; // user 2026-11-15: wider for named lines
     *reinterpret_cast<void **>(column+0x18)=reinterpret_cast<void *>(&recruit_reason_text);
     *reinterpret_cast<void **>(column+0x28)=nullptr;
     *reinterpret_cast<void **>(column+0x30)=reinterpret_cast<void *>(&recruit_reason_compare);
@@ -376,13 +431,16 @@ static void __fastcall recruit_state_update(Obj state) { COST_SCOPE("recruit_ui_
         unsigned reserved_orders=cost>0?static_cast<unsigned>(cost)*reserved_count:0;
         GameList remaining;list_init(remaining,GA(GA_13466B0));
         for(unsigned i=1;i<batch.count;++i)list_add(remaining,batch.people[i]);
-        PersonnelBatchResult result=personnel_auto_employ(district,remaining,actors,reserved_count,reserved_orders,district);
+        // 735F60 cases 5/6/7 store the wait choice (0/10/30 days) at layout+0x1E8;
+        // native 6CD040-path dispatch reads it for the displayed target.
+        const unsigned wait_days=dword(layout,0x1E8);
+        PersonnelBatchResult result=personnel_auto_employ(district,remaining,actors,reserved_count,reserved_orders,district,wait_days);
         list_free(remaining);
         if(!recommended)++result.advised_against;
         if(result.sent || result.blocked || result.no_actor || result.no_orders || result.failed ||
            result.duplicates || result.advised_against)recruit_report_automatic(district,result);
         recruit_multi={};
-        log_event("recruit_multi_batch",batch.count,result.sent,result.advised_against);
+        log_event("recruit_multi_batch",batch.count,result.sent,result.advised_against|(wait_days<<16));
         if(!recommended) {
             log_event("recruit_multi_display_advised_against",word(target,0x10),actor_count);
             // Mirror 733BD0's successful cases 3/4 on this UI caller thread.
@@ -395,6 +453,10 @@ static void __fastcall recruit_state_update(Obj state) { COST_SCOPE("recruit_ui_
         }
     }
     const unsigned init_calls=recruit_selector_init_calls;
+    // local217 (user 2026-11-17 "등용가능성이 아군 실행무장창을 들렀다가 다시 등용대상창에 들어가면 다 사라져버리네"): from the
+    // second target pick on, 74FDD0 shows the cached selector again without our init (local178), and the actor selector's
+    // init in between (another config) unbound the column context, so the rows drew empty. Bind it for every target pick.
+    if(operation==2)recruit_bind_context(district);
     {
         RecruitTargetScope target_scope(layout,operation==2);
         original(state);

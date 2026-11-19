@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "path-fast",
  "title": "path-fast",
  "host": "convenience",
@@ -20,6 +20,8 @@
   "src/native_path_fast.inl",
   "src/path_fast.h",
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_path_count.inl",
   "src/native_split_install.inl",
   "tests/path_fast_fixture.cpp",
@@ -62,7 +64,28 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_184D60",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "path_fast",
+   "len": 7,
+   "policy": "refuse_if_changed",
+   "src": "src/native_path_fast.inl"
+  },
+  {
+   "key": "GA_1857B5",
+   "kind": "bytes",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "path_fast",
+   "len": 1,
+   "policy": "refuse_if_changed",
+   "src": "src/native_path_fast.inl"
+  }
+ ],
  "registry": {
   "rows": [
    {

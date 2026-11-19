@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "modpack-v16",
  "title": "modpack-v16",
  "host": "convenience",
@@ -24,7 +24,8 @@
   "src/stat_growth.h",
   "src/native_split_install.inl",
   "tests/modpack_fixture.cpp",
-  "tests/verify_modpack_static.py"
+  "tests/verify_modpack_static.py",
+  "tools/pe_image.py"
  ],
  "tests": [
   "trait-hover",
@@ -77,7 +78,198 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_13A9E28",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "collab",
+   "len": 8,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13AA260",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "collab",
+   "len": 8,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13D5F90",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "scenery",
+   "len": 8,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_142FC70",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stats200",
+   "len": 1,
+   "policy": "yield",
+   "src": "src/native_modpack.inl"
+  },
+  {
+   "key": "GA_144A278",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "scenery",
+   "len": 8,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_20B7C5",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stats200",
+   "len": 1,
+   "policy": "yield",
+   "src": "src/native_modpack.inl"
+  },
+  {
+   "key": "GA_20BFDA",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stats200",
+   "len": 1,
+   "policy": "yield",
+   "src": "src/native_modpack.inl"
+  },
+  {
+   "key": "GA_211F0D",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stats200",
+   "len": 1,
+   "policy": "yield",
+   "src": "src/native_modpack.inl"
+  },
+  {
+   "key": "GA_226E2A",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stats200",
+   "len": 1,
+   "policy": "yield",
+   "src": "src/native_modpack.inl"
+  },
+  {
+   "key": "GA_226E7F",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stats200",
+   "len": 1,
+   "policy": "yield",
+   "src": "src/native_modpack.inl"
+  },
+  {
+   "key": "GA_22AE26",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stats200",
+   "len": 1,
+   "policy": "yield",
+   "src": "src/native_modpack.inl"
+  },
+  {
+   "key": "GA_22AE99",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stats200",
+   "len": 1,
+   "policy": "yield",
+   "src": "src/native_modpack.inl"
+  },
+  {
+   "key": "GA_23C458",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stats200",
+   "len": 1,
+   "policy": "yield",
+   "src": "src/native_modpack.inl"
+  },
+  {
+   "key": "GA_23C4B6",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stats200",
+   "len": 1,
+   "policy": "yield",
+   "src": "src/native_modpack.inl"
+  },
+  {
+   "key": "GA_2BC14A",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stats200",
+   "len": 1,
+   "policy": "yield",
+   "src": "src/native_modpack.inl"
+  },
+  {
+   "key": "GA_2BC30A",
+   "kind": "span",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stats200",
+   "len": 5,
+   "policy": "yield",
+   "src": "src/native_modpack.inl"
+  },
+  {
+   "key": "GA_321F3E",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stats200",
+   "len": 1,
+   "policy": "yield",
+   "src": "src/native_modpack.inl"
+  },
+  {
+   "key": "GA_5DFB83",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stats200",
+   "len": 1,
+   "policy": "yield",
+   "src": "src/native_modpack.inl"
+  },
+  {
+   "key": "GA_5DFD18",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "stats200",
+   "len": 1,
+   "policy": "yield",
+   "src": "src/native_modpack.inl"
+  }
+ ],
  "registry": {
   "rows": [],
   "subscriptions": [],

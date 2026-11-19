@@ -66,6 +66,8 @@ static void split_address_gates(ModFeatures &f) {
     ga_gate(f.ccz_sprites,69,ga::files_ok({GF_native_ccz_sprites_inl,GF_native_ccz_title_inl,GF_native_ccz_editor_inl}));
     ga_gate(f.ccz_block,70,ga::files_ok({GF_native_ccz_bridge_inl}));
     ga_gate(f.ccz_critical,71,ga::files_ok({GF_native_ccz_bridge_inl}));
+    // 96 (2026-11-17 종군 중립군 stage 0): the nine entries native_ccz_bands.inl publishes and the calls ccz_bands.inl makes.
+    ga_gate(f.ccz_bands,96,ga::files_ok({GF_native_ccz_bands_inl,GF_ccz_bands_inl,GF_native_ccz_bridge_inl}));
     // 73 (local10): traits9 manifests/core patches use table ids of native_traits9.inl; an unresolved one switches the nine slots off here
     ga_gate(f.traits9,73,ga::files_ok({GF_native_traits9_inl}));
     ga_gate(f.tactic_priority,74,ga::files_ok({GF_native_tactic_priority_inl,GF_native_tactic_priority_grid_inl}));

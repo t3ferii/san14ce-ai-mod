@@ -59,10 +59,13 @@ struct Storage {
     std::vector<std::uint32_t> generations;
     std::vector<unsigned> positions;
     std::vector<HeapEntry> heap;
+    std::vector<unsigned> queue,probe_queue;      // local268: FIFO order of uniform searches; start-region probe
+    std::vector<std::uint32_t> probe_marks;
     std::uint32_t generation=0;
     std::uint32_t next_sequence=0;
+    std::uint32_t probe_generation=0;
     explicit Storage(unsigned size=cells):nodes(size),generations(size),positions(size) {
-        heap.reserve(size);
+        heap.reserve(size);queue.reserve(size);probe_queue.reserve(2048);
     }
     void begin() {
         heap.clear();next_sequence=0;
@@ -179,16 +182,109 @@ template<class Emit,class Neighbour> void mismatch_detail(std::uint64_t ordinal,
 // out of the open list). Searches without the member are unchanged.
 template<class S> auto over_limit(S &s,std::int32_t g,int)->decltype(s.over(g)) {return s.over(g);}
 template<class S> bool over_limit(S &,std::int32_t,long) {return false;}
+// local268 (Fable advice 2026-11-19), optional S members; searches whose S lacks them are unchanged.
+//   uniform()        true: every step costs 10000 and f = g (flags without 1/4: no terrain cost, no heuristic, 187880 only
+//                    scales with flags & 1). S::uniform_failed() is told when a step is not 10000; the search then ends
+//                    without a result and the caller repeats it the ordinary way.
+//   probe_after()    pops after which the start-region probe runs once (0 = never); S::probed(region) gets its answer.
+template<class S> auto uniform_of(S &s,int)->decltype(s.uniform()) {return s.uniform();}
+template<class S> bool uniform_of(S &,long) {return false;}
+template<class S> auto uniform_failed_of(S &s,int)->decltype(s.uniform_failed()) {return s.uniform_failed();}
+template<class S> void uniform_failed_of(S &,long) {}
+template<class S> auto probe_after_of(S &s,int)->decltype(s.probe_after()) {return s.probe_after();}
+template<class S> unsigned probe_after_of(S &,long) {return 0;}
+template<class S> auto probed_of(S &s,unsigned region,int)->decltype(s.probed(region)) {return s.probed(region);}
+template<class S> void probed_of(S &,unsigned,long) {}
+constexpr unsigned probe_cap=256;
+// Cells reachable from the start through allowed cells, with the search's own per-cell answers (tile / terrain / allowed;
+// the goal is never tested and the start is exempt, as in search()). A route exists exactly when the goal is reached, so
+// a region that closes without it proves "no route". Returns the closed region's size, or 0 when the goal was reached or
+// the region grew past `cap` (open: say nothing).
+template<class S> unsigned closed_region(Storage &storage,unsigned start,unsigned goal,unsigned flags,S &s,unsigned cap) {
+    if(start>=cells || start==goal)return 0;
+    if(storage.probe_marks.size()!=cells)storage.probe_marks.assign(cells,0);
+    if(++storage.probe_generation==0) {std::fill(storage.probe_marks.begin(),storage.probe_marks.end(),0);storage.probe_generation=1;}
+    const std::uint32_t mark=storage.probe_generation;
+    std::vector<unsigned> &queue=storage.probe_queue;queue.clear();
+    storage.probe_marks[start]=mark;queue.push_back(start);
+    for(std::size_t head=0;head<queue.size();++head) {
+        const unsigned c=queue[head];
+        for(unsigned direction=1;direction<7;++direction) {
+            const unsigned id=s.neighbour(c,direction);
+            if(id>=cells || storage.probe_marks[id]==mark)continue;
+            storage.probe_marks[id]=mark;
+            if(id==goal)return 0;
+            auto tile=s.tile(id);if(!tile)continue;
+            std::int32_t cost=(flags&5)?s.terrain(tile):10000;
+            if(!s.allowed(id,tile,cost))continue;
+            if(queue.size()>=cap)return 0;
+            queue.push_back(id);
+        }
+    }
+    return static_cast<unsigned>(queue.size());
+}
+// Uniform searches (see uniform() above): the heap order {f, insertion sequence} with f = g = 10000 x steps is plain
+// insertion order, and a cell once reached is never improved (its g is at most one step above the cell being expanded,
+// so `candidate>=node->g` always rejects it). A FIFO queue gives the same pops, parents, g and result, and a reached cell
+// is skipped before its callbacks (their answers are not used for it).
+template<class S> Node *search_uniform(Storage &storage,unsigned start,unsigned goal,unsigned flags,S &s) {
+    std::vector<unsigned> &queue=storage.queue;queue.clear();
+    queue.push_back(goal);
+    s.begin();
+    Node *result=nullptr;
+    const unsigned probe_at=probe_after_of(s,0);unsigned pops=0;
+    for(std::size_t head=0;head<queue.size();++head) {
+        if(probe_at && ++pops==probe_at) {
+            const unsigned region=closed_region(storage,start,goal,flags,s,probe_cap);
+            probed_of(s,region,0);
+            if(region)break;
+        }
+        Node *current=&storage.nodes[queue[head]];
+        if(current->cell==start) {
+            result=current;
+            for(Node *n=result;n;n=n->parent)n->state|=4;
+            s.success();break;
+        }
+        bool broken=false;
+        for(unsigned direction=1;direction<7;++direction) {
+            const unsigned id=s.neighbour(current->cell,direction);
+            if(id<cells && storage.generations[id]==storage.generation && (storage.nodes[id].state&3))continue;
+            auto tile=s.tile(id);
+            if(!tile || id>=cells)continue;
+            std::int32_t cost=10000;
+            if(id!=start && !s.allowed(id,tile,cost))continue;
+            Node *node=&storage.touch(id);
+            const std::int32_t step=s.adjust(cost,tile);
+            if(step!=10000) {broken=true;break;}
+            const std::int32_t candidate=add(current->g,step);
+            if(over_limit(s,candidate,0))continue;
+            node->cell=id;node->parent=current;node->state&=0xFD;
+            s.coordinate(current->cell);
+            node->g=candidate;node->f=candidate;
+            node->state|=1;queue.push_back(id);
+        }
+        if(broken) {uniform_failed_of(s,0);result=nullptr;break;}
+        current->state=static_cast<unsigned char>((current->state&0xFE)|2);
+    }
+    s.cleanup();return result;
+}
 template<class S> Node *search(Storage &storage,unsigned start,unsigned goal,unsigned flags,S &s) {
     storage.begin();
     Node *seed=&storage.touch(goal);
     // Every segment starts clean in private generation storage. With one goal,
     // zero g/parent/children are preserved; the original setup helper may reject.
     if(!s.prepare(storage.nodes.data(),start,goal,flags))return nullptr;
+    if(!(flags&5) && uniform_of(s,0))return search_uniform(storage,start,goal,flags,s);
     storage.insert(seed);
     s.begin();
     Node *result=nullptr;
+    const unsigned probe_at=probe_after_of(s,0);unsigned pops=0;
     while(!storage.heap.empty()) {
+        if(probe_at && ++pops==probe_at) {
+            const unsigned region=closed_region(storage,start,goal,flags,s,probe_cap);
+            probed_of(s,region,0);
+            if(region)break;   // closed: the full search would also end without a route
+        }
         Node *current=storage.pop();
         if(current->cell==start) {
             result=current;

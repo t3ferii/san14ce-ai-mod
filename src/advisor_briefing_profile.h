@@ -38,7 +38,11 @@ static const Guard guards[]={
     {GA(GA_67F0B0),0x30,GH(0x4EB7B1CC4CFF3FD3ull)},
     {GA(GA_678F30),0x30,GH(0x458D80B2DB8D7B84ull)},
     {GA(GA_67A430),0x30,GH(0x4F2DB8DDF8B5350Full)},
-    {GA(GA_671E90),0x30,GH(0x2D1B77E922AB0EBEull)},
+    // local232: the whole log frame, its line filter and the two list calls, because drain_native_log retires lines as 671E90 does.
+    {GA(GA_671E90),0x24F,GH(0x5BA43FFDE0FFC73Cull)},
+    {GA(GA_66B3C0),0x124,GH(0xEF31385F4C0A8397ull)},
+    {GA(GA_4FB20),0x75,GH(0xF871CF20E91BD7AAull)},
+    {GA(GA_4F9C0),0xAB,GH(0x5F9954E266E7C79Dull)},
     {GA(GA_88E4B0),0x30,GH(0xEB98543885CA6897ull)},
     {GA(GA_88F890),0x30,GH(0x9BE2533CF444F51Cull)},
     {GA(GA_243140),0x30,GH(0x23482F0BFF727A28ull)},

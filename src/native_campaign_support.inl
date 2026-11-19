@@ -55,10 +55,28 @@ static unsigned campaign_morale_goal(Obj army,const Progress &p) { COST_SCOPE("c
     for(unsigned i=0;i<5;++i)if(word(army,0x2C+i*2)<48400)return word(army,0x2C+i*2);
     return word(army,0x2A);
 }
+// local210 (user 2026-11-17 "군악대 왜이렇게 덜짓는것처럼 보일까? 지금조건에서 사기 떨어졌을때 건설 가능하면 군악대 바로 건설"): the
+// route hook (morale_member) judges morale only when the original re-plans the army's group, so a band was often never tried.
+// Each day a computer-side army at morale <= 85 with no finished own band within 5 hexes, no band in its region and nothing
+// under construction tries a band through try_build (original cost, site and permission checks); its own build state is kept.
+static bool campaign_band_daily(Obj army,Progress &p) { COST_SCOPE("campaign_band_daily");
+    if(!computer_side_army(army) || army[0x140] || campaign_castle_locked(army) || p.forced_return || p.facility)return false;
+    if(word(army,0x16)<1000 || army[0x1A]>85 || army[0x37]==11 || army[0x37]==12)return false;
+    const unsigned here=word(army,0x2A);if(here>=48400 || !band_try_due(army,false))return false;   // local213/215: already tried this 순
+    for(unsigned id=1;id<=3000;++id)if(campaign_band(army,id) && distance(here,word(table(0x6DA98,id,3000),0x10))<=5)return false;
+    Obj area=army_area(army);if(!valid(area) || (local_facilities(army,area)&(1u<<7)))return false;
+    const bool credit=p.credit,chain=p.build_chain;const unsigned short center=p.build_center;
+    p.build_chain=true;p.build_center=word(area,0x3A);
+    band_way_goal=campaign_morale_goal(army,p);   // local211: sites on the way only
+    const bool built=try_build(army,p,48400,7);band_way_goal=48400;
+    p.credit=credit;p.build_chain=chain;p.build_center=center;
+    if(built)log_event("morale_band_daily",army_id(army),army[0x1A],p.construction_hex);
+    return built;
+}
 static bool campaign_morale_priority(Obj army,Progress &p) {
     COST_SCOPE("campaign_morale_priority");
     if(!mod_features.morale)return false;   // [combat] morale
-    if(route_hook_morale) {if(p.morale_recovering)campaign_morale_finish(army,p);return false;}   // U39: route_hook owns morale
+    if(route_hook_morale) {if(p.morale_recovering)campaign_morale_finish(army,p);return campaign_band_daily(army,p);}   // U39: route_hook owns morale (local210: daily band)
     if(campaign_castle_locked(army))return false;
     if(p.forced_return || word(army,0x16)<1000 || army[0x140] || army[0x37]==11 || army[0x37]==12)return false;
     unsigned morale=army[0x1A],here=word(army,0x2A);
@@ -121,7 +139,8 @@ static bool campaign_morale_priority(Obj army,Progress &p) {
             bool credit=p.credit,chain=p.build_chain;unsigned short center=p.build_center;
             unsigned cycle=p.cycle_mask;
             p.build_chain=true;p.build_center=word(area,0x3A);
-            if(try_build(army,p,48400,7)) {
+            band_way_goal=goal;const bool band_built=try_build(army,p,48400,7);band_way_goal=48400;   // local211
+            if(band_built) {
                 p.morale_build_credit=credit;p.morale_build_chain=chain;p.morale_build_center=center;p.morale_build_cycle=cycle;
                 p.morale_recovering=true;p.morale_building=true;p.morale_hex=p.construction_hex;p.morale_band=0;p.siege_city=0;
                 log_event("morale_band_build",army_id(army),morale,p.construction_hex);return true;

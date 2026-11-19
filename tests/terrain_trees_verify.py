@@ -65,7 +65,7 @@ ok(read(0xD69DB4, 21) == bytes.fromhex('89 5c 24 38 89 7c 24 30 89 74 24 28 4c 8
    'common engine dispatch D69DC5 has the same eight-argument ABI')
 ok('using Update=uint64_t(__fastcall *)(Obj,Obj,Obj,Obj,Obj,unsigned,unsigned,unsigned);' in native,
    'opaque return and exact native argument widths')
-wrapper = native.split('static uint64_t __fastcall update(', 1)[1]
+wrapper = native.split('\nuint64_t __fastcall update(', 1)[1]   # 2026-11-16: no longer static (tu_terrain_api.h declares it for the main unit)
 ok(wrapper.index('apply_pending(s);') < wrapper.index('return fn<Update>'), 'queued work precedes original update')
 ok('(s,second,context,view,fifth,sixth,seventh,eighth);' in wrapper, 'all eight arguments forwarded unchanged')
 mark = native.split('static void mark(', 1)[1].split('static void before_world_change()', 1)[0]
@@ -81,13 +81,22 @@ ok('terrain_render::mark(c.hex,current,c.original);' in edit and
 ok('{terrain_trees::Slot,terrain_trees::UpdateRva,reinterpret_cast<void *>(&terrain_trees::update),kPointerTerrain}' in split,
    'sole convenience owner in shared pointer publication/rollback table')
 ok('split_disable(terrain_trees::permitted,29)' in split and
-   'if(p.slot==terrain_trees::Slot)return mod_features.terrain_edit && terrain_trees::permitted;' in split,
+   'if(p.slot==terrain_trees::Slot)return terrain_core_on() && terrain_trees::permitted;' in split,
    'foreign tree slot/start disables tree publication independently')
 ok(split.index('!terrain_trees_guards_match()') < split.index('for(const auto &p:split_pointers)if(split_pointer_enabled(p)'),
    'tree slot is isolated before generic terrain pointer validation')
+# local146: namespace spike is a diagnostic-only, read-only sampler (SuspendThread/GetThreadContext of the game thread); it must stay
+# inside #ifndef NO_RUNTIME_LOG so the release DLL starts no thread.
+spike_at = native.index('namespace spike {')
+spike_open = native.rindex('#ifndef NO_RUNTIME_LOG', 0, spike_at)
+spike_close = native.index('\n#endif', spike_at)
+ok(native.count('CreateThread') == native[spike_open:spike_close].count('CreateThread') == 1, 'only the diagnostic spike sampler starts a thread')
+ok('WriteProcessMemory' not in native[spike_open:spike_close] and 'SetThreadContext' not in native, 'spike sampler only reads')
+release_native = native[:spike_open] + native[spike_close:]
 for forbidden in ['WriteProcessMemory', 'CreateRemoteThread', 'CreateThread', 'BC7D60', 'BC9880', 'world()']:
-    ok(forbidden not in native, 'no remote/direct scan/worker/world access: ' + forbidden)
-ok('#ifndef NO_RUNTIME_LOG\n    if(captured)log_event("terrain_trees_capture"' in native and
+    ok(forbidden not in release_native, 'no remote/direct scan/worker/world access: ' + forbidden)
+ok('#ifndef NO_RUNTIME_LOG\n    InterlockedExchange(&last_apply_cells,static_cast<LONG>(cells));InterlockedExchange(&last_apply_writes,static_cast<LONG>(writes));\n'
+   '    if(captured)log_event("terrain_trees_capture"' in native and   # the last-apply counters joined the same diagnostic block
    'if(cells)log_event("terrain_trees_apply",cells,writes,0)' in native, 'bounded shared diagnostics omitted in release')
 entry = json.loads(source('development/features.json'))['modules']['terrain-edit']
 ok('terrain-trees' in entry['tests'] and 'src/native_terrain_trees.inl' in entry['sources'] and

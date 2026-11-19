@@ -24,7 +24,10 @@ import pelib
 HOOKS = os.path.join(A.ROOT, 'tools', 'observer_hooks.json')
 INL = os.path.join(A.ROOT, 'src', 'game_addresses_data.inl')
 SAN14SIM = os.path.join(os.path.dirname(A.ROOT), 'San14Sim', 'dump')
-KNOWN_ROW_OVERLAPS = {('building_destruction_profile.h', '1F5680'), ('advisor_briefing_profile.h', '44B090'), ('advisor_briefing_profile.h', '44C340')}
+KNOWN_ROW_OVERLAPS = {('building_destruction_profile.h', '1F5680'), ('advisor_briefing_profile.h', '44B090'), ('advisor_briefing_profile.h', '44C340'),
+                      # 2026-11-17 종군 중립군 stage 0: native_ccz_bands.inl links the 186E60 / 278290 entries. With the San14Sim observer
+                      # loaded, prepare_link's observer_conflict refuses and the whole band feature stays off (docs/NEUTRAL_BANDITS.md 11).
+                      ('native_ccz_bands.inl', '186E60'), ('native_ccz_bands.inl', '278290')}
 fails = []
 
 

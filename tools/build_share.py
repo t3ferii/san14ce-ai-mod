@@ -87,6 +87,12 @@ if manifest.get('gui_installer') and not WITHOUT_GUI:
     for line in credits:
         if line.encode('utf-16-le') not in gui_bytes:
             raise RuntimeError('Installer EXE lacks credits tab line: '+line+'; rebuild it.')
+    # 2026-11-19: the installer must carry every catalog item (a stale EXE hid new features; docs/MOD_DEV_LESSONS.md G).
+    catalog=json.loads((PROJECT/'development/installer_map.json').read_text(encoding='utf-8'))
+    catalog=catalog if isinstance(catalog,list) else next(v for v in catalog.values() if isinstance(v,list))
+    stale=[i['key'] for i in catalog
+           if not i.get('retired') and i['key'].encode('utf-16-le') not in gui_bytes]
+    if stale:raise RuntimeError('Installer EXE predates development/installer_map.json (missing: '+', '.join(stale[:8])+'); rebuild it.')
     for source in sorted({source for _,source in installer_credits}):
         if ('출처: '+source).encode('utf-16-le') not in gui_bytes:
             raise RuntimeError('Installer EXE predates docs/CREDITS.md ("출처: '+source+'"); rebuild it.')

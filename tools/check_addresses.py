@@ -164,9 +164,10 @@ def check_c(rep):
         if res['module'] == 'convenience':
             if res.get('hover_off') is not False or 'battle_deaths' in res['disabled']:
                 fail('(c) hover / battle_deaths must stay on (hover_off=%s, disabled=%s)' % (res.get('hover_off'), res['disabled']))
-            for needed in ('trait_hover', 'battle_deaths', 'battle_deaths_rows', 'traits9_slots', 'traits9_before_runtime', 'modpack_collab', 'modpack_scenery',
+            for needed in ('trait_hover', 'battle_deaths', 'battle_deaths_rows', 'traits9_slots', 'traits9_before_runtime', 'traits9_emit', 'modpack_collab', 'modpack_scenery',
                            'activate_speed_buttons', 'activate_lord_change', 'activate_tactic_priority', 'activate_name_lookup', 'activate_occupy_fast',
-                           'activate_caravan_stay', 'activate_drag_learn', 'advisor_briefing'):
+                           'activate_caravan_stay', 'activate_drag_learn', 'advisor_briefing',
+                           'traits9_edit_list', 'traits9_screens_sites', 'traits9_screens_geometry'):   # local236 개성 9칸 범위 B
                 if needed not in res.get('guard_single', {}):
                     fail('(c) single guard %s is not covered by the fixture' % needed)
         print('(c) %-11s guards_ok=%s disabled(%d): %s' % (res['module'], res['guards_ok'], len(res['disabled']), ','.join(res['disabled'])))

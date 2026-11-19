@@ -167,12 +167,79 @@ int main(int argc,char **argv) {
                 if(!r.rva || memcmp(r.before,image+r.rva,r.size) || memcmp(r.before,traits9_core[n].before,r.size))return false;
             }
             unsigned literal_differs=0;
-            for(size_t n=0;n<3;++n)for(size_t i=0;i<trait9_manifests[n].site_count;++i) {
-                const auto &p=traits9_states[n].patches[i];const auto &s=trait9_manifests[n].sites[i];
+            for(unsigned i=0;i<T9_SITE_COUNT;++i) {
+                const auto &p=traits9_patches[i];const auto &s=traits9_sites[i];
                 if(p.rva!=s.rva || p.size!=s.size || memcmp(p.before,image+p.rva,p.size))return false;
                 if(memcmp(p.before,s.before,s.size))++literal_differs;
             }
             return literal_differs==0;
+        }()),
+        // local235 (2026-11-18): the source rewrite of the three borrowed caves builds its relays and the officer-list tables
+        // from this EXE: loop heads from the original jl rel8, the ability-tab tables from the original RIP operands, the list
+        // tables pass their shape checks, and the relays jump back to the end of each site.
+        track("traits9_emit",[]{
+            if(!prepare_traits9() || !traits9_list_ready)return false;
+            auto target=[](unsigned stub,unsigned at) {int r;memcpy(&r,traits9_mem+stub+at,4);return traits9_mem+stub+at+4+r;};
+            const unsigned basic=traits9_stub[T9_BASIC_INIT_COUNT],abil=traits9_stub[T9_ABIL_INIT_COUNT];
+            if(target(basic,16)!=image+traits9_sites[T9_BASIC_INIT_COUNT].rva-0x55)return false;   // 8E1630 = 8E1685+6-0x5B
+            if(target(abil,15)!=image+traits9_sites[T9_ABIL_INIT_COUNT].rva-0x70)return false;    // 8E25F0 = 8E2660+6-0x76
+            static const int local[5]={19,20,21,22,23},parts[5]={50,51,52,53,54};
+            if(memcmp(traits9_rip(traits9_sites[T9_ABIL_INIT_TABLE].rva,6,10),local,sizeof local) ||
+               memcmp(traits9_map_table+19,parts,sizeof parts))return false;
+            const unsigned char *data=traits9_mem+kT9Code;int *tab;memcpy(&tab,data+kT9PagesOff+kT9TraitPage*kT9PageRec,8);
+            if(tab!=reinterpret_cast<const int *>(data+kT9TabOff) || tab[6]!=0xD5 || tab[10]!=-1)return false;
+            unsigned header;memcpy(&header,data+kT9ColsOff+216*kT9ColRec+0x48,4);
+            const unsigned list=traits9_stub[T9_LIST_INIT];
+            return header==0x3EA && target(list,54)==image+traits9_sites[T9_LIST_INIT].rva+15;
+        }()),
+        // local236 편집 장수 일람(4CCBE3): 위 줄의 prepare_traits9() 결과를 그대로 본다(중괄호 목록은 왼쪽부터 평가).
+        // 1형 표·탭 표 두 개가 모양 검사를 통과하고, 새 열 0x32 머리말 = 0x3EA, 두 탭 표의 개성 탭 = 확장 목록, 중계는 자리+15로 돌아감.
+        track("traits9_edit_list",[]{
+            if(!traits9_mem || !traits9_edit_list_ready)return false;
+            auto target=[](unsigned stub,unsigned at) {int r;memcpy(&r,traits9_mem+stub+at,4);return traits9_mem+stub+at+4+r;};
+            const unsigned char *data=traits9_mem+kT9Code;
+            unsigned header;memcpy(&header,data+kT9EColsOff+(kT9ECols+3)*kT9ColRec+0x48,4);
+            uint64_t number;memcpy(&number,data+kT9EColsOff+(kT9ECols+3)*kT9ColRec,8);
+            for(unsigned off:{kT9EPagesAOff,kT9EPagesBOff}) {
+                int *tab;memcpy(&tab,data+off+kT9ETraitPage*kT9PageRec,8);
+                if(tab!=reinterpret_cast<const int *>(data+kT9ETabOff) || tab[6]!=0x2F || tab[9]!=0x32 || tab[10]!=-1)return false;
+            }
+            return header==0x3EA && number==0x32 && target(traits9_stub[T9_EDIT_LIST_INIT],75)==image+traits9_sites[T9_EDIT_LIST_INIT].rva+15;
+        }()),
+        // local236 traits9_screens(개성 9칸 범위 B): 자리 66개가 모두 풀리고 등록표 행과 하나씩 맞으며, 호출·점프 행은 이 EXE에서 원래
+        // 대상으로 가고, 유닛 편성 탭 두 곳은 call [r10+138h] 그대로.
+        track("traits9_screens_sites",[]{
+            traits9_screens::Site s[traits9_screens::kMaxRows];
+            const unsigned n=traits9_screens::build_sites(s);
+            if(n!=traits9_screens::kRows || traits9_screens::registry_count()!=traits9_screens::kRows)return false;
+            for(unsigned i=0;i<n;++i) {
+                const LayoutRow *r=s[i].rva?traits9_screens::registry_row(s[i].rva):nullptr;
+                if(!r || !r->original)return false;
+                if(r->kind!=LR_VT) {
+                    const unsigned char op=r->kind==LR_CALL?0xE8:0xE9;int rel;memcpy(&rel,image+r->rva+1,4);
+                    if(image[r->rva]!=op || r->rva+5+rel!=r->original)return false;
+                }
+            }
+            for(unsigned site:{GA(GA_7D4B72),GA(GA_7D5815)})
+                if(!site || memcmp(image+site,traits9_screens::kUnitCall,7))return false;
+            return true;
+        }()),
+        // local236 traits9_screens 배치 계산(traits9_screens.h, 게임 함수 없음): 세로 5칸 → 2열, 편집기 2×3 → 3×3, 유닛 탭 2열×5행.
+        track("traits9_screens_geometry",[]{
+            const int slots5[5]={0,1,2,3,4},late[3]={0,2,6};
+            if(t9s::wants_grid(5,slots5) || !t9s::wants_grid(6,slots5) || !t9s::wants_grid(3,late) || t9s::wants_grid(0,slots5))return false;
+            t9s::Rect in[5],out[9];
+            for(int i=0;i<5;++i)in[i]={100,10+i*30,120,24};
+            if(!t9s::measure_grid(in,out) || out[1].x!=161 || out[1].w!=59 || out[8].x!=100 || out[8].y!=130)return false;
+            for(int i=0;i<5;++i)in[i]={(i&1)?120:10,20+(i>>1)*30,100,24};
+            if(!t9s::editor_grid(in,out) || out[1].x!=81 || out[1].w!=66 || out[8].x!=152 || out[8].y!=80)return false;
+            int x=50,y=40,w=120;
+            if(!t9s::unit_tab(0,nullptr,nullptr,x,y,w,24) || x!=50 || y!=40 || w!=59)return false;
+            const t9s::Rect first={50,40,59,24};
+            x=50;y=130;w=120;
+            if(!t9s::unit_tab(3,&first,nullptr,x,y,w,24) || x!=111 || y!=70 || w!=59)return false;
+            x=50;y=40;w=40;
+            return !t9s::unit_tab(0,nullptr,nullptr,x,y,w,24) && w==40;   // 폭 62 미만: 원래 인자 그대로
         }()),
         // local10: 1a4a447d has the short JE+NOP3 whose JE target MOV ESI,100 is the relay site
         track("modpack_clamp_form",modpack_clamp_short()==GA(GA_231AFB)+0x47)

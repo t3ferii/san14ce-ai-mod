@@ -1,0 +1,9 @@
+{
+  "base": "baseline-local199.json",
+  "new": "refactor-patchcore.json",
+  "allow": ["route:tactic-priority/s0", "route:checks-selftest/t1"],
+  "reason": {
+    "route:tactic-priority/s0": "tools/check_log_side_effects.py counts the source files it scans: 198 -> 202 are the four files the refactor added (src/native_core.inl, src/tu_convenience_terrain.cpp, src/tu_terrain_api.h in 03633e2; src/native_patch_core.inl in 84d316b). Hits stay 0.",
+    "route:checks-selftest/t1": "tests/verify_select_checks.py grew by the 12 route-input rule checks of 98fa9d2/49a6a3a (check cache keys follow only what a route runs): 37 -> 49 passed, 0 failed."
+  }
+}

@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "name-lookup",
  "title": "name-lookup",
  "host": "convenience",
@@ -20,6 +20,8 @@
   "src/name_lookup.h",
   "src/native_name_lookup.inl",
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_split_install.inl",
   "tests/name_lookup_fixture.cpp",
   "tools/build_name_lookup_fixture.ps1",
@@ -53,7 +55,18 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_E0BF80",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "name_lookup",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_name_lookup.inl"
+  }
+ ],
  "registry": {
   "rows": [
    {

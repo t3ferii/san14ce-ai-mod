@@ -282,6 +282,7 @@ static int rint(int lo, int hi) { return lo + (int)(rnd() % (u32)(hi - lo + 1));
 static u8 *dat; static u8 *vterr, *prov, *floodz, *slidez, *firez, *frz[36], *snw[36];
 static u16 *fcells; static int nf;            /* cells that can ever freeze */
 static u8 *v2base; static u32 v2len;
+static void se_load(void);
 static int load_tables(void)
 {
     HANDLE h = CreateFileW(datpath, 0x80000000, 1, 0, 3, 0x80, 0);
@@ -299,6 +300,7 @@ static int load_tables(void)
     for (int t = 0; t < 36; t++) { frz[t] = p; p += NCELL / 8; }
     for (int t = 0; t < 36; t++) { snw[t] = p; p += NCELL; }
     v2base = (dat[7] == '2' && got >= need2) ? p : 0; v2len = got - need;
+    se_load();   /* AI_TacticsMod local209: the editor's flood / ice cells */
     fcells = (u16 *)VirtualAlloc(0, NCELL * 2, 0x3000, 4); nf = 0;
     for (int c = 0; c < NCELL; c++) { int any = 0; for (int t = 0; t < 36; t++) if (frz[t][c >> 3] & (1 << (c & 7))) { any = 1; break; }
         if (any && vterr[c] == T_GREATRIVER) fcells[nf++] = (u16)c; }
@@ -321,6 +323,49 @@ static void hex_check(u8 *d)
 }
 static u8 *cellp(u8 *d, int c) { if (d != hex_db) hex_check(d); if (hex0) return hex0 + 32 * (u64)c;
     u8 *h = *(u8 **)(d + DB_HEX + 8 * (u64)c); return readable(h, 0x20) ? h : 0; }
+/* ---- AI_TacticsMod local209 (user 2026-11-17 "타일 바꾸기 너무 불편하더라 ... 에디터형식으로 좀 더 쉽게"): SeasonEdits.txt next to
+   SeasonRules.dat, written by the flood / ice editor page (a text file, so the page can save it): first token "S14SEAE1", then
+   per cell three tokens "cell flood ice" (spaces, commas or new lines between; '#' starts a comment line). flood: 0 never floods,
+   1..3 the stage that reaches it, '-' = as the data. ice: 0 never freezes, 1..36 = frozen in the n turns most river cells freeze
+   in the data, '-' = as the data. Ice is only for 대하 cells. The flood cell joins the river stretch it is on, else the one of its
+   nearest stretch cell (se_flood, season_engine_v26.inc). ---- */
+static u16 se_cell[NCELL]; static u8 se_fl[NCELL], se_ic[NCELL], se_ice_set[NCELL]; static int se_n;
+static int se_tok(const u8 *b, DWORD got, DWORD *at)   /* next token: -1 end, 255 for '-', else the number (-2 bad) */
+{
+    DWORD i = *at;
+    for (;;) { while (i < got && (b[i] == ' ' || b[i] == '\t' || b[i] == '\r' || b[i] == '\n' || b[i] == ',' || b[i] == ';')) i++;
+        if (i < got && b[i] == '#') { while (i < got && b[i] != '\n') i++; continue; } break; }
+    if (i >= got) { *at = i; return -1; }
+    int v = -2;
+    if (b[i] == '-') { v = 255; i++; }
+    else if (b[i] >= '0' && b[i] <= '9') { v = 0; while (i < got && b[i] >= '0' && b[i] <= '9') { if (v < 100000) v = v * 10 + (b[i] - '0'); i++; } }
+    while (i < got && !(b[i] == ' ' || b[i] == '\t' || b[i] == '\r' || b[i] == '\n' || b[i] == ',' || b[i] == ';')) { v = -2; i++; }
+    *at = i; return v;
+}
+static void se_load(void)
+{
+    u16 fp[600]; fp[0] = 0; wcat(fp, datpath); int n = wlen(fp); while (n && fp[n - 1] != '\\') n--; fp[n] = 0; wcat(fp, L"SeasonEdits.txt");
+    HANDLE h = CreateFileW(fp, 0x80000000, 1, 0, 3, 0x80, 0); if (h == (HANDLE)(i64)-1) return;
+    static u8 b[1 << 21]; DWORD r = 0, got = 0; while (got < sizeof(b) && ReadFile(h, b + got, sizeof(b) - got, &r, 0) && r) got += r; CloseHandle(h);
+    DWORD at = (got >= 3 && b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF) ? 3 : 0;
+    while (at < got && (b[at] == ' ' || b[at] == '\r' || b[at] == '\n' || b[at] == '\t')) at++;
+    if (got < at + 8 || b[at] != 'S' || b[at + 1] != '1' || b[at + 2] != '4' || b[at + 3] != 'S' || b[at + 4] != 'E' || b[at + 5] != 'A' || b[at + 6] != 'E' || b[at + 7] != '1') { logs("season edits: not an editor file - ignored"); return; }
+    at += 8;
+    /* the turns by how many river cells the data freezes in them (most first): an edit of n turns takes the first n */
+    int cnt36[36], order[36]; for (int t = 0; t < 36; t++) { cnt36[t] = 0; order[t] = t; }
+    for (int t = 0; t < 36; t++) for (int c = 0; c < NCELL; c++) if (vterr[c] == T_GREATRIVER && frozen_wanted(t, c)) cnt36[t]++;
+    for (int i = 0; i < 36; i++) for (int j = i + 1; j < 36; j++) if (cnt36[order[j]] > cnt36[order[i]]) { int x = order[i]; order[i] = order[j]; order[j] = x; }
+    int nfl = 0, nic = 0, bad = 0;
+    for (;;) { int c = se_tok(b, got, &at); if (c == -1) break; int fl = se_tok(b, got, &at), ic = se_tok(b, got, &at);
+        if (c < 0 || c >= NCELL || fl < 0 || ic < 0 || (fl > 3 && fl != 255) || (ic > 36 && ic != 255)) { bad++; if (fl == -1 || ic == -1) break; continue; }
+        if (se_n >= NCELL) break;
+        se_cell[se_n] = (u16)c; se_fl[se_n] = (u8)fl; se_ic[se_n] = (u8)ic; se_n++; if (fl != 255) nfl++;
+        if (ic != 255 && vterr[c] == T_GREATRIVER) { se_ice_set[c] = 1; nic++;
+            for (int t = 0; t < 36; t++) frz[t][c >> 3] &= (u8)~(1 << (c & 7));
+            for (int k = 0; k < ic; k++) frz[order[k]][c >> 3] |= (u8)(1 << (c & 7)); } }
+    char m[128], *p = m; p = pstr(p, "season edits: flood cells "); p = pint(p, nfl); p = pstr(p, ", ice cells "); p = pint(p, nic);
+    if (bad) { p = pstr(p, ", bad entries "); p = pint(p, bad); } *p = 0; logs(m);
+}
 /* ---- v26k42: cells the player retyped in the terrain editor (TileEdits.dat next to SeasonRules.dat: "S14TILE1", count, then
    cell u16 / from u8 / to u8). The game's cell only changes while it still holds the old type, so a landslide or a frozen river
    on it, or another mod that changed the same cell, is never overwritten. The rules use the new type too (vterr). ---- */

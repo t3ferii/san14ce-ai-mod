@@ -13,7 +13,15 @@ python -X utf8 AI_TacticsMod/tools/ghidra_full.py uiclass CSetUpScenarioSenior
 python -X utf8 AI_TacticsMod/tools/decomp_cache.py get 862030
 ```
 
-`research/ghidra_full/1a4a447d14e68c40/`의 TSV·샤드와 신선한 `index.sqlite`를 읽는다. 색인이 없어도 TSV로 같은 조회를 한다. 분석·DB 재열기가 필요한 작업이 아니다.
+`research/ghidra_full/1a4a447d14e68c40/`의 TSV·샤드와 신선한 `index.sqlite`를 읽는다. 색인이 없어도 TSV로 같은 조회를 한다. 분석·DB 재열기가 필요한 작업이 아니다. 명령: `func|grep|callers|callees|xref|str|vtable|imports <인자>`, 주소는 `85FCE0`이나 `0x14085FCE0`. `decomp_cache.py get`도 캐시에 없으면 이 추출본을 보여 준다.
+
+### 색인 (`tools/ghidra_index.py`, 2026-11-06)
+
+- 각 추출 폴더(`research/ghidra_full/*`, `research/ghidra_refs/*`)에 `index.sqlite`를 만든다. 원작 두 빌드 각 약 105MB, 참고 모드 합계 약 123MB. 디컴파일 본문은 복사하지 않고 샤드 위치만 저장한다.
+- 원본 TSV·manifest·샤드의 크기·mtime이 바뀐 폴더만 다시 만든다(`--check` 신선도 확인, `--force`, `--only <이름>`). 임시 파일에 만든 뒤 한 번에 교체한다. 추출본을 다시 만들면 한 번 돌린다.
+- `ghidra_full.py`·`decomp_cache.py get`은 신선한 색인이 있으면 자동으로 쓰고, 없거나 낡았으면 같은 결과를 TSV로 낸다(`GHIDRA_NO_INDEX=1`이면 강제). 조회 시간은 프로세스 시작(약 0.5초)이 대부분이다(`grep` 약 105초→3초, `gamerefs` 약 25초→1초, callers/callees 약 2.8초→0.6초).
+- 원작 빌드 색인에는 RTTI(분석용 unpacked EXE를 읽기 전용으로 읽음) 기반 UI 지도가 있다: `[--build <옛 빌드>] uiclass <클래스 정규식>`(vtable·슬롯 수·UI 표시·반대 빌드 vtable), `uislot <vtable|함수 rva>`(슬롯별 함수 또는 역조회), `uimap <클래스 정규식>`(옛 빌드↔현재 빌드 vtable 대응, RTTI 이름 기준). UI 표시는 휴리스틱(클래스 이름, UI 클래스 상속, `UI_ADD_GUIDE.md`·`NATIVE_FUNCTIONS.md`의 UI 문맥 RVA)이므로 후보 찾기용이다.
+- `gamerefs`의 c-literal 검색은 정규식 끝의 제어문자(0x08) 때문에 맞지 않던 것을 `\b`로 고쳤다.
 
 ## 저장 DB의 주소 제한 내보내기
 

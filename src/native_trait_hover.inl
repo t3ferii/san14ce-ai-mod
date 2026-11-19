@@ -448,14 +448,18 @@ static uint64_t __fastcall th_body_tick(Obj self,uint64_t a,uint64_t b,uint64_t 
 }
 static unsigned hide_original(unsigned k) {return k==0?GA(GA_5B6E10):k==1?GA(GA_916890):GA(GA_86BBD0);}
 static unsigned close_original(unsigned k) {return k==0?GA(GA_546A70):k==1?GA(GA_926FE0):GA(GA_87A690);}
+// local236 개성 9칸 범위 B: 일기토 두 화면의 숨김·해제 칸은 trait_hover가 가지므로(한 칸에 주인 하나) 그 화면의 9칸 표식
+// 끄기·지우기(traits9_screens)를 공용 허브 services::duel_grid로 불러 준다. 9칸 기능이 설치되지 않았으면 null.
 template<unsigned K> static uint64_t __fastcall th_hide(Obj self,uint64_t a,uint64_t b,uint64_t c) { COST_SCOPE("trait_hover_hide");
     ThSlot next=pick_next(self,thp::SK_HIDE,hide_original(K));
     release(self,false,0);
+    if(K==2 && services::duel_grid.hide)services::duel_grid.hide(self);
     return next(self,a,b,c);
 }
 template<unsigned K> static uint64_t __fastcall th_close(Obj self,uint64_t a,uint64_t b,uint64_t c) { COST_SCOPE("trait_hover_close");
     ThSlot next=pick_next(self,thp::SK_CLOSE,close_original(K));
     release(self,true,a);
+    if(K==2 && services::duel_grid.close)services::duel_grid.close(self,a);
     return next(self,a,b,c);
 }
 // duel label capture (FUN_2AA0): after the original label text call, remember the label widget and the trait id of `text`.
@@ -484,6 +488,23 @@ static void capture(Obj root,unsigned id,const wchar_t *text,unsigned site) {
     if(runtime_off || path_off[thp::PATH_DUEL] || !root)return;
     __try {capture_impl(root,id,text,site);}
     __except(EXCEPTION_EXECUTE_HANDLER) {path_off[thp::PATH_DUEL]=true;note_fault(0x1A,GetExceptionCode());}
+}
+// local236 개성 9칸 범위 B(services::duel_grid.note로 불림): 일기토 화면에 9칸 표식을 그렸으면 툴팁 대상을 그 표식으로 바꾼다
+// (패널 0 = 칸 0~8, 패널 1 = 9~17).
+// 원작 라벨 캡처(위)는 원래 함수 안에서 먼저 일어나고, 이 호출은 원래 함수가 끝난 뒤라 덮어쓴다. 번호는 개성 번호(이름 찾기 불필요).
+static void note_duel_grid_impl(Obj owner,unsigned panel,Obj const *labels,const int *ids) {
+    thp::Record *rec=records.acquire(reinterpret_cast<uintptr_t>(owner));
+    if(!rec) {if(records.take_full_log())log_event("trait_hover_records_full",thp::kRecordCap,0,0);return;}
+    for(unsigned i=0;i<9;++i) {
+        rec->labels[panel*9+i]=reinterpret_cast<uintptr_t>(labels[i]);
+        rec->ids[panel*9+i]=thp::trait_id_ok(ids[i])?ids[i]:0;
+    }
+    rec->last_key=0;
+}
+static void note_duel_grid(Obj owner,unsigned panel,Obj const *labels,const int *ids) {
+    if(runtime_off || path_off[thp::PATH_DUEL] || !owner || panel>1 || !labels || !ids)return;
+    __try {note_duel_grid_impl(owner,panel,labels,ids);}
+    __except(EXCEPTION_EXECUTE_HANDLER) {path_off[thp::PATH_DUEL]=true;note_fault(0x1B,GetExceptionCode());}
 }
 template<unsigned I> static uint64_t __fastcall th_duel_text(Obj root,unsigned id,const wchar_t *text,uint64_t flags) { COST_SCOPE("trait_hover_duel_text");
     const uint64_t result=next_or<DuelFn>(next_duel[I],GA(GA_9332B0))(root,id,text,flags);
@@ -617,6 +638,7 @@ static bool install() {
         ++k;
     }
     tx.done=true;installed=true;
+    services::duel_grid.note=&note_duel_grid;   // local236: 일기토 9칸 표식(traits9_screens)의 툴팁 연결
     log_event("trait_hover_installed",vt,call,trait_hover_yield?1u:0u);
     return true;
 }

@@ -202,8 +202,8 @@ static bool attach_sidebar(Dialog &r) {
 static void process_control(Obj object,unsigned offset) {
     if(object){auto process=*reinterpret_cast<void(__fastcall **)(Obj)>(pointer(object,0)+offset);process(object);}
 }
-static void *next_frame,*next_controls,*next_destroy;   // Layout manager chain (null: original)
-static void __fastcall frame(Obj object) { COST_SCOPE("unified_dialogs::frame"); COST_CRUMB("unified_dialogs_object",object);
+void *next_frame,*next_controls,*next_destroy;   // Layout manager chain (null: original)
+void __fastcall frame(Obj object) { COST_SCOPE("unified_dialogs::frame"); COST_CRUMB("unified_dialogs_object",object);
     if(ui_call_trace::sample(ui_call_trace::DialogFrame,4))ui_call_trace::call(ui_call_trace::DialogFrame,GA(GA_2FD830),next_or<void(__fastcall *)(Obj)>(next_frame,GA(GA_2FD830)),object);
     else next_or<void(__fastcall *)(Obj)>(next_frame,GA(GA_2FD830))(object);
     Dialog *owner=nullptr;
@@ -216,7 +216,7 @@ static void __fastcall frame(Obj object) { COST_SCOPE("unified_dialogs::frame");
     // May open pickers (retained grows): call after the scan, never inside it.
     if(owner->on_frame && owns(*owner))owner->on_frame(*owner,active==owner);
 }
-static void __fastcall controls(Obj object) { COST_SCOPE("unified_dialogs::controls"); COST_CRUMB("unified_dialogs_object",object);
+void __fastcall controls(Obj object) { COST_SCOPE("unified_dialogs::controls"); COST_CRUMB("unified_dialogs_object",object);
     using Controls=void(__fastcall *)(Obj);
     auto next=next_or<Controls>(next_controls,GA(GA_259B10));
     if(ui_call_trace::sample(ui_call_trace::DialogControls,4))ui_call_trace::call(ui_call_trace::DialogControls,GA(GA_259B10),next,object);
@@ -226,7 +226,7 @@ static void __fastcall controls(Obj object) { COST_SCOPE("unified_dialogs::contr
             process_control(r->sidebar->object,0x38);process_control(r->sidebar->scrollbar,0x38);break;
         }
 }
-static Obj __fastcall destroy(Obj object,unsigned flags) { COST_SCOPE("unified_dialogs::destroy"); COST_CRUMB("unified_dialogs_object",object);
+Obj __fastcall destroy(Obj object,unsigned flags) { COST_SCOPE("unified_dialogs::destroy"); COST_CRUMB("unified_dialogs_object",object);
     for(auto &request:retained)if(auto r=dynamic_cast<Dialog *>(request.get()))
         if(r->object==object){dispose_sidebar(*r);break;}
     return next_or<Obj(__fastcall *)(Obj,unsigned)>(next_destroy,GA(GA_2583C0))(object,flags);

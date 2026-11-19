@@ -200,6 +200,72 @@ def rva_table():
     return out
 
 
+# ---- foreign-mod matrix (interop S3, docs/MOD_INTEROP_SPEC.md section 4) ----
+FOREIGN = os.path.join(ROOT, 'development', 'foreign_hooks.json')
+MATRIX = os.path.join(ROOT, 'development', 'compat_matrix.json')
+OUTCOMES = {   # worst first; label = installer text
+    'unknown': '근거 부족',
+    'their_off': '상대 기능 꺼짐 가능',
+    'order': '설치 순서에 따라 한쪽 꺼짐 가능',
+    'off': '우리 기능 꺼짐',
+    'yield': '우리 기능 양보',
+    'chain': '함께 동작',
+}
+RANK = {k: i for i, k in enumerate(OUTCOMES)}
+
+
+def site_outcome(policy, relation):
+    act = (relation or {}).get('action')
+    if act is None:
+        return 'unknown'
+    if act in ('yield', 'conditional-yield'):
+        return 'yield'
+    if act == 'refuse':
+        return 'off'
+    if act in ('blocked-entry', 'moved'):
+        return 'their_off' if act == 'blocked-entry' else 'chain'
+    if act == 'chain':
+        return 'chain' if policy == 'chain' else 'order'
+    return 'unknown'
+
+
+def foreign_matrix(manifests, foreign):
+    rels = foreign.get('relations', [])
+    fsites = {s['id']: s for s in foreign.get('sites', [])}
+    out = {}
+    for mod, info in sorted(foreign.get('mods', {}).items()):
+        unresolved = sorted(s['id'] for s in foreign.get('sites', []) if mod in (s.get('mods') or [s.get('mod')]) and s.get('unresolved'))
+        feats = {}
+        for mid, m in sorted(manifests.items()):
+            rows = []
+            for h in m.get('hooks', []):
+                if mod not in h.get('foreign', []):
+                    continue
+                cand = [r for r in rels if r.get('owner') == h.get('owner') and r.get('mod') == mod]
+                cand.sort(key=lambda r: 0 if r.get('sites') else 1)
+                rel = cand[0] if cand else None
+                o = site_outcome(h.get('policy'), rel)
+                rows.append({'key': h['key'], 'owner': h.get('owner', ''), 'policy': h.get('policy'),
+                             'relation': (rel or {}).get('action', ''), 'outcome': o})
+            if rows:
+                worst = min((r['outcome'] for r in rows), key=lambda o: RANK[o])
+                feats[mid] = {'outcome': worst, 'label': OUTCOMES[worst], 'sites': rows}
+        out[mod] = {'label': info.get('label', mod), 'complete': bool(info.get('complete')), 'detect': info.get('detect', []),
+                    'unresolved_sites': unresolved, 'features': feats}
+    return {'schema': 1, 'generated_by': 'tools/mod_compat.py (via tools/gen_module_manifests.py)',
+            'doc': 'Per foreign mod: how each of our modules behaves when that mod is installed. outcome worst-first: ' +
+                   ', '.join('%s=%s' % kv for kv in OUTCOMES.items()) + '. unresolved_sites = that mod\'s sites without a current-build address '
+                   '(not compared; complete=false means the transcription lists only part of the mod).',
+            'mods': out}
+
+
+def load_foreign():
+    try:
+        return read(FOREIGN)
+    except (OSError, ValueError):
+        return {'mods': {}, 'sites': [], 'relations': []}
+
+
 def selftest():
     ok, total = True, 0
 
@@ -237,6 +303,19 @@ def selftest():
     check(any('dependency cycle' in x for x in r3['errors']), 'dependency cycle is reported')
     r4 = analyse(dict(base, id='x', hooks=[{'key': 'GA_100', 'len': 5}]), {'a': a}, sites, {'GA_100': 0x1000})
     check(any('same original address' in x for x in r4['errors']), 'external manifest hook is compared by rva')
+    fh = {'mods': {'f': {'label': 'F', 'complete': False, 'detect': [{'file': 'F.dll'}]}},
+          'sites': [{'id': 'f1', 'mod': 'f', 'rva': {'oldbuild': '10'}, 'unresolved': 'x'}],
+          'relations': [{'owner': 'oc', 'mod': 'f', 'action': 'chain'}, {'owner': 'oy', 'mod': 'f', 'action': 'yield'}]}
+    mm = {'m1': dict(base, id='m1', hooks=[{'key': 'K1', 'owner': 'oc', 'policy': 'chain', 'foreign': ['f']}]),
+          'm2': dict(base, id='m2', hooks=[{'key': 'K2', 'owner': 'oc', 'policy': 'refuse_if_changed', 'foreign': ['f']}]),
+          'm3': dict(base, id='m3', hooks=[{'key': 'K3', 'owner': 'oy', 'policy': 'chain', 'foreign': ['f']},
+                                           {'key': 'K4', 'owner': 'none', 'policy': 'chain', 'foreign': ['f']}]),
+          'm4': dict(base, id='m4', hooks=[{'key': 'K5', 'owner': 'oc', 'policy': 'chain'}])}
+    fm = foreign_matrix(mm, fh)['mods']['f']
+    check(fm['features']['m1']['outcome'] == 'chain', 'chain relation + chain hook = chain')
+    check(fm['features']['m2']['outcome'] == 'order', 'chain relation + original-required hook = order')
+    check(fm['features']['m3']['outcome'] == 'unknown', 'overlap without relation = unknown (worst wins over yield)')
+    check('m4' not in fm['features'] and fm['unresolved_sites'] == ['f1'], 'non-overlapping module omitted; unresolved site listed')
     print('%s: %d checks' % ('mod_compat self test passed' if ok else 'mod_compat self test FAILED', total))
     return 0 if ok else 1
 
@@ -248,10 +327,27 @@ def main(argv=None):
     ap.add_argument('--json', action='store_true')
     ap.add_argument('--selftest', action='store_true')
     ap.add_argument('--sites', default=HOOK_MAP)
+    ap.add_argument('--foreign', metavar='MOD|all', help='how our modules behave with a foreign mod (development/compat_matrix.json view)')
     a = ap.parse_args(argv)
     if a.selftest:
         return selftest()
     manifests = load_manifests()
+    if a.foreign:
+        mat = foreign_matrix(manifests, load_foreign())['mods']
+        pick = mat if a.foreign == 'all' else {a.foreign: mat.get(a.foreign)}
+        if None in pick.values():
+            print('unknown foreign mod: %s (known: %s)' % (a.foreign, ', '.join(mat)))
+            return 2
+        if a.json:
+            print(json.dumps(pick, ensure_ascii=False, indent=1))
+            return 0
+        for mod, v in pick.items():
+            print('== %s (%s)%s' % (mod, v['label'], '' if v['complete'] else ' [partial transcription]'))
+            for mid, f in v['features'].items():
+                print('  %-18s %s' % (mid, f['label']))
+            if v['unresolved_sites']:
+                print('  근거 부족(현재 빌드 주소 없음): %d sites' % len(v['unresolved_sites']))
+        return 0
     if a.manifest:
         target = read(a.manifest)
     elif a.id:

@@ -1,3 +1,6 @@
+#ifndef COST_SCOPE
+#define COST_SCOPE(name) do {} while(0)
+#endif
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <stdint.h>
@@ -52,7 +55,14 @@ static unsigned boundaries;
 static void mark(unsigned h,unsigned t,unsigned o){marks.push_back({h,t,o});}
 static void before_world_change(){++boundaries;}
 static bool take_ui_work(bool &install){install=install_needed;install_needed=false;bool result=resync;resync=false;return result;}
+// 2026-11-16: the batch/probe calls the flood sync (local132/142/156) makes on the renderer.
+static unsigned batches;
+static void begin_batch(){++batches;}
+static void end_batch(){}
+static unsigned probe_cell(unsigned,int *height){if(height)*height=0;return 0;}
 }
+// 2026-11-16: the flood sync (local132) breaks a building through fn(GA(296AA0)); fixtures never stand a building under flood water.
+template<class T> static T fn(unsigned){return nullptr;}
 static unsigned present_installs;
 static DWORD present_install_thread;
 namespace unified_overlay {static void install(){++present_installs;present_install_thread=GetCurrentThreadId();}}

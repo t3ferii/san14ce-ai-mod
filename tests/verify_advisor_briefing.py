@@ -213,7 +213,7 @@ for token in ('diagnose_uncollected_top','diagnostic_cycle','collected_state','c
 check('static CodeLink message_links[3];' in code and 'static CodeLink event_link;' in code and 'static CodeLink scene_links[3];' in code,'seven notification/EventView/scene entries have dedicated transactional CodeLinks')
 check('message==WM_CAPTURECHANGED && reinterpret_cast<HWND>(lparam)==hwnd' in overlay,'same-window recapture is ignored before cancelling drag state')
 check('if(closing_now && !head.pressed && !scrolling.pressed)' in overlay and 'return hit!=0;' in overlay,'closing animation consumes only bubble/head hits or active presses')
-simple=code.split('static void __fastcall simple_frame(',1)[1].split('static bool record(',1)[0]
+simple=code.split('static void simple_frame_body(',1)[1].split('static bool record(',1)[0]
 # 사용자 2026-10-28 설계 전환: 직접 pop으로 CProgressState 소실, 원작 유지.
 # Replace the old immediate-close assertions; only report_wait retains a direct pop.
 plain=re.sub(r'//[^\n]*|/\*.*?\*/','',code,flags=re.S)
@@ -228,7 +228,7 @@ for address in ('0x83C920','0x1D4AE0','0x1D4DC0','0x1D4C50','0x846510','0x574750
 for token in ('message_entry_counts','message_pass_reasons'):
     check(token not in release_code,'NO_RUNTIME_LOG excludes entry counters '+token)
 check('restore_link(scene_links[--i]);restore_link(event_link);for(unsigned i=3;i;)restore_link(message_links[--i]);' in code and 'published=publish_link(message_links[i])' in code and 'published && publish_link(event_link)' in code and 'published=publish_link(scene_links[i])' in code,'all seven entries participate in transactional install and rollback')
-check(code.index('if(!guards_match())return false;',code.index('static bool install()'))<code.index('publish_link(message_links[i])'),'fingerprint/prologue mismatch publishes neither entry hook')
+check(code.index('if(!guards_match())return false;',code.index('\nbool install() {'))<code.index('publish_link(message_links[i])'),'fingerprint/prologue mismatch publishes neither entry hook')
 for address,prologue in ((0x1F1E90,'488bc455488d68a1'),(0x1F1DA0,'488bc4574881ec80000000'),(0x1F2190,'488bc455488d68a1'),(0x844860,'405556574154'),(0x6C6B10,'40574883ec70'),(0x6C6DD0,'40574883ec70'),(0x41F8C0,'488bc44156')):
     check(read(address,len(bytes.fromhex(prologue)))==bytes.fromhex(prologue),'whole non-RIP-relative entry instructions '+hex(address))
 # PE exception-table bounds independently establish whole function fingerprint sizes.

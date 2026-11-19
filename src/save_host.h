@@ -46,13 +46,13 @@ template<unsigned N=8> struct Plugins {
 };
 // ---------------------------------------------------------------- fault injection (fixture builds only)
 #ifdef SAVE_HOST_FIXTURE
-static unsigned fail_step;   // 1 create temp, 2 write, 3 flush, 4 replace; 0 = none
-static bool fails(unsigned step) {return fail_step==step;}
+inline unsigned fail_step;   // 1 create temp, 2 write, 3 flush, 4 replace; 0 = none
+inline bool fails(unsigned step) {return fail_step==step;}
 #else
-static bool fails(unsigned) {return false;}
+inline bool fails(unsigned) {return false;}
 #endif
 // ---------------------------------------------------------------- hashing and paths
-static bool sha256(const void *bytes,size_t count,Binding &out) {
+inline bool sha256(const void *bytes,size_t count,Binding &out) {
     if(!bytes || count>0xFFFFFFFFu)return false;
     struct Algorithm {
         BCRYPT_ALG_HANDLE handle=nullptr;
@@ -68,13 +68,13 @@ static bool sha256(const void *bytes,size_t count,Binding &out) {
     }
     return result;
 }
-static bool valid_name(const std::string &name) {
+inline bool valid_name(const std::string &name) {
     if(name.empty() || name.size()>64)return false;
     for(unsigned char c:name)if(c<0x20 || strchr("\\/:*?\"<>|",c))return false;
     return name!="." && name!="..";
 }
 // <folder of module>\AI_TacticsMod\data\merit, created on demand (the historical sidecar folder).
-static bool directory(HMODULE module,wchar_t *out,size_t capacity,bool create) {
+inline bool directory(HMODULE module,wchar_t *out,size_t capacity,bool create) {
     wchar_t folder[MAX_PATH];
     DWORD n=GetModuleFileNameW(module,folder,MAX_PATH);
     if(!n || n>=MAX_PATH)return false;
@@ -87,18 +87,18 @@ static bool directory(HMODULE module,wchar_t *out,size_t capacity,bool create) {
     }
     return wcscpy_s(out,capacity,step)==0;
 }
-static void hex(const Binding &binding,wchar_t out[65]) {for(unsigned i=0;i<32;++i)swprintf_s(out+i*2,3,L"%02x",binding[i]);}
+inline void hex(const Binding &binding,wchar_t out[65]) {for(unsigned i=0;i<32;++i)swprintf_s(out+i*2,3,L"%02x",binding[i]);}
 // path(binding, ext): <directory>\<name>.<sha256 hex>.<ext>
-static bool path_in(const wchar_t *dir,const Job &job,const wchar_t *ext,wchar_t *out,size_t capacity) {
+inline bool path_in(const wchar_t *dir,const Job &job,const wchar_t *ext,wchar_t *out,size_t capacity) {
     if(!valid_name(job.name))return false;
     wchar_t digest[65];hex(job.binding,digest);
     std::wstring name(job.name.begin(),job.name.end());
     return swprintf_s(out,capacity,L"%s\\%s.%s.%s",dir,name.c_str(),digest,ext)>=0;
 }
 #ifdef SAVE_HOST_FIXTURE
-static unsigned path_calls;   // fixture builds: every sidecar path computation (proves a switched-off feature does no path IO)
+inline unsigned path_calls;   // fixture builds: every sidecar path computation (proves a switched-off feature does no path IO)
 #endif
-static bool path(HMODULE module,const Job &job,const wchar_t *ext,wchar_t *out,size_t capacity,bool create) {
+inline bool path(HMODULE module,const Job &job,const wchar_t *ext,wchar_t *out,size_t capacity,bool create) {
 #ifdef SAVE_HOST_FIXTURE
     ++path_calls;
 #endif
@@ -106,7 +106,7 @@ static bool path(HMODULE module,const Job &job,const wchar_t *ext,wchar_t *out,s
     return directory(module,dir,MAX_PATH,create) && path_in(dir,job,ext,out,capacity);
 }
 // ---------------------------------------------------------------- atomic write (the one copy of the former four)
-static bool write_atomic(const wchar_t *target,const void *data,size_t size) {
+inline bool write_atomic(const wchar_t *target,const void *data,size_t size) {
     wchar_t temporary[MAX_PATH];
     if(swprintf_s(temporary,L"%s.tmp",target)<0)return false;
     HANDLE file=fails(1)?INVALID_HANDLE_VALUE:CreateFileW(temporary,GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
@@ -119,9 +119,9 @@ static bool write_atomic(const wchar_t *target,const void *data,size_t size) {
     if(!ok)DeleteFileW(temporary);
     return ok;
 }
-static bool exists(const wchar_t *file) {return GetFileAttributesW(file)!=INVALID_FILE_ATTRIBUTES;}
+inline bool exists(const wchar_t *file) {return GetFileAttributesW(file)!=INVALID_FILE_ATTRIBUTES;}
 // Sidecar store for a plugin: unchanged bytes already confirmed on disk are not rewritten (the cache rule of the former four copies).
-static bool store(HMODULE module,const Job &job,const wchar_t *ext,const std::vector<uint8_t> &bytes,SidecarCache &cache,Written &out) {
+inline bool store(HMODULE module,const Job &job,const wchar_t *ext,const std::vector<uint8_t> &bytes,SidecarCache &cache,Written &out) {
     out=Written();
     wchar_t file[MAX_PATH];
     if(!path(module,job,ext,file,MAX_PATH,true))return false;
@@ -134,15 +134,15 @@ static bool store(HMODULE module,const Job &job,const wchar_t *ext,const std::ve
 }
 // ---------------------------------------------------------------- manifest
 // "S14M" | u16 version 1 | archive sha256 | u16 count | count x {ext[12], u16 plugin_version, u8 state, u32 len, sha256} | crc32
-static uint32_t crc32(const uint8_t *p,size_t size) {
+inline uint32_t crc32(const uint8_t *p,size_t size) {
     uint32_t v=~0u;
     for(size_t i=0;i<size;++i) {v^=p[i];for(unsigned bit=0;bit<8;++bit)v=(v>>1)^(0xEDB88320u&(0u-(v&1u)));}
     return ~v;
 }
-static void put(std::vector<uint8_t> &out,uint32_t v,unsigned bytes) {for(unsigned i=0;i<bytes;++i)out.push_back(static_cast<uint8_t>(v>>(i*8)));}
-static uint32_t get(const uint8_t *p,unsigned bytes) {uint32_t v=0;for(unsigned i=0;i<bytes;++i)v|=static_cast<uint32_t>(p[i])<<(i*8);return v;}
+inline void put(std::vector<uint8_t> &out,uint32_t v,unsigned bytes) {for(unsigned i=0;i<bytes;++i)out.push_back(static_cast<uint8_t>(v>>(i*8)));}
+inline uint32_t get(const uint8_t *p,unsigned bytes) {uint32_t v=0;for(unsigned i=0;i<bytes;++i)v|=static_cast<uint32_t>(p[i])<<(i*8);return v;}
 static constexpr size_t kEntrySize=12+2+1+4+32;
-static std::vector<uint8_t> encode_manifest(const Binding &archive,const std::vector<Entry> &entries) {
+inline std::vector<uint8_t> encode_manifest(const Binding &archive,const std::vector<Entry> &entries) {
     std::vector<uint8_t> out={'S','1','4','M'};
     put(out,1,2);out.insert(out.end(),archive.begin(),archive.end());put(out,static_cast<uint32_t>(entries.size()),2);
     for(const Entry &e:entries) {
@@ -151,7 +151,7 @@ static std::vector<uint8_t> encode_manifest(const Binding &archive,const std::ve
     }
     put(out,crc32(out.data(),out.size()),4);return out;
 }
-static bool decode_manifest(const std::vector<uint8_t> &bytes,const Binding &archive,std::vector<Entry> &out) {
+inline bool decode_manifest(const std::vector<uint8_t> &bytes,const Binding &archive,std::vector<Entry> &out) {
     out.clear();
     if(bytes.size()<4+2+32+2+4 || memcmp(bytes.data(),"S14M",4) || get(bytes.data()+4,2)!=1)return false;
     if(get(bytes.data()+bytes.size()-4,4)!=crc32(bytes.data(),bytes.size()-4))return false;
@@ -165,14 +165,14 @@ static bool decode_manifest(const std::vector<uint8_t> &bytes,const Binding &arc
     }
     return true;
 }
-static bool write_manifest(HMODULE module,const Job &job,const std::vector<Entry> &entries) {
+inline bool write_manifest(HMODULE module,const Job &job,const std::vector<Entry> &entries) {
     wchar_t file[MAX_PATH];
     if(!path(module,job,L"sidecars",file,MAX_PATH,true))return false;
     auto bytes=encode_manifest(job.binding,entries);
     return write_atomic(file,bytes.data(),bytes.size());
 }
 // 0 = no manifest (old save, or unreadable: behave as before), 1 = read
-static bool read_manifest(HMODULE module,const Job &job,std::vector<Entry> &out) {
+inline bool read_manifest(HMODULE module,const Job &job,std::vector<Entry> &out) {
     out.clear();
     wchar_t file[MAX_PATH];
     if(!path(module,job,L"sidecars",file,MAX_PATH,false))return false;
@@ -206,28 +206,28 @@ using Log=void (*)(const char *,unsigned,unsigned,unsigned);
 // Review CR-11 (2026-11-15): a throwing snapshot never leaves the game's save callback. Each plugin is isolated; a plugin whose
 // snapshot of this save failed is not written in phase 3 (manifest state FAILED) instead of writing a stale or half-copied snapshot.
 // The native .s14 save runs as before.
-static unsigned snapshot_failed;   // bit per plugin row of the last snapshot_all
-template<unsigned N> static unsigned snapshot_all(const Plugins<N> &plugins) {
+inline unsigned snapshot_failed;   // bit per plugin row of the last snapshot_all
+template<unsigned N> inline unsigned snapshot_all(const Plugins<N> &plugins) {
     unsigned failed=0;
     for(unsigned i=0;i<plugins.count;++i)if(plugins.rows[i]->snapshot) {
         try {plugins.rows[i]->snapshot();} catch(...) {failed|=1u<<i;}
     }
     snapshot_failed=failed;return failed;
 }
-template<unsigned N> static void begin_load_all(const Plugins<N> &plugins) {
+template<unsigned N> inline void begin_load_all(const Plugins<N> &plugins) {
     for(unsigned i=0;i<plugins.count;++i)if(plugins.rows[i]->begin_load)plugins.rows[i]->begin_load();
 }
-static void ext_label(const SidecarPlugin &p,char (&label)[12]) {
+inline void ext_label(const SidecarPlugin &p,char (&label)[12]) {
     memset(label,0,sizeof(label));
     for(unsigned i=0;i<11 && p.ext[i];++i)label[i]=static_cast<char>(p.ext[i]);
 }
-static void fill_entry(Entry &e,const SidecarPlugin &p,const Written &w) {
+inline void fill_entry(Entry &e,const SidecarPlugin &p,const Written &w) {
     memset(&e,0,sizeof(e));
     ext_label(p,e.ext);
     e.version=static_cast<uint16_t>(p.version);e.state=w.state;e.len=w.len;e.hash=w.hash;
 }
 // Save phase 3: every plugin in order (a failing or throwing plugin never stops the next one), the manifest last.
-template<unsigned N> static void save_all(const Plugins<N> &plugins,HMODULE module,const Job &job,Log log) {
+template<unsigned N> inline void save_all(const Plugins<N> &plugins,HMODULE module,const Job &job,Log log) {
     std::vector<Entry> entries;
     for(unsigned i=0;i<plugins.count;++i) {
         const SidecarPlugin &p=*plugins.rows[i];
@@ -266,7 +266,7 @@ inline unsigned count_old_versions(HMODULE module,const Job &job) {
     FindClose(h);return count;
 }
 #ifndef NO_RUNTIME_LOG
-static bool file_digest(const wchar_t *file,Binding &out) {
+inline bool file_digest(const wchar_t *file,Binding &out) {
     HANDLE h=CreateFileW(file,GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
     if(h==INVALID_HANDLE_VALUE)return false;
     LARGE_INTEGER length={};bool ok=false;
@@ -279,7 +279,7 @@ static bool file_digest(const wchar_t *file,Binding &out) {
 #endif
 // Load phase 3: every plugin restores from its own file exactly as before; the manifest is only read to classify the outcome
 // (the classification and its logs exist in diagnostic builds only).
-template<unsigned N> static void restore_all(const Plugins<N> &plugins,HMODULE module,const Job *job,Log log) {
+template<unsigned N> inline void restore_all(const Plugins<N> &plugins,HMODULE module,const Job *job,Log log) {
     std::vector<Entry> manifest;
     const bool have=job && read_manifest(module,*job,manifest);
     for(unsigned i=0;i<plugins.count;++i) {

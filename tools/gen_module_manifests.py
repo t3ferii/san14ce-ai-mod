@@ -22,7 +22,86 @@ REGISTRY = os.path.join(ROOT, 'development', 'module_registry.json')
 INSTALLER = os.path.join(ROOT, 'development', 'installer_map.json')
 OUT_DIR = os.path.join(ROOT, 'development', 'modules')
 CATALOG = os.path.join(ROOT, 'development', 'module_catalog.json')
-SCHEMA = 1
+LAYERS = os.path.join(ROOT, 'development', 'module_layers.json')
+FOREIGN = os.path.join(ROOT, 'development', 'foreign_hooks.json')
+SCHEMA = 2      # 2026-11-16 interop S2: hooks (site, kind, policy, foreign overlaps) and provides/uses
+
+
+# hook policy (docs/MOD_INTEROP_SPEC.md section 2): what our hook does when the site already holds another module's code
+#   chain             takes the current value and calls it (Layout CHAIN_OK, sortie E8 links, window procedures, COM slots)
+#   yield             steps aside when a same-function peer is detected (Layout YIELD_IF_PEER without CHAIN_OK)
+#   refuse            Layout REFUSE_IF_FOREIGN
+#   refuse_if_changed direct patch that needs the original bytes / slot value; otherwise that feature is not installed
+#   exclusive         Layout row without chain, yield or refuse flags
+def hook_policy(site):
+    flags = set(site.get('flags') or [])
+    if site['via'] in ('layout', 'layout_self'):
+        if site['kind'] == 'com' or 'CHAIN_OK' in flags:
+            return 'chain'
+        if 'REFUSE_IF_FOREIGN' in flags:
+            return 'refuse'
+        if 'YIELD_IF_PEER' in flags:
+            return 'yield'
+        return 'exclusive'
+    if site['kind'] == 'wndproc' or 'native_sortie_links' in (site.get('src') or ''):
+        return 'chain'
+    return 'refuse_if_changed'
+
+
+_HOOKS = None
+
+
+def hook_sites():
+    """{module: [hook]} from tools/hook_map.py (address analysis only, no EXE read; deterministic for a source tree)."""
+    global _HOOKS
+    if _HOOKS is not None:
+        return _HOOKS
+    sys.path.insert(0, os.path.join(ROOT, 'tools'))
+    import hook_map as H
+    res = H.analyse(ROOT, nexe=True)
+    try:
+        fmods = {s['id']: s.get('mods') or [s.get('mod')] for s in read(FOREIGN).get('sites', [])}
+    except (OSError, ValueError):
+        fmods = {}
+    over = {}
+    for f in res['findings']:
+        if f.get('rule') not in ('R5', 'R7') or len(f.get('keys') or []) < 2 or not f.get('sites'):
+            continue
+        fid = f['keys'][1]
+        mods = fmods.get(fid)
+        if mods is None:
+            continue
+        for sid in f['sites']:
+            over.setdefault(sid, set()).update(m for m in mods if m)
+    feats = read(FEATURES)['modules']
+    by_file = {}
+    for mid, m in sorted(feats.items(), key=lambda kv: (bool(kv[1].get('hub')), kv[0])):   # a non-hub owner wins over a hub
+        if m.get('alias_of'):
+            continue
+        for rel in m.get('owns', []):
+            by_file.setdefault(rel, mid)
+    out = {}
+    for s in res['mp'].sites:
+        if s.get('dll') == 'unreached':
+            continue
+        if s.get('feature') not in feats or feats[s['feature']].get('alias_of'):
+            s = dict(s, feature=by_file.get((s.get('src') or '').split(':')[0], ''))
+        h = {'key': s['key'], 'kind': s['kind'], 'via': s['via'], 'dll': s['dll'], 'owner': s.get('owner', ''),
+             'len': s.get('len') or 0, 'policy': hook_policy(s), 'src': (s.get('src') or '').split(':')[0]}
+        if s['id'] in over:
+            h['foreign'] = sorted(over[s['id']])
+        out.setdefault(s.get('feature') or '', []).append(h)
+    for v in out.values():
+        v.sort(key=lambda h: (h['key'], h['owner'], h['src']))
+    _HOOKS = out
+    return out
+
+
+def services():
+    try:
+        return read(LAYERS).get('services', {})
+    except (OSError, ValueError):
+        return {}
 
 
 def read(path):
@@ -111,9 +190,10 @@ def module_manifest(mid, features, registry):
         'ini': ini,
         'installer': {'items': installer},
         'ui': ui_owners(m),
-        'provides': [],
-        'uses': [],
-        'hooks': [],
+        'provides': sorted(sid for sid, sv in services().items() if sv.get('module') == mid),
+        'uses': sorted(({'service': sid, 'soft': bool(u.get('soft'))} for sid, sv in services().items()
+                        for u in sv.get('users', []) if u.get('module') == mid), key=lambda u: u['service']),
+        'hooks': hook_sites().get(mid, []),
         'registry': {
             'rows': [r for r in registry.get('rows', []) if r.get('module') == mid],
             'subscriptions': [s for s in registry.get('subscriptions', []) if s.get('owner') == mid],
@@ -133,13 +213,33 @@ def catalog(data):
     modules = {}
     for mid, m in sorted(data.items()):
         modules[mid] = {k: m[k] for k in ('title', 'host', 'status', 'hub', 'depends', 'conflicts',
-                                          'checks', 'ini', 'installer', 'ui')}
-    return {'schema': 1, 'generated_by': 'tools/gen_module_manifests.py', 'modules': modules}
+                                          'checks', 'ini', 'installer', 'ui', 'provides', 'uses')}
+        pol = {}
+        for h in m['hooks']:
+            pol[h['policy']] = pol.get(h['policy'], 0) + 1
+        modules[mid]['hook_policy'] = dict(sorted(pol.items()))
+        modules[mid]['foreign_overlap'] = sorted({f for h in m['hooks'] for f in h.get('foreign', [])})
+    return {'schema': 2, 'generated_by': 'tools/gen_module_manifests.py', 'modules': modules}
 
 
 def save_catalog(data):
     with open(CATALOG, 'w', encoding='utf-8', newline='\n') as f:
         json.dump(catalog(data), f, ensure_ascii=False, indent=1)
+        f.write('\n')
+
+
+def matrix(data):
+    sys.path.insert(0, os.path.join(ROOT, 'tools'))
+    import mod_compat as C
+    return C.foreign_matrix(data, C.load_foreign())
+
+
+MATRIX = os.path.join(ROOT, 'development', 'compat_matrix.json')
+
+
+def save_matrix(data):
+    with open(MATRIX, 'w', encoding='utf-8', newline='\n') as f:
+        json.dump(matrix(data), f, ensure_ascii=False, indent=1)
         f.write('\n')
 
 
@@ -182,6 +282,12 @@ def check(features, registry, existing):
         cur = None
     if cur != catalog(expected):
         errs.append('module catalog is stale or missing: development/module_catalog.json')
+    try:
+        curm = read(MATRIX)
+    except (OSError, ValueError):
+        curm = None
+    if curm != matrix(expected):
+        errs.append('foreign compat matrix is stale or missing: development/compat_matrix.json')
     return errs
 
 
@@ -197,7 +303,8 @@ def main(argv=None):
         for mid, manifest in data.items():
             save(mid, manifest)
         save_catalog(data)
-        print('wrote %d manifests under development/modules/ and development/module_catalog.json' % len(data))
+        save_matrix(data)
+        print('wrote %d manifests under development/modules/, development/module_catalog.json and development/compat_matrix.json' % len(data))
         return 0
     errs = check(features, registry, load_existing())
     for e in errs[:40]:

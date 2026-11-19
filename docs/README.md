@@ -16,3 +16,6 @@
 - [개발: UI 리소스 적용·OFF·해제 기준](UI_RESOURCE_LIFECYCLE.md)
 - [개발: 원작과 다른 모드 규칙·훅 지점·UI 자료 기준](MOD_CHANGES_VS_ORIGINAL.md) — 원작 사실은 San14Sim/docs/orig, 모드 지침은 여기
 - [개발: 시행착오와 재발 방지 규칙](MOD_DEV_LESSONS.md)
+- [개발: 새 기능을 만들 때 지킬 규칙](FEATURE_RULES.md)
+- [개발: 실게임 최소 확인(한 번 실행으로 전과 같은지)](RUNTIME_SMOKE.md)
+- [다른 모더용 호환 지침(AI에게 이 저장소를 맡길 때)](MODDER_COMPAT.md)

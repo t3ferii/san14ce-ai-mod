@@ -25,7 +25,7 @@ static void log_event(const char *,unsigned,unsigned,unsigned) {}
 // The overlay forward-declares the CCZ world-sprite pass (native_ccz_sprites.inl); this fixture exercises the overlay gate only.
 namespace ccz_sprites {static bool needs_present(){return false;} static void on_present(ID3D11Device *,ID3D11DeviceContext *,ID3D11Texture2D *,const D3D11_TEXTURE2D_DESC &){}}
 // W4-3: the draw loop is driven by the overlay service; the fixture joins the same rows production generates (module_overlay_subscriptions.inl).
-static struct {bool ccz_sprites=true,advisor_briefing=true;} mod_features;
+static struct {bool ccz_sprites=true,ccz_bands=false,advisor_briefing=true;} mod_features;   // ccz_bands: the sprite pass also serves bands
 #include "../src/module_overlay_subscriptions.inl"
 static unsigned checks;
 static void check(bool ok,const char *label){++checks;if(!ok){fprintf(stderr,"%s\n",label);ExitProcess(1);}}

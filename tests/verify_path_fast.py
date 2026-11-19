@@ -270,7 +270,9 @@ def implementation():
     combat=split.split('static const SplitPointer split_pointers[]={',1)[1].split('#else',1)[0]
     patches += [(int(a,16),8,'combat pointer '+a) for a in re.findall(r'\{(?:0x|GA\(GA_)([0-9A-F]+)\)?,',combat)]
     patches += [(0x2ACB80,16,'progress distance')]
-    ok(len(patches)==83,'2026-10-30 reviewed graph (2026-11-12 recount, GA-id lists): dispatch block, 73 disjoint sortie callers, 8 combat pointer slots and progress distance block enumerated')
+    # 2026-11-16 recount: local167 added two combat pointer slots published only when their feature is on - front_hire 134B390
+    # (2DAB0 hire) and computer_trade 134CC78 (54CE0 trade). Both are vtable slots; the disjointness checks below cover them.
+    ok(len(patches)==85,'2026-10-30 reviewed graph (2026-11-16 recount, GA-id lists): dispatch block, 73 disjoint sortie callers, 10 combat pointer slots and progress distance block enumerated')
     for address,size,_ in guards:
         a,n=int(address,16),int(size,16)
         ok(all(a+n<=b or b+size<=a for b,size,_ in patches),'fingerprint excludes all existing owner patches '+address)
@@ -357,7 +359,8 @@ def implementation():
     progress=(P/'src/native_progress.inl').read_text(encoding='utf-8')
     ok('memcpy(relay,progress_kernel_bytes' in progress and 'original_progress_distance=' in progress,
        'progress valid-cell distance is equivalent kernel; fallback original gate')
-    adapter=(P/'src/native_adapter.cpp').read_text(encoding='utf-8-sig')
+    from hub_text import hub_text   # 2026-11-16 multi-unit refactor: hub = native_core.inl + native_patch_core.inl + native_adapter.cpp
+    adapter=hub_text(P)
     ok('f.path_fast = fast && feature_key(config, L"performance", L"path_fast", false);' in adapter,
        'performance parent AND, code default0')
     split=(P/'src/native_split_install.inl').read_text(encoding='utf-8')
@@ -369,11 +372,16 @@ def implementation():
        'path_count skips installation only after path_fast successfully owns entry')
     ok('path-fast' in json.loads((P/'development/features.json').read_text(encoding='utf-8-sig'))['modules']['path-fast']['tests'],
        'focused route registered')
+    # 2026-11-16: the catalogs are generated from development/installer_map.json (v15.9+); the fast note text comes from that row
+    # (원작/변경/효과/필요 form). Label, default 1 and the verify row stay exact.
+    fast_row=next(r for r in json.loads((P/'development/installer_map.json').read_text(encoding='utf-8-sig'))['items'] if r['key']=='path_fast')
+    ok(fast_row['group']=='performance' and fast_row['default']==1 and not fast_row['retired'],'catalog source row: performance, default1')
+    fast_notes=fast_row['note'].replace('\\"','"').split('\n')
     for rel in ('installer/InstallerGui.cs','distribution/FeatureSelect.ps1','FeatureSelect.ps1'):
         text=(P/rel).read_text(encoding='utf-8-sig')
         one=[s for s in text.splitlines() if ('"path_fast",' if rel.endswith('.cs') else "Key='path_fast';") in s]
         v=[s for s in text.splitlines() if ('"path_fast_verify",' if rel.endswith('.cs') else "Key='path_fast_verify';") in s]
-        ok(len(one)==1 and '경로 탐색 가속' in one[0] and '경유지가 여럿인 경로' in one[0] and
+        ok(len(one)==1 and '경로 탐색 가속' in one[0] and all(n.replace('"','\\"' if rel.endswith('.cs') else '"') in one[0] for n in fast_notes) and
            ('"path_fast", 1' in one[0] if rel.endswith('.cs') else 'Default=1' in one[0]),rel+' fast catalog default1')
         ok(len(v)==1 and '경로 탐색 가속 결과 비교' in v[0] and '0=끔, 1=매번, N=N번에 한 번' in v[0] and
            ('"기타(개발용)", "diagnostics", "diagnostics"' in v[0] if rel.endswith('.cs') else "Group='diagnostics'" in v[0]),rel+' verify diagnostic group')

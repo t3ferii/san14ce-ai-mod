@@ -8,6 +8,7 @@ Outputs (committed, never hand-edited):
   src/module_overlay_subscriptions.inl  MODULE_SUBSCRIBE_OVERLAY() (the overlay service rows; overlay fixtures use it too)
   src/module_closure.inl            flag table, hard requires and feature_off_closure()
   src/module_unity.inl + module_unity_{combat,convenience,fixture}.inl  the include lists of the DLL roots (registry "unity", W5-1)
+  src/tu_<root>_<unit>.cpp          translation units of the split DLL build (entry "unit", SAN14_MULTI_TU; 2026-11-16 refactor)
   src/module_pointers.inl           SplitPointer owner enum, rows and owner gates (registry "pointers", W5-2; tools/hookmap_extract.py reads the rows here)
   docs/MODULES.md                   module ownership, dependencies and checks (features.json, W7)
 
@@ -97,7 +98,31 @@ def validate(reg, features):
             if q[k] not in flags:
                 errs.append('requires: unknown flag %s' % q[k])
     errs += validate_unity(reg, features)
+    errs += validate_units(reg)
+    errs += validate_unit_sources(reg, features)
     errs += validate_pointers(reg)
+    return errs
+
+
+def validate_unit_sources(reg, features):
+    """tools/build_split.ps1 compiles every src/tu_<root>_*.cpp it finds; a check step that builds a root with SAN14_MULTI_TU
+    (development/features.json route cl steps) must list exactly native_adapter.cpp + the registry's unit sources of that root."""
+    errs = []
+    want = {w: ['src/native_adapter.cpp'] + [unit_tu_path(w, n) for n in unit_names(reg, w)] for w in UNITY_ROOT_DEFINE}
+    known = {os.path.basename(p) for w in want for p in want[w][1:]}
+    for f in sorted(os.listdir(os.path.join(ROOT, 'src'))):
+        if f.startswith('tu_') and f.endswith('.cpp') and f not in known:
+            errs.append('unity: src/%s is not a unit of development/module_registry.json (build_split.ps1 would compile it)' % f)
+    for rname, r in sorted((features.get('routes') or {}).items()):
+        for st in r.get('steps') or []:
+            c = st.get('cl') or {}
+            if '/DSAN14_MULTI_TU' not in (c.get('defs') or []):
+                continue
+            roots = [w for w, d in UNITY_ROOT_DEFINE.items() if '/D' + d in c['defs']]
+            if len(roots) != 1:
+                errs.append('route %s step %s: SAN14_MULTI_TU without exactly one root define' % (rname, st.get('id')))
+            elif list(c.get('src') or []) != want[roots[0]]:
+                errs.append('route %s step %s: sources %s, the %s root needs %s' % (rname, st.get('id'), c.get('src'), roots[0], want[roots[0]]))
     return errs
 
 
@@ -207,27 +232,176 @@ def slot_macro(slot):
     return 'UNITY_SLOT_' + slot.upper()
 
 
+def unit_of(e, which):
+    """Translation unit of an entry in this root's split build (2026-11-16 refactor), or None = the main unit."""
+    return e.get('unit') if which in UNITY_ROOT_DEFINE else None
+
+
+def emit_includes(out, rows, which, api_done=None):
+    i = 0
+    while i < len(rows):
+        j = i
+        while j < len(rows) and rows[j].get('cond', '') == rows[i].get('cond', ''):
+            j += 1
+        # The unit's interface stands where its first module stood, outside that module's condition: the main unit needs the
+        # declarations in every variant, also one that leaves the first module out (SPLIT_MODULE_FIXTURE).
+        for e in rows[i:j]:
+            unit = unit_of(e, which) if api_done is not None else None
+            if unit is not None and unit not in api_done:
+                api_done.add(unit)
+                out.append('#ifdef SAN14_MULTI_TU\n#include "tu_%s_api.h"   // compiled in tu_%s_%s.cpp\n#endif\n' % (unit, which, unit))
+        if rows[i].get('cond'):
+            out.append('#if %s\n' % rows[i]['cond'])
+        for e in rows[i:j]:
+            unit = unit_of(e, which) if api_done is not None else None
+            if unit is None:
+                out.append('#include "%s"\n' % e['file'])
+            else:
+                out.append('#ifndef SAN14_MULTI_TU\n#include "%s"\n#endif\n' % e['file'])
+        if rows[i].get('cond'):
+            out.append('#endif\n')
+        i = j
+
+
 def emit_unity_list(reg, which):
     u = reg['unity']
     out = [HEADER, '// Include list of the %s root: one section per slot of native_adapter.cpp (#define UNITY_SLOT_<NAME> / #include "module_unity.inl").\n' % which]
+    if which in UNITY_ROOT_DEFINE and any(e.get('unit') and which in e['hosts'] for e in u['entries']):
+        out.append('// SAN14_MULTI_TU (tools/build_split.ps1 DLL builds): modules of a unit compile in their own tu_%s_<unit>.cpp and this unit\n'
+                   '// sees their interface header; every other build (fixtures, hook map, dependency scans) keeps them in place.\n' % which)
+    api_done = set()
     for slot in u['slots']:
         rows = [e for e in u['entries'] if e['slot'] == slot and (which == 'fixture' or which in e['hosts'])]
         if not rows:
             continue
         out.append('#ifdef %s\n' % slot_macro(slot))
-        i = 0
-        while i < len(rows):
-            j = i
-            while j < len(rows) and rows[j].get('cond', '') == rows[i].get('cond', ''):
-                j += 1
-            if rows[i].get('cond'):
-                out.append('#if %s\n' % rows[i]['cond'])
-            out.extend('#include "%s"\n' % e['file'] for e in rows[i:j])
-            if rows[i].get('cond'):
-                out.append('#endif\n')
-            i = j
+        emit_includes(out, rows, which, api_done)
         out.append('#endif\n')
     return ''.join(out)
+
+
+def unit_names(reg, which):
+    seen = []
+    for e in reg['unity']['entries']:
+        if which in e['hosts'] and e.get('unit') and e['unit'] not in seen:
+            seen.append(e['unit'])
+    return seen
+
+
+def emit_unit_tu(reg, which, unit):
+    u = reg['unity']
+    doc = u.get('units', {}).get(unit, {}).get('doc', '')
+    out = [HEADER, '// Translation unit "%s" of the %s root (2026-11-16 refactor, docs/REFACTOR_EQUIVALENCE.md section 4). %s\n' % (unit, which, doc),
+           '// Built only with SAN14_MULTI_TU (tools/build_split.ps1); the unity build includes these modules in place.\n',
+           '#ifndef SAN14_MULTI_TU\n#error "tu_%s_%s.cpp is part of the SAN14_MULTI_TU build only"\n#endif\n' % (which, unit),
+           '#ifndef %s\n#error "tu_%s_%s.cpp belongs to the %s root"\n#endif\n' % (UNITY_ROOT_DEFINE[which], which, unit, which),
+           '#include "native_core.inl"\n#include "tu_%s_api.h"   // declarations this unit exports (checked against the definitions below)\n' % unit]
+    for slot in u['slots']:
+        rows = [e for e in u['entries'] if e['slot'] == slot and which in e['hosts'] and e.get('unit') == unit]
+        if rows:
+            out.append('// slot %s\n' % slot)
+            emit_includes(out, rows, which)
+    return ''.join(out)
+
+
+def unit_tu_path(which, unit):
+    return 'src/tu_%s_%s.cpp' % (which, unit)
+
+
+def validate_units(reg):
+    """A unit compiles apart from the main unit: every macro its modules define and another source file tests must be defined by
+    the unit's interface header too (e.g. SAN14_TERRAIN_FOAM_INCLUDED gates an install row of module_table_convenience.inl)."""
+    import re
+    errs = []
+    u = reg.get('unity') or {}
+    units = u.get('units', {})
+    files = {}
+    for e in u.get('entries', []):
+        if e.get('unit'):
+            if e['unit'] not in units:
+                errs.append('unity: %s names unknown unit %s' % (e['file'], e['unit']))
+            files.setdefault(e['unit'], []).append(e['file'])
+    srcdir = os.path.join(ROOT, 'src')
+    texts = {}
+    for f in os.listdir(srcdir):
+        if f.endswith(('.inl', '.h', '.cpp', '.c')):
+            with open(os.path.join(srcdir, f), encoding='utf-8-sig', errors='replace') as h:
+                texts[f] = h.read()
+    inc = re.compile(r'^\s*#\s*include\s+"([^"/\\]+)"', re.M)
+
+    def closure(roots, blocked=()):
+        seen, todo = set(), list(roots)
+        while todo:
+            f = todo.pop()
+            if f in seen or f not in texts or f in blocked:
+                continue
+            seen.add(f)
+            todo.extend(inc.findall(texts[f]))
+        return seen
+    # A header that both a unit and the rest of the root include must not hold namespace-scope `static` state: each
+    # translation unit would get its own copy (a variable, or the local statics of a static function). Use `inline` (one shared
+    # entity) instead. A static function without local statics is stateless, so a copy per unit is harmless (native_patch_core.inl).
+    # The unit side also starts at what the generated unit source includes besides the members (native_core.inl, tu_<unit>_api.h),
+    # so headers shared through them are checked. tools/unit_equivalence.py audits the objects for the same fault.
+    static_def = re.compile(r'^(?:\[\[[^\]]*\]\]\s*|template\s*<[^;{]*?>\s*|alignas\s*\([^)]*\)\s*)*static\b(?!_)(?!\s+(?:const|constexpr)\b)', re.M)
+    blank = re.compile(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'', re.S)
+
+    def stateful(text, start):
+        """False only for a static function (declaration, or definition without a local static or COST_SCOPE)."""
+        depth, paren, i, n = 0, False, start, len(text)
+        while i < n:
+            c = text[i]
+            if c == '(':
+                depth += 1
+                paren = True
+            elif c == ')':
+                depth -= 1
+            elif depth == 0 and c == '=':
+                return True                      # an initialized variable (or a function pointer)
+            elif depth == 0 and c == ';':
+                return not paren                 # a variable, or a function declaration
+            elif depth == 0 and c == '{':
+                if not paren:
+                    return True                  # brace-initialized variable
+                d, j = 0, i
+                while j < n:
+                    d += {'{': 1, '}': -1}.get(text[j], 0)
+                    if d == 0:
+                        break
+                    j += 1
+                return re.search(r'\bstatic\b|\bCOST_SCOPE\w*\s*\(', text[i:j]) is not None   # COST_SCOPE: a local static key (diag)
+            i += 1
+        return True
+    for unit, members in files.items():
+        unit_side = closure(members + ['native_core.inl', 'tu_%s_api.h' % unit]) - set(members)
+        main_side = closure(['native_adapter.cpp'], set(members))
+        for h in sorted(unit_side & (main_side - set(members))):
+            clean = blank.sub(lambda m: re.sub(r'[^\n]', ' ', m.group(0)), texts[h])
+            for m in static_def.finditer(clean):
+                if not stateful(clean, m.end()):
+                    continue
+                line = clean.count('\n', 0, m.start()) + 1
+                errs.append('unity: unit %s shares src/%s with the main unit, but line %d defines static state (make it inline)' % (unit, h, line))
+    for unit, members in files.items():
+        api = 'tu_%s_api.h' % unit
+        if api not in texts:
+            errs.append('unity: unit %s has no src/%s' % (unit, api))
+            continue
+        api_macros = set(re.findall(r'^\s*#\s*define\s+(\w+)', texts[api], re.M))
+        main_side = closure(['native_adapter.cpp'], set(members))
+        only_unit = set(members) | (closure(members) - main_side)   # the members and the files only they include
+        own = only_unit | {api} | {os.path.basename(unit_tu_path(w, unit)) for w in UNITY_ROOT_DEFINE}
+        for m in sorted(only_unit):
+            local = set(re.findall(r'^\s*#\s*undef\s+(\w+)', texts.get(m, ''), re.M))   # defined and undefined in the module itself
+            for name in set(re.findall(r'^\s*#\s*define\s+(\w+)', texts.get(m, ''), re.M)):
+                if name in api_macros or name in local:
+                    continue
+                pat = re.compile(r'\b%s\b' % re.escape(name))
+                users = [f for f, t in texts.items() if f not in own and pat.search(t)]
+                if users:
+                    errs.append('unity: unit %s: macro %s (defined in %s) is used by %s; define it in src/%s' % (
+                        unit, name, m, ', '.join(sorted(users)[:4]), api))
+    return errs
 
 
 def emit_unity_selector():
@@ -389,6 +563,9 @@ def main():
         outputs[OUT_UNITY] = emit_unity_selector()
         for which, rel in UNITY_LISTS.items():
             outputs[rel] = emit_unity_list(reg, which)
+            if which in UNITY_ROOT_DEFINE:
+                for unit in unit_names(reg, which):
+                    outputs[unit_tu_path(which, unit)] = emit_unit_tu(reg, which, unit)
     if check:
         for rel, text in outputs.items():
             path = os.path.join(ROOT, rel)

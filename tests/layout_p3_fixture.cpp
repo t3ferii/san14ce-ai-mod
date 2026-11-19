@@ -144,11 +144,12 @@ int main() {
             {"speed_buttons",4},{"lord_change",2},{"region_officers",6},{"ccz_title",4},{"ccz_sprites",1},{"layout_wait",3},{"layout_keep_wrap",1},{"face_keep_portrait",4},
             {"fast_menu",3},{"stat_exp",31},{"dispatch_days",1},{"damage_preview",2},{"expert_links",28},{"unified_dialogs",3},
             {"advisor_hud",2},{"recruit_ui",4},{"merit_save",2},{"merit_prisoner",1},{"merit",2},{"start_guard",1},
-            {"collab",2},{"scenery",2},{"domestic_selection",2},{"mediation_plus",7},{"trait_hover",156},{"battle_deaths",4},{"tactic_priority",4},{"drag_learn",1},{"auto_buttons",4}};
+            {"collab",2},{"scenery",2},{"domestic_selection",2},{"mediation_plus",7},{"trait_hover",156},{"battle_deaths",4},{"tactic_priority",4},{"drag_learn",1},{"auto_buttons",4},{"advisor_briefing",20},
+            {"traits9_screens",82}};   // local236 개성 9칸 범위 B 66 + local237 무장 상세 두 탭 16
         unsigned total=0;
         for(const auto &e:expected) {check(rows_of(e.owner)==e.rows,e.owner);total+=e.rows;}
         check(total==layout_row_count,"every registry row belongs to a known owner");
-        check(layout_traits9_site_count==13,"traits9: eight spans and five byte patches");
+        check(layout_traits9_site_count==14,"traits9: nine spans and five byte patches");   // local236 +1 edit officer list 4CCBE3
         // flags: yield / chain / whitelist columns of the design table
         unsigned whitelist=0;
         for(unsigned i=0;i<layout_row_count;++i) {
@@ -163,6 +164,7 @@ int main() {
             else if(o=="battle_deaths")check(yields && chains && bundle,"battle_deaths: CHAIN_OK + YIELD_IF_PEER (plan 3.2, Patch27 peer)");
             else if(o=="collab" || o=="scenery")check(yields && !chains,"collab/scenery: yield only, no chain");
             else if(o=="layout_keep_wrap" || o=="face_keep_portrait")check(yields && chains && bundle,"layout_keep_wrap: CHAIN_OK + YIELD_IF_PEER (U35, R1 IC peer)");
+            else if(o=="traits9_screens")check(yields && chains && bundle,"traits9_screens: CHAIN_OK + YIELD_IF_PEER + ALL_OR_NONE (local236, integrated patch Traits9 UI peer)");
             else check(!yields,"other owners never yield");
             if(o!="merit_prisoner")check(bundle,"owners are all-or-none");
             if(o=="speed_buttons" && row.rva==0x1476FE0)check(wl,"1473F50 whitelist (yuga)");
@@ -170,8 +172,8 @@ int main() {
             check(row.rva+8<=kImage && row.original<kImage,"row inside the image");
         }
         check(whitelist==6+1+1+1,"whitelist rows: 1473F50, six region officer slots, ccz_sprites, merit 1413600");
-        check(layout_row_count==287,"registry holds 287 manager rows (local166 +1 start_guard; local105 +2 normal-mode frame and 확인; local102 +10 normal-mode rows; U35 local29 +4 face_keep_portrait); (local17: +3 expert_ingame, +1 drag_learn, +4 auto_buttons; U35 +1 layout_keep_wrap; 31 stat_exp + 66 others + 156 trait_hover + 4 battle_deaths + 4 tactic_priority) beside 13 traits9 patches and 70E9C1");
-        check(layout_row_count+layout_traits9_site_count+15+1+1<=kMaxHooks,"manager capacity (384) covers every row, the traits9 patches, the 15 stats200 registrations, 70E9C1 and Present");
+        check(layout_row_count==389,"registry holds 389 manager rows (local237 +16 traits9_screens detail tabs; local236 +66 traits9_screens; interop S7 +20 advisor_briefing state slots; local166 +1 start_guard; local105 +2 normal-mode frame and 확인; local102 +10 normal-mode rows; U35 local29 +4 face_keep_portrait); (local17: +3 expert_ingame, +1 drag_learn, +4 auto_buttons; U35 +1 layout_keep_wrap; 31 stat_exp + 66 others + 156 trait_hover + 4 battle_deaths + 4 tactic_priority) beside 13 traits9 patches and 70E9C1");
+        check(layout_row_count+layout_traits9_site_count+2+16+1+1<=kMaxHooks,"manager capacity (512, local236) covers every row, the traits9 patches, the 2 traits9_screens unit-tab spans, the 16 stats200 registrations, 70E9C1 and Present");
         // C-4 / 8.3: no row is an entry patch of a blocked entry (calls are 5-byte patches at the site, vtable rows write data)
         const unsigned blocked_count=sizeof(layout_blocked_entries)/sizeof(layout_blocked_entries[0]);
         check(blocked_count==sizeof(blocked_entries)/sizeof(blocked_entries[0]),"registry blocklist matches the manager's");
@@ -361,6 +363,24 @@ int main() {
         // scene yield: ini or loaded module
         write_text(root,kMods+L"SceneSkip.ini",r1_ini(1));
         check(api.peer_for_owner("scene_yield")==1,"SceneSkip ini");
+        // 2026-11-18: integrated patch R43.42 module names (renamed traits9 ini, Stats200New, ModSettings, SortiePresets, DragLearn)
+        remove_text(root,kMods+L"Traits9Check.ini");
+        check(api.peer_for_owner("traits9")==0,"old Traits9Check ini removed: no yield");
+        write_text(root,kMods+L"Mod09_Traits9Check.ini",r1_ini(1));
+        check(api.peer_for_owner("traits9")==1,"R43.42 Mod09_Traits9Check enabled: traits9 yields");
+        check(api.peer_for_owner("traits9_screens")==1,"local236 Mod09_Traits9Check enabled: traits9_screens (all-screen grids) yields too");
+        write_text(root,kMods+L"Stats200New.ini",r1_ini(1));
+        check(api.peer_for_owner("stats200")==1,"R43.42 Stats200New enabled: stats200 yields (ModPackBridge disabled)");
+        check(api.peer_for_owner("expert_ingame")==0,"no ModSettings module");
+        write_text(root,kMods+L"ModSettings.ini",r1_ini(1));
+        check(api.peer_for_owner("expert_ingame")==1,"ModSettings enabled, [Modules] ModSettingsUI absent (default 1): expert_ingame yields");
+        write_text(root,L"San14ModSettings.ini","[Modules]\r\nModSettingsUI=0\r\n");
+        check(api.peer_for_owner("expert_ingame")==0,"ModSettingsUI=0: no yield");
+        check(api.peer_for_owner("tactic_priority")==0 && api.peer_for_owner("drag_learn")==0,"no SortiePresets / DragLearn");
+        write_text(root,kMods+L"SortiePresets.ini",r1_ini(1));
+        write_text(root,kMods+L"DragLearn.ini",r1_ini(1));
+        check(api.peer_for_owner("tactic_priority")==1 && api.peer_for_owner("drag_learn")==1,"SortiePresets / DragLearn enabled: both yield");
+        check(run("tactic_priority")==0,"tactic_priority rows stay LF_C: the owner yields in its install, before it registers");
         // file-existence fallback rule for the mediation filter (Batteki / Yuga)
         check(api.peer_for_owner("mediation_fallback")==0,"no Batteki/Yuga files");
         write_text(root,L"SAN14_Batteki.dll","x");
@@ -498,7 +518,7 @@ int main() {
     // Same registrations as native_modpack.inl register_stats200 (the clamp site is the MOV ESI,100 of the 1a4a447d short form).
     {
         const unsigned code_rows=sizeof(modpack_bytes)/sizeof(modpack_bytes[0]),data_rows=sizeof(modpack_data_bytes)/sizeof(modpack_data_bytes[0]);
-        check(code_rows==12 && data_rows==1,"stats200: 12 code rows and the 16-byte data row");
+        check(code_rows==13 && data_rows==1,"stats200: 13 code rows and the 16-byte data row");
         const unsigned clamp=GA(GA_231AFB)+0x47,growth=GA(GA_2BC30A);
         static const Bytes clamp_expect[5]={0xBE,0x64,0,0,0},growth_expect[5]={0x41,0x8D,0x5D,0x01,0xE8};
         for(const auto &p:modpack_bytes)check(!blocked_range(p.rva,p.size) && p.rva+p.size<=kImage,"stats200 code rows avoid blocked entries and lie inside the image");
@@ -528,10 +548,10 @@ int main() {
             for(const auto &p:modpack_data_bytes)ok=ok && !memcmp(image+p.rva,patched?p.after:p.before,p.size);
             return ok;
         };
-        // installed together: 12 code rows, the data row, the clamp relay span and the growth relay span
+        // installed together: 13 code rows, the data row, the clamp relay span and the growth relay span
         fresh();fixture_root[0]=0;seed();
         Handles h;register_all(h,true);
-        check(hook_total==15,"stats200: 13 byte rows and 2 relay spans are registered");
+        check(hook_total==16,"stats200: 14 byte rows and 2 relay spans are registered");
         layout::publish_hooks();
         check(all_state(h,LAYOUT_STATE_INSTALLED) && rows_are(true) && image[clamp]==0xE9 && image[growth]==0xE9,"stats200: every row and both relays are installed in one publish");
         bool crossing=false;for(const auto &p:modpack_bytes)if(p.rva+p.size>(p.rva&~15u)+16)crossing=true;
@@ -540,9 +560,9 @@ int main() {
         bool removed=api.unhook(h.clamp)==0 && api.unhook(h.growth)==0;
         for(unsigned i=0;i<h.count;++i)removed=removed && api.unhook(h.rows[i])==0;
         check(removed && rows_are(false) && !memcmp(image+clamp,clamp_expect,5) && !memcmp(image+growth,growth_expect,5),"stats200: unhook restores every row and both relay sites");
-        // growth is a separate switch: without it the other 14 registrations still stand as one owner
+        // growth is a separate switch: without it the other 15 registrations still stand as one owner
         fresh();fixture_root[0]=0;seed();register_all(h,false);layout::publish_hooks();
-        check(hook_total==14 && all_state(h,LAYOUT_STATE_INSTALLED) && image[clamp]==0xE9 && image[growth]==growth_expect[0],"stats200 without growth: 14 registrations, growth site untouched");
+        check(hook_total==15 && all_state(h,LAYOUT_STATE_INSTALLED) && image[clamp]==0xE9 && image[growth]==growth_expect[0],"stats200 without growth: 15 registrations, growth site untouched");
         // a row whose bytes were changed by someone else (REFUSED): the earlier installed pieces of the owner are taken back
         fresh();fixture_root[0]=0;seed();image[modpack_bytes[4].rva]^=0xFF;
         register_all(h,true);layout::publish_hooks();
@@ -562,6 +582,15 @@ int main() {
             write_text(peer,kMods+L"ModPackBridge.ini",r1_ini(1,"[ModPack]\r\nStats200=1\r\n"));
             register_all(h,true);layout::publish_hooks();
             check(all_state(h,LAYOUT_STATE_YIELDED) && rows_are(false) && !memcmp(image+clamp,clamp_expect,5),"stats200: the owner yields as a group to R1 Stats200 and writes nothing");
+        }
+        // 2026-11-18: the integrated patch R43.42 moved stats 200 to its own Stats200New module (ModPackBridge writes Stats200=0)
+        {
+            std::wstring peer=make_temp_root();
+            fresh();fixture_root[0]=0;wcscpy_s(fixture_root,peer.c_str());seed();
+            write_text(peer,kMods+L"ModPackBridge.ini",r1_ini(1,"[ModPack]\r\nStats200=0\r\n"));
+            write_text(peer,kMods+L"Stats200New.ini",r1_ini(1));
+            register_all(h,true);layout::publish_hooks();
+            check(all_state(h,LAYOUT_STATE_YIELDED) && rows_are(false) && !memcmp(image+clamp,clamp_expect,5),"stats200: the owner yields as a group to IP Stats200New and writes nothing");
         }
         // an installed row that someone else changed afterwards is not overwritten by unhook (bypass), the rest is put back
         fresh();fixture_root[0]=0;seed();register_all(h,true);layout::publish_hooks();

@@ -465,7 +465,7 @@ def legacy_counters(root, files):
     detail = collections.defaultdict(list)
     names = set(files)
     for rel in files:
-        if rel.startswith(LEGACY_SKIP) or rel in ('docs/HISTORY.md', POLICY_REL, 'tools/feature_deps.py', 'tests/verify_feature_deps.py') or not rel.endswith(TEXT_EXT):
+        if rel.startswith(LEGACY_SKIP) or rel in ('docs/HISTORY.md', 'development/USER_REQUESTS.md', POLICY_REL, 'tools/feature_deps.py', 'tests/verify_feature_deps.py') or not rel.endswith(TEXT_EXT):
             continue
         t = read_text(root, rel)
         if not t:

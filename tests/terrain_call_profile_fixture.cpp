@@ -32,14 +32,14 @@ int main(){try {
     {Scope disabled(Id::FoamTime);}
     check(samples==0,"OFF has no clock queries");
     initialize(true,sink);check(running,"real Windows CPU/time initialization");
-    frequency=1000000;records.clear();
+    frequency=1000000;records.clear();sample_shift=0;   // local268: time every call here; sampling is checked below
     {Scope outer(Id::FoamTime);
         fake={120,1100,11000,true,true};
         {Scope inner(Id::FoamTimeNative);fake={200,1300,13000,true,true};}
         fake={300,1400,14000,true,true};
     }
-    const Row &outer=rows[static_cast<unsigned>(Id::FoamTime)];
-    const Row &inner=rows[static_cast<unsigned>(Id::FoamTimeNative)];
+    const Row outer=row(Id::FoamTime);
+    const Row inner=row(Id::FoamTimeNative);
     check(outer.calls==1 && inner.calls==1,"nested invocation counts");
     check(outer.wall==200 && inner.wall==80,"inclusive elapsed time");
     check(outer.self_wall==120 && inner.self_wall==80,"nested wall cost not double counted");
@@ -48,7 +48,7 @@ int main(){try {
     check(outer.cycles==4000 && inner.cycles==2000,"cycle accounting independent of CPU quantization");
     check(records.empty(),"no per-call log IO");
     fake={400,1500,15000,false,false};{Scope unavailable(Id::MapNative);fake={450,1700,16000,false,false};}
-    const Row &missing=rows[static_cast<unsigned>(Id::MapNative)];
+    const Row missing=row(Id::MapNative);
     check(missing.calls==1 && missing.cpu_samples==0 && missing.cycle_samples==0,"unavailable CPU counters explicitly tracked");
     check(missing.wall==50 && missing.cpu==0,"wall cost retained if CPU API fails");
     fake={500,2000,20000,true,true};
@@ -56,12 +56,12 @@ int main(){try {
     check(current==nullptr,"unwinding restores parent scope");
     fake={600,2200,22000,true,true};
     {Scope spanning(Id::Readback);InterlockedIncrement(&frame);fake={800,2400,24000,true,true};}
-    check(rows[static_cast<unsigned>(Id::Readback)].first_frame==1 && rows[static_cast<unsigned>(Id::Readback)].last_frame==2,"spanning call has start/completion frame IDs");
+    check(row(Id::Readback).first_frame==1 && row(Id::Readback).last_frame==2,"spanning call has start/completion frame IDs");
     fixture_stamp=nullptr;
     auto worker=[](){for(unsigned i=0;i<50;++i){Scope scope(Id::FoamRenderNative);}};
     std::thread a(worker),b(worker);a.join();b.join();
-    check(rows[static_cast<unsigned>(Id::FoamRenderNative)].calls==100,"concurrent callbacks do not lose counts");
-    check(rows[static_cast<unsigned>(Id::FoamRenderNative)].thread_id==0xFFFFFFFFu,"multi-thread aggregate explicitly marked");
+    check(row(Id::FoamRenderNative).calls==100,"concurrent callbacks do not lose counts");
+    check(row(Id::FoamRenderNative).thread_id==0xFFFFFFFFu,"multi-thread aggregate explicitly marked");
     initialize(true,sink);records.clear();
     Stamp actual=read_stamp();previous_wall=actual.wall-frequency/5;report_wall=previous_wall;
     checkpoint();
@@ -69,7 +69,17 @@ int main(){try {
     for(const auto &r:records){wall|=r.key=="terrain_frame";cpu|=r.key=="terrain_frame_cpu";window|=r.key=="terrain_cpu_window";
         if(r.key=="terrain_calls_foam_render_E19690")call=r.b==100;}
     check(wall && cpu && window && call,"slow frame emits matching call/CPU/frame records");
-    check(rows[static_cast<unsigned>(Id::FoamRenderNative)].calls==0,"reported counters reset");
+    check(row(Id::FoamRenderNative).calls==0,"reported counters reset");
+    // local268 sampling: hot keys measured on one call in 2^sample_shift with that weight; nested scopes inherit it; the
+    // calls between make no clock queries; a hot key under a weight-1 scope is sampled and scaled the same way.
+    fixture_stamp=clock_sample;fake={1000,0,0,true,true};sample_shift=2;samples=0;
+    for(unsigned i=0;i<8;++i){Scope o(Id::FoamTime);Scope n(Id::FoamTimeNative);}
+    check(row(Id::FoamTime).calls==8 && row(Id::FoamTimeNative).calls==8,"sampled hot key and its nested scope count with the weight");
+    check(row(Id::FoamTime).cpu_samples==0,"weighted calls read the wall clock only");
+    for(unsigned i=0;i<8;++i){Scope p(Id::RenderUpload);Scope u(Id::UploadNative);}
+    check(row(Id::RenderUpload).calls==8 && row(Id::UploadNative).calls==8,"hot key under a weight-1 scope sampled and weighted");
+    check(samples==2*2*2+8*2+2*2,"unsampled hot calls make no clock queries");
+    fixture_stamp=nullptr;sample_shift=0;
     records.clear();{Frame test_present(false);}
     check(records.empty() && present_depth==0,"DXGI_PRESENT_TEST does not advance frame");
     {Frame first(true);{Frame nested(true);check(present_depth==2,"nested Present depth");}}

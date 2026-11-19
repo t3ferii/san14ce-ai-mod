@@ -16,7 +16,8 @@ def read(name):
 
 water = read('src/native_water_diag.inl')
 terrain = read('src/native_terrain_render.inl')
-adapter = read('src/native_adapter.cpp')
+from hub_text import hub_text   # 2026-11-16 multi-unit refactor: hub = native_core.inl + native_patch_core.inl + native_adapter.cpp
+adapter = hub_text(P)
 split = read('src/native_split_install.inl')
 ok(water.split('#pragma once\n', 1)[1].startswith('#ifndef NO_RUNTIME_LOG\n') and water.endswith('#endif\n'), 'entire diagnostic including headers and globals excluded from release')
 import registry_text as R   # W5: includes come from the generated per-DLL lists

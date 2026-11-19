@@ -1,3 +1,7 @@
+#pragma once
+// 2026-11-16 unit split (docs/REFACTOR_EQUIVALENCE.md section 4): the main unit and the ui unit both include this client. Its state
+// (found, once, handles, handle_count) is C++17 inline, one copy per DLL, so a Transaction or cancel_all in either unit sees every
+// registration; the static functions are stateless helpers each unit may compile (tools/unit_equivalence.py audits the objects).
 // Client side of SAN14_Layout.dll's hook manager for SAN14_Convenience.dll (user exception 2026-11-05, design 8, P3).
 // UI hooks (vtable slots, E8 call sites, the 898957 E9 tail jump, blocks/spans) are registered here by RVA; the
 // static parameters (owner, kind, original target, manager flags) come from layout_registry.h, the replacement
@@ -14,9 +18,9 @@
 #define LAYOUT_ROUTED 1
 #endif
 namespace layout_client {
-static const San14LayoutApiV1 *found;
-static INIT_ONCE once=INIT_ONCE_STATIC_INIT;
-static BOOL CALLBACK find_api(PINIT_ONCE,PVOID,PVOID *) {
+inline const San14LayoutApiV1 *found;
+inline INIT_ONCE once=INIT_ONCE_STATIC_INIT;
+[[maybe_unused]] static BOOL CALLBACK find_api(PINIT_ONCE,PVOID,PVOID *) {
     HMODULE module=GetModuleHandleW(L"SAN14_Layout.dll");
     auto get_api=module?reinterpret_cast<GetLayoutApi>(GetProcAddress(module,"SAN14LayoutGetApi")):nullptr;
     const San14LayoutApiV1 *api=get_api?get_api(san14_layout_abi):nullptr;
@@ -28,26 +32,26 @@ static BOOL CALLBACK find_api(PINIT_ONCE,PVOID,PVOID *) {
     }
     return TRUE;
 }
-static const San14LayoutApiV1 *get() {InitOnceExecuteOnce(&once,find_api,nullptr,nullptr);return found;}
+[[maybe_unused]] static const San14LayoutApiV1 *get() {InitOnceExecuteOnce(&once,find_api,nullptr,nullptr);return found;}
 #ifndef NO_RUNTIME_LOG
 // Layout decisions (installed/chained/yielded/refused/bypassed) go to this module's common log_event writer.
-static void __cdecl sink(const char *kind,unsigned a,unsigned b,unsigned c) {log_event(kind,a,b,c);}
+[[maybe_unused]] static void __cdecl sink(const char *kind,unsigned a,unsigned b,unsigned c) {log_event(kind,a,b,c);}
 inline void connect_log() {if(const San14LayoutApiV1 *api=get())api->set_log_sink(&sink);}
 #endif
-static const LayoutRow *row_for(unsigned rva) {
+[[maybe_unused]] static const LayoutRow *row_for(unsigned rva) {
     for(unsigned i=0;i<layout_row_count;++i)if(layout_rows[i].rva==rva)return &layout_rows[i];
     return nullptr;
 }
-static const unsigned kMaxHandles=384;
-static int handles[kMaxHandles];
-static unsigned handle_count;
-static int remember(int handle) {
+static const unsigned kMaxHandles=512;   // local236: with kMaxHooks (native_layout_core.inl)
+inline int handles[kMaxHandles];
+inline unsigned handle_count;
+[[maybe_unused]] static int remember(int handle) {
     if(handle>0 && handle_count<kMaxHandles)handles[handle_count++]=handle;
     return handle;
 }
 // Registers one registry row. `next` (optional) is preset to the original target so a direct call before the
 // manager installs the hook still reaches the game. `drop` removes manager flags for this owner instance.
-static int add(unsigned rva,unsigned char kind,void *replacement,void **next,uint32_t drop=0) {
+[[maybe_unused]] static int add(unsigned rva,unsigned char kind,void *replacement,void **next,uint32_t drop=0) {
     const San14LayoutApiV1 *api=get();
     const LayoutRow *row=row_for(rva);
     if(!api || !row || row->kind!=kind || !replacement || !image) {log_event("layout_register_rejected",rva,api?1u:0u,row?1u:0u);return 0;}
@@ -62,7 +66,7 @@ static int add(unsigned rva,unsigned char kind,void *replacement,void **next,uin
     if(handle<=0)log_event("layout_register_failed",rva,static_cast<unsigned>(-handle),0);
     return remember(handle);
 }
-static int vt(unsigned slot,void *replacement,void **next,uint32_t drop=0) {return add(slot,LR_VT,replacement,next,drop);}
+[[maybe_unused]] static int vt(unsigned slot,void *replacement,void **next,uint32_t drop=0) {return add(slot,LR_VT,replacement,next,drop);}
 inline int call(unsigned site,void *replacement,void **next,uint32_t drop=0) {return add(site,LR_CALL,replacement,next,drop);}
 inline int jump(unsigned site,void *replacement,void **next,uint32_t drop=0) {return add(site,LR_JUMP,replacement,next,drop);}
 // Block, span and raw-byte registrations (owner and flags given by the caller; the blocklist applies).
@@ -104,7 +108,7 @@ inline bool names_wanted() {
 // 2026-11-05 local3 (user: a failed optional feature switches only itself off): `current_mark()` before a feature's registrations,
 // `rollback_to(mark)` takes exactly that feature's still unpublished registrations back; every other owner stays registered.
 inline unsigned current_mark() {return handle_count;}
-static void rollback_to(unsigned mark) {
+[[maybe_unused]] static void rollback_to(unsigned mark) {
     const San14LayoutApiV1 *api=get();
     if(api)for(unsigned i=handle_count;i>mark;--i)api->unhook(handles[i-1]);
     if(handle_count>mark)handle_count=mark;
@@ -115,7 +119,7 @@ struct Transaction {
     ~Transaction() {if(!done)rollback_to(mark);}
 };
 // Rolls back registrations that were not published yet (split_rollback before the Layout publish).
-static void cancel_all() {
+[[maybe_unused]] static void cancel_all() {
     const San14LayoutApiV1 *api=get();
     if(api)for(unsigned i=handle_count;i>0;--i)api->unhook(handles[i-1]);
     handle_count=0;

@@ -288,6 +288,16 @@ int main(int argc,char **argv) {
     for(unsigned rva:{0x22E690u,0x2CC630u})for(unsigned offset:{0u,0x2Fu}) {
         image[rva+offset]^=1;check(!ccz_combat::guards_match(),"foreign relation helper prevents CCZ combat publication");image[rva+offset]^=1;
     }
+    {   // 2026-11-17 종군 중립군: our own published entry link on 22E690 keeps the guard; any foreign byte still fails it.
+        CodeLink &l=ccz_band_links::links[0];
+        check(prepare_link(l,0x22E690u,0xE9,image+0x1000),"band link prepared on the army-force entry");
+        l.modified[5]=0x90;unsigned char saved[16];memcpy(saved,image+l.block,16);memcpy(image+l.block,l.modified,16);l.published=true;
+        check(ccz_combat::guards_match(),"published band link keeps the CCZ combat guard");
+        image[l.block+5]^=1;check(!ccz_combat::guards_match(),"foreign byte inside the band block fails the guard");image[l.block+5]^=1;
+        image[0x22E690u+0x2F]^=1;check(!ccz_combat::guards_match(),"foreign byte past the band block fails the guard");image[0x22E690u+0x2F]^=1;
+        l.published=false;check(!ccz_combat::guards_match(),"the same bytes without our published link fail the guard");
+        memcpy(image+l.block,saved,16);l={};check(ccz_combat::guards_match(),"restored entry matches again");
+    }
     // User 2026-11-02: headless report ABI and its caller must fail closed.
     for(const auto &g:advisor_briefing::guards)for(unsigned offset:{0u,g.size-1}) {
         image[g.rva+offset]^=1;
@@ -355,6 +365,8 @@ int main(int argc,char **argv) {
     auto base_get=reinterpret_cast<Getter>(GetProcAddress(base,"SAN14SplitFixtureGetApi"));
     auto combat_get=reinterpret_cast<Getter>(GetProcAddress(combat,"SAN14SplitFixtureGetApi"));
     check(base_get && combat_get,"test-only fixture exports present");
+    auto pointer_rows=reinterpret_cast<unsigned (__cdecl *)()>(GetProcAddress(base,"SAN14SplitFixturePointerRows"));
+    check(pointer_rows && pointer_rows()==1,"load-time split_pointers row naming terrain-unit values holds them (2026-11-16 multi-unit order)");
     const SplitFixtureApi *base_api=base_get();combat_fixture=combat_get();
     // User decision 2026-10-25: append compat coverage; retain every strict assertion below.
     if(argc==3 && strcmp(argv[2],"--failure")) {

@@ -180,7 +180,7 @@ static bool publish() { COST_SCOPE("corps_domestic:publish");
         memcpy(&delta,image+call.site+1,4);
         ok=ready && image[call.site]==0xE8 && delta==call.original && call_publish(call);
     }
-    const bool wrapped=mod_features.injury;
+    const bool wrapped=personnel_links::injury_on();   // injury publishes both slots itself while on (native_injury_links.inl)
     if(ok && mod_features.ai_search2 && !wrapped)
         ok=search_slot=patch_pointer(GA(GA_134C580),GA(GA_54AD0),reinterpret_cast<void *>(&personnel_search_command));
     if(ok && mod_features.officer_first && !wrapped)

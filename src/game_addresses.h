@@ -412,8 +412,8 @@ inline unsigned rtti_slot(const Rtti &r,const char *name,unsigned off,unsigned s
 }
 // Fill out[GA_COUNT] from the image. Returns the number of resolved ids. Never writes game memory.
 #ifdef GA_PROFILE
-static double g_phase[6];
-static double now_ms() {LARGE_INTEGER f,c;QueryPerformanceFrequency(&f);QueryPerformanceCounter(&c);return c.QuadPart*1000.0/f.QuadPart;}
+inline double g_phase[6];
+inline double now_ms() {LARGE_INTEGER f,c;QueryPerformanceFrequency(&f);QueryPerformanceCounter(&c);return c.QuadPart*1000.0/f.QuadPart;}
 #define GA_PH(i) g_phase[i]=now_ms()
 #else
 #define GA_PH(i)

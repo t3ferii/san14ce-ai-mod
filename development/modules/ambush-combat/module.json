@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "ambush-combat",
  "title": "ambush-combat",
  "host": "combat",
@@ -13,11 +13,12 @@
  "conflicts": [],
  "owns": [
   "src/native_ambush_combat.inl",
-  "src/ambush_shared.h"
+  "src/ambush_hook.h"
  ],
  "sources": [
   "src/native_ambush_combat.inl",
-  "src/ambush_shared.h"
+  "src/ambush_shared.h",
+  "src/ambush_hook.h"
  ],
  "tests": [
   "split-module"
@@ -49,9 +50,47 @@
   ]
  },
  "ui": [],
- "provides": [],
- "uses": [],
- "hooks": [],
+ "provides": [
+  "ambush_hook"
+ ],
+ "uses": [
+  {
+   "service": "season_mobility",
+   "soft": true
+  }
+ ],
+ "hooks": [
+  {
+   "key": "GA_AFFA3",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "ambush_combat",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ambush_combat.inl"
+  },
+  {
+   "key": "GA_AFFB0",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "ambush_combat",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ambush_combat.inl"
+  },
+  {
+   "key": "GA_C39F4",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "ambush_combat",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ambush_combat.inl"
+  }
+ ],
  "registry": {
   "rows": [],
   "subscriptions": [],

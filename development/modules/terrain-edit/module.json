@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "terrain-edit",
  "title": "terrain-edit",
  "host": "convenience",
@@ -14,6 +14,8 @@
  ],
  "conflicts": [],
  "owns": [
+  "src/terrain_core.h",
+  "src/tu_terrain_api.h",
   "src/native_terrain_edit.inl",
   "src/native_terrain_edit_save.inl",
   "src/native_terrain_edit_ui.inl",
@@ -35,7 +37,6 @@
   "tests/season_dxbc_fixture.cpp",
   "src/modpack_dll.cpp",
   "src/modpack_dll_api.h",
-  "src/season_mobility_shared.h",
   "src/native_modpack_dll.inl",
   "src/season/season_engine.c",
   "src/season/season_engine_v26.inc",
@@ -114,6 +115,8 @@
   "src/native_split_install.inl",
   "src/native_terrain_edit_save.inl",
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_merit_save.inl",
   "tests/terrain_edit_fixture.cpp",
   "tests/terrain_edit_ui_fixture.cpp",
@@ -249,9 +252,23 @@
   ]
  },
  "ui": [],
- "provides": [],
+ "provides": [
+  "season_mobility",
+  "terrain_core"
+ ],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_44E7D0",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "modpack_dll",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_modpack_dll.inl"
+  }
+ ],
  "registry": {
   "rows": [
    {

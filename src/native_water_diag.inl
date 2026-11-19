@@ -1,9 +1,11 @@
 // User 2026-10-29: one-run, observation-only water diagnostics.
+#include "terrain_core.h"   // engine service gate terrain_core_on()
 #pragma once
 #ifndef NO_RUNTIME_LOG
 #define SAN14_WATER_DIAG_INCLUDED 1
 #include <d3d11.h>
 #include <bcrypt.h>
+#pragma comment(lib,"bcrypt.lib")   // classify() hashes shaders; since 2026-11-16 restore() is external (tu_terrain_api.h), so every diagnostic build that includes this file keeps it
 #include <algorithm>
 #include <initializer_list>
 namespace water_diag {
@@ -12,10 +14,11 @@ namespace water_diag {
 static void (*mask_sample)(ID3D11Texture2D *,const float *)=nullptr;
 static constexpr unsigned MaxSites=32,MaxContexts=4,MaxShaders=32;
 static SRWLOCK hook_lock=SRWLOCK_INIT,shader_lock=SRWLOCK_INIT;
-static bool stopping=false,permitted=true,early_attempted=false;
+bool permitted=true;
+static bool stopping=false,early_attempted=false;
 static volatile LONG observing=1,fail_reports=0;
 static HMODULE library; // Keep originals mapped through in-flight callbacks.
-static bool active() {return InterlockedCompareExchange(&observing,1,1) && enabled && mod_features.convenience && mod_features.terrain_edit;}
+static bool active() {return InterlockedCompareExchange(&observing,1,1) && enabled && mod_features.convenience && terrain_core_on();}
 // User 2026-10-29: the per-bind VSSetShader observer cost frames once its
 // answer (one ocean plane, level 450) was known. Install only on request.
 #ifndef WATER_DIAG_WANTED
@@ -373,7 +376,7 @@ static void STDMETHODCALLTYPE set_vs(ID3D11DeviceContext *c,ID3D11VertexShader *
     call(c,v,i,n);
     if(state){state->current=v;if(active())context_ready(*state);}
 }
-static void restore();
+void restore();
 static void on_device(ID3D11Device *device,bool early=false) {
     if(!device || !active() || !wanted())return;
     const unsigned device_slots[]={12,15};void *device_hooks[]={reinterpret_cast<void *>(&create_vs),reinterpret_cast<void *>(&create_ps)};
@@ -418,7 +421,7 @@ static void install_early() {
     if(device)device->Release();
     log_event("water_hook",SUCCEEDED(hr)?1:0,0,0);
 }
-static void restore() {
+void restore() {
     InterlockedExchange(&observing,0);
     for(auto &c:contexts)if(c.object)context_ready(c);
     AcquireSRWLockExclusive(&hook_lock);stopping=true;
@@ -437,5 +440,5 @@ struct Lifetime {
 };
 static Lifetime lifetime;
 }
-static bool water_diag_guards_match() {return water_diag::guards_match();}
+bool water_diag_guards_match() {return water_diag::guards_match();}
 #endif

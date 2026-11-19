@@ -56,6 +56,7 @@ static void campaign_support_tests() {
     check(campaign_morale_priority(a,p) && p.morale_recovering,"70 morale can use a farther band along its route");
     band[0x13]=1;cap_reached=true;
     check(campaign_morale_priority(a,p) && !p.morale_recovering,"destroyed or captured recovery band releases the detour");
+    for(BandTry &t:band_tries)t=BandTry{};   // local213: the cases above already tried a band today (the fixture day stays)
     money=10000;cap_reached=false;legal_facilities=1u<<7;put16(a,0x2A,22060);a[0x1A]=92;
     table(0xE270,22060,48399)[0x10]=10;
     check(!campaign_morale_priority(a,p) && !p.morale_building,"local38: a mountain above 85 morale starts no recovery");
@@ -63,6 +64,12 @@ static void campaign_support_tests() {
     check(campaign_morale_priority(a,p) && p.morale_building && p.facility==7 && a[0x1A]==80,
         "high mountain at 85 or below triggers priority legal music-band construction");
     check(a[0x37]==8 && a[0x46]==7 && word(a,0x42)==22061,"band construction uses the original native build action and site");
+    check(!band_try_due(a,false),"local213: a morale band is tried at most once per 순 per army");
+    fixture_day+=10;check(band_try_due(a,false),"local213: the next morale band try opens at the next 순");fixture_day-=10;
+    {const BandTry keep=band_tries[1];fixture_day+=5;band_tries[1]=BandTry{};band_try_due(a,true);fixture_day+=4;
+     check(!band_try_due(a,false),"local215: a try on 순 day 5 stays closed through the same 순");fixture_day+=1;
+     check(band_try_due(a,false),"local215: a try on 순 day 5 opens again at the next 순 start (not 10 days later)");
+     fixture_day-=10;band_tries[1]=keep;}
     a[0x1A]=100;
     check(campaign_morale_priority(a,p) && p.morale_building && p.facility==7,"morale reaching 100 during construction does not abandon the unfinished recovery band");
     a[0x1A]=80;
@@ -115,6 +122,7 @@ static void campaign_support_tests() {
         check(campaign_fire_avoid(a)==choice,"all path probes share one fire-avoidance decision in the same turn");
     }
     check(avoiding==0,"castle fire avoidance remains disabled across all turns");
+    for(BandTry &t:band_tries)t=BandTry{};
     region_tiles.clear();root=saved_root;goal=saved_goal;area=saved_area;current_army=saved_current;fixture_day=saved_day;
     money=saved_money;cap_reached=saved_cap;legal_facilities=saved_legal;putptr(image,0x2780F60,root);
     std::copy(saved_progress.begin(),saved_progress.end(),progress);std::copy(saved_hits.begin(),saved_hits.end(),campaign_hits);

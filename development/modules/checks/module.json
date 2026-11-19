@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "checks",
  "title": "checks",
  "host": "tool",
@@ -24,7 +24,11 @@
   "tools/hook_map.py",
   "tools/hookmap_extract.py",
   "tools/route_inputs.py",
-  "tools/select_checks.py"
+  "tools/select_checks.py",
+  "tools/feature_brief.py",
+  "tools/feature_fingerprint.py",
+  "tools/cl_cache.py",
+  "tests/verify_build_cache.py"
  ],
  "sources": [],
  "tests": [

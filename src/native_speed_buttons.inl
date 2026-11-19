@@ -265,7 +265,7 @@ static void __fastcall hover(Obj host) { COST_SCOPE("speed_hover");
 static bool installed;
 // Four registrations (design 8.1 rows 1-4); Layout publishes them together, yields all four to the R1 integrated
 // progress-speed extension (owner speed_buttons, Q8) and rolls back all four when one is refused.
-static bool install() {
+bool install() {
     if(installed || !guards_match()) {log_event("speed_buttons_guard_rejected");return false;}
 #ifndef NO_RUNTIME_LOG
     stage_on=dev_group() && mod_setting(L"diagnostics",L"day_stage",0)!=0;

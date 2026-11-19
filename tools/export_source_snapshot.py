@@ -27,10 +27,10 @@ UNIFIED_PERSONNEL.md ADVISOR_BRIEFING.md DIPLOMACY_INTEL.md CREDITS.md CCZ_SPRIT
 # Contract annotations belong next to the implementation, rather than in a
 # duplicated implementation summary. Anchors must match exactly once.
 COMMENTS = {
- 'src/native_adapter.cpp': [
+ 'src/native_core.inl': [   # shared core of every translation unit since the 2026-11-16 multi-unit refactor
   ('using Obj = unsigned char *;', 'AI-CONTRACT [ABI]: Obj is a borrowed native object, never an owning buffer. Every offset/RVA is build-specific. Preserve __fastcall signatures and validate caller + original bytes before changing bindings.'),
-  ('static int mod_setting(', 'AI-CONTRACT [settings]: Maintain the unified INI lookup and legacy fallback. A new exposed key must be added to InstallerGui.cs and distribution/FeatureSelect.ps1 in the same patch; keep parent && child gating.'),
-  ('struct ModFeatures {', 'AI-CONTRACT [variants]: This translation unit builds twice with SPLIT_BASE/SPLIT_COMBAT. Follow native_split_install.inl to prove reachability and owner; a declaration or fixture alone does not establish runtime activation.')],
+  ('inline int mod_setting(', 'AI-CONTRACT [settings]: Maintain the unified INI lookup and legacy fallback. A new exposed key must be added to InstallerGui.cs and distribution/FeatureSelect.ps1 in the same patch; keep parent && child gating.'),
+  ('struct ModFeatures {', 'AI-CONTRACT [variants]: This shared core is compiled into every translation unit of both roots (SPLIT_BASE/SPLIT_COMBAT; src/tu_<root>_<unit>.cpp in SAN14_MULTI_TU builds). Follow native_split_install.inl to prove reachability and owner; a declaration or fixture alone does not establish runtime activation.')],
  'src/module_loader.cpp': [
   ('static DWORD WINAPI initialize_modules(', 'AI-CONTRACT [lifecycle]: This worker negotiates the split ABI and publishes validated hooks only. Do not add gameplay getters/orders here. Module handles stay resident because callbacks can remain in flight.')],
  'src/split_module_api.h': [
@@ -77,7 +77,7 @@ def cpp_tokens(text):
 # Kept out: the public repository's own workflow/site/ignore files and public
 # CURRENT.md, the reference-mod inventory (research), and backups.
 EXCLUDE_PREFIX = ('.github/', 'site/')
-EXCLUDE_FILES = {'.gitignore', '.gitattributes', 'development/CURRENT.md', 'development/reference_inventory.json'}
+EXCLUDE_FILES = {'.gitignore', '.gitattributes', 'development/CURRENT.md', 'development/reference_inventory.json', 'development/USER_REQUESTS.md'}
 # Untracked (gitignored) text that the published source references. Binary
 # payloads (*.bin, images) and game-derived data/ tables stay excluded.
 EXTRA_UNTRACKED = ['assets/ccz/README.md', 'assets/ccz/ccz_catalog.json', 'assets/ccz/ccz_units.json']

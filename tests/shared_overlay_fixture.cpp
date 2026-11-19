@@ -18,7 +18,7 @@ namespace terrain_render {static void on_device(ID3D11Device *){} static void on
 // User 2026-10-31: 조조전 병종 그림 draws from the same Present hook; no-op here.
 namespace ccz_sprites {static bool needs_present(){return false;} static void on_present(ID3D11Device *,ID3D11DeviceContext *,ID3D11Texture2D *,const D3D11_TEXTURE2D_DESC &){}}
 // W4-3: the draw loop is driven by the overlay service; the fixture joins the same rows production generates (module_overlay_subscriptions.inl).
-static struct {bool ccz_sprites=true,advisor_briefing=true;} mod_features;
+static struct {bool ccz_sprites=true,advisor_briefing=true,ccz_bands=false;} mod_features;   // ccz_bands: idle band flags share the 조조전 row (local248)
 #include "../src/module_overlay_subscriptions.inl"
 static unsigned checks;
 static void check(bool ok,const char *label){++checks;if(!ok){fprintf(stderr,"%s\n",label);ExitProcess(1);}}

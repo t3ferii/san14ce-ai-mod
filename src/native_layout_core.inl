@@ -137,9 +137,24 @@ struct PeerRule {const char *owner;unsigned count;PeerCond conds[3];};
 #define R1_BRIDGE(key) {Cond::Ini,L"SAN14Mods\\modules\\ModPackBridge.ini",L"ModPack",key,0}
 static const PeerRule peer_rules[]={
     {"traits9",1,{R1_MOD(L"Traits9Check.ini")}},
+    // 2026-11-18 IP R43.42: the module ini was renamed Mod09_Traits9Check.ini; both names count.
+    {"traits9",1,{R1_MOD(L"Mod09_Traits9Check.ini")}},
+    // local236: the traits9 all-screens grids (native_traits9_screens.inl) are our rewrite of the IP SAN14_Traits9_UI.dll screens,
+    // which that module installs on the same slots and call sites: yield to it the same way.
+    {"traits9_screens",1,{R1_MOD(L"Traits9Check.ini")}},
+    {"traits9_screens",1,{R1_MOD(L"Mod09_Traits9Check.ini")}},
+    {"traits9_screens",1,{{Cond::Module,L"SAN14_Traits9_UI.dll",nullptr,nullptr,0}}},
     {"trait_hover",2,{R1_MOD(L"ModPackBridge.ini"),R1_BRIDGE(L"TraitHover")}},
     {"collab",2,{R1_MOD(L"ModPackBridge.ini"),R1_BRIDGE(L"Collab")}},
     {"stats200",2,{R1_MOD(L"ModPackBridge.ini"),R1_BRIDGE(L"Stats200")}},
+    // 2026-11-18 IP R43.42: stats 200 moved out of ModPackBridge (which now always writes Stats200=0) into Stats200New.
+    {"stats200",1,{R1_MOD(L"Stats200New.ini")}},
+    // 2026-11-18 IP R43.42 1번 ModSettings needs the native 141F250/141F270 settings slots (expert_ingame rows).
+    {"expert_ingame",2,{R1_MOD(L"ModSettings.ini"),{Cond::Ini,L"San14ModSettings.ini",L"Modules",L"ModSettingsUI",1}}},
+    // 2026-11-18 IP R43.42 SortiePresets hooks the same tactic-list calls/slots as tactic_priority.
+    {"tactic_priority",1,{R1_MOD(L"SortiePresets.ini")}},
+    // 2026-11-18 IP R43.42 DragLearn hooks the same book/officer drag sites as drag_learn.
+    {"drag_learn",1,{R1_MOD(L"DragLearn.ini")}},
     {"battle_deaths",2,{R1_MOD(L"Patch27.ini"),{Cond::Ini,L"SAN14Mods\\Patch27\\Options.ini",L"Features",L"Patch27Features",0}}},
     {"scenery",1,{R1_MOD(L"SettingsHelpScenic.ini")}},
     {"region_officers",2,{R1_MOD(L"RegionOfficer.ini"),{Cond::Ini,L"SAN14Mods\\modules\\RegionOfficer.ini",L"RegionOfficer",L"Face",0}}},
@@ -314,7 +329,9 @@ struct Hook {
     bool raw;                     // hook_bytes: patch is applied as given (no E9 relay)
     const wchar_t *original_module;
 };
-static const unsigned kMaxHooks=384;   // 261 registry rows (105 + 156 trait_hover) + 13 traits9 patches + 15 stats200 registrations + 70E9C1 + Present, with room for peers
+// local236 (2026-11-18): 384 → 512. 307 registry rows + 14 traits9 patches + 16 stats200 + 70E9C1 + Present = 339, and the traits9
+// all-screens rows (owner traits9_screens, about 70 including the 34 info-panel call sites and 2 unit-tab spans) would pass 384.
+static const unsigned kMaxHooks=512;
 static Hook hooks[kMaxHooks];
 static unsigned hook_total;
 static const char *state_event(LONG state) {

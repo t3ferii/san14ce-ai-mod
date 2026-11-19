@@ -81,10 +81,11 @@ static bool governor(Obj p,Obj *corps_out=nullptr) {
     if(corps_out)*corps_out=c;
     return yes;
 }
-// A city with the force's lord (force +0x52, as auto_commands reads it) or a governor of another corps in it.
+// A city with the force's lord (force +0x10, structs.md FORCE; +0x52 is the 군사 — read here until local257) or a governor of
+// another corps in it.
 static bool holds_leader(unsigned city,unsigned force,Obj except_corps) {
     Obj f=force<0x34?pointer(world(),0xDF30+force*8):nullptr;
-    Obj lord=f?table(0x158,word(f,0x52),6000):nullptr;
+    Obj lord=f?table(0x158,word(f,0x10),6000):nullptr;
     if(valid(lord) && word(lord,0xE4)==city)return true;
     for(unsigned i=0;i<0x34;++i) {
         Obj c=corps_at(i);
@@ -464,7 +465,7 @@ static unsigned player_force() {
     return 0;
 }
 // Domestic-tick subscriber (pre): the first tick of a month's 상순 runs every computer force once.
-static void tick(Obj) { COST_SCOPE("officer_rotation:tick");
+void tick(Obj) { COST_SCOPE("officer_rotation:tick");
     if(!mod_features.officer_rotation)return;
     Obj root=world();Obj save=root?pointer(root,0x871E8):nullptr;if(!save)return;
     Obj d=save+0x34;

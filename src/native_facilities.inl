@@ -44,6 +44,30 @@ static unsigned local_facilities(Obj army, Obj area) { COST_SCOPE("facilities:lo
     if(mask & (15u<<11))mask|=15u<<11;
     return mask;
 }
+// local263 (user 2026-11-19 "공성군세에서 ... 종류별로 2개씩만 건설 가능하게 투석대 2개 요새 2개 ... 투석대+망루랑 같이 카운트되고
+// 요새+진이랑 같이 카운트되고"): how many facilities of kind k1 or k2 the army's force has in the region, finished or not
+// (buildings +0x12 kind, +0x13 force), plus other computer armies' build orders there whose site holds no building yet
+// (a site under construction is already a building; several armies on one site count once).
+static unsigned local_facility_pair(Obj army, Obj area, unsigned k1, unsigned k2) { COST_SCOPE("facilities:local_facility_pair");
+    unsigned count=0,owner=army_force(army);
+    for(unsigned i=1;i<=3000;++i) {
+        Obj b=table(0x6DA98,i,3000);
+        if(!valid(b) || b[0x13]!=owner || (b[0x12]!=k1 && b[0x12]!=k2) || word(b,0x10)>=48400)continue;
+        Obj tile=table(0xE270,word(b,0x10),48399);
+        if(valid(tile) && fn<Obj(__fastcall *)(Obj)>(GA(GA_22B8E0))(tile)==area)++count;
+    }
+    unsigned short hexes[16];unsigned n=0;
+    for(unsigned i=1;i<=500;++i) {
+        Progress &other=progress[i];Obj member=table(0x7E838,i,500);
+        if(member==army || !computer_army(member) || army_force(member)!=owner || other.army!=member ||
+           other.commander!=word(member,0x12) || (other.facility!=k1 && other.facility!=k2) || other.construction_hex>=48400)continue;
+        Obj tile=table(0xE270,other.construction_hex,48399);
+        if(!valid(tile) || word(tile,0x1A) || fn<Obj(__fastcall *)(Obj)>(GA(GA_22B8E0))(tile)!=area)continue;
+        bool dup=false;for(unsigned j=0;j<n;++j)dup=dup || hexes[j]==other.construction_hex;
+        if(!dup && n<16) {hexes[n++]=other.construction_hex;++count;}
+    }
+    return count;
+}
 static void remember_cut(Obj army, Progress &p) { COST_SCOPE("facilities:remember_cut");
     if(!player_force())return;
     unsigned id=dword(army,0x1F4);Obj target=table(0x7E838,id,500);

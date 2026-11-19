@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "ccz-sprites",
  "title": "ccz-sprites",
  "host": "ccz",
@@ -15,6 +15,9 @@
   "src/ccz_appearance.h",
   "src/ccz_appearance_io.h",
   "src/ccz_appearance_labels.h",
+  "src/ccz_band_kinds.h",
+  "src/ccz_portrait.h",
+  "src/ccz_bands.inl",
   "src/ccz_catalog.h",
   "src/ccz_module.cpp",
   "src/ccz_module_api.h",
@@ -22,6 +25,7 @@
   "src/ccz_sprites.hlsl",
   "src/ccz_sprites_ps.h",
   "src/ccz_sprites_vs.h",
+  "src/native_ccz_bands.inl",
   "src/native_ccz_bridge.inl",
   "src/native_ccz_editor.inl",
   "src/native_ccz_preview.inl",
@@ -68,6 +72,10 @@
   "tools/prepare_ccz_title_layout.py",
   "src/ccz_module.cpp",
   "src/native_ccz_bridge.inl",
+  "src/ccz_band_kinds.h",
+  "src/ccz_portrait.h",
+  "src/ccz_bands.inl",
+  "src/native_ccz_bands.inl",
   "tests/ccz_battle_fixture.cpp",
   "tests/ccz_battle_build.ps1",
   "src/native_ccz_sprites.inl",
@@ -76,6 +84,8 @@
   "src/ccz_sprites_ps.h",
   "src/native_unified_overlay.inl",
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_split_install.inl",
   "tools/ccz_extract_units.py",
   "assets/ccz/ccz_units.bin",
@@ -100,6 +110,18 @@
   "shared-overlay"
  ],
  "ini": [
+  {
+   "section": "ccz",
+   "key": "band_morale"
+  },
+  {
+   "section": "ccz",
+   "key": "band_troops"
+  },
+  {
+   "section": "ccz",
+   "key": "bands"
+  },
   {
    "section": "ccz",
    "key": "ccz_block"
@@ -127,6 +149,22 @@
   {
    "section": "ccz",
    "key": "sprite_fallback"
+  },
+  {
+   "section": "diagnostics",
+   "key": "band_dev_spawn"
+  },
+  {
+   "section": "diagnostics",
+   "key": "ccz_draw_probe"
+  },
+  {
+   "section": "diagnostics",
+   "key": "ccz_sprite_fault"
+  },
+  {
+   "section": "groups",
+   "key": "diagnostics"
   }
  ],
  "installer": {
@@ -161,13 +199,289 @@
    {
     "section": "ccz",
     "key": "ccz_critical"
+   },
+   {
+    "section": "ccz",
+    "key": "bands"
+   },
+   {
+    "section": "ccz",
+    "key": "band_troops"
+   },
+   {
+    "section": "diagnostics",
+    "key": "band_dev_spawn",
+    "retired": true
+   },
+   {
+    "section": "ccz",
+    "key": "band_morale"
+   },
+   {
+    "section": "diagnostics",
+    "key": "ccz_sprite_fault"
+   },
+   {
+    "section": "diagnostics",
+    "key": "ccz_draw_probe"
    }
   ]
  },
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_13A3410",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "ccz_sprites",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13AF608",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "unified_dialogs",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13AF618",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "unified_dialogs",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13AF640",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "unified_dialogs",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13E7EA0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "ccz_title",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13E7EA8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "ccz_title",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13E7EC0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "ccz_title",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_16AF3B",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bridge",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bridge.inl"
+  },
+  {
+   "key": "GA_16B86C",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  },
+  {
+   "key": "GA_177E98",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  },
+  {
+   "key": "GA_186E60",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  },
+  {
+   "key": "GA_22E690",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  },
+  {
+   "key": "GA_230460",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  },
+  {
+   "key": "GA_25A880",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  },
+  {
+   "key": "GA_268070",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  },
+  {
+   "key": "GA_278290",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  },
+  {
+   "key": "GA_2801C0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  },
+  {
+   "key": "GA_2DC550",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  },
+  {
+   "key": "GA_2ECEA0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  },
+  {
+   "key": "GA_2ECF00",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  },
+  {
+   "key": "GA_301D00",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  },
+  {
+   "key": "GA_43EB3E",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  },
+  {
+   "key": "GA_4522B0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  },
+  {
+   "key": "GA_4EAC33",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "ccz_title",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_8AD530",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  }
+ ],
  "registry": {
   "rows": [
    {
@@ -204,6 +518,21 @@
     "refused": "split_disable(mod_features.ccz_block,33);split_disable(mod_features.ccz_critical,33)",
     "after": [],
     "seq": 310
+   },
+   {
+    "name": "ccz_bands",
+    "module": "ccz-sprites",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 96,
+    "wanted": "mod_features.ccz_bands",
+    "install": "ccz_bands::install(false)",
+    "refused": "split_disable(mod_features.ccz_bands,96)",
+    "after": [
+     "ccz_combat",
+     "battle_deaths",
+     "season_rules"
+    ],
+    "seq": 410
    }
   ],
   "subscriptions": [],

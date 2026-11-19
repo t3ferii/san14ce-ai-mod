@@ -287,7 +287,9 @@ static bool jump_patch(CodeLink &link,unsigned rva,unsigned length,Obj target) {
     return prepare_bytes(link,rva,bytes,length);
 }
 static CodeLink links[6];
-static bool install() {
+bool install() {
+    // 2026-11-18: IP DragLearn patches the same book/officer drag sites (74A574 ... 7423B5): leave them to it.
+    if(layout_client::yield_to_peer("drag_learn",kLearnCall)) {mod_features.drag_learn=false;return true;}
     if(!guards_match()) {log_event("drag_learn_guard_rejected");return false;}
     Obj relay=allocate_near(image+kBookOpen);if(!relay)return false;
     Obj s1=relay,s2=relay+0x60,s3=relay+0xC0,s4=relay+0x120,s5=relay+0x180,s6=relay+0x200;

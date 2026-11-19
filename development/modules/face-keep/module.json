@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "face-keep",
  "title": "face-keep",
  "host": "convenience",
@@ -17,17 +17,21 @@
   "src/native_face_timing.inl",
   "tests/face_keep_fixture.cpp",
   "tests/verify_face_keep.py",
-  "tools/build_face_keep_fixture.ps1"
+  "tools/build_face_keep_fixture.ps1",
+  "tools/render_stall_report.py"
  ],
  "sources": [
   "src/face_keep.h",
   "src/native_face_keep.inl",
   "src/native_face_timing.inl",
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_split_install.inl",
   "tests/face_keep_fixture.cpp",
   "tests/verify_face_keep.py",
   "tools/build_face_keep_fixture.ps1",
+  "tools/render_stall_report.py",
   "src/native_appear_batch.inl",
   "src/appear_batch.h"
  ],
@@ -69,7 +73,138 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_19A3BF",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "face_timing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_face_timing.inl"
+  },
+  {
+   "key": "GA_19A4D3",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "face_timing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_face_timing.inl"
+  },
+  {
+   "key": "GA_19A9F7",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "face_timing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_face_timing.inl"
+  },
+  {
+   "key": "GA_19B371",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "face_timing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_face_timing.inl"
+  },
+  {
+   "key": "GA_19B391",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "face_timing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_face_timing.inl"
+  },
+  {
+   "key": "GA_1AA8CB",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "face_timing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_face_timing.inl"
+  },
+  {
+   "key": "GA_1B4823",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "face_keep",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_face_keep.inl"
+  },
+  {
+   "key": "GA_1B4823",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "face_timing",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_face_timing.inl"
+  },
+  {
+   "key": "GA_670AF1",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "face_keep_portrait",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_670B53",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "face_keep_portrait",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_670BA2",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "face_keep_portrait",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_892234",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "face_keep_portrait",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_8AD2CB",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "face_keep",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_face_keep.inl"
+  }
+ ],
  "registry": {
   "rows": [
    {

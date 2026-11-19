@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "dll-split",
  "title": "dll-split",
  "host": "loader",
@@ -25,16 +25,21 @@
   "src/module_unity_combat.inl",
   "src/module_unity_convenience.inl",
   "src/module_unity_fixture.inl",
+  "src/tu_convenience_terrain.cpp",
+  "src/tu_convenience_ui.cpp",
+  "src/tu_ui_api.h",
   "src/native_split_install.inl",
   "src/native_ui_callable.inl",
   "src/save_host.h",
   "src/split_module_api.h",
+  "src/ic_gate.h",
   "tests/callsite_compat_fixture.inl",
   "tests/core_services_fixture.cpp",
   "tests/data/feature_order_7b343e3.txt",
   "tests/loader_mock.cpp",
   "tests/module_registry_fixture.cpp",
   "tests/pure_loader_fixture.cpp",
+  "tests/hub_text.py",
   "tests/registry_text.py",
   "tests/save_host_fixture.cpp",
   "tests/split_module_fixture.cpp",
@@ -46,12 +51,16 @@
   "tools/build_module_registry_fixture.ps1",
   "tools/build_save_host_fixture.ps1",
   "tools/build_split.ps1",
-  "tools/gen_module_table.py"
+  "tools/gen_module_table.py",
+  "tools/unit_equivalence.py"
  ],
  "sources": [
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_split_install.inl",
   "src/split_module_api.h",
+  "src/ic_gate.h",
   "src/native_personnel.inl",
   "src/input_proxy.cpp",
   "distribution/Manage.ps1",
@@ -82,7 +91,8 @@
   "tools/build_addr_fixtures.ps1",
   "tests/addr_resolver_fixture.cpp",
   "tests/address_guard_fixture.cpp",
-  "tests/ga_expand.py"
+  "tests/ga_expand.py",
+  "tools/pe_image.py"
  ],
  "tests": [
   "split-module",
@@ -130,7 +140,318 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_1346C98",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "combat_ai:cut_node",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_1347518",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "combat_ai:first_army_node",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_134B390",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "combat_ai:hire_node",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_134CC78",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "combat_ai:trade_node",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_134DF20",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "combat_ai:retreat_node",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_134E518",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "combat_ai:city_node",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_1350268",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "combat_ai:foothold_strength_node",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_13542C0",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "combat_ai:person_info_node",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_13547C8",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "combat_ai:variable_minus_node",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_1354D80",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "combat_ai:attack_threshold_node",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_143F950",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "terrain_edit",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_1444140",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "terrain_edit",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_1444148",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "terrain_edit",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_14503D8",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "terrain_edit",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_1450DB0",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "terrain_edit",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_1450DE8",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "terrain_edit",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_1697960",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "terrain_trees",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/module_pointers.inl"
+  },
+  {
+   "key": "GA_16AEF4",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "adapter",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_split_install.inl"
+  },
+  {
+   "key": "GA_175950",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "adapter",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_split_install.inl"
+  },
+  {
+   "key": "GA_1EE815",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "adapter",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_split_install.inl"
+  },
+  {
+   "key": "GA_27AAC0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "adapter",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_split_install.inl"
+  },
+  {
+   "key": "GA_297070",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "adapter",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_split_install.inl"
+  },
+  {
+   "key": "GA_2B2A90",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "adapter",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_split_install.inl"
+  },
+  {
+   "key": "GA_304D70",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "adapter",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_split_install.inl"
+  },
+  {
+   "key": "GA_34CB96",
+   "kind": "bytes",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "adapter",
+   "len": 1,
+   "policy": "refuse_if_changed",
+   "src": "src/native_split_install.inl"
+  },
+  {
+   "key": "GA_35EF25",
+   "kind": "bytes",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "adapter",
+   "len": 1,
+   "policy": "refuse_if_changed",
+   "src": "src/native_split_install.inl"
+  },
+  {
+   "key": "GA_36F83",
+   "kind": "bytes",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "adapter",
+   "len": 1,
+   "policy": "refuse_if_changed",
+   "src": "src/native_split_install.inl"
+  },
+  {
+   "key": "GA_BC4BD7",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "adapter",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_split_install.inl"
+  },
+  {
+   "key": "GA_BC4BEC",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "adapter",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_split_install.inl"
+  },
+  {
+   "key": "GA_D3516",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "adapter",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_split_install.inl"
+  },
+  {
+   "key": "com:ID3D11Device#5",
+   "kind": "com",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "terrain_render",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_split_install.inl"
+  }
+ ],
  "registry": {
   "rows": [],
   "subscriptions": [],

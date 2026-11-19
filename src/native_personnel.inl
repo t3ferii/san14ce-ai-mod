@@ -79,8 +79,18 @@ static void personnel_filter_wounded(GameList &list) {
     }
 }
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
-#define CORPS_DOMESTIC_HOOKS 1   // local56: native_corps_domestic.inl (links slot) defines these
-namespace corps_domestic {static bool skip_second_search(Obj context);static void arm(Obj context,bool selected);static void learn_instead(Obj officer);}
+#define CORPS_DOMESTIC_HOOKS 1   // local56: native_corps_domestic.inl (links slot) shares the two wrappers below
+// Module boundary (2026-11-16, feature_deps D1/D4/D5/D10): the computer-corps calls and the injury switch reach these wrappers
+// through this block. The split install hub fills it (native_split_install.inl split_bind_links, first thing in split_prepare, before
+// any slot is published) with the same three corps_domestic functions as before - each still returns at once while its own switch is
+// off - and the address of the injury switch, so a later split_feature_off is seen exactly as the direct read saw it.
+namespace personnel_links {
+static bool (*skip_second_search)(Obj context);
+static void (*arm)(Obj context,bool selected);
+static void (*learn_instead)(Obj officer);
+static const bool *injury;
+static bool injury_on() {return injury && *injury;}
+}
 #endif
 static uint64_t personnel_actor_node(Obj node,Obj context,Obj subject,unsigned original_rva,unsigned output_field=0x38) {
     uint64_t result=fn<Execute>(original_rva)(node,context,subject);
@@ -99,13 +109,13 @@ static uint64_t __fastcall personnel_search_actors(Obj node,Obj context,Obj subj
 static uint64_t __fastcall personnel_officer_candidates(Obj node,Obj context,Obj subject) { COST_SCOPE("personnel_officer_candidates");
 #ifdef CORPS_DOMESTIC_HOOKS
     // local56: the slot is also published without injury protection (officer_first); the wounded filter stays injury's.
-    if(!mod_features.injury) {
+    if(!personnel_links::injury_on()) {
         uint64_t result=fn<Execute>(GA(GA_7F4F0))(node,context,subject);
-        corps_domestic::arm(context,result==1);
+        if(personnel_links::arm)personnel_links::arm(context,result==1);
         return result;
     }
     uint64_t result=personnel_actor_node(node,context,subject,GA(GA_7F4F0),0x3C);
-    corps_domestic::arm(context,result==1);
+    if(personnel_links::arm)personnel_links::arm(context,result==1);
     return result;
 #else
     return personnel_actor_node(node,context,subject,GA(GA_7F4F0),0x3C);
@@ -193,11 +203,11 @@ static uint64_t __fastcall personnel_spy_officer(Obj node,Obj context,Obj subjec
 }
 static uint64_t __fastcall personnel_search_command(Obj node,Obj context,Obj subject) { COST_SCOPE("personnel_search_command");
 #ifdef CORPS_DOMESTIC_HOOKS
-    if(corps_domestic::skip_second_search(context)) {   // local56 ai_search2: computer corps, second pass
-        corps_domestic::learn_instead(personnel_context_object(node,context,0x3C));   // local150 ai_learn: a tactic with the order instead
+    if(personnel_links::skip_second_search && personnel_links::skip_second_search(context)) {   // local56 ai_search2: computer corps, second pass
+        if(personnel_links::learn_instead)personnel_links::learn_instead(personnel_context_object(node,context,0x3C));   // local150 ai_learn: a tactic with the order instead
         return 2;
     }
-    if(enabled && mod_features.injury) {
+    if(enabled && personnel_links::injury_on()) {
 #else
     if(enabled) {
 #endif

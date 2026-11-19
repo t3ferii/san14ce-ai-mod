@@ -33,8 +33,12 @@ static bool personnel_recommended(Obj force,Obj target,Obj actor) {
 }
 [[maybe_unused]] static PersonnelBatchResult personnel_auto_employ(Obj district,GameList &selected,
     const Obj *excluded_actors=nullptr,unsigned excluded_count=0,
-    unsigned reserved_orders=0,Obj reserved_district=nullptr) {
+    unsigned reserved_orders=0,Obj reserved_district=nullptr,unsigned wait_days=0) {
     PersonnelBatchResult result;
+    // Command +0x10 is the screen's wait choice (layout+0x1E8 set by 735F60
+    // cases 5/6/7 = 0/10/30). 1F1210/1EECC0 accept only 0, 10 and 30
+    // (mask 0x40000401). User 2026-11-15: extras follow the same wait.
+    if(wait_days!=10 && wait_days!=30)wait_days=0;
     Obj force=valid(district)?table(0xDF30,district[0x10],51):nullptr;
     if(!enabled || !valid(force)) {result.failed=1;return result;}
     bool reserved[6001]={},handled[6001]={};
@@ -62,7 +66,7 @@ static bool personnel_recommended(Obj force,Obj target,Obj actor) {
                (word(actor,0x15E)&1) || personnel_force(actor)!=force)continue;
             unsigned reason=personnel_recruitment_reason(target,district,actor);
             if(reason==personnel::MissingContext || personnel::recruitment_blocked(reason))continue;
-            PersonnelEmployCommand command={target,actor,0,0};
+            PersonnelEmployCommand command={target,actor,wait_days,0};
             if(!fn<int(__fastcall *)(PersonnelEmployCommand *)>(GA(GA_1F1210))(&command))continue;
             allowed=true;
             if(!personnel_order_available(actor,reserved_orders,reserved_district))continue;
@@ -87,7 +91,7 @@ static bool personnel_recommended(Obj force,Obj target,Obj actor) {
         // cost once per dispatch; do not deduct orders separately.
         // Validate again after advice before dispatch. A void native
         // function's return register must never be interpreted as success.
-        PersonnelEmployCommand command={target,chosen,0,0};
+        PersonnelEmployCommand command={target,chosen,wait_days,0};
         if(!personnel_order_available(chosen,reserved_orders,reserved_district) ||
            !fn<int(__fastcall *)(PersonnelEmployCommand *)>(GA(GA_1F1210))(&command)) {
             ++result.failed;continue;
@@ -97,7 +101,7 @@ static bool personnel_recommended(Obj force,Obj target,Obj actor) {
         int player_command=fn<int(__fastcall *)(Obj)>(GA(GA_235300))(district);
         fn<void(__fastcall *)(PersonnelEmployCommand *,int)>(GA(GA_1EECC0))(&command,player_command);
         if(word(chosen,0x15E)&1) {
-            ++result.sent;log_event("auto_employ_sent",target_id,actor_id,1);
+            ++result.sent;log_event("auto_employ_sent",target_id,actor_id,1u|(wait_days<<8));
         } else {++result.failed;log_event("auto_employ_native_rejected",target_id,actor_id);}
     }
     return result;

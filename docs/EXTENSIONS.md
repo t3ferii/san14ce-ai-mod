@@ -17,4 +17,4 @@ v12.20부터 전법 설명 TXT는 배포하지 않는다. 설명 툴팁은 DLL �
 
 포로 대화(`captive_dialog`)는 2026-11-06 사용자 결정으로 삭제했다(새 패치 원작이 양쪽 세력 판정을 이미 한다). 옛 설정 파일에 키가 남아 있어도 읽지 않고 무시한다.
 
-코드: `src/native_modpack.inl`, `src/native_traits9.inl`, `src/stat_growth.h`, `tools/import_modpack_objects.py`, 고정 생성물 `src/traits9_payloads.h`. 검사 경로 `modpack-v16` / `traits9-captive`와 설치/저장 회귀. 이전 UI·연출·새/기존 저장의 모든 실게임 조합을 확인한 것은 아니다.
+코드: `src/native_modpack.inl`, `src/native_traits9.inl`, `src/stat_growth.h`, `tools/import_modpack_objects.py`, 개성 9칸 자리 표 `src/traits9_sites.h`(local235: 에디터 기계어 덩어리를 같은 동작의 C++로 다시 씀, 출처 유지). 검사 경로 `modpack-v16` / `traits9-captive`와 설치/저장 회귀. 이전 UI·연출·새/기존 저장의 모든 실게임 조합을 확인한 것은 아니다.

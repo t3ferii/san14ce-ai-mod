@@ -64,8 +64,7 @@ def load_foreign(tree, ga):
             if isinstance(spec, dict):
                 v = spec.get(b)
             elif isinstance(spec, str):
-                gid = 'GA_' + spec.upper().lstrip('0')
-                v = ga.rva(gid, b) if gid in ga.index else (int(spec, 16) if b == ga.builds[0] else None)
+                v = None    # schema 1 string = an RVA of an older game build: never read it as a current-build address
             elif s.get('ga'):
                 v = ga.rva(s['ga'], b)
             rv[b] = int(v, 16) if isinstance(v, str) else v
@@ -412,7 +411,7 @@ def run_rules(mp, foreign, policy_unused, reader, addr_kinds, nexe):
     mp.hook_owner_map = hook_owners or {}
     reg_owner_rows = collections.defaultdict(list)
     for s in layout_sites:
-        if s['method'] in ('layout_rows', 'layout_patch_row', 'layout_traits9_sites'):
+        if s['method'] in ('layout_rows', 'layout_patch_row', 'layout_traits9_sites', 'layout_owner_rows'):
             reg_owner_rows[s['owner']].append(s)
     for owner, rows in reg_owner_rows.items():
         files = set()
@@ -643,6 +642,7 @@ def summarize(res, args):
         'unresolved_arguments': len(mp.unresolved),
         'policy_entries': len(res['policy']), 'stale_policy_entries': len(res['stale']),
         'foreign_sites': len(res['foreign']['sites']), 'foreign_relations': len(res['foreign']['relations']),
+        'foreign_unresolved': sum(1 for s in res['foreign']['sites'] if s.get('unresolved')),
         'exe_checked': not args.no_exe, 'r12_compared': res['notes'].get('r12_compared'), 'r13_verified': res['notes'].get('r13_verified'),
         'elapsed_ms': res['elapsed_ms'],
         'rules': {r: dict(c) for r, c in sorted(byrule.items())},

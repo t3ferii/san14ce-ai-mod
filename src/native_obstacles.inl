@@ -287,6 +287,9 @@ static void refresh_path_wall(Obj army,Progress &p) { COST_SCOPE("obstacles:refr
         unsigned kind=b[0x12];
         if(!((kind==9 || kind==10 || kind==16) && word(b,0x14) && !b[0x13]))continue;
         if(!wall_path::serves(campaign_area_id(word(b,0x10)),home,wall_areas))continue;
+        // local226 (user 2026-11-18 "투석대랑 망루 사거리 ... 거기 밖에서 중립건물 부쉈으면해"): only walls this army can hit from
+        // outside every hostile 망루/투석대 range (route_hook::wall_stand).
+        if(route_hook_breach && !route_hook::wall_has_stand(army,word(b,0x10)))continue;
         wall_hexes.push_back(word(b,0x10));
     }
     // local106b (user 2026-11-13, replaces the local106 path search): no path search; a wall with a hostile army within

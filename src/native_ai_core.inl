@@ -40,6 +40,10 @@ static bool computer_army(Obj army)
     if (!valid(army) || army[0x140]) return false;
     unsigned player = player_force();
     unsigned force = army_force(army);
+    // 2026-11-17 종군 중립군: a band army (generic-pool commander 4033..4100) answers its patron force through 22E690 and takes
+    // only the band's own follow orders. Original bandits/tribes with such commanders answer 46..51 and are unchanged.
+    const unsigned commander = word(army, 0x12);
+    if (commander >= 4033 && commander <= 4100 && force <= 45) return false;
     return force > 0 && force < 52 && force != player && (player != 0 || observer_mode());
 }
 // user 2026-11-10: a rule written for computer corps never reaches the player force - neither its direct
@@ -54,7 +58,7 @@ static bool computer_side_army(Obj army) { return computer_army(army); }
 // neutral wall code steps aside. route_hook_owns(army) = the army holds at a band or breaches a wall right now.
 static bool route_hook_morale, route_hook_breach;
 static bool route_hook_hit;   // local108: the hit response (obstacle reason 2) is a route_hook breach entry
-namespace route_hook { static bool assign_fifth(Obj a, unsigned wall_hex); }   // local55, native_route_hook.inl
+namespace route_hook { static bool assign_fifth(Obj a, unsigned wall_hex); static bool wall_has_stand(Obj a, unsigned wall_hex); }   // local55, native_route_hook.inl
 static bool (*route_hook_owns)(Obj army);
 
 static bool campaign_controlled(Obj army) { COST_SCOPE("ai_core:campaign_controlled");
@@ -68,7 +72,7 @@ static bool campaign_controlled(Obj army) { COST_SCOPE("ai_core:campaign_control
 /* This wrapper is installed at the one CALL inside D06D0. Restricting its
  * candidate list before the native predicate prevents choosing an AI victim
  * and avoids calling the predicate twice after it temporarily changes owners. */
-namespace ambush_hook {static bool active(Obj army);}   // native_ambush_combat.inl
+#include "ambush_hook.h"   // native_ambush_combat.inl defines these later in this unit
 static int __fastcall cut_player_predicate(unsigned owner, GameList *tiles, GameList *enemies, Obj *target)
 { COST_SCOPE("cut_player_predicate");
     auto original = fn<int(__fastcall *)(unsigned, GameList *, GameList *, Obj *)>(GA(GA_C1D10));
@@ -189,6 +193,11 @@ struct Progress {
     unsigned helm_delay_left;   // hostile hexes of the port region when the delay (or its last extension) began
     unsigned char helm_ring;    // local169: castle id when sent out by the river ring (대하·격류 near the castle), else 0
     unsigned char helm_stuck;   // local169: days in a row with no reachable hex to paint
+    bool helm_routed;           // local269: the ship's current order came from helm_route (own water way, native route read back)
+    unsigned short helm_seen_hex;   // local269: the ship's hex at its last helm_turn line (per-turn trace)
+    int helm_seen_day;
+    unsigned short helm_noway[4];   // local273: regions left in this 순 because none of their picks had a water way
+    int helm_noway_period;          // the 순 (day / 10) helm_noway belongs to
     unsigned short work_source,work_reviewed_center,near_capture_hex;
     unsigned char near_capture_owner;
     int near_capture_day;
@@ -370,6 +379,21 @@ static bool military_order_near(Obj self, unsigned facility, unsigned hex)
     }
     return false;
 }
+// local214 (user 2026-11-17 "원작의 건설 가능/불가능 조건을 반드시 만족해야해"): the final check 27A8D0 calls 27AAC0 with
+// check_policy 0, and 27AAC0 runs the unlock check 2C6D40 (the force's policy effect level 41E7B0 >= the facility's
+// threshold, e.g. band 13/4, fort 13/7, catapult 13/10, rockfall 24/5; KB rules_domestic 7.2 item 8) only when it is not 0
+// (ghidra 27A8D0 / 27AAC0 / 2C6D40). local216 (user 2026-11-17 "굳이 중복비용들여야하나 ... 원작함수를 잘고쳐서 1번만 제대로
+// 검사"): our orders make one call to 27A8D0 inside build_unlock_scope, and the 27AAC0 hook (build_permission, a core link
+// of the combat module: without it no mod build code runs) turns 27A8D0's 0 into 1 for that call only, so the one
+// original check covers the unlock too. Original AI and player calls keep their own argument.
+static __declspec(thread) int build_unlock_scope;   // read by build_permission (native_ai_wall.inl)
+static bool build_possible(GameList *people, Obj tile, Obj definition)
+{ COST_SCOPE("ai_core:build_possible");
+    ++build_unlock_scope;
+    const bool ok = fn<int(__fastcall *)(GameList *, Obj, Obj)>(GA(GA_27A8D0))(people, tile, definition) != 0;
+    --build_unlock_scope;
+    return ok;
+}
 static bool set_build(Obj army, unsigned facility, unsigned hex)
 { COST_SCOPE("ai_core:set_build");
     if(campaign_castle_locked(army))return false;
@@ -418,7 +442,7 @@ static bool continue_build(Obj army, Progress &p)
     int cost = fn<int(__fastcall *)(Obj, Obj)>(GA(GA_2AD6C0))(force, definition);
     if (cost < 0 || resource(origin) < cost) { p.facility = 0; return false; }
     GameList people; list_init(people, GA(GA_13466B0)); list_add(people, person);
-    int possible = fn<int(__fastcall *)(GameList *, Obj, Obj)>(GA(GA_27A8D0))(&people, tile, definition);
+    const bool possible = build_possible(&people, tile, definition);   // local216: one original check incl. unlock
     list_free(people);
     if (!possible) { p.facility = 0; return false; }
     if (military_spacing_blocked(army, p.facility, p.construction_hex)) {   // a neighbour started meanwhile: give the site up

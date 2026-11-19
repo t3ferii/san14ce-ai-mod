@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "core",
  "title": "core",
  "host": "convenience",
@@ -13,6 +13,8 @@
   "src/save_binding.h",
   "src/log_append.h",
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_cost_profile.h",
   "src/native_crash_diagnostic.inl",
   "src/native_profile.h",
@@ -22,10 +24,15 @@
   "tests/native_fixture.cpp",
   "tests/native_install_fixture.inl",
   "tools/build_native_fixture.ps1",
-  "src/gpu_profile.*"
+  "src/gpu_profile.*",
+  "src/computer_tactics.h",
+  "src/season_mobility_shared.h",
+  "src/ambush_shared.h"
  ],
  "sources": [
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_crash_diagnostic.inl",
   "src/native_profile.h"
  ],
@@ -47,7 +54,78 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_13493D8",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "recruit_ai",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_adapter.cpp"
+  },
+  {
+   "key": "GA_134FE18",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "recruit_ai",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_adapter.cpp"
+  },
+  {
+   "key": "GA_2B5601",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "recruit_alert",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_adapter.cpp"
+  },
+  {
+   "key": "GA_2E12DB",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "recruit_alert",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_adapter.cpp"
+  },
+  {
+   "key": "GA_2E1534",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "recruit_alert",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_adapter.cpp"
+  },
+  {
+   "key": "GA_D3510",
+   "kind": "block",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "adapter",
+   "len": 16,
+   "policy": "refuse_if_changed",
+   "src": "src/native_patch_core.inl"
+  },
+  {
+   "key": "GA_D3510",
+   "kind": "block",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "adapter",
+   "len": 16,
+   "policy": "refuse_if_changed",
+   "src": "src/native_patch_core.inl"
+  }
+ ],
  "registry": {
   "rows": [
    {

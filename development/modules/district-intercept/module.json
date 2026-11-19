@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "district-intercept",
  "title": "district-intercept",
  "host": "convenience",
@@ -20,6 +20,8 @@
  "sources": [
   "src/native_sortie.inl",
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "installer/InstallerGui.cs",
   "distribution/FeatureSelect.ps1",
   "tests/district_intercept_fixture.inl",
@@ -59,7 +61,28 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_1EDC30",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "district_intercept",
+   "len": 6,
+   "policy": "refuse_if_changed",
+   "src": "src/native_district_intercept_link.inl"
+  },
+  {
+   "key": "GA_C4003",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "district_intercept",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_district_intercept_link.inl"
+  }
+ ],
  "registry": {
   "rows": [],
   "subscriptions": [],

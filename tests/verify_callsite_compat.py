@@ -116,7 +116,8 @@ check('relay+4096+k*16' in source and 4096+call_count*16 <= 8192 and
 check('relay+2432,gate=stub+32' in source, 'dispatch retains old reserved region')
 check('prepare_info(' not in split and '0x14AB2D0' not in split and '0x8E1D90' not in split,
       'user decision 2026-11-03: removed officer roster hooks leave their caller links untouched')
-adapter = (P/'src/native_adapter.cpp').read_text(encoding='utf-8-sig')
+from hub_text import hub_text   # 2026-11-16 multi-unit refactor: hub = native_core.inl + native_patch_core.inl + native_adapter.cpp
+adapter = hub_text(P)
 # User 2026-11-07 W7: the old integrated installer moved to a test-only file.
 # Audit the production split allocator rather than that retired installer.
 check('Obj call,unsigned bytes=0x1000' in adapter and

@@ -27,7 +27,8 @@
         {"ps1": "tools/cpu_trace.ps1", "args": ["-ValidateOnly"]},
         {"ps1": "tests/cpu_trace_fixture.ps1", "args": []},
         {"py": "tools/cpu_scope_report.py", "args": ["--help"]},
-        {"py": "tests/test_cpu_scope_report.py", "args": []}
+        {"py": "tests/test_cpu_scope_report.py", "args": []},
+        {"py": "tools/log_summary.py", "args": ["--selftest"]}
       ],
       "parallel_safe": false
     },
@@ -165,12 +166,13 @@
       "cache": true,
       "subsumes": ["layout-registry"],
       "steps": [
-        {"id": "c_base", "needs": [], "cwd": "build/development/loader_split", "cl": {"flags": "split", "defs": ["/DSPLIT_MODULE_FIXTURE", "/DSPLIT_BASE"], "inc": ["."], "src": ["src/native_adapter.cpp"], "out": "SplitBaseFixture.dll", "dll": true, "link": ["kernel32.lib", "user32.lib", "gdi32.lib", "bcrypt.lib", "dxguid.lib"]}, "prio": 10},
-        {"id": "c_combat", "needs": [], "cwd": "build/development/loader_split", "cl": {"flags": "split", "defs": ["/DSPLIT_MODULE_FIXTURE", "/DSPLIT_COMBAT"], "src": ["src/native_adapter.cpp"], "out": "SplitCombatFixture.dll", "dll": true, "link": ["kernel32.lib", "user32.lib"]}, "prio": 10},
+        {"id": "c_base", "needs": [], "cwd": "build/development/loader_split", "cl": {"flags": "split", "defs": ["/DSPLIT_MODULE_FIXTURE", "/DSPLIT_BASE", "/DSAN14_MULTI_TU"], "inc": ["."], "src": ["src/native_adapter.cpp", "src/tu_convenience_terrain.cpp", "src/tu_convenience_ui.cpp"], "out": "SplitBaseFixture.dll", "dll": true, "link": ["kernel32.lib", "user32.lib", "gdi32.lib", "bcrypt.lib", "dxguid.lib"]}, "prio": 10},
+        {"id": "c_combat", "needs": [], "cwd": "build/development/loader_split", "cl": {"flags": "split", "defs": ["/DSPLIT_MODULE_FIXTURE", "/DSPLIT_COMBAT", "/DSAN14_MULTI_TU"], "src": ["src/native_adapter.cpp"], "out": "SplitCombatFixture.dll", "dll": true, "link": ["kernel32.lib", "user32.lib"]}, "prio": 10},
         {"id": "c_fixture", "needs": [], "cwd": "build/development/loader_split", "cl": {"flags": "split", "defs": ["/DSPLIT_MODULE_FIXTURE"], "src": ["tests/split_module_fixture.cpp"], "out": "split_module_fixture.exe", "link": ["kernel32.lib", "user32.lib"]}, "prio": 10},
         {"id": "c_layout_fixture", "needs": [], "cwd": "build/development/loader_split", "cl": {"flags": ["/nologo", "/W4", "/WX", "/wd4505", "/utf-8", "/O2", "/MT", "/std:c++17", "/EHsc"], "src": ["tests/layout_fixture.cpp"], "out": "layout_fixture.exe", "link": ["kernel32.lib", "user32.lib"]}, "prio": 0},
         {"id": "c_layout_p3_fixture", "needs": [], "cwd": "build/development/loader_split", "cl": {"flags": ["/nologo", "/W4", "/WX", "/wd4505", "/utf-8", "/O2", "/MT", "/std:c++17", "/EHsc"], "src": ["tests/layout_p3_fixture.cpp"], "out": "layout_p3_fixture.exe", "link": ["kernel32.lib", "user32.lib"]}, "prio": 0},
         {"id": "c_layout_p4_fixture", "needs": [], "cwd": "build/development/loader_split", "cl": {"flags": ["/nologo", "/W4", "/WX", "/wd4505", "/utf-8", "/O2", "/MT", "/std:c++17", "/EHsc"], "src": ["tests/layout_p4_fixture.cpp"], "out": "layout_p4_fixture.exe", "link": ["kernel32.lib", "user32.lib"]}, "prio": 0},
+        {"id": "r_units", "needs": ["c_base", "c_combat"], "py": "tools/unit_equivalence.py", "args": [], "prio": 5},
         {"id": "r_main", "needs": ["c_base", "c_combat", "c_fixture"], "cwd": "build/development/loader_split", "exe": "build/development/loader_split/split_module_fixture.exe", "args": ["@split_image"], "prio": 5, "save": "build/split_module_fixture.json"},
         {"id": "r_layout_fixture", "needs": ["c_layout_fixture"], "cwd": "build/development/loader_split", "exe": "build/development/loader_split/layout_fixture.exe", "save": "build/layout_fixture.json", "lock": "layout-runtime"},
         {"id": "r_layout_p3_fixture", "needs": ["c_layout_p3_fixture"], "cwd": "build/development/loader_split", "exe": "build/development/loader_split/layout_p3_fixture.exe", "save": "build/layout_p3_fixture.json", "lock": "layout-runtime"},
@@ -470,7 +472,10 @@
       "steps": [
         {"py": "tools/gen_module_manifests.py", "args": ["--check"]},
         {"py": "tools/gen_installer_catalog.py", "args": ["--check"]},
-        {"py": "tools/mod_compat.py", "args": ["--selftest"]}
+        {"py": "tools/mod_compat.py", "args": ["--selftest"]},
+        {"py": "tools/switch_deps.py", "args": ["--selftest"]},
+        {"py": "tools/switch_deps.py", "args": ["--check"]},
+        {"py": "tools/add_setting.py", "args": ["--selftest"]}
       ],
       "parallel_safe": true
     },
@@ -514,7 +519,11 @@
         {"py": "tests/verify_select_checks.py", "args": [], "needs": [], "id": "t1"},
         {"py": "tests/verify_run_checks.py", "args": [], "needs": [], "id": "t2"},
         {"py": "tests/verify_feature_deps.py", "args": [], "needs": [], "id": "t3"},
-        {"py": "tests/verify_hook_map.py", "args": [], "needs": [], "id": "t4"}
+        {"py": "tests/verify_hook_map.py", "args": [], "needs": [], "id": "t4"},
+        {"py": "tools/feature_fingerprint.py", "args": ["selftest"], "needs": [], "id": "t5"},
+        {"py": "tools/feature_fingerprint.py", "args": ["selftest-strings"], "needs": [], "id": "t5b"},
+        {"py": "tests/verify_build_cache.py", "args": [], "needs": [], "id": "t6"},
+        {"py": "tools/feature_brief.py", "args": ["--selftest"], "needs": [], "id": "t7"}
       ],
       "parallel_safe": true
     },
@@ -613,6 +622,8 @@
         "kPointerTerrain"
       ],
       "owns": [
+        "src/terrain_core.h",
+        "src/tu_terrain_api.h",
         "src/native_terrain_edit.inl",
         "src/native_terrain_edit_save.inl",
         "src/native_terrain_edit_ui.inl",
@@ -634,7 +645,6 @@
         "tests/season_dxbc_fixture.cpp",
         "src/modpack_dll.cpp",
         "src/modpack_dll_api.h",
-        "src/season_mobility_shared.h",
         "src/native_modpack_dll.inl",
         "src/season/season_engine.c",
         "src/season/season_engine_v26.inc",
@@ -713,6 +723,8 @@
         "src/native_split_install.inl",
         "src/native_terrain_edit_save.inl",
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_merit_save.inl",
         "tests/terrain_edit_fixture.cpp",
         "tests/terrain_edit_ui_fixture.cpp",
@@ -745,6 +757,7 @@
       "hook_owners": [
         "advisor_hud",
         "scene_yield",
+        "advisor_briefing",
         "kPointerHud"
       ],
       "owns": [
@@ -754,8 +767,10 @@
         "src/advisor_ps.h",
         "src/advisor_terrain_bridge.h",
         "src/advisor_ambush_bridge.h",
+        "src/advisor_face_files.h",
         "src/advisor_vs.h",
         "src/native_advisor_briefing.inl",
+        "src/native_briefing_sources.inl",
         "tests/advisor_briefing_fixture.cpp",
         "tests/advisor_overlay_fixture.cpp",
         "tests/verify_advisor_briefing.py",
@@ -769,12 +784,16 @@
         "src/advisor_briefing_profile.h",
         "src/advisor_terrain_bridge.h",
         "src/advisor_ambush_bridge.h",
+        "src/advisor_face_files.h",
         "src/native_advisor_briefing.inl",
+        "src/native_briefing_sources.inl",
         "src/native_advisor_overlay.inl",
         "src/advisor_briefing.hlsl",
         "src/advisor_vs.h",
         "src/advisor_ps.h",
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_split_install.inl",
         "src/native_unified_overlay.inl",
         "tests/advisor_briefing_fixture.cpp",
@@ -816,6 +835,8 @@
         "src/diplomacy_intel.h",
         "src/diplomacy_intel_profile.h",
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_split_install.inl",
         "tests/diplomacy_intel_fixture.cpp",
         "tests/verify_diplomacy_intel.py",
@@ -846,6 +867,8 @@
         "src/native_path_fast.inl",
         "src/path_fast.h",
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_path_count.inl",
         "src/native_split_install.inl",
         "tests/path_fast_fixture.cpp",
@@ -877,6 +900,8 @@
         "src/native_path_count.inl",
         "src/path_count.h",
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_split_install.inl",
         "src/native_progress.inl",
         "tests/path_count_fixture.cpp",
@@ -907,6 +932,8 @@
         "src/native_area_index.inl",
         "src/area_index.h",
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_split_install.inl",
         "tests/area_index_fixture.cpp",
         "tests/verify_area_index.py",
@@ -942,6 +969,8 @@
         "src/damage_preview.h",
         "src/damage_preview_profile.h",
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_split_install.inl",
         "installer/InstallerGui.cs",
         "distribution/FeatureSelect.ps1",
@@ -973,6 +1002,8 @@
       "sources": [
         "src/native_sortie.inl",
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "installer/InstallerGui.cs",
         "distribution/FeatureSelect.ps1",
         "tests/district_intercept_fixture.inl",
@@ -1096,6 +1127,7 @@
         "tests/verify_split_install_failure.py",
         "tools/build_share.py",
         "tools/install_local.py",
+        "tools/local_install.ps1",
         "tools/release_features.py"
       ],
       "sources": [
@@ -1117,6 +1149,7 @@
       "build": "split",
       "depends": [],
       "hook_owners": [
+        "expert_ingame",
         "expert_links"
       ],
       "owns": [
@@ -1198,6 +1231,8 @@
       ],
       "sources": [
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_crash_diagnostic.inl",
         "src/native_adjacency.inl",
         "src/native_progress.inl",
@@ -1245,7 +1280,9 @@
         "src/native_progress_profile.h",
         "src/progress_distance_kernel.asm",
         "src/progress_distance_kernel.h",
-        "src/native_adapter.cpp"
+        "src/native_adapter.cpp",
+      "src/native_core.inl",
+      "src/native_patch_core.inl"
       ],
       "tests": [
         "progress-native",
@@ -1365,6 +1402,8 @@
       "sources": [
         "src/native_advisor_briefing.inl",
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_split_install.inl",
         "tests/advisor_briefing_fixture.cpp",
         "tools/build_advisor_briefing_fixture.ps1",
@@ -1389,6 +1428,8 @@
       "sources": [
         "src/native_drag_learn.inl",
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_split_install.inl",
         "tests/split_module_fixture.cpp"
       ],
@@ -1400,7 +1441,9 @@
       "status": "active",
       "dll": "convenience",
       "build": "split",
-      "depends": [],
+      "depends": [
+        "ui-common"
+      ],
       "hook_owners": [
         "merit",
         "merit_save",
@@ -1552,6 +1595,8 @@
         "src/save_binding.h",
         "src/log_append.h",
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_cost_profile.h",
         "src/native_crash_diagnostic.inl",
         "src/native_profile.h",
@@ -1560,12 +1605,16 @@
         "tests/crash_diagnostic_fixture.inl",
         "tests/native_fixture.cpp",
         "tests/native_install_fixture.inl",
-        "tools/build_native_fixture.ps1"
-      ,
-        "src/gpu_profile.*"
+        "tools/build_native_fixture.ps1",
+        "src/gpu_profile.*",
+        "src/computer_tactics.h",
+        "src/season_mobility_shared.h",
+        "src/ambush_shared.h"
       ],
       "sources": [
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_crash_diagnostic.inl",
         "src/native_profile.h"
       ],
@@ -1604,8 +1653,7 @@
       ],
       "hook_owners": [],
       "owns": [
-        "src/native_corps_domestic.inl",
-        "src/computer_tactics.h"
+        "src/native_corps_domestic.inl"
       ],
       "sources": [
         "src/native_corps_domestic.inl",
@@ -1725,6 +1773,8 @@
       "owns": [],
       "sources": [
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_sortie.inl",
         "src/native_campaign.inl",
         "src/native_campaign_routes.inl",
@@ -1761,15 +1811,21 @@
         "development/installer_map.json",
         "tools/gen_module_manifests.py",
         "tools/gen_installer_catalog.py",
+        "tools/add_setting.py",
         "tools/installer_preflight.py",
         "tools/mod_compat.py",
+        "tools/switch_deps.py",
+        "development/module_layers.json",
+        "development/compat_matrix.json",
+        "development/switch_deps_baseline.json",
         "docs/MOD_MANAGER_DESIGN.md"
       ],
       "sources": [
         "tools/gen_module_manifests.py",
         "tools/gen_installer_catalog.py",
         "tools/installer_preflight.py",
-        "tools/mod_compat.py"
+        "tools/mod_compat.py",
+        "tools/switch_deps.py"
       ],
       "tests": ["module-manifests"]
     },
@@ -1796,16 +1852,21 @@
         "src/module_unity_combat.inl",
         "src/module_unity_convenience.inl",
         "src/module_unity_fixture.inl",
+        "src/tu_convenience_terrain.cpp",
+        "src/tu_convenience_ui.cpp",
+        "src/tu_ui_api.h",
         "src/native_split_install.inl",
         "src/native_ui_callable.inl",
         "src/save_host.h",
         "src/split_module_api.h",
+        "src/ic_gate.h",
         "tests/callsite_compat_fixture.inl",
         "tests/core_services_fixture.cpp",
         "tests/data/feature_order_7b343e3.txt",
         "tests/loader_mock.cpp",
         "tests/module_registry_fixture.cpp",
         "tests/pure_loader_fixture.cpp",
+        "tests/hub_text.py",
         "tests/registry_text.py",
         "tests/save_host_fixture.cpp",
         "tests/split_module_fixture.cpp",
@@ -1817,12 +1878,16 @@
         "tools/build_module_registry_fixture.ps1",
         "tools/build_save_host_fixture.ps1",
         "tools/build_split.ps1",
-        "tools/gen_module_table.py"
+        "tools/gen_module_table.py",
+      "tools/unit_equivalence.py"
       ],
       "sources": [
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_split_install.inl",
         "src/split_module_api.h",
+        "src/ic_gate.h",
         "src/native_personnel.inl",
         "src/input_proxy.cpp",
         "distribution/Manage.ps1",
@@ -1853,7 +1918,8 @@
         "tools/build_addr_fixtures.ps1",
         "tests/addr_resolver_fixture.cpp",
         "tests/address_guard_fixture.cpp",
-        "tests/ga_expand.py"
+        "tests/ga_expand.py",
+        "tools/pe_image.py"
       ],
       "tests": [
         "split-module",
@@ -1959,6 +2025,8 @@
       "owns": [],
       "sources": [
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_sortie.inl",
         "src/native_campaign.inl",
         "src/native_campaign_routes.inl",
@@ -2009,7 +2077,8 @@
         "src/stat_growth.h",
         "src/native_split_install.inl",
         "tests/modpack_fixture.cpp",
-        "tests/verify_modpack_static.py"
+        "tests/verify_modpack_static.py",
+        "tools/pe_image.py"
       ],
       "tests": [
         "trait-hover",
@@ -2026,24 +2095,36 @@
         "layout"
       ],
       "hook_owners": [
-        "traits9"
+        "traits9",
+        "traits9_screens"
       ],
       "owns": [
         "src/native_traits9.inl",
-        "src/traits9_payloads.h",
+        "src/traits9_sites.h",
+        "src/native_traits9_screens.inl",
+        "src/traits9_screens.h",
         "tests/verify_traits9_save.py",
         "tools/traits9_layout.py"
       ],
       "sources": [
         "src/native_traits9.inl",
-        "src/traits9_payloads.h",
+        "src/traits9_sites.h",
+        "src/native_traits9_screens.inl",
+        "src/traits9_screens.h",
+        "src/native_trait_hover.inl",
+        "src/layout_registry.h",
+        "src/native_layout_core.inl",
+        "src/native_layout_client.inl",
         "src/native_split_install.inl",
+        "src/core_services.h",
         "tests/verify_traits9_save.py",
         "distribution/SplitManage.ps1"
       ],
       "tests": [
         "split-module",
-        "traits9-save"
+        "traits9-save",
+        "layout-registry",
+        "address-table"
       ]
     },
     "name-lookup": {
@@ -2063,6 +2144,8 @@
         "src/name_lookup.h",
         "src/native_name_lookup.inl",
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_split_install.inl",
         "tests/name_lookup_fixture.cpp",
         "tools/build_name_lookup_fixture.ps1",
@@ -2092,6 +2175,8 @@
         "src/native_building_destruction.inl",
         "src/building_destruction_profile.h",
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_split_install.inl",
         "installer/InstallerGui.cs",
         "distribution/FeatureSelect.ps1",
@@ -2123,6 +2208,8 @@
         "src/appear_batch.h",
         "src/native_appear_batch.inl",
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_split_install.inl",
         "tests/appear_batch_fixture.cpp",
         "tests/verify_appear_batch.py",
@@ -2149,17 +2236,21 @@
         "src/native_face_timing.inl",
         "tests/face_keep_fixture.cpp",
         "tests/verify_face_keep.py",
-        "tools/build_face_keep_fixture.ps1"
+        "tools/build_face_keep_fixture.ps1",
+        "tools/render_stall_report.py"
       ],
       "sources": [
         "src/face_keep.h",
         "src/native_face_keep.inl",
         "src/native_face_timing.inl",
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_split_install.inl",
         "tests/face_keep_fixture.cpp",
         "tests/verify_face_keep.py",
         "tools/build_face_keep_fixture.ps1",
+        "tools/render_stall_report.py",
         "src/native_appear_batch.inl",
         "src/appear_batch.h"
       ],
@@ -2192,6 +2283,7 @@
         "src/layout_registry.h",
         "src/native_layout_core.inl",
         "src/native_layout_client.inl",
+        "src/core_services.h",
         "tests/trait_hover_fixture.cpp",
         "tools/build_trait_hover_fixture.ps1"
       ],
@@ -2297,6 +2389,9 @@
         "src/ccz_appearance.h",
         "src/ccz_appearance_io.h",
         "src/ccz_appearance_labels.h",
+        "src/ccz_band_kinds.h",
+        "src/ccz_portrait.h",
+        "src/ccz_bands.inl",
         "src/ccz_catalog.h",
         "src/ccz_module.cpp",
         "src/ccz_module_api.h",
@@ -2304,6 +2399,7 @@
         "src/ccz_sprites.hlsl",
         "src/ccz_sprites_ps.h",
         "src/ccz_sprites_vs.h",
+        "src/native_ccz_bands.inl",
         "src/native_ccz_bridge.inl",
         "src/native_ccz_editor.inl",
         "src/native_ccz_preview.inl",
@@ -2350,6 +2446,10 @@
         "tools/prepare_ccz_title_layout.py",
         "src/ccz_module.cpp",
         "src/native_ccz_bridge.inl",
+        "src/ccz_band_kinds.h",
+        "src/ccz_portrait.h",
+        "src/ccz_bands.inl",
+        "src/native_ccz_bands.inl",
         "tests/ccz_battle_fixture.cpp",
         "tests/ccz_battle_build.ps1",
         "src/native_ccz_sprites.inl",
@@ -2358,6 +2458,8 @@
         "src/ccz_sprites_ps.h",
         "src/native_unified_overlay.inl",
         "src/native_adapter.cpp",
+        "src/native_core.inl",
+        "src/native_patch_core.inl",
         "src/native_split_install.inl",
         "tools/ccz_extract_units.py",
         "assets/ccz/ccz_units.bin",
@@ -2707,11 +2809,12 @@
       "hook_owners": [],
       "owns": [
         "src/native_ambush_combat.inl",
-        "src/ambush_shared.h"
+        "src/ambush_hook.h"
       ],
       "sources": [
         "src/native_ambush_combat.inl",
-        "src/ambush_shared.h"
+        "src/ambush_shared.h",
+        "src/ambush_hook.h"
       ],
       "tests": [
         "split-module"
@@ -2738,7 +2841,11 @@
         "tools/hook_map.py",
         "tools/hookmap_extract.py",
         "tools/route_inputs.py",
-        "tools/select_checks.py"
+        "tools/select_checks.py",
+        "tools/feature_brief.py",
+        "tools/feature_fingerprint.py",
+        "tools/cl_cache.py",
+        "tests/verify_build_cache.py"
       ],
       "sources": [],
       "tests": [
@@ -2772,13 +2879,15 @@
         "tests/test_cpu_scope_report.py",
         "tools/name_lookup_trace.ps1",
         "tools/reference_index.py",
-        "tools/worktree.ps1"
-      ,
+        "tools/worktree.ps1",
         "tools/install_damage_preview.py",
         "tools/package_input.py",
         "tools/package_mod.py",
         "tools/prepare_public_release.py",
-        "tools/rollback_progress_native.py"
+        "tools/rollback_progress_native.py",
+        "tools/pe_image.py",
+        "tools/runtime_smoke.py",
+        "tools/log_summary.py"
       ],
       "sources": [],
       "tests": ["cpu-trace"]

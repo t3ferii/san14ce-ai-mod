@@ -61,6 +61,8 @@ static float __fastcall expert_unit_power(Obj army,Obj city,int parts,int kind) 
     expert_unit_scope={army,true};
     float result=original_expert_unit_power(army,city,parts,kind);
     expert_unit_scope=previous;
+    // 2026-11-20 user "의용병 무리는 사기에의한 부대 공군/방어 스탯 변화를 크게": a live band's factor (1 for every other army)
+    if(auto power=band_power_fn)if(army)result*=power(army);
     return result;
 }
 static unsigned expert_field_force(Obj army,Obj city) {

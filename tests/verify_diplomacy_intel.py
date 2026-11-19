@@ -114,7 +114,8 @@ for original,ids in [('0082F030',[0x3c,0x42,0x4d,0x49]),('0082EB90',[0x4a,0x50,0
 for key in ['diplomacy_overinvest','diplomacy_counterturn']:
     for rel in ['installer/InstallerGui.cs','distribution/FeatureSelect.ps1','FeatureSelect.ps1']:
         check(key in (P/rel).read_text(encoding='utf-8-sig'),'catalog '+key+' '+rel)
-adapter=(P/'src/native_adapter.cpp').read_text(encoding='utf-8-sig')
+from hub_text import hub_text   # 2026-11-16 multi-unit refactor: hub = native_core.inl + native_patch_core.inl + native_adapter.cpp
+adapter=hub_text(P)
 # 사용자 결정: 사용 중지 키 읽기 제거 2026-11-03.
 check('f.diplomacy_overinvest = false; // retired 2026-11-03: native cap/marker restored; key no longer read' in adapter and
       not re.search(r'feature_key\(config, L"diplomacy", L"diplomacy_overinvest"',adapter),'retired key is not read')

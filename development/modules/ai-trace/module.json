@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "ai-trace",
  "title": "ai-trace",
  "host": "convenience",
@@ -70,9 +70,10 @@
     "refused": "",
     "after": [
      "face_timing",
-     "auto_commands"
+     "auto_commands",
+     "ccz_bands"
     ],
-    "seq": 400
+    "seq": 420
    }
   ],
   "subscriptions": [],

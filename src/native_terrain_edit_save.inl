@@ -56,7 +56,7 @@ static bool restore_sidecar(const save_host::Job *job) {
     return accepted;
 }
 // Sidecar plugin of the terrain edit (.terrain): first in the order.
-static const save_host::SidecarPlugin sidecar_plugin={"terrain",L"terrain",1,nullptr,"terrain_edit_save_failed",nullptr,&snapshot,
+const save_host::SidecarPlugin sidecar_plugin={"terrain",L"terrain",1,nullptr,"terrain_edit_save_failed",nullptr,&snapshot,
     [](const save_host::Job &job,save_host::Written &out) {return write_sidecar(job,&out);},
     &begin_load,
     [](const save_host::Job *job) {return restore_sidecar(job);}};

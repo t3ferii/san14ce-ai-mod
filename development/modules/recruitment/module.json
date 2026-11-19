@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "recruitment",
  "title": "recruitment",
  "host": "convenience",
@@ -60,7 +60,48 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_13AF798",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "recruit_ui",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13AF800",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "recruit_ui",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1443E78",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "recruit_ui",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1444070",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "recruit_ui",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  }
+ ],
  "registry": {
   "rows": [],
   "subscriptions": [],

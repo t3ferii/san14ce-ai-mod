@@ -107,15 +107,24 @@ static uint64_t __fastcall time_step(uint64_t a,uint64_t b,uint64_t c,uint64_t d
     return r;
 }
 static unsigned __cdecl params(float *out,int count) {return InterlockedCompareExchange(&running,0,0) && api?api->season_params(out,count):0u;}
-static void install() { COST_SCOPE("season_rules:install");
-    if(!mod_features.season_weather)return;
+// interop 2026-11-16: the same conditions install_rules() needs before it can start - the time-step CALL still targets 33EB20 and
+// SAN14_ModPack.dll sits next to this module - checked at the first feature guard pass, before any terrain hook installs.
+bool can_run() {
     const unsigned site=GA(GA_44E7D0),target=GA(GA_33EB20);
-    if(!site || !target || image[site]!=0xE8 || site+5+*reinterpret_cast<int *>(image+site+1)!=target) {log_event("season_rules_guard_rejected");return;}
-    if(!load())return;
+    if(!site || !target || image[site]!=0xE8 || site+5+*reinterpret_cast<int *>(image+site+1)!=target)return false;
+    wchar_t path[MAX_PATH];DWORD length=GetModuleFileNameW(self_module,path,MAX_PATH);if(!length || length>=MAX_PATH)return false;
+    wchar_t *slash=wcsrchr(path,L'\\');if(!slash || wcscpy_s(slash+1,MAX_PATH-static_cast<size_t>(slash+1-path),L"SAN14_ModPack.dll"))return false;
+    return GetFileAttributesW(path)!=INVALID_FILE_ATTRIBUTES;
+}
+static bool install_rules() { COST_SCOPE("season_rules:install");
+    if(!mod_features.season_weather)return false;
+    const unsigned site=GA(GA_44E7D0),target=GA(GA_33EB20);
+    if(!site || !target || image[site]!=0xE8 || site+5+*reinterpret_cast<int *>(image+site+1)!=target) {log_event("season_rules_guard_rejected");return false;}
+    if(!load())return false;
     wchar_t folder[MAX_PATH]={};
     DWORD n=GetModuleFileNameW(nullptr,folder,MAX_PATH);wchar_t *slash=n && n<MAX_PATH?wcsrchr(folder,L'\\'):nullptr;
-    if(!slash)return;
-    *slash=0;if(wcscat_s(folder,L"\\AI_TacticsMod\\data\\season\\"))return;
+    if(!slash)return false;
+    *slash=0;if(wcscat_s(folder,L"\\AI_TacticsMod\\data\\season\\"))return false;
     const int started=api->season_start(image,folder,flags(),
 #ifndef NO_RUNTIME_LOG
         &log_sink
@@ -123,15 +132,15 @@ static void install() { COST_SCOPE("season_rules:install");
         nullptr
 #endif
     );
-    if(!started) {log_event("season_rules_start_failed");return;}
-    Obj relay=allocate_near(image+site);if(!relay)return;
+    if(!started) {log_event("season_rules_start_failed");return false;}
+    Obj relay=allocate_near(image+site);if(!relay)return false;
     absolute_jump(relay,reinterpret_cast<void *>(&time_step));
     DWORD old;
     if(!call_prepare(link,site,relay) || !VirtualProtect(relay,4096,PAGE_EXECUTE_READ,&old) || !FlushInstructionCache(GetCurrentProcess(),relay,32)) {
-        VirtualFree(relay,0,MEM_RELEASE);log_event("season_rules_prepare_rejected");return;
+        VirtualFree(relay,0,MEM_RELEASE);log_event("season_rules_prepare_rejected");return false;
     }
     InterlockedExchange(&running,1);
-    if(!call_publish(link)) {InterlockedExchange(&running,0);log_event("season_rules_publish_rejected");return;}
+    if(!call_publish(link)) {InterlockedExchange(&running,0);log_event("season_rules_publish_rejected");return false;}
     terrain_render::season_bake::weather_params=&params;
     log_event("season_rules_installed",static_cast<unsigned>(started),flags(),0);
     // local135: snow -1 / ice -3 mobility lives in the combat module's 2B2550 hook; hand it the rules' per-cell answer.
@@ -139,5 +148,9 @@ static void install() { COST_SCOPE("season_rules:install");
     auto give=combat?reinterpret_cast<GiveSeasonMobility>(GetProcAddress(combat,"SAN14CombatSeasonMobility")):nullptr;
     const bool linked=give && api->season_mobility && give(kSeasonMobilityVersion,api->season_mobility);
     log_event("season_mobility_link",linked?1u:0u,combat?1u:0u,give?1u:0u);
+    return true;
 }
+// interop 2026-11-16: a rules install that does not complete takes the season tiles out of the terrain engine gate
+// (terrain_core_on): the engine pieces already installed then stay idle, exactly as with 부동산 개발 off.
+void install() {if(!install_rules())season_tiles_runnable=false;}
 }

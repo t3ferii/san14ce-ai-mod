@@ -153,12 +153,6 @@ static bool publish() { COST_SCOPE("ambush:publish");
 
 #if defined(SPLIT_COMBAT) && !defined(SPLIT_MODULE_FIXTURE)
 // The convenience module asks once at install; nullptr = wrong version or the switch is off.
-// local135: the season rules' mobility change (season_mobility_shared.h); the convenience module hands it over at its season install.
-extern "C" __declspec(dllexport) bool __cdecl SAN14CombatSeasonMobility(unsigned version,SeasonMobility source) {
-    if(version!=kSeasonMobilityVersion)return false;
-    InterlockedExchangePointer(reinterpret_cast<PVOID volatile *>(&season_mobility::source),reinterpret_cast<PVOID>(source));
-    log_event("season_mobility_source",source?1u:0u,0,0);return true;
-}
 extern "C" __declspec(dllexport) AmbushTable *__cdecl SAN14CombatAmbush(unsigned version) { COST_SCOPE("SAN14CombatAmbush");
     return version==kAmbushVersion && mod_features.ambush && ambush_hook::ready?&ambush_hook::shared:nullptr;
 }

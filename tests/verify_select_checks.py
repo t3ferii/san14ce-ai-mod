@@ -146,6 +146,98 @@ def reset(root):
     git(root, 'clean', '-fdq')
 
 
+def route_input_rules():
+    """route_inputs follows only what a route runs (2026-11-16 cache hole: a doc edit reran the dll-split gate)."""
+    import route_inputs as ri
+    root = os.path.join(BASE, 'ri')
+    rmtree(root)
+    files = {
+        'tools/build_split.ps1': "$taskVc='C:\\VC\\14'\n& (Join-Path $PSScriptRoot '..\\tests\\fixture_run.ps1')\n"
+                                 "$r=& '.\\split_module_fixture.exe' (Join-Path $taskProject 'build\\ui_native_analysis\\fixture\\img.bin')\n",
+        'tools/reads_exe.py': "import os\nEXE = os.path.join(ROOT, 'build', 'ui_native_analysis', 'unpacked', 'game.exe')\n",
+        'tests/fixture_run.ps1': "python tools/docs_snapshot.py\n",
+        'tools/docs_snapshot.py': "open('development/REQUESTS.md').read()\n",
+        'development/REQUESTS.md': 'requests\n',
+        'tests/cl_main.cpp': '#include "hdr.h"\nint main(){}\n',
+        'src/hdr.h': '// hdr\n',
+        # comment / docstring
+        'tests/commented.ps1': "# DLLs come only from tools/build_split.ps1\nWrite-Output ok\n",
+        'tools/doc_reader.py': '"""Reads development/data.json (os.path.join below); see tools/other_tool.py."""\n'
+                               'import os\nP = os.path.join("x", "development", "data.json")\n',
+        'development/data.json': '{}\n',
+        'tools/other_tool.py': "open('development/other.json')\n",
+        'development/other.json': '{}\n',
+        # .py naming a .ps1: data unless it starts powershell
+        'tools/reads_ps1.py': "flags = open('tools/flags.ps1').read()\n",
+        'tools/flags.ps1': "$taskSdk='C:\\SDK'\n& (Join-Path $PSScriptRoot 'flag_child.ps1')\n",
+        'tools/flag_child.ps1': "Write-Output child\n",
+        'tools/runs_ps1.py': "import subprocess\nsubprocess.run(['powershell', '-File', 'tools/run_me.ps1'])\n",
+        'tools/run_me.ps1': "Get-Content (Join-Path $PSScriptRoot 'run_me_data.txt')\n",
+        'tools/run_me_data.txt': 'data\n',
+        # .py naming a .py: data unless an interpreter runs it; a bare script name next to a folder variable is followed
+        'tools/lists_py.py': "SKIP = {'tests/listed.py'}\n",
+        'tests/listed.py': "open('development/listed_data.json')\n",
+        'development/listed_data.json': '{}\n',
+        'tools/runs_py.py': "import os, subprocess, sys\nT = os.path.dirname(__file__)\n"
+                            "subprocess.run([sys.executable, os.path.join(T, 'run_py.py')])\n"
+                            "subprocess.run(['powershell', '-File', os.path.join(T, 'bare.ps1')])\n",
+        'tools/run_py.py': "open('development/run_py_data.json')\n",
+        'development/run_py_data.json': '{}\n',
+        'tools/bare.ps1': "Get-Content (Join-Path $PSScriptRoot 'bare_data.txt')\n",
+        'tools/bare_data.txt': 'data\n',
+        # a whole folder is read or listed, not run
+        'tools/walks.py': "import os\nfor n in os.listdir('development/'): pass\n",
+        'development/walked.py': "open('tests/walked_child.json')\n",
+        'tests/walked_child.json': '{}\n',
+        'src/unrelated.h': '// not included\n',
+        # explicit DATA_READ: run_checks reads build_split.ps1 as data, gen_module_table only links CURRENT.md
+        'tools/run_checks.py': "import subprocess\nsubprocess.run(['powershell'])\nX = 'tools/build_split.ps1'\nS = st['cl'].get('src')\n",
+        'tools/gen_module_table.py': "LINK = '(../development/CURRENT.md)'\n",
+        'development/CURRENT.md': 'current\n',
+    }
+    for rel, text in files.items():
+        write(root, rel, text)
+
+    def inputs(entry):
+        return ri.compute(root, 'r', entry)
+
+    cl = inputs({'steps': [{'cl': {'src': ['tests/cl_main.cpp']}}]})
+    check('route_inputs: cl step reads build_split.ps1 flags but does not follow its fixture scripts',
+          'tools/build_split.ps1' in cl['files'] and 'src/hdr.h' in cl['files'] and 'tests/fixture_run.ps1' not in cl['files']
+          and 'development/REQUESTS.md' not in cl['files'] and any(t.startswith('cl:C:\\VC\\14') for t in cl['toolchain']), cl)
+    check('route_inputs: step routes key on the step runner, not on what it names',
+          'tools/run_checks.py' in cl['files'] and 'src/hdr.h' in cl['files'] and 'src/unrelated.h' not in cl['files'], cl['files'])
+    c = inputs({'steps': [{'ps1': 'tests/commented.ps1'}]})
+    check('route_inputs: a script named in a comment is neither input nor followed', 'tools/build_split.ps1' not in c['files'], c['files'])
+    d = inputs({'steps': [{'py': 'tools/doc_reader.py'}]})
+    check('route_inputs: a data file named in a docstring stays an input; a script named there is not',
+          'development/data.json' in d['files'] and 'tools/other_tool.py' not in d['files'] and 'development/other.json' not in d['files'], d['files'])
+    r = inputs({'steps': [{'py': 'tools/reads_ps1.py'}]})
+    check('route_inputs: .py without powershell reads a .ps1 as data (content + toolchain, not its references)',
+          'tools/flags.ps1' in r['files'] and 'tools/flag_child.ps1' not in r['files'] and "$taskSdk='C:\\SDK'" in r['toolchain'], r)
+    r = inputs({'steps': [{'py': 'tools/runs_ps1.py'}]})
+    check('route_inputs: .py that starts powershell follows the .ps1', 'tools/run_me_data.txt' in r['files'], r['files'])
+    r = inputs({'steps': [{'py': 'tools/lists_py.py'}]})
+    check('route_inputs: .py naming a .py it never runs keeps it as data only',
+          'tests/listed.py' in r['files'] and 'development/listed_data.json' not in r['files'], r['files'])
+    r = inputs({'steps': [{'py': 'tools/runs_py.py'}]})
+    check('route_inputs: interpreter / powershell run by bare name next to a folder variable is followed',
+          'development/run_py_data.json' in r['files'] and 'tools/bare_data.txt' in r['files'], r['files'])
+    r = inputs({'steps': [{'py': 'tools/walks.py'}]})
+    check('route_inputs: a folder named as a whole is content, its scripts are not followed',
+          'development/walked.py' in r['files'] and 'tests/walked_child.json' not in r['files'], r['files'])
+    w = inputs({'steps': [{'py': 'tools/lists_py.py'}, {'py': 'tools/run_checks.py'}]})
+    check('route_inputs: run_checks.py DATA_READ leaf keeps build_split.ps1 as content without its fixture scripts',
+          'tools/build_split.ps1' in w['files'] and 'tests/fixture_run.ps1' not in w['files'], w['files'])
+    e = inputs({'steps': [{'py': 'tools/reads_exe.py'}, {'exe': 'build/x/fixture.exe', 'args': ['@split_image', '--merit']}]})
+    check('route_inputs: an external path built with os.path.join and the @split_image fixture image are stamped',
+          'build/ui_native_analysis/unpacked/game.exe' in e['external'] and 'build/ui_native_analysis/fixture/img.bin' in e['external'], e['external'])
+    g = inputs({'steps': [{'py': 'tools/gen_module_table.py'}]})
+    check('route_inputs: gen_module_table.py only links CURRENT.md (an install does not rerun module-registry)',
+          'development/CURRENT.md' not in g['files'], g['files'])
+    rmtree(root)
+
+
 def main():
     build_repo()
     key_st = lambda: sc.route_key(REPO, sc.Manifest(REPO), 'st')  # noqa: E731
@@ -297,6 +389,8 @@ def main():
     check('budget: last_s 14 within 1.5 x budget stays quiet', not any('budget' in w for w in p['warnings']), p['warnings'])
     reset(REPO)
     shutil.rmtree(os.path.join(REPO, 'build'), ignore_errors=True)
+
+    route_input_rules()
 
     # worktree
     git(REPO, 'worktree', 'add', '-q', WT, '-b', 'wtbranch')

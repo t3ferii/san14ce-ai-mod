@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "ai",
  "title": "ai",
  "host": "combat",
@@ -161,6 +161,10 @@
   {
    "section": "combat",
    "key": "retake_build"
+  },
+  {
+   "section": "combat",
+   "key": "ship_repair_strike"
   },
   {
    "section": "combat",
@@ -331,6 +335,10 @@
    },
    {
     "section": "combat",
+    "key": "ship_repair_strike"
+   },
+   {
+    "section": "combat",
     "key": "supply_relay"
    },
    {
@@ -353,8 +361,902 @@
  },
  "ui": [],
  "provides": [],
- "uses": [],
- "hooks": [],
+ "uses": [
+  {
+   "service": "ambush_hook",
+   "soft": true
+  },
+  {
+   "service": "corps_domestic",
+   "soft": true
+  },
+  {
+   "service": "season_mobility",
+   "soft": true
+  }
+ ],
+ "hooks": [
+  {
+   "key": "GA_184FF9",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_185B21",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_186462",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_18793A",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_192FBB",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "route_hook",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_route_hook.inl"
+  },
+  {
+   "key": "GA_1B98D10",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "ai_nodes",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ai_nodes.inl"
+  },
+  {
+   "key": "GA_1CBA11",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_1EDC30",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 6,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_1EE096",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_25537B",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_25539D",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_267EE2",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_26AB48",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_275281",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_27546C",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_275E6C",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_278389",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_2A09A4",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "siege_guard",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_siege_guard.inl"
+  },
+  {
+   "key": "GA_2AEF87",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_2B0DA6",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_2B3EB2",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_2B4383",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_303FC9",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_30BC7",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_30BDC",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_30BF1",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_30C06",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_30C1F",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_342F96",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_343099",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_44079D",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "siege_guard",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_siege_guard.inl"
+  },
+  {
+   "key": "GA_44079D",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "siege_guard",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_siege_guard.inl"
+  },
+  {
+   "key": "GA_44079D",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "siege_guard",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_siege_guard.inl"
+  },
+  {
+   "key": "GA_4414D0",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "siege_guard",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_siege_guard.inl"
+  },
+  {
+   "key": "GA_4414D0",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "siege_guard",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_siege_guard.inl"
+  },
+  {
+   "key": "GA_44E50D",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "route_hook",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_route_hook.inl"
+  },
+  {
+   "key": "GA_47145",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_472AB",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_491E1",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_4932B",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_4B246",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_4B3AA",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_4BFDD",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_4E076",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_4E1DD",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_64F1B",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "route_hook",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_route_hook.inl"
+  },
+  {
+   "key": "GA_667C0",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "route_hook",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_route_hook.inl"
+  },
+  {
+   "key": "GA_667C7",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "route_hook",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_route_hook.inl"
+  },
+  {
+   "key": "GA_68A74",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_712BB",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_715AC",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_715F2",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_74006",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_744B4",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_744F9",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_74D11",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_74D56",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_87DA0",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_9262EB",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_92630D",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_982F6",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_9830F",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_9A05B",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_9B334",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_9BA2D",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_9C48C",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_9FB56",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_A0F02",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_A197A",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_A1F24",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_A3EC5",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_B6E69",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_B805D",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_B8EF",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_B95A",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_BC6E4",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_C0305",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_CDF5B",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_CE4DB",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_CE51C",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_CE6B4",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_CE70A",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_CEB24",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_CF1C3",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_CF1E4",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_CF3ED",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_D17DF",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  },
+  {
+   "key": "GA_D1821",
+   "kind": "call",
+   "via": "direct",
+   "dll": "combat",
+   "owner": "sortie",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/native_sortie_links.inl"
+  }
+ ],
  "registry": {
   "rows": [],
   "subscriptions": [],

@@ -30,6 +30,9 @@ static bool allow_spike(LONGLONG at){
 struct Frame {LONGLONG start,interval,trees_us;};
 static Frame begin(){
     LONGLONG start=now(),last=InterlockedExchange64(&previous,start);
+#ifdef RUNTIME_COST_PROFILE
+    InterlockedExchange64(&costprofile::present_qpc,start);InterlockedExchange(&costprofile::present_thread,static_cast<LONG>(GetCurrentThreadId()));
+#endif
     // Tree work completed since the preceding Present entry, even if no draw runs.
     return {start,last && start>last?start-last:0,InterlockedExchange64(&terrain_trees::perf_frame_us,0)};
 }
@@ -37,8 +40,12 @@ static void finish(const Frame &frame,LONGLONG elapsed){
     InterlockedAdd64(&draw_us,elapsed);
     if(frame.interval){
         InterlockedIncrement64(&frames);InterlockedAdd64(&frame_ticks,frame.interval);maximum(&max_frame_ticks,frame.interval);
-        if(frame.interval>=frequency/10 && allow_spike(frame.start))
+        if(frame.interval>=frequency/10 && allow_spike(frame.start)) {
             log_event("perf_spike",field(frame.interval*1000/frequency),field(elapsed),field(frame.trees_us));
+            // local265 (performance proposal 5): GetTickCount64 at the Present that ended the gap, the clock of the stall and
+            // function_stall CSVs and day_stage, so a hitch can be matched within milliseconds instead of the log's seconds.
+            log_event("perf_spike_tick",static_cast<unsigned>(GetTickCount64()),field(frame.interval*1000/frequency),0);
+        }
     }
     LONG64 due=InterlockedCompareExchange64(&report_at,0,0);
     if(!due){InterlockedCompareExchange64(&report_at,frame.start+5*frequency,0);return;}
@@ -81,12 +88,12 @@ static DXGI_FORMAT texture_format=DXGI_FORMAT_UNKNOWN;
 static unsigned texture_width,texture_height;
 static std::vector<unsigned> pixels;
 static LONG read_flag(volatile LONG *value){return InterlockedCompareExchange(value,0,0);}
-static void show(bool value) {
+void show(bool value) {
     LONG next=value?1:0;
     if(InterlockedExchange(&visible,next)!=next)InterlockedIncrement(&generation);
     if(!value)InterlockedExchange(&ready,0);
 }
-static bool take_click(){return InterlockedExchange(&requested,0)!=0;}
+bool take_click(){return InterlockedExchange(&requested,0)!=0;}
 }
 #include "native_advisor_overlay.inl"
 namespace unified_overlay {
@@ -350,7 +357,7 @@ static HRESULT STDMETHODCALLTYPE present1(IDXGISwapChain1 *chain,UINT sync,UINT 
 #endif
 // perf-end
 #ifdef LAYOUT_OWNS_PRESENT
-static void install() {
+void install() {
     if(attempted)return;attempted=true;
     const San14LayoutApiV1 *api=layout_client::get();
     if(!api) {log_event("layout_missing_overlay_off");return;}   // no Layout: overlays and the Present hook stay off
@@ -363,7 +370,7 @@ static bool install_slot(void **slot,void *hook,void **original) {
     DWORD protection=0;if(!VirtualProtect(slot,sizeof(void *),PAGE_READWRITE,&protection))return false;
     *original=*slot;InterlockedExchangePointer(slot,hook);DWORD ignored=0;VirtualProtect(slot,sizeof(void *),protection,&ignored);return true;
 }
-static void install() {
+void install() {
     if(attempted)return;attempted=true;
     HMODULE library=GetModuleHandleW(L"d3d11.dll");if(!library)return;
     auto create=reinterpret_cast<decltype(&D3D11CreateDeviceAndSwapChain)>(GetProcAddress(library,"D3D11CreateDeviceAndSwapChain"));if(!create)return;

@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "installer",
  "title": "installer",
  "host": "tool",
@@ -25,6 +25,7 @@
   "tests/verify_split_install_failure.py",
   "tools/build_share.py",
   "tools/install_local.py",
+  "tools/local_install.ps1",
   "tools/release_features.py"
  ],
  "sources": [

@@ -225,7 +225,7 @@ static void __fastcall frame(Obj state,Obj a,Obj b){ COST_SCOPE("frame");
     if(dword(state,0x470)!=0x13 || (dword(button,0x40)&8))return;
     ui_call_trace::run(ui_call_trace::Show,[]{return ccz_settings::show();});   // next native title frame opens the asynchronous game editor
 }
-static bool install(){
+bool install(){
     if(!guards_match()){log_event("ccz_title_guard_rejected");return false;}
     const unsigned kAttachSite=GA(GA_4EAC33);
     layout_client::Transaction tx;

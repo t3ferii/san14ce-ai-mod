@@ -11,8 +11,8 @@ import ctypes
 
 PROJECT = Path(__file__).resolve().parents[1]
 GAME = PROJECT.parent
-sys.path.insert(0, str(GAME / 'AI_TacticsMod/legacy/FogMod_Source/tools'))
-from audit_native_game import PEImage
+sys.path.insert(0, str(PROJECT / 'tools'))
+from pe_image import PEImage   # tracked copy (2026-11-16); was the untracked legacy audit_native_game
 # User 2026-11-05 patch resilience: the installed game EXE is identified by a per-build table (one entry per supported game
 # build: 87ed4e46... = build before the 2026-11-05 Steam update, 782cf229... = SAN14CE_KO.exe of Steam buildid 25953386).
 # ORIGINAL_SHA keeps its old call sites (== / != / in) and accepts every known build.

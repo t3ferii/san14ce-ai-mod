@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "traits9-captive",
  "title": "traits9-captive",
  "host": "convenience",
@@ -13,27 +13,41 @@
  "conflicts": [],
  "owns": [
   "src/native_traits9.inl",
-  "src/traits9_payloads.h",
+  "src/traits9_sites.h",
+  "src/native_traits9_screens.inl",
+  "src/traits9_screens.h",
   "tests/verify_traits9_save.py",
   "tools/traits9_layout.py"
  ],
  "sources": [
   "src/native_traits9.inl",
-  "src/traits9_payloads.h",
+  "src/traits9_sites.h",
+  "src/native_traits9_screens.inl",
+  "src/traits9_screens.h",
+  "src/native_trait_hover.inl",
+  "src/layout_registry.h",
+  "src/native_layout_core.inl",
+  "src/native_layout_client.inl",
   "src/native_split_install.inl",
+  "src/core_services.h",
   "tests/verify_traits9_save.py",
   "distribution/SplitManage.ps1"
  ],
  "tests": [
   "split-module",
-  "traits9-save"
+  "traits9-save",
+  "layout-registry",
+  "address-table"
  ],
  "hook_owners": [
-  "traits9"
+  "traits9",
+  "traits9_screens"
  ],
  "checks": [
   "split-module",
-  "traits9-save"
+  "traits9-save",
+  "layout-registry",
+  "address-table"
  ],
  "ini": [
   {
@@ -52,9 +66,984 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_13EC300",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13EC310",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13EC318",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13ED218",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13ED228",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_13ED230",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1416368",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1416378",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1416380",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14164C8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14177D8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14177E8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14177F0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1417938",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14630A0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_1463580",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_147B130",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_147B140",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_147B148",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14AB558",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14AB568",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14AB570",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14AB6B8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14ABC18",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14ABC28",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14ABC30",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14ABD78",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14ABDB0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14ABDC0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14ABDC8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14ABF10",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14AE7A0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14AE7B0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14AE7B8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14AE900",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14AEAF8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14AEB08",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14AEB10",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14AECC0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14AECD0",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_14AECD8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_226FBF",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9",
+   "len": 4,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_2320AA",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9",
+   "len": 3,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_234737",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9",
+   "len": 4,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_2C13B3",
+   "kind": "span",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9",
+   "len": 15,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_4A90B3",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9",
+   "len": 8,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_4A96D3",
+   "kind": "bytes",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9",
+   "len": 8,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_4CCBE3",
+   "kind": "span",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9",
+   "len": 15,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_4E958B",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_542E53",
+   "kind": "jump",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_6F4992",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_74E0C6",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_75D683",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_75D68F",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_77AAD1",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_77B51D",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_77B991",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_77C435",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_77C5A6",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_77F5EA",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_77FD8C",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_781388",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7815FC",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_782B56",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_782F99",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7939B3",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_793AB3",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_793B63",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_793C4A",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_793CCE",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_793DB3",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_793E53",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_793F0C",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_793F9A",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_79401A",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_79408A",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7940FA",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_794217",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7993B5",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_79E4BE",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7A013F",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7A0757",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7A079D",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_809C37",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_809DE0",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_80B37D",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_8A0759",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_8D0320",
+   "kind": "span",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9",
+   "len": 14,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_8E1628",
+   "kind": "span",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9",
+   "len": 7,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_8E1685",
+   "kind": "span",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9",
+   "len": 6,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_8E25D8",
+   "kind": "span",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9",
+   "len": 10,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_8E2660",
+   "kind": "span",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9",
+   "len": 6,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_909734",
+   "kind": "span",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9",
+   "len": 17,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_90A23C",
+   "kind": "span",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9",
+   "len": 16,
+   "policy": "yield",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_90C315",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_90C3F5",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "traits9_screens",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  }
+ ],
  "registry": {
-  "rows": [],
+  "rows": [
+   {
+    "name": "traits9_screens",
+    "module": "traits9-captive",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE) && defined(SPLIT_MODPACK)",
+    "off_id": 0,
+    "wanted": "mod_features.traits9",
+    "install": "traits9_screens_install()",
+    "refused": "log_event(\"traits9_screens_off\",5,0)",
+    "after": [
+     "trait_hover"
+    ],
+    "seq": 365
+   }
+  ],
   "subscriptions": [],
   "unity": [],
   "flags": []

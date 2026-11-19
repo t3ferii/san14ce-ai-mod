@@ -2,6 +2,7 @@
 // owner: 0 shared, 1 CCZ dialog, 2 auto domestic, 3 advisor HUD, 4 terrain.
 #include "game_addresses.h"
 #include "compat_report.h"   // user 2026-11-09: switched-off features also go to ai행동교정모드호환성.log
+#include "ic_gate.h"   // 2026-11-18: owners inside the integrated patch IC's check ranges publish after its check
 // Imported-code units (modpack, traits9). Production convenience builds carry them; the split fixtures do not (no imported COFF,
 // no generated payload headers) except the address guard fixture, which defines SPLIT_FIXTURE_MODPACK to run their real guards
 // against the unpacked EXE of each build (2026-11-05 local3, docs/HISTORY.md section 12).
@@ -33,7 +34,7 @@ static void __fastcall frame(Obj layout) {
 }
 static void __fastcall leave(Obj layout,Obj context) {
 #ifndef SPLIT_MODULE_FIXTURE
-    briefing_overlay::publish({},false);unified_overlay::show(false);unified_overlay::take_click();
+    briefing_overlay::publish_hidden();unified_overlay::show(false);unified_overlay::take_click();
 #endif
     next_or<void(__fastcall *)(Obj,Obj)>(next_leave,GA(GA_87A690))(layout,context);
 }
@@ -46,6 +47,7 @@ static_assert(terrain_render::CreateTexture2DSlot==5,"ID3D11Device::CreateTextur
 #include "native_battle_deaths.inl"
 #include "native_trait_hover.inl"
 #include "native_traits9.inl"
+#include "native_traits9_screens.inl"   // local236 개성 9칸 범위 B (owner traits9_screens, trait_hover 다음 활성화)
 #endif
 #if !defined(SPLIT_COMBAT) && !defined(SPLIT_MODULE_FIXTURE)
 // Terrain edit, user 2026-10-29: units sank into raised cells. BC2380 builds two CPU
@@ -71,7 +73,7 @@ static bool guards() {
 // split_activate, before any map load reaches BC2380.
 static void install() {
     // B/C deliberately keep the edit UI and trees but do not capture collision-height objects.
-    if(relay || !mod_features.terrain_edit || (mod_features.terrain_diag_mode & 2u) || !guards())return;
+    if(relay || !terrain_core_on() || (mod_features.terrain_diag_mode & 2u) || !guards())return;
     relay=allocate_near(image+kSites[0]);if(!relay)return;
     absolute_jump(relay,reinterpret_cast<void *>(&create<0>));absolute_jump(relay+32,reinterpret_cast<void *>(&create<1>));
     DWORD old=0;
@@ -163,9 +165,9 @@ static void split_disable(bool &feature,unsigned id) {
 #include "core_module.h"
 #include "module_closure.inl"   // feature_off_closure: a child flag follows its parent (development/module_registry.json requires)
 static void split_terrain_render_guard() {
-    if(mod_features.terrain_edit && !split_terrain_render_slot.guards())split_disable(terrain_render::permitted,28);
+    if(terrain_core_on() && !split_terrain_render_slot.guards())split_disable(terrain_render::permitted,28);
 #ifdef SAN14_WATER_DIAG_INCLUDED
-    if(mod_features.terrain_edit && water_diag::permitted && !water_diag_guards_match()) {
+    if(terrain_core_on() && water_diag::permitted && !water_diag_guards_match()) {
         split_disable(water_diag::permitted,30);water_diag::restore();
     }
 #endif
@@ -188,7 +190,7 @@ static void split_layout_yield() {
     }
     if(f.scenery_skip && layout_client::yield_to_peer("scenery",GA(GA_13D5F90)))f.scenery_skip=false;
     if(f.battle_deaths && layout_client::yield_to_peer("battle_deaths",GA(GA_25B022)))f.battle_deaths=false;
-    if(f.traits9 && layout_client::yield_to_peer("traits9",trait9_manifests[0].sites[0].rva))f.traits9=false;
+    if(f.traits9 && layout_client::yield_to_peer("traits9",traits9_sites[T9_BASIC_INIT_TABLE].rva))f.traits9=false;
 }
 #endif
 // AI-CONTRACT [compatibility]: New hook sites need feature-specific original-byte guards and a unique split_disable diagnostic ID. A mismatch disables that feature; do not replace these checks with a whole-image CRC requirement.
@@ -199,10 +201,20 @@ static void split_feature_guards() {
     split_layout_yield();
 #endif
     split_address_gates(f);   // user 2026-11-05: unresolved address table ids switch their features off first
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE) && !defined(SPLIT_COMBAT)
+    {   // interop 2026-11-16: the season tiles join the terrain engine only when the season rules can run. Decided once: after the
+        // rules install, the time-step CALL is ours and a second guard pass would read it as taken.
+        static bool season_decided;
+        if(!season_decided) {
+            season_decided=true;season_tiles_runnable=f.season_tiles && season_rules::can_run();
+            if(f.season_tiles && !season_tiles_runnable)log_event("season_tiles_engine_off",f.terrain_edit?1u:0u);
+        }
+    }
+#endif
     // ResourceMap compatibility is independent of the terrain UI/height hooks.
-    if(f.terrain_edit && terrain_trees::permitted && !terrain_trees_guards_match())split_disable(terrain_trees::permitted,29);
+    if(terrain_core_on() && terrain_trees::permitted && !terrain_trees_guards_match())split_disable(terrain_trees::permitted,29);
 #ifdef SAN14_TERRAIN_FOAM_INCLUDED
-    if(f.terrain_edit && terrain_foam::permitted && !terrain_foam_guards_match())split_disable(terrain_foam::permitted,31);
+    if(terrain_core_on() && terrain_foam::permitted && !terrain_foam_guards_match())split_disable(terrain_foam::permitted,31);
 #endif
     if(f.battle_rules && (ga::mcmp(image,GA_16AEF4,0,kPairCallBytes,5) ||
         ga::mcmp(image,GA_2B2A90,0,kAdjacencyEntryBytes,5) || !expert_guards_match()))split_disable(f.battle_rules,1);
@@ -348,16 +360,29 @@ extern "C" __declspec(dllexport) unsigned __cdecl SAN14TerrainRenderFixture(unsi
     if(action==3) {split_rollback();result=1;}
     if(action==4 && device) {
         auto table=*reinterpret_cast<void ***>(device);
-        for(auto &s:terrain_render::slots)if(s.table==table && table[5]==reinterpret_cast<void *>(&terrain_render::create_texture_2d))s.published=true;
+        terrain_render::fixture_mark_published(table);
         split_rollback();result=1;
     }
     enabled=saved_enabled;mod_features=saved_features;return result;
 }
 #endif
+// Module boundary (2026-11-16, feature_deps D1/D4/D5/D10): the hub hands each module the other modules' calls and switches it uses,
+// before any guard, install or slot publish. Switches go by address, so a later split_feature_off is seen exactly as a direct
+// mod_features read saw it; the calls are the same functions the modules named directly before.
+static void split_bind_links() {
+#ifdef CORPS_DOMESTIC_HOOKS
+    personnel_links::skip_second_search=&corps_domestic::skip_second_search;personnel_links::arm=&corps_domestic::arm;
+    personnel_links::learn_instead=&corps_domestic::learn_instead;personnel_links::injury=&mod_features.injury;
+#endif
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE) && !defined(SPLIT_COMBAT)
+    auto_commands_links::brief_item=&advisor_briefing::add_item;auto_commands_links::briefing=&mod_features.advisor_briefing;
+#endif
+}
 static bool split_prepare() {
     compat_report::session();   // "=== 게임 실행 ===" once per process so the installer can tell "no refusals" from "never ran"
     if(split_install.prepared)return false;
     load_mod_features();
+    split_bind_links();
 #if defined(SPLIT_BASE) && defined(LAYOUT_OWNS_PRESENT) && !defined(NO_RUNTIME_LOG)
     layout_client::connect_log();   // Layout decisions (installed/chained/yielded/refused/bypassed) use the common log_event writer
 #endif
@@ -402,7 +427,7 @@ static bool split_prepare() {
     // ranged_facility_kill (user 2026-11-13): the damage cap of 2A0750 for facilities hit from range (id 94).
     if(ok) {unsigned why=ranged_facility_hook::prepare();if(why) {mod_features.ranged_facility_kill=false;log_event("feature_off",94,why);}}
     // U39 route_hook: morale hold / neutral wall breach after the original route writes (id 41).
-    if(ok) {unsigned why=route_hook::prepare();if(why) {mod_features.morale=false;mod_features.path_wall=false;mod_features.supply_relay=false;log_event("feature_off",41,why);}}
+    if(ok) {unsigned why=route_hook::prepare();if(why) {mod_features.morale=false;mod_features.path_wall=false;mod_features.supply_relay=false;mod_features.ship_repair_strike=false;log_event("feature_off",41,why);}}
     // local108 facility_hit: the facility damage CALL 192FBB; refused = facility fire is not recorded for the hit response (id 95).
     if(ok) {unsigned why=facility_hit_hook::prepare();if(why)log_event("feature_off",95,why);}
 #else
@@ -497,7 +522,7 @@ static bool split_pointer_enabled(const SplitPointer &p) {
     return true;
 #else
     if(!mod_features.convenience || mod_features.trace_original)return false;
-    if(p.slot==terrain_trees::Slot)return mod_features.terrain_edit && terrain_trees::permitted;
+    if(p.slot==terrain_trees::Slot)return terrain_core_on() && terrain_trees::permitted;
     return split_pointer_owner_enabled(p.owner);
 #endif
 }
@@ -538,7 +563,7 @@ static bool split_publish() { COST_SCOPE("split_publish");
     if(ok && !camp_hook::publish()) {mod_features.siege_fort_first=false;log_event("feature_off",92,3);}
     if(ok && !retake_tree_hook::publish())log_event("feature_off",93,3);
     if(ok && !ranged_facility_hook::publish()) {mod_features.ranged_facility_kill=false;log_event("feature_off",94,3);}
-    if(ok && !route_hook::publish()) {mod_features.morale=false;mod_features.path_wall=false;mod_features.supply_relay=false;log_event("feature_off",41,3);}
+    if(ok && !route_hook::publish()) {mod_features.morale=false;mod_features.path_wall=false;mod_features.supply_relay=false;mod_features.ship_repair_strike=false;log_event("feature_off",41,3);}
     if(ok && !facility_hit_hook::publish())log_event("feature_off",95,3);
 #else
     // 2026-11-05 local3 (user: a refused optional feature switches only itself off). The shared core links and pointers above
@@ -614,7 +639,7 @@ static bool split_publish() { COST_SCOPE("split_publish");
 #if !defined(NO_RUNTIME_LOG) && !defined(SPLIT_MODULE_FIXTURE)
 static bool split_terrain_profile_init() {
     // Focused terrain CPU candidate: use the existing log switch, not broad AI/CPU profiling.
-    terrain_profile::initialize(mod_features.terrain_edit && diagnostic_logging && dev_group(),
+    terrain_profile::initialize(terrain_core_on() && diagnostic_logging && dev_group(),
         +[](const char *kind,unsigned a,unsigned b,unsigned c){log_event(kind,a,b,c);});
     return true;
 }
@@ -667,13 +692,20 @@ static void split_ai_trace_install() {
     }
 #ifdef RUNTIME_COST_PROFILE
     if(costprofile::on)ai_trace::install(false,true); // [diagnostics] cost_profile: per-node cost of the original tree
-    else ai_trace::install(false);
+    else ai_trace::install(false,false);
 #else
-    ai_trace::install(false);
+    ai_trace::install(false,false);
 #endif
 }
 #endif
 #include "module_table_convenience.inl"
+// 2026-11-18 (ic_gate.h): rows whose patch sites lie inside the integrated patch IC's start-up check ranges
+// (path_fast/path_count 184D60, 1857B5; ccz_bands four entries). With IC installed they run from the late worker,
+// in table order (path_count reads path_fast::active).
+static bool split_ic_late_row(const char *name) {
+    return !strcmp(name,"path_fast") || !strcmp(name,"path_count") || !strcmp(name,"ccz_bands");
+}
+static bool split_late_rows;   // split_run_modules deferred at least one row (it ran, so the module is published)
 // Runs every wanted row in table order; a row whose install returns false takes its own refusal path (feature_off / split_disable).
 static void split_run_modules() {
 #ifndef NO_RUNTIME_LOG
@@ -684,6 +716,7 @@ static void split_run_modules() {
 #endif
     for(const auto &m:kModules) {
         if(!m.wanted())continue;
+        if(ic_gate::pending() && split_ic_late_row(m.name)) {split_late_rows=true;log_event("ic_gate_row_deferred",static_cast<unsigned>(&m-kModules),0,0);continue;}
 #ifndef NO_RUNTIME_LOG
         ++ran;run_hash=module_name_hash(m.name,run_hash);
 #endif
@@ -691,6 +724,17 @@ static void split_run_modules() {
     }
     // feature_order: hash of the compiled table, rows | ran<<16, hash of the rows that ran (compare with tests/module_registry_fixture.cpp).
     log_event("feature_order",table_hash,static_cast<unsigned>(sizeof(kModules)/sizeof(kModules[0]))|(ran<<16),run_hash);
+}
+// The rows split_run_modules left to the IC late worker (native_adapter.cpp).
+[[maybe_unused]] static void split_run_late_modules() {
+    if(!split_late_rows)return;
+    split_late_rows=false;
+    for(const auto &m:kModules) {
+        if(!split_ic_late_row(m.name) || !m.wanted())continue;
+        const bool ok=m.install();
+        if(!ok)m.refused();
+        log_event("ic_gate_row_late",static_cast<unsigned>(&m-kModules),ok?1u:0u,0);
+    }
 }
 #endif
 static void split_activate() { COST_SCOPE("split_activate");
@@ -709,7 +753,7 @@ static void split_activate() { COST_SCOPE("split_activate");
     }
 #else
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
-    if(mod_features.trace_original) {ai_trace::install(true); return;} // original AI, observed only
+    if(mod_features.trace_original) {ai_trace::install(true,false); return;} // original AI, observed only
 #endif
     split_run_modules();
     log_event("other_module_hooks_installed");

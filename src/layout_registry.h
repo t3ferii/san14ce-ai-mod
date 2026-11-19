@@ -18,7 +18,7 @@ enum : uint32_t {
     LF_CYW=LF_CY|LAYOUT_NEED_WHITELIST,
     LF_Y=LAYOUT_YIELD_IF_PEER|LAYOUT_ALL_OR_NONE            // yield to the same-function peer, never chain (imported/own byte patches)
 };
-static const LayoutRow layout_rows[]={
+inline const LayoutRow layout_rows[]={
     // 1-4 speed_buttons (Q8: yields to the R1 integrated progress-speed extension, which patches the same 898957 jump)
     {"speed_buttons",LR_VT,  GA(GA_1476FE0),GA(GA_8848E0),LF_CYW},   // 1  CChangeSpeedLayout +188; yuga checks this slot (VirtualQuery + Convenience)
     {"speed_buttons",LR_VT,  GA(GA_13D9728),GA(GA_44DEE0),LF_CY},    // 2  day progress frame
@@ -325,26 +325,135 @@ static const LayoutRow layout_rows[]={
 {"auto_buttons",LR_VT,GA(GA_13D90E0),GA(GA_43BE70),LF_C},
 {"auto_buttons",LR_CALL,GA(GA_44616D),GA(GA_8685C0),LF_C},
 {"auto_buttons",LR_CALL,GA(GA_445FA6),GA(GA_8685C0),LF_C},
+// interop S7 (user 2026-11-16 "1+2단계"): advisor_briefing's 20 state slots (advisor_briefing_profile.h slots[], same order) move from
+// direct patch_pointer (original value required) to chained rows. Each replacement calls its slot_next[i]
+// (native_advisor_briefing.inl); all 20 publish or none (the briefing needs every state).
+{"advisor_briefing",LR_VT,GA(GA_13D9438),GA(GA_44C340),LF_C},   // 0  user enter
+{"advisor_briefing",LR_VT,GA(GA_13D9440),GA(GA_44B090),LF_C},   // 1  user leave
+{"advisor_briefing",LR_VT,GA(GA_13D9960),GA(GA_44ACC0),LF_C},   // 2  game leave
+{"advisor_briefing",LR_VT,GA(GA_13A5EF0),GA(GA_865170),LF_C},   // 3  narration
+{"advisor_briefing",LR_VT,GA(GA_13A5F48),GA(GA_1F29B0),LF_C},   // 4  simple message enter
+{"advisor_briefing",LR_VT,GA(GA_13A5F68),GA(GA_8CA1C0),LF_C},   // 5  simple message frame (original no-op)
+{"advisor_briefing",LR_VT,GA(GA_1431F30),GA(GA_67DB40),LF_C},   // 6  report enter
+{"advisor_briefing",LR_VT,GA(GA_1431F50),GA(GA_67DD20),LF_C},   // 7  report frame
+{"advisor_briefing",LR_VT,GA(GA_1431F38),GA(GA_67D8A0),LF_C},   // 8  report leave
+{"advisor_briefing",LR_VT,GA(GA_1431ED0),GA(GA_67DEE0),LF_C},   // 9  report wait
+{"advisor_briefing",LR_VT,GA(GA_1430230),GA(GA_671E90),LF_C},   // 10 log frame
+{"advisor_briefing",LR_VT,GA(GA_1430248),GA(GA_671AB0),LF_C},   // 11 log leave
+{"advisor_briefing",LR_VT,GA(GA_1477890),GA(GA_88E4B0),LF_C},   // 12 advice frame
+{"advisor_briefing",LR_VT,GA(GA_14778B0),GA(GA_895A10),LF_C},   // 13 advice leave
+{"advisor_briefing",LR_VT,GA(GA_1462A80),GA(GA_812FF0),LF_C},   // 14 diplomatic enter
+{"advisor_briefing",LR_VT,GA(GA_1462AA0),GA(GA_8CA1C0),LF_C},   // 15 diplomatic frame (original no-op)
+{"advisor_briefing",LR_VT,GA(GA_1468318),GA(GA_83E300),LF_C},   // 16 diplomatic wait
+{"advisor_briefing",LR_VT,GA(GA_13D9458),GA(GA_44ED30),LF_C},   // 17 user frame
+{"advisor_briefing",LR_VT,GA(GA_13A5FE0),GA(GA_1F2A60),LF_C},   // 18 person notice enter
+{"advisor_briefing",LR_VT,GA(GA_13A6000),GA(GA_8CA1C0),LF_C},   // 19 person notice frame (original no-op)
+// local236 traits9_screens (개성 9칸 범위 B, native_traits9_screens.inl build_sites()와 같은 순서·66행): 통합패치 SAN14_Traits9_UI.dll
+// 화면 걸이를 소스로 다시 쓴 것. 화면 갱신(+0x188)·해제(+0x28)·열기(+0x38)·숨김(+0x40), 정보 패널 갱신 8A6690 호출 34곳,
+// 일기토 갱신 호출 3곳과 열기 칸 2개(숨김·해제 칸은 trait_hover 행 149-152가 가짐), 장수 편집 2종과 갱신 543650 호출·점프.
+{"traits9_screens",LR_VT,GA(GA_1417938),GA(GA_653C30),LF_CY},   // 0  수집 화면 갱신
+{"traits9_screens",LR_VT,GA(GA_14177D8),GA(GA_8FF7E0),LF_CY},   // 1  수집 해제
+{"traits9_screens",LR_VT,GA(GA_14177E8),GA(GA_8C99D0),LF_CY},   // 2  수집 열기
+{"traits9_screens",LR_VT,GA(GA_14177F0),GA(GA_8CCE40),LF_CY},   // 3  수집 숨김
+{"traits9_screens",LR_VT,GA(GA_14ABD78),GA(GA_904E90),LF_CY},   // 4  부대 기본 갱신
+{"traits9_screens",LR_VT,GA(GA_14ABC18),GA(GA_8FF410),LF_CY},   // 5  부대 기본 해제
+{"traits9_screens",LR_VT,GA(GA_14ABC28),GA(GA_880E00),LF_CY},   // 6  부대 기본 열기
+{"traits9_screens",LR_VT,GA(GA_14ABC30),GA(GA_8CCE10),LF_CY},   // 7  부대 기본 숨김
+{"traits9_screens",LR_VT,GA(GA_14ABF10),GA(GA_905A80),LF_CY},   // 8  부대 능력 갱신
+{"traits9_screens",LR_VT,GA(GA_14ABDB0),GA(GA_8FF4A0),LF_CY},   // 9  부대 능력 해제
+{"traits9_screens",LR_VT,GA(GA_14ABDC0),GA(GA_806220),LF_CY},   // 10 부대 능력 열기
+{"traits9_screens",LR_VT,GA(GA_14ABDC8),GA(GA_5B7470),LF_CY},   // 11 부대 능력 숨김
+{"traits9_screens",LR_VT,GA(GA_14AB6B8),GA(GA_903870),LF_CY},   // 12 지역 갱신
+{"traits9_screens",LR_VT,GA(GA_14AB558),GA(GA_8FF540),LF_CY},   // 13 지역 해제
+{"traits9_screens",LR_VT,GA(GA_14AB568),GA(GA_863680),LF_CY},   // 14 지역 열기
+{"traits9_screens",LR_VT,GA(GA_14AB570),GA(GA_8638B0),LF_CY},   // 15 지역 숨김
+{"traits9_screens",LR_VT,GA(GA_147B130),GA(GA_8A6CE0),LF_CY},   // 16 정보 패널 해제
+{"traits9_screens",LR_VT,GA(GA_147B140),GA(GA_89D180),LF_CY},   // 17 정보 패널 열기
+{"traits9_screens",LR_VT,GA(GA_147B148),GA(GA_89DCA0),LF_CY},   // 18 정보 패널 숨김
+{"traits9_screens",LR_CALL,GA(GA_6F4992),GA(GA_8A6690),LF_CY},  // 19-52 정보 패널 갱신 호출 34곳
+{"traits9_screens",LR_CALL,GA(GA_74E0C6),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_75D683),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_75D68F),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_77AAD1),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_77B51D),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_77B991),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_77C435),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_77C5A6),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_77F5EA),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_77FD8C),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_781388),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_7815FC),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_782B56),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_782F99),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_7939B3),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_793AB3),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_793B63),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_793C4A),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_793CCE),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_793DB3),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_793E53),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_793F0C),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_793F9A),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_79401A),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_79408A),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_7940FA),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_794217),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_7993B5),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_79E4BE),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_7A013F),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_7A0757),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_7A079D),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_8A0759),GA(GA_8A6690),LF_CY},
+{"traits9_screens",LR_CALL,GA(GA_809C37),GA(GA_80A230),LF_CY},  // 53 일기토 대결 갱신
+{"traits9_screens",LR_CALL,GA(GA_809DE0),GA(GA_80A230),LF_CY},  // 54 일기토 대결 갱신
+{"traits9_screens",LR_VT,GA(GA_14630A0),GA(GA_869210),LF_CY},   // 55 일기토 대결 열기
+{"traits9_screens",LR_CALL,GA(GA_80B37D),GA(GA_809110),LF_CY},  // 56 일기토 게이지 갱신
+{"traits9_screens",LR_VT,GA(GA_1463580),GA(GA_869210),LF_CY},   // 57 일기토 게이지 열기
+{"traits9_screens",LR_VT,GA(GA_13EC300),GA(GA_548400),LF_CY},   // 58 장수 편집 A 해제
+{"traits9_screens",LR_VT,GA(GA_13EC310),GA(GA_19D0D0),LF_CY},   // 59 장수 편집 A 열기
+{"traits9_screens",LR_VT,GA(GA_13EC318),GA(GA_4A23D0),LF_CY},   // 60 장수 편집 A 숨김
+{"traits9_screens",LR_VT,GA(GA_13ED218),GA(GA_548400),LF_CY},   // 61 장수 편집 B 해제
+{"traits9_screens",LR_VT,GA(GA_13ED228),GA(GA_19D0D0),LF_CY},   // 62 장수 편집 B 열기
+{"traits9_screens",LR_VT,GA(GA_13ED230),GA(GA_4A23D0),LF_CY},   // 63 장수 편집 B 숨김
+{"traits9_screens",LR_CALL,GA(GA_4E958B),GA(GA_543650),LF_CY},  // 64 장수 편집 개성 갱신 호출
+{"traits9_screens",LR_JUMP,GA(GA_542E53),GA(GA_543650),LF_CY},  // 65 장수 편집 개성 갱신 꼬리 점프
+// local237 무장 상세 기본 탭(CInfoDetail[Shogu]PersonDefault)·능력 탭(CInfoDetail[Shogu]PersonPerson): 범위 A 노드가 없을 때만 9칸 + 진단
+{"traits9_screens",LR_VT,GA(GA_14AE900),GA(GA_909100),LF_CY},   // 66 기본 탭 갱신
+{"traits9_screens",LR_CALL,GA(GA_90C315),GA(GA_909100),LF_CY},  // 67 장수용 기본 탭 갱신(90C300 안)
+{"traits9_screens",LR_VT,GA(GA_14AE7A0),GA(GA_8FF730),LF_CY},   // 68 기본 탭 해제
+{"traits9_screens",LR_VT,GA(GA_14AE7B0),GA(GA_863680),LF_CY},   // 69 기본 탭 열기
+{"traits9_screens",LR_VT,GA(GA_14AE7B8),GA(GA_8638B0),LF_CY},   // 70 기본 탭 숨김
+{"traits9_screens",LR_VT,GA(GA_14AEAF8),GA(GA_8FF730),LF_CY},   // 71 장수용 기본 탭 해제
+{"traits9_screens",LR_VT,GA(GA_14AEB08),GA(GA_863680),LF_CY},   // 72 장수용 기본 탭 열기
+{"traits9_screens",LR_VT,GA(GA_14AEB10),GA(GA_8638B0),LF_CY},   // 73 장수용 기본 탭 숨김
+{"traits9_screens",LR_VT,GA(GA_14164C8),GA(GA_909DF0),LF_CY},   // 74 능력 탭 갱신
+{"traits9_screens",LR_CALL,GA(GA_90C3F5),GA(GA_909DF0),LF_CY},  // 75 장수용 능력 탭 갱신(90C3E0 안)
+{"traits9_screens",LR_VT,GA(GA_1416368),GA(GA_8FF7E0),LF_CY},   // 76 능력 탭 해제
+{"traits9_screens",LR_VT,GA(GA_1416378),GA(GA_8C99D0),LF_CY},   // 77 능력 탭 열기
+{"traits9_screens",LR_VT,GA(GA_1416380),GA(GA_8CCE40),LF_CY},   // 78 능력 탭 숨김
+{"traits9_screens",LR_VT,GA(GA_14AECC0),GA(GA_8FF7E0),LF_CY},   // 79 장수용 능력 탭 해제
+{"traits9_screens",LR_VT,GA(GA_14AECD0),GA(GA_8C99D0),LF_CY},   // 80 장수용 능력 탭 열기
+{"traits9_screens",LR_VT,GA(GA_14AECD8),GA(GA_8CCE40),LF_CY},   // 81 장수용 능력 탭 숨김
 };
 static const unsigned layout_row_count=sizeof(layout_rows)/sizeof(layout_rows[0]);
 // Block / span / byte rows that are not a vtable slot or call site. expect[] is the original bytes.
 struct LayoutPatchRow {const char *owner;uint32_t rva,len;uint32_t flags;};
 // 53: 70E9C1 `cmp word [rdx+0BCh],0 ; jnz 70EA11` inside the 70E9A0 candidate filter. Refuse when the bytes differ.
 static const uint8_t layout_mediation_expect[10]={0x66,0x83,0xBA,0xBC,0x00,0x00,0x00,0x00,0x75,0x46};
-static const LayoutPatchRow layout_mediation_row={"mediation_plus",GA(GA_710CD1),10,LAYOUT_REFUSE_IF_FOREIGN|LAYOUT_ALL_OR_NONE};
+inline const LayoutPatchRow layout_mediation_row={"mediation_plus",GA(GA_710CD1),10,LAYOUT_REFUSE_IF_FOREIGN|LAYOUT_ALL_OR_NONE};
 // battle_deaths: 295C5F `test ebx,ebx ; je +8CE` (8 bytes, offset 0xF in its 16-byte line, so api_hook_block would refuse it). Written as a span (E9 + NOP3).
 static const uint8_t layout_battle_deaths_expect[8]={0x85,0xDB,0x0F,0x84,0xCE,0x08,0x00,0x00};   // test ebx,ebx; je +8CE (both builds)
-static const LayoutPatchRow layout_battle_deaths_span={"battle_deaths",GA(GA_297B6F),8,
+inline const LayoutPatchRow layout_battle_deaths_span={"battle_deaths",GA(GA_297B6F),8,
     LAYOUT_YIELD_IF_PEER|LAYOUT_REFUSE_IF_FOREIGN|LAYOUT_ALL_OR_NONE};
 // Dynamic-source patches (manifest tables of the converted traits9 mod): spans are E9 + NOP fill written block by block,
 // bytes are plain value patches. Owner traits9, YIELD_IF_PEER (R1 Traits9 writes the same places), never chained.
 enum LayoutPatchKind : unsigned char {LP_SPAN=4,LP_BYTES=5};
 struct LayoutPatchSite {unsigned char kind;uint32_t rva,len;};
-static const LayoutPatchSite layout_traits9_sites[]={
+inline const LayoutPatchSite layout_traits9_sites[]={
     {LP_BYTES,GA(GA_4A90B3),8},{LP_BYTES,GA(GA_4A96D3),8},{LP_BYTES,GA(GA_226FBF),4},{LP_BYTES,GA(GA_2320AA),3},{LP_BYTES,GA(GA_234737),4},
     {LP_SPAN,GA(GA_8E1628),7},{LP_SPAN,GA(GA_8E1685),6},{LP_SPAN,GA(GA_909734),17},
     {LP_SPAN,GA(GA_8D0320),14},{LP_SPAN,GA(GA_8E25D8),10},{LP_SPAN,GA(GA_8E2660),6},{LP_SPAN,GA(GA_90A23C),16},
-    {LP_SPAN,GA(GA_2C13B3),15}
+    {LP_SPAN,GA(GA_2C13B3),15},{LP_SPAN,GA(GA_4CCBE3),15}   // local236: 편집 장수 일람 (traits9_sites.h T9_EDIT_LIST_INIT)
 };
 static const unsigned layout_traits9_site_count=sizeof(layout_traits9_sites)/sizeof(layout_traits9_sites[0]);
 // Machine code of the 70E9C1 relay (design 8.4), 64 bytes: `cmp byte [flag],0 ; jne pass ; cmp word [rdx+0BCh],0 ;
@@ -364,5 +473,5 @@ inline void layout_build_mediation_relay(unsigned char *relay,bool on,void *pass
 }
 // Registry entry points that must never be hooked at their entry (design C-4); the fixture and the verify script
 // check that no row above starts inside one of these.
-static const uint32_t layout_blocked_entries[]={GA(GA_9332B0),GA(GA_843B60),GA(GA_658DF0),GA(GA_870470),GA(GA_86E920),GA(GA_8704F0),GA(GA_7FC700),GA(GA_304D70),
+inline const uint32_t layout_blocked_entries[]={GA(GA_9332B0),GA(GA_843B60),GA(GA_658DF0),GA(GA_870470),GA(GA_86E920),GA(GA_8704F0),GA(GA_7FC700),GA(GA_304D70),
     GA(GA_306A30),GA(GA_1F1DA0),GA(GA_1F1E90),GA(GA_1F2190),GA(GA_6C6B10),GA(GA_6C6DD0)};

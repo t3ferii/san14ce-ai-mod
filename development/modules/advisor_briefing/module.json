@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "advisor_briefing",
  "title": "advisor_briefing",
  "host": "convenience",
@@ -13,6 +13,8 @@
  "sources": [
   "src/native_advisor_briefing.inl",
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_split_install.inl",
   "tests/advisor_briefing_fixture.cpp",
   "tools/build_advisor_briefing_fixture.ps1",

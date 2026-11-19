@@ -17,7 +17,8 @@ def ok(value, label):
     if not value:
         failed.append(label)
 
-adapter = source('native_adapter.cpp')
+from hub_text import hub_text   # 2026-11-16 multi-unit refactor: hub = native_core.inl + native_patch_core.inl + native_adapter.cpp
+adapter = hub_text(P)
 foam = source('native_terrain_foam.inl')
 render = source('native_terrain_render.inl')
 split = source('native_split_install.inl')

@@ -699,7 +699,7 @@ static void install() {
 #endif
 // original=true: no mod hook is published (ai_trace_original). Meta lines record the mode and
 // every node whose slot already held a mod hook (chained).
-static bool install(bool original,bool cost=false) {
+bool install(bool original,bool cost=false) {
     if(InterlockedCompareExchange(&installed,0,0) || !guards_match())return false;
 #ifdef RUNTIME_COST_PROFILE
     if(cost) {

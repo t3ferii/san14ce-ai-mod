@@ -1,0 +1,6 @@
+{
+ "schema": 1,
+ "generated_by": "tools/mod_compat.py (via tools/gen_module_manifests.py)",
+ "doc": "Per foreign mod: how each of our modules behaves when that mod is installed. outcome worst-first: unknown=근거 부족, their_off=상대 기능 꺼짐 가능, order=설치 순서에 따라 한쪽 꺼짐 가능, off=우리 기능 꺼짐, yield=우리 기능 양보, chain=함께 동작. unresolved_sites = that mod's sites without a current-build address (not compared; complete=false means the transcription lists only part of the mod).",
+ "mods": {}
+}

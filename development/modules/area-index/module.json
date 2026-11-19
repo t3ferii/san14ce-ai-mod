@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "area-index",
  "title": "area-index",
  "host": "convenience",
@@ -20,6 +20,8 @@
   "src/native_area_index.inl",
   "src/area_index.h",
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_split_install.inl",
   "tests/area_index_fixture.cpp",
   "tests/verify_area_index.py",
@@ -57,7 +59,18 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_2CC1E0",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "area_index",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_area_index.inl"
+  }
+ ],
  "registry": {
   "rows": [
    {

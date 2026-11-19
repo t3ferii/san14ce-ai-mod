@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "path-count",
  "title": "path-count",
  "host": "convenience",
@@ -20,6 +20,8 @@
   "src/native_path_count.inl",
   "src/path_count.h",
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_split_install.inl",
   "src/native_progress.inl",
   "tests/path_count_fixture.cpp",
@@ -48,7 +50,18 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_184D60",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "path_count",
+   "len": 7,
+   "policy": "refuse_if_changed",
+   "src": "src/native_path_count.inl"
+  }
+ ],
  "registry": {
   "rows": [
    {

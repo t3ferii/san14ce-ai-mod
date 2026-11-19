@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "drag_learn",
  "title": "drag_learn",
  "host": "convenience",
@@ -15,6 +15,8 @@
  "sources": [
   "src/native_drag_learn.inl",
   "src/native_adapter.cpp",
+  "src/native_core.inl",
+  "src/native_patch_core.inl",
   "src/native_split_install.inl",
   "tests/split_module_fixture.cpp"
  ],
@@ -52,7 +54,78 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_1447540",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "drag_learn",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_7423B5",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "drag_learn",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_drag_learn.inl"
+  },
+  {
+   "key": "GA_74A405",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "drag_learn",
+   "len": 9,
+   "policy": "refuse_if_changed",
+   "src": "src/native_drag_learn.inl"
+  },
+  {
+   "key": "GA_74A574",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "drag_learn",
+   "len": 12,
+   "policy": "refuse_if_changed",
+   "src": "src/native_drag_learn.inl"
+  },
+  {
+   "key": "GA_74A5E9",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "drag_learn",
+   "len": 7,
+   "policy": "refuse_if_changed",
+   "src": "src/native_drag_learn.inl"
+  },
+  {
+   "key": "GA_74C5E8",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "drag_learn",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_drag_learn.inl"
+  },
+  {
+   "key": "GA_74C62A",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "drag_learn",
+   "len": 6,
+   "policy": "refuse_if_changed",
+   "src": "src/native_drag_learn.inl"
+  }
+ ],
  "registry": {
   "rows": [
    {

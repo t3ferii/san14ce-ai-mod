@@ -271,7 +271,7 @@ static bool guards_match() {
     }
     return true;
 }
-static bool install() {
+bool install() {
     if(InterlockedCompareExchange(&installed,0,0))return false;
     if(!guards_match()) {log_event("region_officers_guard_rejected");return false;}
     panels.reserve(512);

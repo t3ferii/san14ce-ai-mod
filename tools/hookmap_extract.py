@@ -575,8 +575,8 @@ def owner_label(fn, text_before, aliases):
     stem = re.sub(r'_links?$', '', stem)
     if stem in aliases:
         return aliases[stem]
-    if fn in ('native_adapter.cpp', 'native_split_install.inl'):
-        return 'adapter'        # shared core of both gameplay DLLs: one owner label
+    if fn in ('native_adapter.cpp', 'native_split_install.inl', 'native_core.inl', 'native_patch_core.inl'):
+        return 'adapter'        # shared core of both gameplay DLLs (and, since 2026-11-16, of every unit): one owner label
     return stem
 
 
@@ -956,6 +956,16 @@ def build_map(root):
                     if call in ('layout_client::block', 'layout_client::span', 'layout_client::bytes'):
                         ent['owner_lit'] = own
                     mp.registrations.append(ent)
+                    # 2026-11-18: byte/span patches an owner registers itself (stats200 cap rows from modpack_tables.h, its growth span)
+                    # have no registry row, so they used to be missing from the site list (and from overlap checks against other mods).
+                    # Add them as Layout sites unless a registry/patch row already describes the same address.
+                    if call in ('layout_client::span', 'layout_client::bytes') and own and ent['key'] and \
+                            ent['key'] not in {st['key'] for st in mp.sites if st['via'] == 'layout'}:
+                        lf = args[-1].strip() if args else ''
+                        new_site(k, r[0], r[1], lng or 1, own, 'layout', 'layout', src,
+                                 flags=sorted({'YIELD_IF_PEER', 'ALL_OR_NONE'}) if lf == 'LF_Y' else [],
+                                 guard='exact', method='layout_owner_rows', snap=False, variant='layout',
+                                 bound=a['rows'] is not None, table=a.get('table'))
                 if call != 'ROUTE_VT':
                     continue
                 dd = [d for d in dlls if d != 'convenience']    # outside the routed convenience build ROUTE_VT is patch_pointer

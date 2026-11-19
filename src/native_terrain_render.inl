@@ -1,4 +1,5 @@
 // R2b (user 2026-10-29): creation-time control-map targets and diagnostic GPU readback.
+#include "terrain_core.h"   // engine service gate terrain_core_on()
 #pragma once
 #define SAN14_TERRAIN_RENDER_INCLUDED 1
 #include <d3d11.h>
@@ -9,13 +10,23 @@
 #include "season_dxbc.h"
 namespace terrain_render {
 using CreateTexture2D=HRESULT(STDMETHODCALLTYPE *)(ID3D11Device *,const D3D11_TEXTURE2D_DESC *,const D3D11_SUBRESOURCE_DATA *,ID3D11Texture2D **);
+#ifndef NO_RUNTIME_LOG
+static unsigned upload_calls;   // local268: UpdateSubresource calls of the current Present upload (under ctrl_lock there)
+#endif
 static void profile_upload(ID3D11DeviceContext *context,ID3D11Resource *resource,UINT subresource,
     const D3D11_BOX *box,const void *data,UINT pitch,UINT depth) {
+#ifndef NO_RUNTIME_LOG
+    ++upload_calls;
+#endif
     TERRAIN_SCOPE(UploadNative);context->UpdateSubresource(resource,subresource,box,data,pitch,depth);
 }
-static constexpr unsigned CreateTexture2DSlot=5,MaxTables=4,MaxTextures=64,MaxBCTextures=4;
+#ifndef SAN14_MULTI_TU   // split builds: tu_terrain_api.h
+static constexpr unsigned CreateTexture2DSlot=5;
+#endif
+static constexpr unsigned MaxTables=4,MaxTextures=64,MaxBCTextures=4;
 static SRWLOCK slot_lock=SRWLOCK_INIT,record_lock=SRWLOCK_INIT;
-static bool permitted=true,stopping=false;
+bool permitted=true;
+static bool stopping=false;
 struct DeviceSlot {
     void **table;
     CreateTexture2D original;
@@ -54,7 +65,7 @@ static bool target(const D3D11_TEXTURE2D_DESC &d) {
     return d.Width>=1024 && d.Height>=1024 && (!bc_format(d.Format) || d.Width>=4096);
 }
 #endif
-static bool active() {return enabled && mod_features.convenience && mod_features.terrain_edit && !(mod_features.terrain_diag_mode & 2u);}
+bool active() {return enabled && mod_features.convenience && terrain_core_on() && !(mod_features.terrain_diag_mode & 2u);}
 static constexpr unsigned CtrlSize=2049,CtrlPitch=CtrlSize*4,HexCount=48400,FrameLimit=256;
 static constexpr unsigned kUploadPixels=16384;   // local144: stamped height pixels a frame (about 200 clustered cells)
 static constexpr int RestoreOriginal=-1;
@@ -91,6 +102,11 @@ static bool mask_overflow,mask_mirror_pending;
 static bool mask_fit_attempted,mask_ready;
 static float height_delta[HexCount]={},carve_delta[HexCount]={};
 static bool cliff[HexCount]={};
+// local209: ice on water (terrain 25 over 12/13/14/21/24). 1 = frozen hex; field_at blends it to find pixels near the ice.
+static float ice_flag[HexCount]={};static unsigned ice_count;
+// local208/209 (user 2026-11-16/17 "결빙타일이 너무 일괄적으로 높아서", "좀 더 낮춰야"): the ice surface, a little above the
+// ocean-mask water level 450.
+static constexpr float kIceSurface=480.0f;
 static std::vector<unsigned> original_ctrl,shadow_ctrl;
 static signed char goals[HexCount]={};
 static bool queued[HexCount]={},has_goal[HexCount]={},resync_needed,render_failed,present_install_requested,world_transition;
@@ -104,7 +120,7 @@ static CreateTexture2D ctrl_create;
 static bool readback_failed;
 #endif
 namespace season_bake {static bool wants();static void frame(ID3D11DeviceContext *c);static bool mat_ready();}
-static bool needs_present() {return InterlockedCompareExchange(&present_pending,0,0)!=0 || season_bake::wants();}
+bool needs_present() {return InterlockedCompareExchange(&present_pending,0,0)!=0 || season_bake::wants();}
 static void publish_pending_locked() {
     InterlockedExchange(&present_pending,ctrl_texture && dirty_count && !render_failed?1:0);
 }
@@ -120,7 +136,7 @@ static int cell_goal(unsigned hex) {return season_has[hex]?season_goal[hex]:has_
 static void clear_targets_locked() {
     memset(season_goal,0,sizeof(season_goal));memset(season_has,0,sizeof(season_has));
     memset(goals,0,sizeof(goals));memset(has_goal,0,sizeof(has_goal));memset(height_delta,0,sizeof(height_delta));
-    memset(carve_delta,0,sizeof(carve_delta));memset(cliff,0,sizeof(cliff));
+    memset(carve_delta,0,sizeof(carve_delta));memset(cliff,0,sizeof(cliff));memset(ice_flag,0,sizeof(ice_flag));ice_count=0;
     world_transition=false;clear_queue_locked();
 }
 static void enqueue_locked(unsigned hex) {
@@ -168,6 +184,8 @@ static float height_change(unsigned terrain,unsigned original_terrain) {
     // User 2026-10-29: water-to-water edits rose above the river surface; keep the bed.
     auto water=[](unsigned t) {return t==12 || t==13 || t==14 || t==21 || t==24;};
     if(water(terrain) && water(original_terrain))return 0.0f;
+    // local208: ice on water rises only to kIceSurface, not to plain height 786 (height_at also caps each pixel).
+    if(terrain==25 && water(original_terrain)) {const float d=kIceSurface-from;return d<30.0f?0.0f:d;}
     float delta=to-from;return std::fabs(delta)<30.0f?0.0f:delta;
 }
 // User 2026-10-29: the ocean HeightMask (VS t0, level 450) is the ground plus a
@@ -220,6 +238,9 @@ static void mark(unsigned hex,unsigned terrain,unsigned original_terrain) {
         height_delta[hex]=height_change(terrain,original_terrain);
         carve_delta[hex]=terrain==original_terrain?0.0f:carve(terrain)-carve(original_terrain);
         cliff[hex]=terrain==20 && original_terrain!=20;
+        {auto water=[](unsigned t) {return t==12 || t==13 || t==14 || t==21 || t==24;};
+         const float ice=terrain==25 && water(original_terrain)?1.0f:0.0f;
+         if(ice!=ice_flag[hex]) {ice_count+=ice>0?1u:0u;ice_count-=ice>0?0u:1u;ice_flag[hex]=ice;}}
 #ifndef NO_RUNTIME_LOG
         if(cliff[hex])log_cliff_locked(hex);
 #endif
@@ -233,7 +254,7 @@ static void mark(unsigned hex,unsigned terrain,unsigned original_terrain) {
 // R1d: game thread, right after the season rules' day. kind(cell) -> 0 none, 1 burning, 2 landslide, 3 flood, 4 burnt,
 // 5 shaken, 6 mud, 7 drought crack; nullptr clears the whole layer (feature off = original). Materials reuse the map's own:
 // 0 plain, 1 sand, 2 road, 4 forest, 5 mountain, 6 rock, 7 marsh, 8 poison marsh, 9 water. Returns the cells changed.
-static unsigned season_sync(int (__cdecl *kind)(int)) {
+unsigned season_sync(int (__cdecl *kind)(int)) {
     // local133: kind 8 river ice (the cell is made 평지 by terrain_edit::flood_sync) - rock until our ice material is ready
     static const short paint[9]={RestoreOriginal,8,6,7,6,2,7,1,6};
     // R2 (user 2026-11-13 "에셋 확장"): our own materials once the arrays and the table carry them - 240 burnt, 241 mud,
@@ -276,7 +297,7 @@ static bool take_ui_work(bool &install_present) {
     if(resync) {
         resync_needed=false;clear_queue_locked();
         for(unsigned hex=0;hex<HexCount;++hex)if(has_goal[hex]) {
-            goals[hex]=RestoreOriginal;has_goal[hex]=false;height_delta[hex]=0.0f;carve_delta[hex]=0.0f;cliff[hex]=false;cpu_cell_locked(hex);enqueue_locked(hex);
+            goals[hex]=RestoreOriginal;has_goal[hex]=false;height_delta[hex]=0.0f;carve_delta[hex]=0.0f;cliff[hex]=false;if(ice_flag[hex]>0){ice_flag[hex]=0;--ice_count;}cpu_cell_locked(hex);enqueue_locked(hex);
         }
         publish_pending_locked();
     }
@@ -416,6 +437,14 @@ static bool write_mask_raw(const wchar_t *directory,const wchar_t *name,const st
 static void dump_mask_locked(const WaterMask &m) {
     if(mask_dump_attempted || original_height.empty())return;
     mask_dump_attempted=true;
+    // local217 (user 2026-11-17 "덤프 끄기"): the pair (33 MB) was written on the render thread minutes into play and
+    // hitched the game in every diagnostic build. It now runs only with [diagnostics] water_diag=1 (물살 렌더 진단, off).
+#if defined(TERRAIN_MASK_DUMP_FIXTURE)
+#elif defined(SAN14_WATER_DIAG_INCLUDED)
+    if(!water_diag::wanted())return;
+#else
+    return;
+#endif
     // One synchronous pair on the confirming render caller. No worker can race
     // DLL unload or retain live game pointers; these are untouched CPU originals.
     wchar_t directory[MAX_PATH]={};
@@ -602,6 +631,11 @@ static float height_at(unsigned px,unsigned pz) {
     size_t at=static_cast<size_t>(pz)*CtrlSize+px;
     float base=original_height[at]+delta_at(px,pz);
     unsigned hex=pixel_owner(px,pz);
+    // local209 (user 2026-11-17 screenshot: ice stood as a wall along the river): one offset per hex lifted the bed pixels next
+    // to the bank, which already lie high, above the bank. A frozen pixel, or an unedited one the ice blend reaches, rises at
+    // most to kIceSurface and never above its own original ground, so the ice is flat and the banks keep their height.
+    if(ice_count && hex!=HexCount && (ice_flag[hex]>0 || height_delta[hex]==0.0f) && field_at(ice_flag,px,pz)>0.0f)
+        base=(std::min)(base,(std::max)(original_height[at],kIceSurface));
     if(hex==HexCount || !cliff[hex])return base;
     Center c=center(hex);CliffSection section=cliff_section(hex);
     double x=px*100.0-c.x,z=pz*100.0-c.z;
@@ -716,7 +750,7 @@ static void end_batch() {
     ReleaseSRWLockExclusive(&ctrl_lock);
 }
 // Called on the loading thread right after A07B70 returns, before the owner publishes it.
-static void heightfield_created(unsigned index,unsigned char *object,const void *vtable) {
+void heightfield_created(unsigned index,unsigned char *object,const void *vtable) {
     TERRAIN_SCOPE(HeightCapture);
     if(index>=MaxHeightfields || !active())return;
     AcquireSRWLockExclusive(&ctrl_lock);
@@ -827,7 +861,10 @@ static unsigned mask_stamped_locked(ID3D11DeviceContext *context) {
     if(!mask_ready || mask_selected<0 || world_transition || render_failed)return 0;
     WaterMask &m=water_masks[mask_selected];
     if(!m.texture || m.device!=height_device)return 0;
-    unsigned pixels=0;float run[24];
+    // local268 (Fable advice): a frame's stamped span is several cells wide, so the former 24-pixel buffer cut one changed run
+    // into several UpdateSubresource calls per texture. A row-wide buffer (under ctrl_lock) writes the same pixels in one call
+    // per run; gaps (unchanged pixels) still end a run as before.
+    unsigned pixels=0;static float run[MaskSize];
     const int top=(std::max)(0,static_cast<int>(up_t)-mask_offset_z),bottom=(std::min)(static_cast<int>(MaskSize),static_cast<int>(up_b)-mask_offset_z);
     for(int z=top;z<bottom;++z) {
         const int gz=z+mask_offset_z;if(gz<0 || gz>=static_cast<int>(CtrlSize) || up_span_r[gz]<=up_span_l[gz])continue;
@@ -835,7 +872,7 @@ static unsigned mask_stamped_locked(ID3D11DeviceContext *context) {
         const int left=(std::max)(0,static_cast<int>(up_span_l[gz])-mask_offset_x),right=(std::min)(static_cast<int>(MaskSize),static_cast<int>(up_span_r[gz])-mask_offset_x);
         for(int x=left;x<right;) {
             unsigned start=static_cast<unsigned>(x),count=0;
-            while(x<right && count<24) {
+            while(x<right && count<MaskSize) {
                 const int gx=x+mask_offset_x;
                 if(gx<0 || gx>=static_cast<int>(CtrlSize) || !stamp[gx]){if(count)break;++x;start=static_cast<unsigned>(x);continue;}
                 size_t at=static_cast<size_t>(z)*MaskSize+x,g=static_cast<size_t>(gz)*CtrlSize+gx;
@@ -921,9 +958,9 @@ static void readback_locked(ID3D11DeviceContext *context,unsigned hex) {
     } else {readback_failed=true;log_event("terrain_render_readback_error",static_cast<unsigned>(hr),2,0);}
 }
 #endif
-static void on_present(ID3D11DeviceContext *context) {
+void on_present(ID3D11DeviceContext *context) {
     TERRAIN_SCOPE(RenderUpload);
-    season_bake::frame(context);
+    {TERRAIN_SCOPE(SeasonFrame);season_bake::frame(context);}   // local268: its own share of render_on_present (Fable advice)
     if(!context || !active())return;
 #ifndef NO_RUNTIME_LOG
     if(InterlockedCompareExchange(&present_reported,1,0)==0)log_event("terrain_render_present",1,0,0);
@@ -931,6 +968,12 @@ static void on_present(ID3D11DeviceContext *context) {
     if(!needs_present())return;
     unsigned cells=0,pixels=0,mask_cells=0,mask_pixels=0;
     AcquireSRWLockExclusive(&ctrl_lock);
+#ifndef NO_RUNTIME_LOG
+    // local268 (Fable advice): is a growing UpdateSubresource count more work textures, or more cells? terrain_render_upload's
+    // third field = ctrl work textures | height work << 8 | mask work << 16; water_mask_upload's = UpdateSubresource calls.
+    upload_calls=0;
+    const unsigned work_counts=(ctrl_work_count&0xFF)|(height_work_count&0xFF)<<8|(mask_work_count&0xFF)<<16;
+#endif
     if(ctrl_texture && !render_failed) {
         // local142: a time budget (3 ms, at least 8 cells) besides the 256-cell cap, so a day that changes hundreds of cells
         // spreads its uploads over several frames instead of stalling one; the rest waits in the queue as before.
@@ -957,10 +1000,13 @@ static void on_present(ID3D11DeviceContext *context) {
         mask_pixels+=flush_upload_locked(context);
     }
     if(!dirty_count)mask_mirror_pending=false;
+#ifndef NO_RUNTIME_LOG
+    const unsigned frame_uploads=upload_calls;
+#endif
     publish_pending_locked();ReleaseSRWLockExclusive(&ctrl_lock);
 #ifndef NO_RUNTIME_LOG
-    if(cells)log_event("terrain_render_upload",cells,pixels,0);
-    if(mask_cells)log_event("water_mask_upload",mask_cells,mask_pixels,0);
+    if(cells)log_event("terrain_render_upload",cells,pixels,work_counts);
+    if(mask_cells)log_event("water_mask_upload",mask_cells,mask_pixels,frame_uploads);
 #else
     (void)pixels;(void)mask_cells;(void)mask_pixels;
 #endif
@@ -1005,8 +1051,73 @@ static bool probe_on() {
 #ifndef NO_RUNTIME_LOG
 static bool probe_site(void **table,void *function) {return original_site(table,reinterpret_cast<CreateTexture2D>(function));}
 #endif
+#if !defined(NO_RUNTIME_LOG) && !defined(SPLIT_COMBAT)
+// local266 diagnostics: 56,000 textures in 7.4 minutes went through this hook (local263); texture_caller names who asks.
+static terrain_profile::CallerTally texture_callers{"texture_caller",8192};
+// local268 diagnostics (user 2026-11-19 "지형그리기 쪽도", Fable advice): are the ~2.6 creations per frame from 94DC79 the
+// game's own? One call in 64 walks 16 frames above the hook's caller for the first SAN14 DLL frame and keeps the desc;
+// every 256 samples the eight commonest are logged as texture_origin (caller code, first SAN14 code or 0xFFFFFFFF = none,
+// samples) and texture_origin_desc (width | height << 16, format | initial data << 16 | mip levels << 20, bind flags).
+// A creation of 20 ms or more logs texture_slow (width | height << 16, format | initial << 16, us), at most 64 a run.
+// Not in the render fixtures (no diagnostics switch there).
+#if !defined(TERRAIN_RENDER_FIXTURE)
+namespace texture_origin {
+struct Slot {unsigned ret,san,size,format,bind,count;};
+static Slot slots[32];static unsigned used,samples;static SRWLOCK lock=SRWLOCK_INIT;
+static volatile LONG calls,slow_lines;static LONGLONG frequency;
+__declspec(noinline) static void sample(void *ret,const D3D11_TEXTURE2D_DESC *desc,bool initial) {
+    void *frames[32]={};
+    const USHORT got=RtlCaptureStackBackTrace(1,32,frames,nullptr);
+    unsigned at=0;while(at<got && frames[at]!=ret)++at;
+    const unsigned code=terrain_profile::CallerTally::code(ret);unsigned san=(code&0x80000000u) && code!=0xFFFFFFFFu?code:0xFFFFFFFFu;
+    for(unsigned i=at+1;san==0xFFFFFFFFu && i<got && i<=at+16;++i) {
+        const unsigned c=terrain_profile::CallerTally::code(frames[i]);
+        if(c!=0xFFFFFFFFu && (c&0x80000000u))san=c;
+    }
+    const unsigned size=desc?(desc->Width&0xFFFF)|(desc->Height<<16):0;
+    const unsigned format=desc?(static_cast<unsigned>(desc->Format)&0xFFFF)|(initial?1u<<16:0u)|((desc->MipLevels&0xFFF)<<20):0;
+    const unsigned bind=desc?desc->BindFlags:0;
+    AcquireSRWLockExclusive(&lock);
+    unsigned i=0;
+    while(i<used && !(slots[i].ret==code && slots[i].san==san && slots[i].size==size && slots[i].format==format && slots[i].bind==bind))++i;
+    if(i<used)++slots[i].count;
+    else if(used<32)slots[used++]={code,san,size,format,bind,1};
+    if(++samples>=256) {
+        for(unsigned rank=0;rank<8 && rank<used;++rank) {
+            unsigned best=rank;for(unsigned k=rank+1;k<used;++k)if(slots[k].count>slots[best].count)best=k;
+            std::swap(slots[rank],slots[best]);const Slot &s=slots[rank];
+            log_event("texture_origin",s.ret,s.san,s.count);
+            log_event("texture_origin_desc",s.size,s.format,s.bind);
+        }
+        used=samples=0;
+    }
+    ReleaseSRWLockExclusive(&lock);
+}
+struct Watch {
+    const D3D11_TEXTURE2D_DESC *desc;bool initial;LARGE_INTEGER start;
+    Watch(void *ret,const D3D11_TEXTURE2D_DESC *d,bool i):desc(d),initial(i) {
+        QueryPerformanceCounter(&start);
+        if(diagnostic_logging && (static_cast<unsigned>(InterlockedIncrement(&calls))&63u)==0)sample(ret,d,i);
+    }
+    ~Watch() {
+        if(!diagnostic_logging)return;
+        LARGE_INTEGER end;QueryPerformanceCounter(&end);
+        if(!frequency) {LARGE_INTEGER f;QueryPerformanceFrequency(&f);frequency=f.QuadPart;}
+        const unsigned long long us=frequency>0?static_cast<unsigned long long>(end.QuadPart-start.QuadPart)*1000000ull/static_cast<unsigned long long>(frequency):0;
+        if(us>=20000 && InterlockedIncrement(&slow_lines)<=64)
+            log_event("texture_slow",desc?(desc->Width&0xFFFF)|(desc->Height<<16):0,
+                      desc?(static_cast<unsigned>(desc->Format)&0xFFFF)|(initial?1u<<16:0u):0,us>0xFFFFFFFFull?0xFFFFFFFFu:static_cast<unsigned>(us));
+    }
+};
+}
+#endif
+#endif
 static HRESULT STDMETHODCALLTYPE create_texture_2d(ID3D11Device *dev,const D3D11_TEXTURE2D_DESC *desc,
     const D3D11_SUBRESOURCE_DATA *initial,ID3D11Texture2D **out) { COST_SCOPE("terrain_render::create_texture_2d");
+    TERRAIN_CALLER(texture_callers);
+#if !defined(NO_RUNTIME_LOG) && !defined(SPLIT_COMBAT) && !defined(TERRAIN_RENDER_FIXTURE)
+    texture_origin::Watch texture_watch(_ReturnAddress(),desc,initial!=nullptr);
+#endif
     TERRAIN_SCOPE(TextureHook);
     terrain_profile::Function<CreateTexture2D,terrain_profile::Id::TextureNative> original{nullptr};
     bool observing=false;
@@ -1248,16 +1359,22 @@ static HRESULT STDMETHODCALLTYPE create_texture_2d(ID3D11Device *dev,const D3D11
 #endif
     return result;
 }
+// local268 (user 2026-11-19 "페이블 조언 다해봐", Fable advice: about 46 us per Present, 1.0 s per run): the slot pointer and the
+// 16 kept bytes are checked on every call as before; the module checks of original_site (module handles, file and system
+// paths, page protection) ran on every Present for a (table, original) pair that was already admitted at publication and
+// cannot change while the device lives. They now run on the first call and then on one call in 256.
 static bool guards_locked() {
+    static volatile LONG guard_calls;
+    const bool full=(static_cast<unsigned>(InterlockedIncrement(&guard_calls))&0xFFu)==1;
     for(const auto &s:slots)if(s.published &&
         (s.table[CreateTexture2DSlot]!=reinterpret_cast<void *>(&create_texture_2d) ||
-         !original_site(s.table,s.original) || memcmp(s.bytes,reinterpret_cast<void *>(s.original),sizeof(s.bytes))))return false;
+         (full && !original_site(s.table,s.original)) || memcmp(s.bytes,reinterpret_cast<void *>(s.original),sizeof(s.bytes))))return false;
     return true;
 }
 static bool guards_match() {
     AcquireSRWLockShared(&slot_lock);bool ok=guards_locked();ReleaseSRWLockShared(&slot_lock);return ok;
 }
-[[maybe_unused]] static bool hooks_active() {
+bool hooks_active() {
     AcquireSRWLockShared(&slot_lock);
     bool active=false;for(const auto &s:slots)if(s.published){active=true;break;}
     ReleaseSRWLockShared(&slot_lock);return active;
@@ -1306,7 +1423,7 @@ static bool install_device(ID3D11Device *dev,bool early) {
 #endif
     return usable;
 }
-static void install_early() {
+void install_early() {
 #ifdef SAN14_WATER_DIAG_INCLUDED
     water_diag::mask_sample=&confirm_mask;
     water_diag::install_early();
@@ -1338,7 +1455,7 @@ static void install_early() {
     if(temporary)temporary->Release();
     if(!installed)FreeLibrary(library);
 }
-static void on_device(ID3D11Device *dev) {
+void on_device(ID3D11Device *dev) {
     TERRAIN_SCOPE(RenderDevice);
 #ifdef SAN14_WATER_DIAG_INCLUDED
     water_diag::mask_sample=&confirm_mask;
@@ -1382,7 +1499,7 @@ static void before_world_change() {
     if(missing)log_event("terrain_texture_none",0,0,0);
 #endif
 }
-static void restore() {
+void restore() {
 #ifdef SAN14_WATER_DIAG_INCLUDED
     water_diag::restore();
 #endif
@@ -1406,4 +1523,12 @@ static void restore() {
 struct Lifetime {~Lifetime(){restore();}};
 static Lifetime lifetime;
 }
-static bool terrain_render_guards_match() {return terrain_render::guards_match();}
+#if defined(SPLIT_MODULE_FIXTURE)
+namespace terrain_render {
+// Fixture action 4 (native_split_install.inl): the device vtable already points at our hook -> mark the slot published.
+void fixture_mark_published(void **table) {
+    for(auto &s:slots)if(s.table==table && table[CreateTexture2DSlot]==reinterpret_cast<void *>(&create_texture_2d))s.published=true;
+}
+}
+#endif
+bool terrain_render_guards_match() {return terrain_render::guards_match();}

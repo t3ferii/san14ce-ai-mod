@@ -123,7 +123,22 @@ struct Unit {
     unsigned state=0,team=0,cell=0,morale=100,troops=0;
     ULONGLONG hurt_at=0,block_at=0,crit_at=0;   // 막기·피격·회심 연출 (ccz_combat marks, troop drops)
     bool guard=false,fury=false;                // 막기·회심 상태 유지 중 (ccz_combat, 5일)
+    // 2026-11-16 user (CCZ units vanish and the 3D model is gone too, never back until CCZ is turned off): a unit is hidden
+    // only while its own picture went out in a recent batch. first = slot start (short trial before the first draw),
+    // drawn_at = last batch that carried this unit with a loaded picture (render thread writes it back), slot = its index.
+    ULONGLONG first=0,drawn_at=0;unsigned slot=0;
+    ULONGLONG sampled=0;   // last idle-band grid sample taken from this unit (ghost::sample)
+    // 2026-11-19 idle band flag (ghost::collect): 0 = not a flag, 1 = the grown part (texel rows lo..hi, bottom), 2 = the part still
+    // to grow (rows lo..hi, top, drawn pale with the 0x200 bit).
+    unsigned badge=0,lo=0,hi=0;
 };
+// Idle band flag cells: kBadgeTag | the source picture cell (a disc built from its standing frame, ghost::badge_atlas).
+constexpr unsigned kBadgeTag=0xB0000000u,kBadgeMask=0xFFFF0000u,kBadgeSize=64;
+static bool badge_cell(unsigned cell) {return (cell&kBadgeMask)==kBadgeTag;}
+static unsigned source_cell(unsigned cell) {return badge_cell(cell)?cell&0xFFFFu:cell;}
+static volatile LONG idle_only;   // 2026-11-19: renderer installed for the idle band flags alone (조조전 병종 그림 off)
+constexpr ULONGLONG kProofMs=1000,kTrialMs=700;
+constexpr unsigned kNoOwner=~0u;   // label quads belong to no unit
 struct Vertex {float x,y,z,w,u,v;unsigned team;};
 static bool native_facing(Unit &u,float yaw) {
     if(!std::isfinite(yaw))return false;
@@ -131,7 +146,10 @@ static bool native_facing(Unit &u,float yaw) {
 }
 static SRWLOCK lock=SRWLOCK_INIT;
 static Unit units[kSlots];
-static std::unordered_set<unsigned> failed_cells;   // pictures we could not decode/upload; guarded by lock, cleared on a new device
+// Pictures we could not decode/upload; guarded by lock. 2026-11-16: retried with back-off (2 s .. 60 s) instead of staying
+// failed until a new device (a short GPU memory shortage used to leave the unit hidden and undrawn for the whole session).
+struct CellFail {ULONGLONG retry;unsigned tries;};
+static std::unordered_map<unsigned,CellFail> failed_cells;
 static float camera[80];static ULONGLONG camera_seen;
 static void reset_appearance_captures() {
     AcquireSRWLockExclusive(&lock);for(auto &u:units)u=Unit{};camera_seen=0;ReleaseSRWLockExclusive(&lock);
@@ -141,7 +159,25 @@ static volatile LONG installed,hide_model=1,depth_test=1;
 // 2026-11-09 user: the native model must show unless our sprite is actually being drawn (PW6).
 // last_draw_ok = last draw() that really submitted vertices; hide_since = first capture tick of the current hide episode.
 static volatile LONGLONG last_draw_ok,hide_since;
-static bool fallback_enabled;   // local17 [ccz] sprite_fallback (startup-only); off = v15.7.1 hide rule
+// 2026-11-16: last_submit = last draw() that submitted a batch (no GPU confirmation). The per-unit proof below is always on;
+// sprite_fallback (strict) additionally needs the batch's occlusion query to have passed pixels (last_draw_ok, local61).
+static volatile LONGLONG last_submit;
+static volatile LONG submit_count;   // batches submitted (render-thread draw-gap watchdog)
+// 2026-11-16: 30 batch queries in a row passed no pixel (every sprite failing depth or covered, the local7 failure class).
+// Without strict mode the submits alone would keep the model hidden; this clears with the next batch that passes a pixel.
+static volatile LONG covered;
+static bool fallback_enabled;   // local17 [ccz] sprite_fallback (startup-only); 2026-11-16: strict GPU check on top of the per-unit proof
+#ifndef NO_RUNTIME_LOG
+// 2026-11-16 diagnostic builds only: [diagnostics] ccz_sprite_fault forces a failure to check that the native model returns.
+// 1 = never draw, 2 = every sprite fails the depth test (drawn but invisible), 4 = every picture fails to load.
+static unsigned sprite_fault;
+// 2026-11-16 measurement build: [diagnostics] ccz_draw_probe (probe namespace below). probe_show = this 4 s phase lets every
+// native model through; probe_hidden counts the hide decisions of the other phase.
+static bool probe_mode;static volatile LONG probe_show,probe_hidden;
+// bound at this thread's last bind: 0 no colour target, 1 scene target before post, 2 other before post, 3 after post.
+// local196 log: the scene binds come from another thread (16708) than Present (38276), so the pass is kept per thread.
+static thread_local unsigned probe_pass;
+#endif
 static std::vector<unsigned char> asset;
 static std::unordered_map<unsigned,std::pair<unsigned,unsigned>> entries; // cell -> (offset, packed size)
 static unsigned original_palette[kRows][256];
@@ -153,7 +189,7 @@ static unsigned zoom_recovery_logs;
 static ULONGLONG last_sprite_submission;
 // PW6 health line: one per 10 s while sprites are installed (at most 2000 lines).
 // fallback = captures that would have hidden but showed the native model; low 16 bits total,
-// bits 16-23 rule 1 (no recent successful draw), bits 24-31 rules 2/3 (failed cell, full slots).
+// bits 16-23 global proof missing (strict: no passing query), bits 24-31 this unit not drawn (failed cell, full slots, no batch).
 static volatile LONG health_hidden,health_drawn,health_fallback1,health_fallback23,health_lines;
 static ULONGLONG health_next;
 static void health_tick() {
@@ -194,8 +230,22 @@ static bool read_camera(float out[80]) {
 static ccz_catalog::Reader catalog;
 struct Identity {unsigned team=0,cls=kNative,cell=0;};
 static volatile LONG force_colours;   // force colour table matched; otherwise rows 1 player blue / 2 others red
+// 2026-11-18 종군 무리 (user: "생성되는 스프라이트랑 실제 종군 스프라이트가 다름"): a live band unit draws its band kind, the same class as
+// its idle picture, in its patron's colour. Land formations only (water and siege keep the native models like every army).
+static bool band_identity(Obj army,unsigned formation,Identity &r) {
+    unsigned kind=0,patron=0;
+    if(formation>7 || !ccz_idle::band_of(army,kind,patron))return false;
+    r.cls=ccz_band_kinds::class_of(kind);r.cell=ccz_appearance::cell(r.cls);
+    if(!catalog.find(r.cell)){r.cls=ccz_band_kinds::class_of(0);r.cell=ccz_appearance::cell(r.cls);if(!catalog.find(r.cell))return false;}
+    Obj root=world();Obj owner=root && patron && patron<0x34?pointer(root,0xDF30+patron*8):nullptr;
+    Obj context=root?pointer(root,0x871E8):nullptr;unsigned player=context?context[0x3A]:0;
+    if(InterlockedCompareExchange(&force_colours,0,0))r.team=owner && owner[0x49]<kColourCount?1u+owner[0x49]:0u;
+    else r.team=player && patron==player?1u:2u;
+    return true;
+}
 static Identity identify(Obj army,unsigned formation) {   // pure reads, no game calls
-    Identity r;if(formation>=21)return r;
+    Identity r;if(band_identity(army,formation,r))return r;
+    if(formation>=21)return r;
     Obj root=world();unsigned leader=word(army,0x12);
     Obj person=root && leader<0x1771?pointer(root,0x158+leader*8):nullptr;
     ccz_appearance::Settings config;
@@ -221,6 +271,131 @@ static Identity identify(Obj army,unsigned formation) {   // pure reads, no game
     if(r.cls>=0x1000 && r.cls!=kNative && !catalog.find(r.cell))r.cls=kNative;
     return r;
 }
+// 2026-11-17 종군 중립군 idle bands (docs/NEUTRAL_BANDITS.md 11, user "대기 상태에 그림이 없어 어디 생기는지 몰랐음"): an idle
+// record has no original unit, so the renderer draws a neutral 산적 picture on its site tile. Hex -> world: the terrain module's
+// hex centres (native_terrain_render.inl center(): 702 per column, sqrt(3)*468 per row, even columns half a row lower), then an
+// affine fit learnt from standing armies (their tile +0x2A against their display position +0x90), identity until the fit is
+// trusted. Ground height: the last army that stood on that tile or the nearest one within 6 hexes.
+namespace ghost {
+constexpr unsigned kMax=ccz_idle::kMax,kHexes=48400,kClass=48;   // 48 = 산적 (ccz_appearance_labels.h class_labels)
+constexpr double kCol=702.0,kRow=810.5997779422346,kX0=37594.0,kZ0=13335.3,kRef=100000.0;
+constexpr ULONGLONG kSampleMs=1000,kStillMs=1500;
+static double su,sv,suu,suv,svv,sn,sxu,sxv,sx,szu,szv,sz,sy;   // fit sums (u,v = centre - kRef), guarded by ccz_sprites::lock
+static double coef[6]={1,0,kRef,0,1,kRef};static bool fitted;   // x = c0*u+c1*v+c2, z = c3*u+c4*v+c5
+static float tile_y[kHexes];static bool tile_has[kHexes];
+#ifndef NO_RUNTIME_LOG
+static double err_identity,err_fit;static unsigned err_n;static ULONGLONG next_log;
+#endif
+static void centre(unsigned hex,double &x,double &z) {
+    const unsigned row=hex/220,col=hex%220;
+    x=kX0+col*kCol;z=kZ0+row*kRow+((col%2==0)?kRow/2:0);
+}
+static bool refit() {
+    if(sn<12)return false;
+    const double mu=su/sn,mv=sv/sn,vu=suu/sn-mu*mu,vv=svv/sn-mv*mv;
+    if(vu<1e6 || vv<1e6)return false;   // samples must spread over a few hexes both ways
+    const double m[3][3]={{suu,suv,su},{suv,svv,sv},{su,sv,sn}};
+    auto det3=[](const double a[3][3]) {return a[0][0]*(a[1][1]*a[2][2]-a[1][2]*a[2][1])-a[0][1]*(a[1][0]*a[2][2]-a[1][2]*a[2][0])+a[0][2]*(a[1][0]*a[2][1]-a[1][1]*a[2][0]);};
+    const double d=det3(m);if(!(d>1e-6 || d<-1e-6))return false;
+    const double rx[3]={sxu,sxv,sx},rz[3]={szu,szv,sz};
+    double out[6];
+    for(unsigned axis=0;axis<2;++axis)for(unsigned k=0;k<3;++k) {
+        double t[3][3];memcpy(t,m,sizeof(t));
+        for(unsigned r=0;r<3;++r)t[r][k]=axis?rz[r]:rx[r];
+        out[axis*3+k]=det3(t)/d;
+    }
+    for(double v:out)if(!std::isfinite(v))return false;
+    memcpy(coef,out,sizeof(coef));return true;
+}
+static void apply(double cx,double cz,double &x,double &z) {
+    const double u=cx-kRef,v=cz-kRef;
+    if(fitted){x=coef[0]*u+coef[1]*v+coef[2];z=coef[3]*u+coef[4]*v+coef[5];}else{x=cx;z=cz;}
+}
+// Game thread, ccz_sprites::lock held exclusive: one sample a second from an army that has stood still for 1.5 s.
+static void sample(Unit &u,Obj army,const float position[3],ULONGLONG now,bool fresh_slot) {
+    if(fresh_slot || now-u.moved<kStillMs || now-u.sampled<kSampleMs || u.state==2)return;
+    const unsigned tile=word(army,0x2A);if(tile>=kHexes)return;
+    u.sampled=now;
+    double cx,cz;centre(tile,cx,cz);
+    const double x=position[0],z=position[2];
+    double px,pz;apply(cx,cz,px,pz);
+    const double miss=std::sqrt((px-x)*(px-x)+(pz-z)*(pz-z));
+    if(fitted && miss>1500)return;   // an army caught between hexes or a stray record
+    tile_y[tile]=position[1];tile_has[tile]=true;
+#ifndef NO_RUNTIME_LOG
+    err_identity+=std::sqrt((cx-x)*(cx-x)+(cz-z)*(cz-z));err_fit+=miss;++err_n;
+#endif
+    if(sn>=4096){su*=0.5;sv*=0.5;suu*=0.5;suv*=0.5;svv*=0.5;sn*=0.5;sxu*=0.5;sxv*=0.5;sx*=0.5;szu*=0.5;szv*=0.5;sz*=0.5;sy*=0.5;}
+    const double a=cx-kRef,b=cz-kRef;
+    su+=a;sv+=b;suu+=a*a;suv+=a*b;svv+=b*b;sn+=1;sxu+=x*a;sxv+=x*b;sx+=x;szu+=z*a;szv+=z*b;sz+=z;sy+=position[1];
+    fitted=refit()||fitted;
+#ifndef NO_RUNTIME_LOG
+    if(now>=next_log && err_n) {
+        next_log=now+30000;
+        auto pack=[](double c) {double v=c*1000+32768;return static_cast<unsigned>(v<0?0:v>65535?65535:v);};
+        log_event("ccz_ghost_fit",static_cast<unsigned>(sn),static_cast<unsigned>(err_identity/err_n),static_cast<unsigned>(err_fit/err_n)|(fitted?0x80000000u:0u));
+        log_event("ccz_ghost_axes",(pack(coef[0])<<16)|pack(coef[1]),(pack(coef[3])<<16)|pack(coef[4]),static_cast<unsigned>(coef[2]>0?coef[2]:0));
+        err_identity=err_fit=0;err_n=0;
+    }
+#endif
+}
+static bool height_at(unsigned site,float &y) {   // caller holds ccz_sprites::lock (shared is enough)
+    if(tile_has[site]){y=tile_y[site];return true;}
+    const int x0=static_cast<int>(site%220),y0=static_cast<int>(site/220);
+    for(int r=1;r<=6;++r)for(int dy=-r;dy<=r;++dy)for(int dx=-r;dx<=r;++dx) {
+        if((dx>-r && dx<r) && (dy>-r && dy<r))continue;   // ring only
+        const int x=x0+dx,yy=y0+dy;if(x<0 || yy<0 || x>=220 || yy>=220)continue;
+        const unsigned t=static_cast<unsigned>(yy*220+x);if(tile_has[t]){y=tile_y[t];return true;}
+    }
+    if(sn>=1){y=static_cast<float>(sy/sn);return false;}
+    y=800.0f;return false;
+}
+// Render thread: neutral idle pictures, appended after the live armies (owner kNoOwner, no army). 2026-11-19 user "부대 깃발만
+// 픽셀처럼 ... 초상화가 차오르는식으로": every site also gets a round flag (the standing frame in a disc) in both picture modes, split at
+// the fill line into the grown part (bottom) and the pale part still to grow (top); the standing picture only with 조조전 병종 그림 on.
+static unsigned collect(Unit *out,unsigned room,ULONGLONG now) {
+    if(!room)return 0;
+    unsigned n=0;
+    const bool pictures=!InterlockedCompareExchange(&idle_only,0,0);
+    AcquireSRWLockShared(&lock);
+    for(unsigned k=0;k<kMax && n+3<=room;++k) {
+        const LONG64 v=InterlockedCompareExchange64(&ccz_idle::sites[k],0,0);
+        if(v<=0 || v>static_cast<LONG64>(kHexes))continue;
+        const unsigned site=static_cast<unsigned>(v-1);
+        // 2026-11-18: the band kind decided with the idle record (same class the follower unit will draw), else 산적.
+        unsigned cell=ccz_appearance::cell(ccz_band_kinds::class_of(static_cast<unsigned>(InterlockedCompareExchange(&ccz_idle::site_kinds[k],0,0))));
+        if(!catalog.find(cell)){cell=ccz_appearance::cell(kClass);if(!catalog.find(cell))continue;}
+        double cx,cz,x,z;centre(site,cx,cz);apply(cx,cz,x,z);
+        float y;const bool known=height_at(site,y);(void)known;   // logged in diagnostic builds
+        Unit g{};g.x=static_cast<float>(x);g.y=y;g.z=static_cast<float>(z);g.cell=cell;g.team=0;g.morale=100;g.seen=now;g.slot=kNoOwner;
+        if(pictures)out[n++]=g;
+        LONG fill=InterlockedCompareExchange(&ccz_idle::site_fill[k],0,0);fill=fill<0?0:fill>1000?1000:fill;
+        const unsigned line=kBadgeSize-static_cast<unsigned>((fill*static_cast<LONG>(kBadgeSize)+500)/1000);   // first grown texel row
+        g.cell=kBadgeTag|cell;
+        if(line<kBadgeSize){Unit b=g;b.badge=1;b.lo=line;b.hi=kBadgeSize;out[n++]=b;}
+        if(line>0){Unit b=g;b.badge=2;b.lo=0;b.hi=line;out[n++]=b;}
+#ifndef NO_RUNTIME_LOG
+        static ULONGLONG drawn_next;
+        if(now>=drawn_next){drawn_next=now+30000;log_event("ccz_ghost_drawn",site,(fitted?1u:0u)|(known?2u:0u)|(pictures?4u:0u),static_cast<unsigned>(y>0?y:0)|(static_cast<unsigned>(fill)<<16));}
+#endif
+    }
+    ReleaseSRWLockShared(&lock);
+    return n;
+}
+// Game thread (band day pass) with 조조전 병종 그림 off: no army capture feeds the ground height, so every standing field army's display
+// position (+0x148 display, +0x90; the same guarded reads as the far-zoom path) gives its tile's height. Old local23x logs: the hex
+// centre already matches the display position (ccz_ghost_fit identity error 0), so only the height is taken.
+static void note_height(unsigned tile,const float position[3]) {
+    if(tile>=kHexes || !std::isfinite(position[1]))return;
+    double cx,cz;centre(tile,cx,cz);
+    const double dx=position[0]-cx,dz=position[2]-cz;if(dx*dx+dz*dz>300.0*300.0)return;   // between two hexes
+    AcquireSRWLockExclusive(&lock);tile_y[tile]=position[1];tile_has[tile]=true;ReleaseSRWLockExclusive(&lock);
+}
+static bool wanted() {
+    for(unsigned k=0;k<kMax;++k)if(InterlockedCompareExchange64(&ccz_idle::sites[k],0,0)>0)return true;
+    return false;
+}
+}
 static bool capture(Obj display,Obj scene) { COST_SCOPE("ccz_sprites_capture"); COST_CRUMB("ccz_capture_display",display);
 #ifndef NO_RUNTIME_LOG
     health_tick();   // game thread only, same as every other capture counter
@@ -234,22 +409,15 @@ static bool capture(Obj display,Obj scene) { COST_SCOPE("ccz_sprites_capture"); 
     unsigned formation=army[0x1B];
     Identity who=identify(army,formation);
     if(who.cls==kNative)return false;   // 충차 / water / 사이 / ships keep native models
-    {   // PW6 rule 2: a picture we could not load keeps the native model instead of vanishing.
-        bool failed=false;
-        if(fallback_enabled) {AcquireSRWLockShared(&lock);failed=failed_cells.find(who.cell)!=failed_cells.end();ReleaseSRWLockShared(&lock);}
-        if(failed) {
-#ifndef NO_RUNTIME_LOG
-            InterlockedIncrement(&health_fallback23);
-#endif
-            return false;
-        }
-    }
+    // PW6 rule 2 (2026-11-16: always): a picture we could not load keeps the native model. The unit stays tracked so the
+    // renderer retries the picture after its back-off; the per-unit proof below hides it again once it is drawn.
     float position[3];memcpy(position,display+0x90,sizeof(position));
     if(!std::isfinite(position[0]) || !std::isfinite(position[1]) || !std::isfinite(position[2]))return false;
     float cam[80];bool fresh=read_camera(cam);
     unsigned team=who.team;ULONGLONG now=GetTickCount64();
     AcquireSRWLockExclusive(&lock);
     if(fresh){memcpy(camera,cam,sizeof(camera));camera_seen=now;}
+    bool known_failed=failed_cells.find(who.cell)!=failed_cells.end();
     Unit *slot=nullptr,*stale=nullptr;
     for(auto &u:units) {
         if(u.army==army){slot=&u;break;}
@@ -257,8 +425,8 @@ static bool capture(Obj display,Obj scene) { COST_SCOPE("ccz_sprites_capture"); 
     }
     bool fresh_slot=!slot;
     if(!slot) {
-        // PW6 rule 3: the slot table is full of live armies -> do not hide the newcomer.
-        if(fallback_enabled && stale && stale->army && now<stale->seen+300) {
+        // PW6 rule 3 (2026-11-16: always): the slot table is full of live armies -> do not hide the newcomer.
+        if(stale && stale->army && now<stale->seen+300) {
             ReleaseSRWLockExclusive(&lock);
 #ifndef NO_RUNTIME_LOG
             InterlockedIncrement(&health_fallback23);
@@ -271,7 +439,7 @@ static bool capture(Obj display,Obj scene) { COST_SCOPE("ccz_sprites_capture"); 
 #endif
             return false;
         }
-        slot=stale;*slot=Unit{};slot->army=army;
+        slot=stale;*slot=Unit{};slot->army=army;slot->first=now;slot->slot=static_cast<unsigned>(slot-units);
     }
     Unit &u=*slot;
     float dx=position[0]-u.x,dz=position[2]-u.z;
@@ -296,7 +464,11 @@ static bool capture(Obj display,Obj scene) { COST_SCOPE("ccz_sprites_capture"); 
     (void)turned;
     unsigned troops=word(army,0x16);if(!fresh_slot && troops<u.troops && now-u.hurt_at>=kHurtCooldownMs)u.hurt_at=now;u.troops=troops;   // any damage -> 피격
     buff_read(army,game_day_read(),u.guard,u.fury);
+    if(u.cell!=who.cell){u.drawn_at=0;u.first=now;}   // a new picture (commander or appearance change) needs its own proof
+    else if(!fresh_slot && now>u.seen+300)u.first=now;   // back after a capture gap (menu, far zoom): a new short trial, no model flash
     u.state=dword(display,0x60);u.team=team;u.morale=army[0x1A];u.cell=who.cell;u.seen=now;
+    ghost::sample(u,army,position,now,fresh_slot);
+    const ULONGLONG first=u.first,drawn_at=u.drawn_at;
     ReleaseSRWLockExclusive(&lock);
 #ifndef NO_RUNTIME_LOG
     if(InterlockedIncrement(&captures)==1)log_event("ccz_sprites_first_capture",team,fresh?1:0,army[0x1B]);
@@ -311,13 +483,24 @@ static bool capture(Obj display,Obj scene) { COST_SCOPE("ccz_sprites_capture"); 
     if(want) {
         if(!since){InterlockedCompareExchange64(&hide_since,static_cast<LONGLONG>(now),0);since=InterlockedCompareExchange64(&hide_since,0,0);}
     } else if(since && now-static_cast<ULONGLONG>(since)>2000)InterlockedCompareExchange64(&hide_since,0,since);
-    LONGLONG drawn=InterlockedCompareExchange64(&last_draw_ok,0,0);
-    bool recent=drawn && now-static_cast<ULONGLONG>(drawn)<1000;
+    // 2026-11-16 (user: sprites vanish with the 3D model, never back until CCZ is turned off): with sprite_fallback off (the
+    // default) the model used to hide whenever the camera read, whether or not anything was drawn, so any lasting draw failure
+    // left the army invisible. The proof is now per unit and always on: hide only while this unit's picture went out in a
+    // batch within 1 s, during its first 0.7 s (trial before the first draw) or the episode grace; never while its picture
+    // failed to load. Strict mode (sprite_fallback) also needs a passing occlusion query (local61) instead of any batch.
+    LONGLONG proof=fallback_enabled?InterlockedCompareExchange64(&last_draw_ok,0,0):InterlockedCompareExchange64(&last_submit,0,0);
+    bool recent=proof && static_cast<ULONGLONG>(proof)+kProofMs>now &&   // the render tick may run a tick ahead of this one
+        (fallback_enabled || !InterlockedCompareExchange(&covered,0,0));
+    bool unit_drawn=drawn_at && drawn_at+kProofMs>now;
     bool grace=since && now-static_cast<ULONGLONG>(since)<1500;
-    bool hide=want && (!fallback_enabled || recent || grace);
+    bool trial=first+kTrialMs>now;
+    bool hide=want && !known_failed && ((unit_drawn && recent) || grace || trial);
 #ifndef NO_RUNTIME_LOG
     if(hide)InterlockedIncrement(&health_hidden);
-    else if(want)InterlockedIncrement(&health_fallback1);
+    else if(want)InterlockedIncrement(known_failed || !unit_drawn?&health_fallback23:&health_fallback1);
+    if(hide && probe_mode) {   // ccz_draw_probe: the show phase draws the native model as well (measurement only)
+        if(InterlockedCompareExchange(&probe_show,0,0))hide=false;else InterlockedIncrement(&probe_hidden);
+    }
 #endif
     return hide;
 }
@@ -449,6 +632,9 @@ static ID3D11Device *device;
 static ID3D11VertexShader *vs;static ID3D11PixelShader *ps;static ID3D11InputLayout *layout;
 static ID3D11Buffer *vertices;static ID3D11ShaderResourceView *palette_view,*original_palette_view,*label_view;
 static ID3D11DepthStencilState *depth_on[2],*depth_off;static ID3D11RasterizerState *raster;
+#ifndef NO_RUNTIME_LOG
+static ID3D11DepthStencilState *depth_never;   // ccz_sprite_fault 2
+#endif
 struct CellTexture {unsigned cell=~0u;ID3D11ShaderResourceView *view=nullptr;ULONGLONG used=0;};
 static CellTexture textures[kTextures];
 static bool resources_failed;
@@ -466,6 +652,9 @@ static ID3D11Query *visibility[kVisibilityQueries];static ULONGLONG visibility_a
 static bool visibility_busy[kVisibilityQueries];static unsigned visibility_next;
 #ifndef NO_RUNTIME_LOG
 static LONG visibility_seen,visibility_hidden,visibility_streak,visibility_logs;
+// 2026-11-16: the bind dump used to spend its "good" samples at startup and filed drawn-but-covered frames as good. A forced
+// dump (kind 2) follows a draw gap, an invisible streak or a drawn -> not drawn path change (at most 8 per session).
+static bool force_dump;
 #endif
 static volatile LONG want_width,want_height,drawing;
 using SetTargets=void(STDMETHODCALLTYPE *)(ID3D11DeviceContext *,UINT,ID3D11RenderTargetView *const *,ID3D11DepthStencilView *);
@@ -474,6 +663,9 @@ static SetTargets original_set;static void **set_table;
 template<class T> static void drop(T *&p){if(p){p->Release();p=nullptr;}}
 static void release_resources() {
     drop(vs);drop(ps);drop(layout);drop(vertices);drop(palette_view);drop(original_palette_view);drop(label_view);drop(depth_on[0]);drop(depth_on[1]);drop(depth_off);drop(raster);
+#ifndef NO_RUNTIME_LOG
+    drop(depth_never);
+#endif
     for(auto &t:textures){drop(t.view);t=CellTexture{};}
     for(unsigned i=0;i<kVisibilityQueries;++i){drop(visibility[i]);visibility_busy[i]=false;}
     AcquireSRWLockExclusive(&dsv_lock);drop(scene_dsv);for(auto &r:rejected)drop(r);rejected_next=0;ReleaseSRWLockExclusive(&dsv_lock);
@@ -487,15 +679,33 @@ struct Stats {   // read-only diagnostics, inspected from outside the process (f
 static Stats stats;
 // The scene depth buffer stays intact until the next frame's clear; remember the last
 // back-buffer-sized depth view the game bound with colour targets.
-static void note_dsv(ID3D11DepthStencilView *dsv) {
+// 2026-11-16: every recorded bind order is from 1280x720, where the UI layer's depth (1920x1080) differs from the back buffer.
+// With a 1920x1080 back buffer that UI depth would be taken for the scene depth at the UI bind itself, so the "first other
+// depth after post-processing" draw point could never fire. A back-buffer-sized depth first seen after post-processing
+// (late) is therefore never promoted; this frame's late views are remembered by address only to skip repeat queries.
+static bool late_depth;static ID3D11DepthStencilView *late_views[4];static unsigned late_next;
+// 2026-11-16 user (local196/197: CCZ never visible): the scene alternates two back-buffer-sized depth views, and with the late
+// rule above the one bound with the back buffer DURING post-processing (bind 50 of the local197 dump) no longer counted as scene
+// depth, so the UI-layer test (dsv != scene_dsv) fired there; the remaining post passes rewrote the back buffer over the sprites
+// while the per-unit proof hid the models -> armies invisible. Every depth view bound before post-processing this frame is a
+// scene depth for that test (addresses only, compared, never dereferenced).
+static ID3D11DepthStencilView *pre_views[16];static unsigned pre_count;
+static bool pre_post_depth(ID3D11DepthStencilView *dsv) {for(unsigned i=0;i<pre_count;++i)if(pre_views[i]==dsv)return true;return false;}
+static void note_dsv(ID3D11DepthStencilView *dsv,bool late) {
     if(dsv==scene_dsv)return;
+    if(late)for(auto v:late_views)if(v==dsv)return;
     AcquireSRWLockExclusive(&dsv_lock);
     bool known=false;for(auto r:rejected)if(r==dsv)known=true;
     if(!known) {
         ID3D11Resource *resource=nullptr;dsv->GetResource(&resource);ID3D11Texture2D *texture=nullptr;
         if(resource){resource->QueryInterface(__uuidof(ID3D11Texture2D),reinterpret_cast<void **>(&texture));resource->Release();}
         D3D11_TEXTURE2D_DESC d{};if(texture){texture->GetDesc(&d);texture->Release();}
-        if(texture && d.Width==static_cast<UINT>(want_width) && d.Height==static_cast<UINT>(want_height) && d.SampleDesc.Count==1) {
+        if(texture && d.Width==static_cast<UINT>(want_width) && d.Height==static_cast<UINT>(want_height) && d.SampleDesc.Count==1 && late) {
+            late_depth=true;late_views[late_next++%4]=dsv;
+#ifndef NO_RUNTIME_LOG
+            static volatile LONG late_logs;if(InterlockedIncrement(&late_logs)<=4)log_event("ccz_sprites_late_depth",d.Width,d.Height,d.Format);
+#endif
+        } else if(texture && d.Width==static_cast<UINT>(want_width) && d.Height==static_cast<UINT>(want_height) && d.SampleDesc.Count==1) {
             dsv->AddRef();drop(scene_dsv);scene_dsv=dsv;
 #ifndef NO_RUNTIME_LOG
             // local7 log: two back-buffer-sized depth views alternate ~15 times a frame -> log only the first few.
@@ -518,6 +728,11 @@ static void reset_views(bool resized) {   // render thread: Present stall or bac
 // (1920x1080 targets with their own depth), composited last. Draw into the back buffer just before the
 // first colour bind with a non-scene depth view; Present remains the fallback when none is seen.
 static ID3D11RenderTargetView *main_rtv;static bool drawn_this_frame,post_seen;
+static bool drew_ui;   // this frame drew at the UI-layer bind (path signature, 2026-11-16)
+static bool drew_after_post;   // this frame drew at the scene-depth back-buffer bind after post-processing (local199)
+#ifndef NO_RUNTIME_LOG
+static bool rebound_after_draw;   // this frame bound the back buffer again after our draw (signature, not an error by itself)
+#endif
 // local14: the zoomed-out path skips the 1920x1080 UI depth pass. Try the first
 // late 3/8-resolution pass instead (480x270 at 1280x720), after post-processing.
 // Normal UI-depth injection stays unchanged; the rescue runs at most once/frame.
@@ -558,17 +773,31 @@ static void sample_bind(UINT n,ID3D11RenderTargetView *const *rtv,ID3D11DepthSte
 static void STDMETHODCALLTYPE set_targets(ID3D11DeviceContext *c,UINT n,ID3D11RenderTargetView *const *rtv,ID3D11DepthStencilView *dsv) { COST_SCOPE("ccz_set_targets");
     if(InterlockedCompareExchange(&drawing,0,0)){original_set(c,n,rtv,dsv);return;}
     LARGE_INTEGER t0;QueryPerformanceCounter(&t0);++stats.set_calls;
-    if(dsv && n && n<=D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT && want_width)note_dsv(dsv);
+    if(dsv && n && n<=D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT && want_width)note_dsv(dsv,main_rtv && post_seen);
     sample_bind(n,rtv,dsv);
+    if(dsv && !post_seen && pre_count<16 && !pre_post_depth(dsv))pre_views[pre_count++]=dsv;
+#ifndef NO_RUNTIME_LOG
+    if(drawn_this_frame && main_rtv && n && rtv && rtv[0]==main_rtv)rebound_after_draw=true;   // path signature only (2026-11-16)
+#endif
     if(!drawn_this_frame && n && rtv && rtv[0] && want_width) {
         unsigned w=0,h=0;rtv_size(rtv[0],w,h);
         if(!main_rtv && dsv && dsv==scene_dsv && w==static_cast<unsigned>(want_width) && h==static_cast<unsigned>(want_height)){main_rtv=rtv[0];main_rtv->AddRef();}
         else if(main_rtv && w*2==static_cast<unsigned>(want_width) && h*2==static_cast<unsigned>(want_height))post_seen=true;
-        // 2026-10-31 live: battle effects bind their own depth in the middle of the scene; drawing there was
-        // covered by the rest of the scene. Only the first other-depth bind after post-processing is the UI layer.
-        else if(main_rtv && post_seen && dsv && dsv!=scene_dsv) {
+        // 2026-11-16 user (local198: gone after the far view, shown only briefly in event close-ups, and then above the event
+        // picture): every recorded frame (13 dumps, near and far) binds the back buffer with the scene depth again right after
+        // post-processing (tone mapping done), before the unit gauges, the 1920x1080 pass (present only in some frames, e.g.
+        // events) and the 3/8 passes. Draw there; the later rules stay as fallbacks.
+        else if(main_rtv && post_seen && rtv[0]==main_rtv && dsv && dsv==scene_dsv) {
             ++stats.pass_ends;
             if(draw_scene(c,main_rtv,frame_dsv?frame_dsv:scene_dsv))drawn_this_frame=true;
+            drew_after_post=drawn_this_frame;
+        }
+        // 2026-10-31 live: battle effects bind their own depth in the middle of the scene; drawing there was
+        // covered by the rest of the scene. Only the first other-depth bind after post-processing is the UI layer.
+        else if(main_rtv && post_seen && dsv && dsv!=scene_dsv && !pre_post_depth(dsv)) {
+            ++stats.pass_ends;
+            if(draw_scene(c,main_rtv,frame_dsv?frame_dsv:scene_dsv))drawn_this_frame=true;
+            drew_ui=drawn_this_frame;
         }
         // The failed zoom path does not bind a separate-depth UI target at all.
         // Its last 3/8-resolution pass comes AFTER half-resolution post-processing.
@@ -590,6 +819,9 @@ static void STDMETHODCALLTYPE set_targets(ID3D11DeviceContext *c,UINT n,ID3D11Re
         }
         if(main_rtv && rtv[0]==main_rtv && dsv && dsv!=frame_dsv && !post_seen){dsv->AddRef();drop(frame_dsv);frame_dsv=dsv;}
     }
+#ifndef NO_RUNTIME_LOG
+    if(probe_mode)probe_pass=!n || !rtv || !rtv[0]?0u:post_seen?3u:rtv[0]==main_rtv?1u:2u;
+#endif
     LARGE_INTEGER t1;QueryPerformanceCounter(&t1);stats.cost_qpc+=t1.QuadPart-t0.QuadPart;
     original_set(c,n,rtv,dsv);
 }
@@ -607,6 +839,7 @@ static void hook_context(ID3D11DeviceContext *c) {
         published=InterlockedCompareExchangePointer(table+kSetTargetsSlot,reinterpret_cast<void *>(&set_targets),current)==current;
     }
     DWORD ignored=0;VirtualProtect(table+kSetTargetsSlot,sizeof(void *),prior,&ignored);
+    if(self){set_table=table;return;}   // 2026-11-16 re-hook after a silent stretch: already first in this table, keep it
     if(!published) {
 #ifndef NO_RUNTIME_LOG
         static unsigned failures;if(++failures<=4)log_event("ccz_sprites_context_hook_failed",self?1u:0u,0,0);
@@ -618,6 +851,171 @@ static void hook_context(ID3D11DeviceContext *c) {
     log_event("ccz_sprites_context_hook",1,0,0);
 #endif
 }
+#ifndef NO_RUNTIME_LOG
+// 2026-11-16 measurement build (user: hide and draw at the same stage like the 2D mod, measure first; frame cost must not grow
+// blindly). [diagnostics] ccz_draw_probe=1, diagnostic builds only, no effect on release builds:
+// - the immediate context's draw calls (DrawIndexed 12, Draw 13, DrawIndexedInstanced 20, DrawInstanced 21,
+//   DrawIndexedInstancedIndirect 39) are chained like the bind hook (CAS over whatever is there, never over ourselves);
+// - every frame only counts draws; every 10th frame reads each draw's state (shaders, index / vertex buffer, counts) into two
+//   signature tables (with buffers / shape only);
+// - the model hide alternates every 4 s (show phase: the native models are drawn too), so the signatures drawn only while the
+//   models show are the unit-model draws. Every 16 s: ccz_probe_cost / ccz_probe_phase / ccz_probe_sig / ccz_probe_shape lines.
+namespace probe {
+using DrawIndexedFn=void(STDMETHODCALLTYPE *)(ID3D11DeviceContext *,UINT,UINT,INT);
+using DrawFn=void(STDMETHODCALLTYPE *)(ID3D11DeviceContext *,UINT,UINT);
+using DrawIIFn=void(STDMETHODCALLTYPE *)(ID3D11DeviceContext *,UINT,UINT,UINT,INT,UINT);
+using DrawIFn=void(STDMETHODCALLTYPE *)(ID3D11DeviceContext *,UINT,UINT,UINT,UINT);
+using DrawIndirectFn=void(STDMETHODCALLTYPE *)(ID3D11DeviceContext *,ID3D11Buffer *,UINT);
+constexpr unsigned kSlotCount=5,kSlots[kSlotCount]={12,13,20,21,39};
+static void *orig[kSlotCount];static void **table;static unsigned published;static ID3D11DeviceContext *ctx;
+// local196 log: 0 draws counted while the scene was drawn -> the draws do not come through the Present context (another
+// thread / deferred context). Every context of the hooked class is counted now (Present context vs others) and the sampled
+// notes take a lock; up to 8 drawing contexts are listed with their type.
+static volatile bool sampling;static volatile unsigned sample_phase;static unsigned max_draws,sample_frames,reports,halves;
+static volatile LONG imm_draws,other_draws;static unsigned long long all_imm,all_other;static SRWLOCK note_lock=SRWLOCK_INIT;
+struct Context {ID3D11DeviceContext *c;unsigned type,thread,draws;};static Context contexts[8];static unsigned context_count;
+static unsigned long long all_frames;static LONGLONG sample_qpc;static ULONGLONG phase_at;
+static unsigned phase_samples[2],phase_frames[2];
+struct Sig {unsigned long long key;unsigned n,meta,shader,count[2],insts[2];};
+constexpr unsigned kSigs=1024;
+static Sig full[kSigs],shape[kSigs];static unsigned used[2],overflow;
+static void add(Sig *t,unsigned which,unsigned long long key,unsigned n,unsigned meta,unsigned shader_id,UINT inst) {
+    if(!key)key=1;
+    unsigned i=static_cast<unsigned>(key^(key>>32))&(kSigs-1);
+    for(unsigned step=0;step<16;++step,i=(i+1)&(kSigs-1)) {
+        Sig &s=t[i];
+        if(!s.key) {
+            if(used[which]>=kSigs*3/4)break;
+            s.key=key;s.n=n;s.meta=meta;s.shader=shader_id;++used[which];
+        }
+        if(s.key==key){++s.count[sample_phase];s.insts[sample_phase]+=inst;return;}
+    }
+    ++overflow;
+}
+static void note(ID3D11DeviceContext *c,unsigned kind,UINT n,UINT inst,UINT start,INT base) {   // any drawing thread, sampled frames
+    LARGE_INTEGER t0;QueryPerformanceCounter(&t0);
+    AcquireSRWLockExclusive(&note_lock);
+    {
+        unsigned k=0;while(k<context_count && contexts[k].c!=c)++k;
+        if(k==context_count && k<8){contexts[k]={c,static_cast<unsigned>(c->GetType()),GetCurrentThreadId(),0};++context_count;}
+        if(k<context_count)++contexts[k].draws;
+    }
+    ID3D11Buffer *ib=nullptr,*vb=nullptr;DXGI_FORMAT format=DXGI_FORMAT_UNKNOWN;UINT ib_offset=0,stride=0,vb_offset=0;
+    ID3D11VertexShader *vsh=nullptr;ID3D11PixelShader *psh=nullptr;
+    if(kind==0 || kind==2 || kind==4)c->IAGetIndexBuffer(&ib,&format,&ib_offset);
+    c->IAGetVertexBuffers(0,1,&vb,&stride,&vb_offset);c->VSGetShader(&vsh,nullptr,nullptr);c->PSGetShader(&psh,nullptr,nullptr);
+    unsigned long long h=0xCBF29CE484222325ull;
+    auto mix=[&h](unsigned long long v){h=(h^v)*0x100000001B3ull;};
+    mix(reinterpret_cast<UINT_PTR>(vsh));mix(reinterpret_cast<UINT_PTR>(psh));mix(n);mix(kind|probe_pass<<4);mix(stride);
+    const unsigned long long shape_key=h;
+    mix(reinterpret_cast<UINT_PTR>(ib));mix(reinterpret_cast<UINT_PTR>(vb));mix(start);mix(static_cast<unsigned>(base));
+    const unsigned meta=probe_pass<<28|kind<<24|(stride&0xFFu)<<16|(start&0xFFFFu);
+    const unsigned vs_low=static_cast<unsigned>(reinterpret_cast<UINT_PTR>(vsh));
+    add(full,0,h,n,meta,vs_low,inst);add(shape,1,shape_key,n,meta&0xFFFF0000u,vs_low,inst);
+    if(ib)ib->Release();if(vb)vb->Release();if(vsh)vsh->Release();if(psh)psh->Release();
+    LARGE_INTEGER t1;QueryPerformanceCounter(&t1);sample_qpc+=t1.QuadPart-t0.QuadPart;
+    ReleaseSRWLockExclusive(&note_lock);
+}
+static inline void seen(ID3D11DeviceContext *c,unsigned kind,UINT n,UINT inst,UINT start,INT base) {
+    if(!ctx || InterlockedCompareExchange(&drawing,0,0))return;   // not hooked yet / our own sprite draws
+    InterlockedIncrement(c==ctx?&imm_draws:&other_draws);
+    if(sampling)note(c,kind,n,inst,start,base);
+}
+static void STDMETHODCALLTYPE draw_indexed(ID3D11DeviceContext *c,UINT n,UINT start,INT base) {
+    seen(c,0,n,1,start,base);reinterpret_cast<DrawIndexedFn>(orig[0])(c,n,start,base);
+}
+static void STDMETHODCALLTYPE draw_plain(ID3D11DeviceContext *c,UINT n,UINT start) {
+    seen(c,1,n,1,start,0);reinterpret_cast<DrawFn>(orig[1])(c,n,start);
+}
+static void STDMETHODCALLTYPE draw_indexed_instanced(ID3D11DeviceContext *c,UINT n,UINT inst,UINT start,INT base,UINT si) {
+    seen(c,2,n,inst,start,base);reinterpret_cast<DrawIIFn>(orig[2])(c,n,inst,start,base,si);
+}
+static void STDMETHODCALLTYPE draw_instanced(ID3D11DeviceContext *c,UINT n,UINT inst,UINT start,UINT si) {
+    seen(c,3,n,inst,start,0);reinterpret_cast<DrawIFn>(orig[3])(c,n,inst,start,si);
+}
+static void STDMETHODCALLTYPE draw_indexed_indirect(ID3D11DeviceContext *c,ID3D11Buffer *args,UINT offset) {
+    seen(c,4,0,1,offset,0);reinterpret_cast<DrawIndirectFn>(orig[4])(c,args,offset);
+}
+static void *const hooks[kSlotCount]={reinterpret_cast<void *>(&draw_indexed),reinterpret_cast<void *>(&draw_plain),
+    reinterpret_cast<void *>(&draw_indexed_instanced),reinterpret_cast<void *>(&draw_instanced),reinterpret_cast<void *>(&draw_indexed_indirect)};
+static void hook(ID3D11DeviceContext *c) {   // render thread, once, after the bind hook is in (the pass id comes from it)
+    if(table || !set_table || c->GetType()!=D3D11_DEVICE_CONTEXT_IMMEDIATE)return;
+    void **t=*reinterpret_cast<void ***>(c);
+    for(unsigned i=0;i<kSlotCount;++i) {
+        DWORD prior=0;if(!VirtualProtect(t+kSlots[i],sizeof(void *),PAGE_READWRITE,&prior))continue;
+        void *current=t[kSlots[i]];
+        if(current!=hooks[i]) {
+            orig[i]=current;
+            if(InterlockedCompareExchangePointer(t+kSlots[i],hooks[i],current)==current)published|=1u<<i;
+        }
+        DWORD ignored=0;VirtualProtect(t+kSlots[i],sizeof(void *),prior,&ignored);
+    }
+    ctx=c;table=t;
+    log_event("ccz_probe_hook",published,kSlotCount,0);
+}
+static void unhook() {
+    if(!table)return;
+    ctx=nullptr;
+    for(unsigned i=0;i<kSlotCount;++i) if(published&(1u<<i)) {   // a later hook over ours keeps it in the chain (it only forwards)
+        DWORD prior=0;if(!VirtualProtect(table+kSlots[i],sizeof(void *),PAGE_READWRITE,&prior))continue;
+        if(InterlockedCompareExchangePointer(table+kSlots[i],orig[i],hooks[i])==hooks[i])published&=~(1u<<i);
+        DWORD ignored=0;VirtualProtect(table+kSlots[i],sizeof(void *),prior,&ignored);
+    }
+}
+static unsigned per_sample10(unsigned count,unsigned samples) {
+    const unsigned long long v=samples?static_cast<unsigned long long>(count)*10/samples:0;return v>65535?65535u:static_cast<unsigned>(v);
+}
+static void report_table(const char *kind,Sig *t,unsigned s0,unsigned s1) {   // up to 8 signatures drawn more while models show
+    bool taken[kSigs]{};
+    for(unsigned k=0;k<8;++k) {
+        int best=-1;unsigned best_diff=4;   // at least 0.5 draws per sampled frame more
+        for(unsigned i=0;i<kSigs;++i) {
+            if(!t[i].key || taken[i])continue;
+            const unsigned show=per_sample10(t[i].count[1],s1),hide=per_sample10(t[i].count[0],s0);
+            if(show>hide && show-hide>best_diff){best_diff=show-hide;best=static_cast<int>(i);}
+        }
+        if(best<0)break;
+        taken[best]=true;const Sig &s=t[best];
+        log_event(kind,s.n,per_sample10(s.count[1],s1)<<16|per_sample10(s.count[0],s0),s.meta);
+        log_event("ccz_probe_key",static_cast<unsigned>(s.key),per_sample10(s.insts[1],s1),s.shader);
+    }
+}
+static void report() {
+    LARGE_INTEGER f;QueryPerformanceFrequency(&f);
+    const unsigned s0=phase_samples[0],s1=phase_samples[1];
+    const unsigned hidden=static_cast<unsigned>(InterlockedExchange(&probe_hidden,0));
+    AcquireSRWLockExclusive(&note_lock);
+    if(reports++<40) {
+        log_event("ccz_probe_cost",all_frames?static_cast<unsigned>((all_imm+all_other)/all_frames):0u,max_draws,
+            sample_frames?static_cast<unsigned>(sample_qpc*1000000/f.QuadPart/sample_frames):0u);   // draws/frame, max, us per sampled frame
+        log_event("ccz_probe_ctx",all_frames?static_cast<unsigned>(all_imm/all_frames):0u,all_frames?static_cast<unsigned>(all_other/all_frames):0u,context_count);
+        for(unsigned k=0;k<context_count;++k)   // context type (0 immediate, 1 deferred) | Present context, thread, draws per sampled frame x10
+            log_event("ccz_probe_context",contexts[k].type|(contexts[k].c==ctx?0x100u:0u),contexts[k].thread,per_sample10(contexts[k].draws,s0+s1));
+        log_event("ccz_probe_phase",s1<<16|s0,phase_frames[0]?hidden*10/phase_frames[0]:0u,used[0]|used[1]<<12|(overflow>4095?4095u:overflow)<<20);
+        if(s0 && s1){report_table("ccz_probe_sig",full,s0,s1);report_table("ccz_probe_shape",shape,s0,s1);}
+    }
+    memset(full,0,sizeof(full));memset(shape,0,sizeof(shape));used[0]=used[1]=overflow=0;
+    for(unsigned k=0;k<context_count;++k)contexts[k].draws=0;   // contexts stay listed (pointers compared only)
+    phase_samples[0]=phase_samples[1]=phase_frames[0]=phase_frames[1]=0;
+    all_imm=all_other=all_frames=0;max_draws=sample_frames=0;sample_qpc=0;
+    ReleaseSRWLockExclusive(&note_lock);
+}
+static void frame() {   // render thread, at Present
+    if(!table)return;
+    if(sampling){++phase_samples[sample_phase];++sample_frames;}
+    const unsigned ph=InterlockedCompareExchange(&probe_show,0,0)?1u:0u;
+    const unsigned imm=static_cast<unsigned>(InterlockedExchange(&imm_draws,0)),other=static_cast<unsigned>(InterlockedExchange(&other_draws,0));
+    ++phase_frames[ph];++all_frames;all_imm+=imm;all_other+=other;if(imm+other>max_draws)max_draws=imm+other;
+    const ULONGLONG now=GetTickCount64();if(!phase_at)phase_at=now;
+    if(now-phase_at>=4000) {
+        InterlockedExchange(&probe_show,ph?0:1);phase_at=now;
+        if(++halves%4==0)report();   // two show / hide cycles
+    }
+    sample_phase=InterlockedCompareExchange(&probe_show,0,0)?1u:0u;
+    sampling=all_frames%10==0 && now-phase_at>=500;   // models settle for 0.5 s after a phase change
+}
+}
+#endif
 static bool create_labels(ID3D11Device *d) {   // render thread, once per device
     BITMAPINFO bi{};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=kLabelW;bi.bmiHeader.biHeight=-static_cast<LONG>(kLabelH*2);
     bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;bi.bmiHeader.biCompression=BI_RGB;
@@ -641,59 +1039,116 @@ static bool create_labels(ID3D11Device *d) {   // render thread, once per device
     if(FAILED(d->CreateTexture2D(&t,&init,&texture)))return false;
     HRESULT made=d->CreateShaderResourceView(texture,nullptr,&label_view);texture->Release();return SUCCEEDED(made);
 }
+static unsigned create_all(ID3D11Device *d);
+static ULONGLONG resources_retry;
 static bool create_resources(ID3D11Device *d) {
-    if(device==d)return !resources_failed;
-    release_resources();device=d;device->AddRef();resources_failed=true;
-    AcquireSRWLockExclusive(&lock);failed_cells.clear();ReleaseSRWLockExclusive(&lock);   // new device: retry every failed cell
+    if(device==d) {
+        if(!resources_failed)return true;
+        if(GetTickCount64()<resources_retry)return false;   // 2026-11-16: a failed creation is retried every 10 s, not never
+    }
+    const bool new_device=device!=d;
+    release_resources();device=d;device->AddRef();resources_failed=true;resources_retry=GetTickCount64()+10000;
+    if(new_device){AcquireSRWLockExclusive(&lock);failed_cells.clear();ReleaseSRWLockExclusive(&lock);}   // new device: retry every failed cell
+    const unsigned step=create_all(d);
+#ifndef NO_RUNTIME_LOG
+    if(step){static unsigned failure_logs;if(failure_logs++<8)log_event("ccz_sprites_resources_failed",step,new_device?1u:0u,0);}
+#endif
+    resources_failed=step!=0;return !resources_failed;
+}
+static unsigned create_all(ID3D11Device *d) {   // 0 = ready, otherwise the step that failed
     D3D11_INPUT_ELEMENT_DESC elements[]={{"POSITION",0,DXGI_FORMAT_R32G32B32A32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0},
         {"TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,16,D3D11_INPUT_PER_VERTEX_DATA,0},{"TEXCOORD",1,DXGI_FORMAT_R32_UINT,0,24,D3D11_INPUT_PER_VERTEX_DATA,0}};
     if(FAILED(d->CreateVertexShader(ccz_sprites_vs,sizeof(ccz_sprites_vs),nullptr,&vs)) || FAILED(d->CreatePixelShader(ccz_sprites_ps,sizeof(ccz_sprites_ps),nullptr,&ps)) ||
-       FAILED(d->CreateInputLayout(elements,3,ccz_sprites_vs,sizeof(ccz_sprites_vs),&layout)))return false;
+       FAILED(d->CreateInputLayout(elements,3,ccz_sprites_vs,sizeof(ccz_sprites_vs),&layout)))return 1;
     D3D11_BUFFER_DESC b{};b.ByteWidth=sizeof(Vertex)*6*kQuads;b.Usage=D3D11_USAGE_DYNAMIC;b.BindFlags=D3D11_BIND_VERTEX_BUFFER;b.CPUAccessFlags=D3D11_CPU_ACCESS_WRITE;
-    if(FAILED(d->CreateBuffer(&b,nullptr,&vertices)))return false;
+    if(FAILED(d->CreateBuffer(&b,nullptr,&vertices)))return 2;
     D3D11_TEXTURE2D_DESC t{};t.Width=256;t.Height=kRows;t.MipLevels=t.ArraySize=1;t.Format=DXGI_FORMAT_R8G8B8A8_UNORM;t.SampleDesc.Count=1;t.Usage=D3D11_USAGE_IMMUTABLE;t.BindFlags=D3D11_BIND_SHADER_RESOURCE;
     D3D11_SUBRESOURCE_DATA init{palette,256*4,0};ID3D11Texture2D *texture=nullptr;
-    if(FAILED(d->CreateTexture2D(&t,&init,&texture)))return false;
-    HRESULT made=d->CreateShaderResourceView(texture,nullptr,&palette_view);texture->Release();if(FAILED(made))return false;
-    init.pSysMem=original_palette;texture=nullptr;if(FAILED(d->CreateTexture2D(&t,&init,&texture)))return false;
-    made=d->CreateShaderResourceView(texture,nullptr,&original_palette_view);texture->Release();if(FAILED(made))return false;
+    if(FAILED(d->CreateTexture2D(&t,&init,&texture)))return 3;
+    HRESULT made=d->CreateShaderResourceView(texture,nullptr,&palette_view);texture->Release();if(FAILED(made))return 3;
+    init.pSysMem=original_palette;texture=nullptr;if(FAILED(d->CreateTexture2D(&t,&init,&texture)))return 4;
+    made=d->CreateShaderResourceView(texture,nullptr,&original_palette_view);texture->Release();if(FAILED(made))return 4;
     if(!create_labels(d))log_event("ccz_sprites_label_failed");   // labels optional
     D3D11_DEPTH_STENCIL_DESC ds{};ds.DepthEnable=TRUE;ds.DepthWriteMask=D3D11_DEPTH_WRITE_MASK_ZERO;
-    ds.DepthFunc=D3D11_COMPARISON_LESS_EQUAL;if(FAILED(d->CreateDepthStencilState(&ds,&depth_on[0])))return false;
-    ds.DepthFunc=D3D11_COMPARISON_GREATER_EQUAL;if(FAILED(d->CreateDepthStencilState(&ds,&depth_on[1])))return false;   // reversed Z
-    ds.DepthEnable=FALSE;if(FAILED(d->CreateDepthStencilState(&ds,&depth_off)))return false;
+    ds.DepthFunc=D3D11_COMPARISON_LESS_EQUAL;if(FAILED(d->CreateDepthStencilState(&ds,&depth_on[0])))return 5;
+    ds.DepthFunc=D3D11_COMPARISON_GREATER_EQUAL;if(FAILED(d->CreateDepthStencilState(&ds,&depth_on[1])))return 5;   // reversed Z
+#ifndef NO_RUNTIME_LOG
+    ds.DepthFunc=D3D11_COMPARISON_NEVER;if(FAILED(d->CreateDepthStencilState(&ds,&depth_never)))depth_never=nullptr;   // ccz_sprite_fault 2 only
+#endif
+    ds.DepthEnable=FALSE;if(FAILED(d->CreateDepthStencilState(&ds,&depth_off)))return 5;
     D3D11_RASTERIZER_DESC rs{};rs.FillMode=D3D11_FILL_SOLID;rs.CullMode=D3D11_CULL_NONE;rs.DepthClipEnable=TRUE;
-    if(FAILED(d->CreateRasterizerState(&rs,&raster)))return false;
+    if(FAILED(d->CreateRasterizerState(&rs,&raster)))return 6;
     D3D11_QUERY_DESC qd{D3D11_QUERY_OCCLUSION,0};
     for(unsigned i=0;i<kVisibilityQueries;++i)if(FAILED(d->CreateQuery(&qd,&visibility[i]))){for(unsigned k=0;k<kVisibilityQueries;++k)drop(visibility[k]);break;}
-    resources_failed=false;return true;
+    return 0;
 }
 // PW6 rule 2: remember a cell we could not load; reason 1 decode, 2 texture, 3 view. The set is functional
 // (capture keeps the native model); the log line is diagnostic-only.
 static void note_cell_failed(unsigned cell,unsigned reason,HRESULT hr) {
-    bool first=false;
-    AcquireSRWLockExclusive(&lock);first=failed_cells.insert(cell).second;ReleaseSRWLockExclusive(&lock);
+    bool first=false;unsigned tries=0;ULONGLONG now=GetTickCount64();
+    AcquireSRWLockExclusive(&lock);
+    {auto made=failed_cells.try_emplace(cell,CellFail{0,0});first=made.second;CellFail &f=made.first->second;
+     tries=++f.tries;f.retry=now+(std::min)(60000ull,2000ull<<(std::min)(tries-1,5u));}   // 2, 4, 8, 16, 32, 60 s
+    ReleaseSRWLockExclusive(&lock);
 #ifndef NO_RUNTIME_LOG
-    if(!first)return;
+    if(!first){static unsigned retry_logs;if(retry_logs++<32)log_event("ccz_sprites_cell_retry",cell,static_cast<unsigned>(hr)&65535u,(tries<<8)|reason);return;}
     log_event("ccz_sprites_cell_failed",cell,static_cast<unsigned>(hr)&65535u,reason);
     if(device && device->GetDeviceRemovedReason()!=S_OK) {
         static volatile LONG removed_logged;
         if(InterlockedExchange(&removed_logged,1)==0)log_event("ccz_sprites_device_removed",static_cast<unsigned>(device->GetDeviceRemovedReason()),0,0);
     }
 #else
-    (void)first;(void)reason;(void)hr;
+    (void)first;(void)reason;(void)hr;(void)tries;
 #endif
+}
+// Idle band flag disc (2026-11-19), palette indices like the atlas: a bright ring and a dark ground (the darkest / brightest entries
+// of row 0 of the source cell's palette; index 0 stays the clear outside, the shader draws the row's outline around it) with the
+// standing front frame (move frame 6) inside. 64 x 64, drawn 1 texel per CCZ pixel like the bodies.
+static bool badge_atlas(unsigned source,std::vector<unsigned char> &out) {
+    std::vector<unsigned char> atlas;if(!decode(source,atlas))return false;
+    const unsigned *row=source>=4096 && source<5596?original_palette[0]:palette[0];
+    unsigned dark=1,bright=1;float dark_l=2,bright_l=-1;
+    for(unsigned i=1;i<256;++i) {
+        const unsigned c=row[i];const float l=0.299f*(c&255)+0.587f*((c>>8)&255)+0.114f*((c>>16)&255);
+        if(l<dark_l){dark_l=l;dark=i;}
+        if(l>bright_l){bright_l=l;bright=i;}
+    }
+    out.assign(kBadgeSize*kBadgeSize,0);
+    const float r=kBadgeSize*0.5f;
+    auto distance=[&](unsigned x,unsigned y){const float dx=x+0.5f-r,dy=y+0.5f-r;return std::sqrt(dx*dx+dy*dy);};
+    for(unsigned y=0;y<kBadgeSize;++y)for(unsigned x=0;x<kBadgeSize;++x) {
+        const float d=distance(x,y);if(d>r-1)continue;
+        out[y*kBadgeSize+x]=static_cast<unsigned char>(d>r-4?bright:dark);
+    }
+    const unsigned ox=(kBadgeSize-48)/2,oy=(kBadgeSize-48)/2+3;   // feet a little low: the head sits near the centre
+    for(unsigned sy=0;sy<48;++sy)for(unsigned sx=0;sx<48;++sx) {
+        const unsigned char v=atlas[(6*48+sy)*kAtlasW+sx];if(!v)continue;
+        const unsigned x=ox+sx,y=oy+sy;if(distance(x,y)>r-4)continue;
+        out[y*kBadgeSize+x]=v;
+    }
+    return true;
 }
 static ID3D11ShaderResourceView *cell_view(unsigned cell) {
     CellTexture *slot=nullptr;ULONGLONG now=GetTickCount64();
+#ifndef NO_RUNTIME_LOG
+    if(sprite_fault&4){note_cell_failed(cell,4,0);return nullptr;}   // diagnostic fault: every picture fails
+#endif
     for(auto &t:textures){if(t.cell==cell && t.view){t.used=now;return t.view;}if(!slot || t.used<slot->used)slot=&t;}
+    unsigned tries=0;
+    {   // a failed picture waits for its back-off; the unit keeps the native model meanwhile (capture: known_failed)
+        AcquireSRWLockShared(&lock);auto f=failed_cells.find(cell);bool wait=f!=failed_cells.end() && now<f->second.retry;
+        if(f!=failed_cells.end())tries=f->second.tries;ReleaseSRWLockShared(&lock);
+        if(wait)return nullptr;
+    }
     std::vector<unsigned char> atlas;
-    if(!decode(cell,atlas)) {
+    const bool badge=badge_cell(cell);
+    if(badge?!badge_atlas(source_cell(cell),atlas):!decode(cell,atlas)) {
         note_cell_failed(cell,1,0);
         return nullptr;
     }
-    D3D11_TEXTURE2D_DESC t{};t.Width=kAtlasW;t.Height=kAtlasH;t.MipLevels=t.ArraySize=1;t.Format=DXGI_FORMAT_R8_UINT;t.SampleDesc.Count=1;t.Usage=D3D11_USAGE_IMMUTABLE;t.BindFlags=D3D11_BIND_SHADER_RESOURCE;
-    D3D11_SUBRESOURCE_DATA init{atlas.data(),kAtlasW,0};ID3D11Texture2D *texture=nullptr;
+    const unsigned width=badge?kBadgeSize:kAtlasW,height=badge?kBadgeSize:kAtlasH;
+    D3D11_TEXTURE2D_DESC t{};t.Width=width;t.Height=height;t.MipLevels=t.ArraySize=1;t.Format=DXGI_FORMAT_R8_UINT;t.SampleDesc.Count=1;t.Usage=D3D11_USAGE_IMMUTABLE;t.BindFlags=D3D11_BIND_SHADER_RESOURCE;
+    D3D11_SUBRESOURCE_DATA init{atlas.data(),width,0};ID3D11Texture2D *texture=nullptr;
     HRESULT made=device->CreateTexture2D(&t,&init,&texture);
     if(FAILED(made)) {
         note_cell_failed(cell,2,made);
@@ -701,7 +1156,15 @@ static ID3D11ShaderResourceView *cell_view(unsigned cell) {
     }
     drop(slot->view);slot->cell=~0u;
     made=device->CreateShaderResourceView(texture,nullptr,&slot->view);
-    if(SUCCEEDED(made)){slot->cell=cell;slot->used=now;}
+    if(SUCCEEDED(made)) {
+        slot->cell=cell;slot->used=now;
+        if(tries) {   // recovered after a failure
+            AcquireSRWLockExclusive(&lock);failed_cells.erase(cell);ReleaseSRWLockExclusive(&lock);
+#ifndef NO_RUNTIME_LOG
+            static unsigned recovered_logs;if(recovered_logs++<32)log_event("ccz_sprites_cell_recovered",cell,tries,0);
+#endif
+        }
+    }
     else note_cell_failed(cell,3,made);
     texture->Release();return slot->view;
 }
@@ -774,17 +1237,27 @@ static bool needs_present() {
     AcquireSRWLockShared(&lock);ULONGLONG seen=camera_seen;float armed=stop_distance;ReleaseSRWLockShared(&lock);
     ULONGLONG now=GetTickCount64();
     if(seen && now-seen<500)return true;
+    if(ghost::wanted()) {   // idle band pictures need the camera even with no army on screen (pure read, as the far-zoom path)
+        float cam[80];if(!read_camera(cam))return false;
+        AcquireSRWLockExclusive(&lock);memcpy(camera,cam,sizeof(camera));ReleaseSRWLockExclusive(&lock);
+        return true;
+    }
     if(!far_keep_enabled || armed<=0 || !seen || now-seen>kFarKeepMs)return false;
     float cam[80];if(!read_camera(cam))return false;   // pure read; the game camera keeps updating while zoomed out
     AcquireSRWLockExclusive(&lock);memcpy(camera,cam,sizeof(camera));camera_seen=now;ReleaseSRWLockExclusive(&lock);
     return true;
 }
 static volatile LONG zero_reason;   // why the last build drew nothing: 1 no army, 2/3 camera axes, 4 target behind, 5 map, 6 all culled
-static unsigned build(ID3D11DeviceContext *c,float height,bool linear,bool scene,unsigned cells[kQuads],float cam[80]) {
-    Unit list[kSlots];unsigned count=0;ULONGLONG now=GetTickCount64();
+static bool built_this_frame;   // render thread: build() ran since the last Present, so zero_reason is this frame's
+// owners/armies: per quad, the units[] index and army it was built from (labels: kNoOwner) so draw() can write the proof back.
+static unsigned build(ID3D11DeviceContext *c,float height,bool linear,bool scene,unsigned cells[kQuads],unsigned owners[kQuads],Obj armies[kQuads],float cam[80]) {
+    Unit list[kSlots+ghost::kMax];unsigned count=0;ULONGLONG now=GetTickCount64();built_this_frame=true;
     AcquireSRWLockShared(&lock);memcpy(cam,camera,sizeof(camera));   // cam is a pointer parameter here
     unsigned recent=0;float armed=stop_distance;
-    for(const auto &u:units){if(u.army && u.seen+300>now)list[count++]=u;else if(u.army && u.seen+5000>now)++recent;}   // seen may be a tick ahead of now
+    for(unsigned k=0;k<kSlots;++k) {   // seen may be a tick ahead of now
+        const Unit &u=units[k];
+        if(u.army && u.seen+300>now){list[count]=u;list[count++].slot=k;}else if(u.army && u.seen+5000>now)++recent;
+    }
     ReleaseSRWLockShared(&lock);
     float distance=std::sqrt((cam[4]-cam[0])*(cam[4]-cam[0])+(cam[5]-cam[1])*(cam[5]-cam[1])+(cam[6]-cam[2])*(cam[6]-cam[2]));
     if(count && armed>0){AcquireSRWLockExclusive(&lock);stop_distance=0;ReleaseSRWLockExclusive(&lock);armed=0;}   // live again
@@ -796,13 +1269,14 @@ static unsigned build(ID3D11DeviceContext *c,float height,bool linear,bool scene
     }
     if(far_keep_enabled && !count && scene && armed>0 && distance<=armed*kFarFactor) {
         AcquireSRWLockExclusive(&lock);
-        for(auto &u:units) {
+        for(unsigned k=0;k<kSlots;++k) {
+            Unit &u=units[k];
             if(!u.army || now-u.seen>kFarKeepMs)continue;
             float pos[3],yaw;if(!far_position(u.army,pos,yaw))continue;
             float dx=pos[0]-u.x,dz=pos[2]-u.z;
             if(dx*dx+dz*dz>1.0f){float length=std::sqrt(dx*dx+dz*dz);u.fx=dx/length;u.fz=dz/length;u.facing=true;u.moved=now;}
             native_facing(u,yaw);
-            u.x=pos[0];u.y=pos[1];u.z=pos[2];list[count++]=u;
+            u.x=pos[0];u.y=pos[1];u.z=pos[2];list[count]=u;list[count++].slot=k;
         }
         ReleaseSRWLockExclusive(&lock);
     }
@@ -812,6 +1286,12 @@ static unsigned build(ID3D11DeviceContext *c,float height,bool linear,bool scene
     static volatile LONG logged_stop,logged_cull;
     if(!count && recent && InterlockedExchange(&logged_stop,1)==0)log_event("ccz_sprites_submit_stopped",recent,static_cast<unsigned>(height),0);
 #endif
+    // Idle band pictures: scene passes only, never past the far-zoom cut-off of the armies themselves; the unit table plus the
+    // pictures stays within kSlots so the label quads still fit kQuads.
+    if(scene && (armed<=0 || distance<=armed*kFarFactor)) {
+        const unsigned room=count<kSlots?(kSlots-count<ghost::kMax*3?kSlots-count:ghost::kMax*3):0;   // picture + two flag parts per site
+        count+=ghost::collect(list+count,room,now);
+    }
     if(!count){zero_reason=1;return 0;}
     std::sort(list,list+count,[](const Unit &a,const Unit &b){return a.cell<b.cell;});
     const float *vp=cam+60;
@@ -833,9 +1313,28 @@ static unsigned build(ID3D11DeviceContext *c,float height,bool linear,bool scene
     D3D11_MAPPED_SUBRESOURCE mapped{};if(FAILED(c->Map(vertices,0,D3D11_MAP_WRITE_DISCARD,0,&mapped))){zero_reason=5;return 0;}
     auto out=static_cast<Vertex *>(mapped.pData);unsigned written=0;
     static thread_local Vertex labels[kSlots*2][4];unsigned label_count=0;
+    const bool flags_alone=InterlockedCompareExchange(&idle_only,0,0)!=0;
     for(unsigned i=0;i<count;++i) {
         const Unit &u=list[i];
+        if(u.badge) {   // idle band flag part: texel rows lo..hi of the 64-texel disc, over the picture (or low over the ground alone)
+            float scale=1;
+            {Vertex a,b;clip(vp,u.x,u.y,u.z,a);clip(vp,u.x+ux*48*kPixel,u.y+uy*48*kPixel,u.z+uz*48*kPixel,b);
+             if(a.w>1 && b.w>1){float h=std::fabs(b.y/b.w-a.y/a.w)*0.5f*height,want=kMinScreen*height;if(h>1 && h<want)scale=want/h<kMaxScale?want/h:kMaxScale;}}
+            const float size=34*kPixel*scale,hw=size*0.5f,lift=(flags_alone?16:50)*kPixel*scale;
+            const float y0=lift+(kBadgeSize-u.hi)*size/kBadgeSize,y1=lift+(kBadgeSize-u.lo)*size/kBadgeSize;
+            const float bx=u.x-fx*kTowardCamera*2,by=u.y-fy*kTowardCamera*2,bz=u.z-fz*kTowardCamera*2;
+            Vertex q[4];   // 0 bottom-left, 1 top-left, 2 top-right, 3 bottom-right
+            clip(vp,bx-rx*hw+ux*y0,by+uy*y0,bz-rz*hw+uz*y0,q[0]);clip(vp,bx-rx*hw+ux*y1,by+uy*y1,bz-rz*hw+uz*y1,q[1]);
+            clip(vp,bx+rx*hw+ux*y1,by+uy*y1,bz+rz*hw+uz*y1,q[2]);clip(vp,bx+rx*hw+ux*y0,by+uy*y0,bz+rz*hw+uz*y0,q[3]);
+            if(q[0].w<=1 || q[1].w<=1 || q[2].w<=1 || q[3].w<=1)continue;
+            const float v0=static_cast<float>(u.lo),v1=static_cast<float>(u.hi),u1=static_cast<float>(kBadgeSize);
+            q[0].u=0;q[0].v=v1;q[1].u=0;q[1].v=v0;q[2].u=u1;q[2].v=v0;q[3].u=u1;q[3].v=v1;
+            for(auto &x:q)x.team=u.team|(linear?0x100u:0u)|(u.badge==2?0x200u:0u);
+            Vertex *o=out+written*6;o[0]=q[0];o[1]=q[1];o[2]=q[2];o[3]=q[0];o[4]=q[2];o[5]=q[3];owners[written]=kNoOwner;armies[written]=nullptr;cells[written++]=u.cell;
+            continue;
+        }
         float ffx=u.facing?u.fx:std::sin(u.yaw),ffz=u.facing?u.fz:std::cos(u.yaw);
+        if(!u.army){ffx=-hx;ffz=-hz;}   // idle band picture faces the camera
         float side=ffx*rx+ffz*rz,depth=ffx*hx+ffz*hz;
         int view=std::fabs(side)>std::fabs(depth)?2:depth>0?1:0;   // 0 front, 1 back, 2 side
         Frame f=frame_for(u,view,view==2 && side>0,now);
@@ -857,7 +1356,7 @@ static unsigned build(ID3D11DeviceContext *c,float height,bool linear,bool scene
         if(q[0].w<=1 || q[1].w<=1 || q[2].w<=1 || q[3].w<=1)continue;
         q[0].u=u0;q[0].v=v1;q[1].u=u0;q[1].v=v0;q[2].u=u1;q[2].v=v0;q[3].u=u1;q[3].v=v1;
         for(auto &x:q)x.team=u.team|(linear?0x100u:0u)|(f.flash?0x200u:0u);
-        Vertex *o=out+written*6;o[0]=q[0];o[1]=q[1];o[2]=q[2];o[3]=q[0];o[4]=q[2];o[5]=q[3];cells[written++]=u.cell;
+        Vertex *o=out+written*6;o[0]=q[0];o[1]=q[1];o[2]=q[2];o[3]=q[0];o[4]=q[2];o[5]=q[3];owners[written]=u.army?u.slot:kNoOwner;armies[written]=u.army;cells[written++]=u.cell;
         // State labels stacked over the head (48px body top), 1 texel = 1 CCZ pixel; a short hop when triggered.
         float lift=(48+3)*kPixel*scale;
         for(unsigned kind=0;kind<2;++kind) {
@@ -875,7 +1374,7 @@ static unsigned build(ID3D11DeviceContext *c,float height,bool linear,bool scene
         }
     }
     for(unsigned i=0;i<label_count;++i) {   // after every unit: one batch, drawn over the sprites
-        const Vertex *l=labels[i];Vertex *o=out+written*6;o[0]=l[0];o[1]=l[1];o[2]=l[2];o[3]=l[0];o[4]=l[2];o[5]=l[3];cells[written++]=kLabelCell;
+        const Vertex *l=labels[i];Vertex *o=out+written*6;o[0]=l[0];o[1]=l[1];o[2]=l[2];o[3]=l[0];o[4]=l[2];o[5]=l[3];owners[written]=kNoOwner;armies[written]=nullptr;cells[written++]=kLabelCell;
     }
     c->Unmap(vertices,0);zero_reason=written?0:6;
 #ifndef NO_RUNTIME_LOG
@@ -892,11 +1391,19 @@ static bool linear_target(ID3D11RenderTargetView *rtv) {   // float / sRGB targe
     }
 }
 static void poll_visibility(ID3D11DeviceContext *c) {   // render thread; never flushes
+    static unsigned zero_run;   // batches in a row whose query passed no pixel (feeds covered)
     for(unsigned i=0;i<kVisibilityQueries;++i) {
         if(!visibility_busy[i] || !visibility[i])continue;
         UINT64 pixels=0;HRESULT hr=c->GetData(visibility[i],&pixels,sizeof(pixels),D3D11_ASYNC_GETDATA_DONOTFLUSH);
         if(hr==S_FALSE)continue;
         visibility_busy[i]=false;if(hr!=S_OK)continue;
+        if(pixels){zero_run=0;if(covered)InterlockedExchange(&covered,0);}
+        else if(++zero_run>=30 && !covered) {
+            InterlockedExchange(&covered,1);
+#ifndef NO_RUNTIME_LOG
+            static unsigned covered_logs;if(covered_logs++<16)log_event("ccz_sprites_covered",static_cast<unsigned>(visibility_seen),static_cast<unsigned>(visibility_hidden),fallback_enabled?1u:0u);
+#endif
+        }
         if(pixels) {
             LONGLONG at=static_cast<LONGLONG>(visibility_at[i]);
             if(at>InterlockedCompareExchange64(&last_draw_ok,0,0))InterlockedExchange64(&last_draw_ok,at);
@@ -907,8 +1414,10 @@ static void poll_visibility(ID3D11DeviceContext *c) {   // render thread; never 
 #ifndef NO_RUNTIME_LOG
         else {
             ++visibility_hidden;
-            if(++visibility_streak==30 && visibility_logs++<32)   // ~30 drawn-but-invisible frames in a row
+            if(++visibility_streak==30 && visibility_logs++<32) {   // ~30 drawn-but-invisible frames in a row
                 log_event("ccz_sprites_invisible",static_cast<unsigned>(visibility_seen),static_cast<unsigned>(visibility_hidden),0);
+                force_dump=true;   // 2026-11-16: dump the bind order of a drawn-but-covered frame too
+            }
         }
 #endif
     }
@@ -916,19 +1425,28 @@ static void poll_visibility(ID3D11DeviceContext *c) {   // render thread; never 
 static bool draw(ID3D11DeviceContext *c,ID3D11RenderTargetView *rtv,ID3D11DepthStencilView *dsv,float width,float height,bool scene) { COST_SCOPE("ccz_draw");
     LARGE_INTEGER t0;QueryPerformanceCounter(&t0);
     poll_visibility(c);
+#ifndef NO_RUNTIME_LOG
+    if(sprite_fault&1){stats.units_drawn=0;return false;}   // diagnostic fault: the draw point is reached but nothing is drawn
+#endif
     ID3D11Query *query=nullptr;unsigned query_slot=0;
-    unsigned cells[kQuads];float cam[80];
-    unsigned written=build(c,height,linear_target(rtv),scene,cells,cam);
-    bool submitted=false;
+    // Render thread only and never re-entered (drawing passes our own binds through): per-quad tables stay off the stack.
+    static unsigned cells[kQuads],owners[kQuads];static Obj armies[kQuads];static bool emitted[kQuads];   // emitted = went out with its picture
+    float cam[80];
+    unsigned written=build(c,height,linear_target(rtv),scene,cells,owners,armies,cam);
+    bool submitted=false,bodies=false;
     if(written) {
         // Reversed Z when the near plane maps above the far plane.
         const float *P=cam+44;float n=cam[76]>0?cam[76]:1,fr=cam[77]>n?cam[77]:n*1000;
         bool reversed=((-n*P[10]+P[14])/n)>((-fr*P[10]+P[14])/fr);
+        ID3D11DepthStencilState *depth_state=dsv?depth_on[reversed?1:0]:depth_off;
+#ifndef NO_RUNTIME_LOG
+        if((sprite_fault&2) && depth_never)depth_state=depth_never;   // diagnostic fault: drawn but every pixel fails depth
+#endif
         InterlockedExchange(&drawing,1);
         {
             SavedState saved(c);
             D3D11_VIEWPORT viewport{0,0,width,height,0,1};
-            c->OMSetRenderTargets(1,&rtv,dsv);c->OMSetBlendState(nullptr,nullptr,0xFFFFFFFFu);c->OMSetDepthStencilState(dsv?depth_on[reversed?1:0]:depth_off,0);
+            c->OMSetRenderTargets(1,&rtv,dsv);c->OMSetBlendState(nullptr,nullptr,0xFFFFFFFFu);c->OMSetDepthStencilState(depth_state,0);
             c->RSSetState(raster);c->RSSetViewports(1,&viewport);c->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);c->IASetInputLayout(layout);
             UINT stride=sizeof(Vertex),offset=0;c->IASetVertexBuffers(0,1,&vertices,&stride,&offset);
             c->VSSetShader(vs,nullptr,0);c->PSSetShader(ps,nullptr,0);c->GSSetShader(nullptr,nullptr,0);c->HSSetShader(nullptr,nullptr,0);c->DSSetShader(nullptr,nullptr,0);
@@ -940,15 +1458,25 @@ static bool draw(ID3D11DeviceContext *c,ID3D11RenderTargetView *rtv,ID3D11DepthS
             if(query){c->Begin(query);query_open=true;}
             for(unsigned i=0;i<written;) {
                 unsigned j=i;while(j<written && cells[j]==cells[i])++j;
-                if(query_open && cells[i]==kLabelCell){c->End(query);query_open=false;}   // labels do not prove the body is visible
-                ID3D11ShaderResourceView *views[2]={cells[i]==kLabelCell?label_view:cell_view(cells[i]),cells[i]>=4096 && cells[i]<5596?original_palette_view:palette_view};
-                if(views[0]){c->PSSetShaderResources(0,2,views);c->Draw((j-i)*6,i*6);submitted=true;}
+                // labels and idle band flags (sorted after the bodies) do not prove a body is visible
+                if(query_open && (cells[i]==kLabelCell || badge_cell(cells[i]))){c->End(query);query_open=false;}
+                const unsigned source=source_cell(cells[i]);   // a flag disc keeps the palette of the picture it was built from
+                ID3D11ShaderResourceView *views[2]={cells[i]==kLabelCell?label_view:cell_view(cells[i]),source>=4096 && source<5596?original_palette_view:palette_view};
+                if(views[0]){c->PSSetShaderResources(0,2,views);c->Draw((j-i)*6,i*6);submitted=true;if(cells[i]!=kLabelCell && !badge_cell(cells[i]))bodies=true;}
+                for(unsigned k=i;k<j;++k)emitted[k]=views[0]!=nullptr;
                 i=j;
             }
             if(query_open)c->End(query);
             if(query){visibility_busy[query_slot]=true;visibility_at[query_slot]=GetTickCount64();visibility_next=query_slot+1;}
         }
         InterlockedExchange(&drawing,0);
+    }
+    if(bodies) {   // 2026-11-16 per-unit proof: units whose picture went out in this batch (capture() reads drawn_at)
+        const ULONGLONG at=GetTickCount64();
+        AcquireSRWLockExclusive(&lock);
+        for(unsigned k=0;k<written;++k)if(emitted[k] && owners[k]<kSlots && units[owners[k]].army==armies[k])units[owners[k]].drawn_at=at;
+        ReleaseSRWLockExclusive(&lock);
+        InterlockedExchange64(&last_submit,static_cast<LONGLONG>(at));InterlockedIncrement(&submit_count);
     }
     stats.units_drawn=submitted?static_cast<LONG>(written):0;
     // PW6: draws are really happening. With a visibility query the result (poll_visibility) decides instead.
@@ -976,6 +1504,8 @@ static bool draw_scene(ID3D11DeviceContext *c,ID3D11RenderTargetView *rtv,ID3D11
     return draw(c,rtv,dsv,static_cast<float>(want_width),static_cast<float>(want_height),true);
 }
 static void on_present(ID3D11Device *d,ID3D11DeviceContext *c,ID3D11Texture2D *back,const D3D11_TEXTURE2D_DESC &desc) { COST_SCOPE("ccz_sprites_present");
+    // 2026-11-16: between frames no draw is running on this thread; a flag left set would pass every bind through for good.
+    const LONG stuck=InterlockedExchange(&drawing,0);
     LARGE_INTEGER now_qpc;QueryPerformanceCounter(&now_qpc);
     if(!stats.qpc_per_second){LARGE_INTEGER f;QueryPerformanceFrequency(&f);stats.qpc_per_second=f.QuadPart;}
     if(stats.last_present){LONGLONG gap=now_qpc.QuadPart-stats.last_present;stats.frame_qpc+=gap;if(gap>stats.frame_max)stats.frame_max=gap;}
@@ -1004,13 +1534,13 @@ bool zoom_stall=stats.last_present && stats.qpc_per_second &&
     // (path shape 23). Dump one sampled frame's binds that missed the draw while armies were captured, and one
     // that drew, to compare the order (80 lines each at most).
     // local13 (user: record everything): whole frames, up to 3 missed frames 5 s apart and 2 drawn ones.
-    static LONG dumped_bad,dumped_good;static LONGLONG next_bad;
+    static LONG dumped_bad,dumped_good,forced_dumps;static LONGLONG next_bad;static bool force_armed;
     if(stats.seq_armed && stats.seq_count) {
         bool live=camera_seen && GetTickCount64()-camera_seen<500;
-        bool bad=live && !drawn_this_frame && main_rtv,good=drawn_this_frame;
-        if((bad && dumped_bad<3 && stats.frames>=next_bad) || (good && dumped_good<2)) {
-            ++(bad?dumped_bad:dumped_good);if(bad)next_bad=stats.frames+300;
-            log_event("ccz_sprites_bind_frame",bad?1:0,static_cast<unsigned>(stats.seq_count),static_cast<unsigned>(want_width<<16|want_height));
+        bool bad=live && !drawn_this_frame && main_rtv,good=drawn_this_frame,forced=force_armed && forced_dumps<8;
+        if(forced || (bad && dumped_bad<3 && stats.frames>=next_bad) || (good && dumped_good<2)) {
+            if(forced)++forced_dumps;else{++(bad?dumped_bad:dumped_good);if(bad)next_bad=stats.frames+300;}
+            log_event("ccz_sprites_bind_frame",forced?2u:bad?1u:0u,static_cast<unsigned>(stats.seq_count),static_cast<unsigned>(want_width<<16|want_height));
             for(LONG i=0;i<stats.seq_count;++i) {
                 const Stats::Bind &b=stats.seq[i];
                 log_event("ccz_sprites_bind",b.width<<16|b.height,b.format|b.count<<24,b.dsv|b.depth_width<<6|b.depth_height<<18);
@@ -1018,10 +1548,19 @@ bool zoom_stall=stats.last_present && stats.qpc_per_second &&
         }
     }
     bool want_sample=(dumped_bad<3 || dumped_good<2) && stats.frames%30==0;
+    force_armed=false;
 #else
     bool want_sample=false;
 #endif
     stats.seq_armed=0;if(stats.frames%600==1 || want_sample){stats.seq_count=0;stats.seq_armed=1;}   // sample one frame's target sequence
+#ifndef NO_RUNTIME_LOG
+    if(force_dump && forced_dumps<8){stats.seq_count=0;stats.seq_armed=1;force_armed=true;}
+    force_dump=false;
+    {   // back-buffer size with the path logs (every recorded bind order so far is 1280x720)
+        static unsigned last_size,size_logs;const unsigned size=desc.Width<<16|desc.Height;
+        if(size!=last_size && size_logs++<16){last_size=size;log_event("ccz_sprites_backbuffer",desc.Width,desc.Height,desc.Format);}
+    }
+#endif
     back_texture=back;
     const bool resized=(want_width && static_cast<UINT>(want_width)!=desc.Width) || (want_height && static_cast<UINT>(want_height)!=desc.Height);
     InterlockedExchange(&want_width,static_cast<LONG>(desc.Width));InterlockedExchange(&want_height,static_cast<LONG>(desc.Height));
@@ -1030,21 +1569,74 @@ bool zoom_stall=stats.last_present && stats.qpc_per_second &&
     // compare the draw path; log only when its shape changes (first 200): value = flags (1 captures,
     // 2 scene colour target found, 4 post-processing seen, 8 drawn at the UI bind, 16 units drawn),
     // army = captures in the window, hex = present-path draws in the window.
+    // 2026-11-16 more bits: 32 a late back-buffer-sized depth was seen, 64 the bind hook was not called at all, 128 the back
+    // buffer was bound again after our draw, 0x1000 drawn at the UI-layer bind, 0x2000 drawn at the 3/8 pass (bits 8-11 =
+    // zero reason). A drawn -> not drawn change arms one forced bind dump. local199: 0x4000 drawn at the scene-depth back-buffer bind
+    // after post-processing (the main draw point now).
     {
         static LONG window_frames,window_main,window_post,window_drawn,window_present,last_captures,last_present,last_shape=-1,shape_logs;
+        static LONG window_late,window_ui,window_post_draw,window_rebound,window_sets;static unsigned window_fallback;
         ++window_frames;if(main_rtv)++window_main;if(post_seen)++window_post;if(drawn_this_frame)++window_drawn;
+        if(late_depth)++window_late;if(drew_ui)++window_ui;if(drew_after_post)++window_post_draw;if(rebound_after_draw)++window_rebound;
         if(window_frames>=60) {
             LONG caught=InterlockedCompareExchange(&captures,0,0)-last_captures;last_captures+=caught;
             LONG at_present=stats.present_draws-last_present;last_present=stats.present_draws;
+            const bool silent=stats.set_calls==window_sets,rescued=fallback_draws!=window_fallback;
+            window_sets=stats.set_calls;window_fallback=fallback_draws;
             LONG shape=(caught?1:0)|(window_main?2:0)|(window_post?4:0)|(window_drawn?8:0)|(stats.units_drawn?16:0);
+            shape|=(window_late?32:0)|(silent?64:0)|(window_rebound?128:0)|(window_ui?0x1000:0)|(rescued?0x2000:0)|(window_post_draw?0x4000:0);
             shape|=static_cast<LONG>(zero_reason)<<8;   // hex = present draws; value bits 8+ = zero reason
             if(shape!=last_shape && ++shape_logs<=200)log_event("ccz_sprites_path",static_cast<unsigned>(caught),static_cast<unsigned>(shape),static_cast<unsigned>(at_present));
-            last_shape=shape;window_frames=window_main=window_post=window_drawn=0;
+            if(last_shape>=0 && (last_shape&8) && !(shape&8) && caught)force_dump=true;
+            last_shape=shape;window_frames=window_main=window_post=window_drawn=window_late=window_ui=window_post_draw=window_rebound=0;
         }
     }
 #endif
+    {   // 2026-11-16 draw-gap watchdog: armies captured and the module wants to draw, but no batch went out for 60 frames.
+        // The per-unit proof already brings the models back; this drops the cached views (a stale depth or RTV address is the
+        // known way to miss every draw point) and, in diagnostic builds, says which part of the path is missing.
+        static LONG gap_frames,gap_submits;
+        const LONG submits=InterlockedCompareExchange(&submit_count,0,0);
+        // A build this frame that found no army (1) or culled them all (6) had nothing to draw. Without a build this frame the
+        // reason is stale (a draw point never reached keeps the last value, often 1 after a far zoom), so that still counts.
+        const LONG why=zero_reason;const bool nothing=built_this_frame && (why==1 || why==6);
+        const bool live=camera_seen && GetTickCount64()-camera_seen<500 && !nothing && needs_present() && device==d;
+        if(!live || submits!=gap_submits) {
+#ifndef NO_RUNTIME_LOG
+            static unsigned resumed_logs;
+            if(live && gap_frames>=60 && resumed_logs++<32)log_event("ccz_sprites_draw_resumed",static_cast<unsigned>(gap_frames),static_cast<unsigned>(submits-gap_submits),drew_after_post?3u:drew_ui?1u:drawn_this_frame?2u:0u);
+#endif
+            gap_frames=0;gap_submits=submits;
+        } else if(++gap_frames==60 || (gap_frames>60 && (gap_frames-60)%600==0)) {
+            memset(sizes,0,sizeof(sizes));sizes_next=0;reset_views(true);
+#ifndef NO_RUNTIME_LOG
+            static LONG gap_sets;static unsigned gap_logs;
+            const unsigned flags=(stats.set_calls==gap_sets?1u:0u)|(main_rtv?2u:0u)|(post_seen?4u:0u)|(late_depth?8u:0u)|
+                (resources_failed?16u:0u)|(fallback_attempted?32u:0u)|(!set_table?64u:0u)|(stuck?128u:0u)|static_cast<unsigned>(zero_reason)<<8;
+            if(gap_logs++<32)log_event("ccz_sprites_draw_gap",static_cast<unsigned>(gap_frames),flags,desc.Width<<16|desc.Height);
+            gap_sets=stats.set_calls;force_dump=true;
+#endif
+        }
+    }
+    // 2026-11-16 hook check: our slot holding exactly the function we chain to means someone put the pre-hook value back (a
+    // restore that removed us), so the bind hook can be installed again safely. Any other value is left alone: a later hook
+    // may chain to us, and taking it as our original would loop.
+    if(set_table && original_set && set_table[kSetTargetsSlot]==reinterpret_cast<void *>(original_set)) {
+        set_table=nullptr;
+#ifndef NO_RUNTIME_LOG
+        static unsigned lost_logs;if(lost_logs++<8)log_event("ccz_sprites_hook_lost",static_cast<unsigned>(stats.set_calls),0,0);
+#endif
+    }
+#ifdef NO_RUNTIME_LOG
+    (void)stuck;
+#endif
     bool scene_drawn=drawn_this_frame;drawn_this_frame=false;post_seen=false;
     fallback_attempted=false;drop(main_rtv);drop(frame_dsv);
+    late_depth=false;memset(late_views,0,sizeof(late_views));late_next=0;drew_ui=false;built_this_frame=false;   // per-frame path signature (2026-11-16)
+    pre_count=0;drew_after_post=false;
+#ifndef NO_RUNTIME_LOG
+    rebound_after_draw=false;
+#endif
     // RTV size cache holds raw pointers. A zoom transition can recreate render
     // targets at reused addresses, so invalidate after a >100ms Present gap.
     // Keep the original periodic eviction as a fallback.
@@ -1057,6 +1649,9 @@ bool zoom_stall=stats.last_present && stats.qpc_per_second &&
 #endif
     }
     if(device==d)poll_visibility(c);   // queries belong to the current device only
+#ifndef NO_RUNTIME_LOG
+    if(probe_mode)probe::frame();
+#endif
 
     if(!needs_present()) {
 #ifndef NO_RUNTIME_LOG
@@ -1066,6 +1661,9 @@ bool zoom_stall=stats.last_present && stats.qpc_per_second &&
     }
     if(!create_resources(d))return;
     hook_context(c);
+#ifndef NO_RUNTIME_LOG
+    if(probe_mode)probe::hook(c);
+#endif
     // 2026-10-31 live (local2): frames without post-processing (strategy phase, report screens) fell back to
     // drawing here, over the finished UI, right before advisor_briefing copies the back buffer for its portrait
     // and clean-scene reuse -> background portrait, replayed lord faces. With the scene hook active, a frame
@@ -1102,13 +1700,49 @@ static bool install(bool hide,bool depth,bool far_keep,bool fallback) { COST_SCO
     far_keep_enabled=far_keep;fallback_enabled=fallback;stop_distance=0;
 #ifndef NO_RUNTIME_LOG
     log_event("ccz_sprites_far_keep",far_keep?1u:0u,static_cast<unsigned>(kFarKeepMs),0);
+    {   // 2026-11-16 fault switch (diagnostic builds, development group only): reproduce a failure to see the native model return
+        wchar_t config[MAX_PATH]{};sprite_fault=0;
+        if(mod_ini_path(config,L"기능설정.ini") && GetPrivateProfileIntW(L"groups",L"diagnostics",1,config))
+            sprite_fault=static_cast<unsigned>(GetPrivateProfileIntW(L"diagnostics",L"ccz_sprite_fault",0,config))&7u;
+        if(sprite_fault)log_event("ccz_sprites_fault",sprite_fault,fallback?1u:0u,0);
+        probe_mode=sprite_fault==0 && config[0] && GetPrivateProfileIntW(L"groups",L"diagnostics",1,config) &&
+            GetPrivateProfileIntW(L"diagnostics",L"ccz_draw_probe",0,config)!=0;   // measurement build (not mixed with a fault)
+        if(probe_mode)log_event("ccz_probe_on",hide?1u:0u,depth?1u:0u,0);
+    }
 #endif
     if(!load_asset()){log_event("ccz_sprites_asset_missing");return false;}
     if(layout_client::vt(kSubmitSlot,reinterpret_cast<void *>(&submit),reinterpret_cast<void **>(&next_submit))<=0)return false;
     InterlockedExchange(&installed,1);log_event("ccz_sprites_installed",static_cast<unsigned>(entries.size()),hide?1:0,depth?1:0);return true;
 }
+// 2026-11-19 의용병 무리 with 조조전 병종 그림 off: only the idle band flags. No army-display hook (armies keep their native models and
+// nothing is captured), the picture data is loaded here on the install worker before anything reads it, and the shared overlay is
+// installed later from the band day pass (game thread) once a site exists.
+static bool install_idle_only(bool depth) { COST_SCOPE("ccz_install_idle");
+    if(InterlockedCompareExchange(&installed,0,0))return false;
+    if(entries.empty() && !load_asset()){log_event("ccz_sprites_asset_missing");return false;}
+    InterlockedExchange(&hide_model,0);InterlockedExchange(&depth_test,depth?1:0);
+    far_keep_enabled=false;fallback_enabled=false;stop_distance=0;
+    InterlockedExchange(&idle_only,1);InterlockedExchange(&installed,1);
+    log_event("ccz_sprites_idle_installed",static_cast<unsigned>(entries.size()),depth?1u:0u,0);return true;
+}
+static bool idle_flags_alone() {return InterlockedCompareExchange(&idle_only,0,0) && InterlockedCompareExchange(&installed,0,0);}
+// Band day pass (game thread), flags-alone mode: ground heights for the flags from standing field armies, then the shared overlay
+// (idempotent) so on_present runs.
+static void idle_day(bool sites) {
+    if(!idle_flags_alone() || !sites)return;
+    for(unsigned i=0;i<=500;++i) {
+        Obj army=table(0x7E838,i,500);if(!army)continue;
+        float position[3],yaw;if(!far_position(army,position,yaw))continue;
+        ghost::note_height(word(army,0x2A),position);
+    }
+    static bool overlay_done;
+    if(!overlay_done){overlay_done=true;overlay_install();}
+}
 static void restore() { COST_SCOPE("ccz_restore");
     if(InterlockedExchange(&installed,0))layout_client::cancel_all();   // unpublished registrations only; installed hooks go through Layout unhook
+#ifndef NO_RUNTIME_LOG
+    probe::unhook();
+#endif
     if(set_table) {
         DWORD prior=0;
         if(VirtualProtect(set_table+kSetTargetsSlot,sizeof(void *),PAGE_READWRITE,&prior)) {

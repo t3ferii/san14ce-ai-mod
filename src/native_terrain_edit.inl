@@ -4,7 +4,7 @@
 #include "terrain_edit_policy.h"
 #include "terrain_call_profile.h"
 #if defined(SPLIT_BASE)
-namespace unified_overlay {static void install();}
+namespace unified_overlay {void install();}
 #endif
 namespace terrain_edit {
 static Changes changes;
@@ -14,7 +14,7 @@ static Obj changed_world;
 // edit. Not an edit: never in the .terrain sidecar, given back when the water leaves and before any world change. Cells with an army or
 // a building wait (as the editor refuses them); a cell something else changed is let go; the editor refuses a flooded cell.
 static uint8_t flood_from[HexCount],flood_to[HexCount];
-static unsigned flood_count;
+unsigned flood_count;
 static Obj flood_world;
 // Owned only on the original UI caller thread. World boundaries discard stale identities.
 static thread_local bool highlight_locked;
@@ -24,7 +24,7 @@ static void reset_highlight_context() {highlight_locked=false;highlight_obj=null
 // Native callbacks may arrive after the builder's TLS scope has ended.
 static thread_local Obj expanded_state,expanded_tile,expanded_menu,opening_tile;
 static void clear_menu_context() {expanded_state=expanded_tile=expanded_menu=nullptr;}
-static void reset_ui_context() {opening_tile=nullptr;clear_menu_context();}
+void reset_ui_context() {opening_tile=nullptr;clear_menu_context();}
 static bool active() {
     bool on=enabled && mod_features.convenience && mod_features.terrain_edit;
     if(!on) {reset_ui_context();}
@@ -78,7 +78,13 @@ static void sync_render() {
         terrain_foam::mark(c.hex,c.next,c.original);
 #endif
     }
-    if(resync && flood_count)for(unsigned hex=0;hex<HexCount;++hex)if(flood_from[hex])terrain_render::mark(hex,flood_to[hex],flood_from[hex]);
+    // Flooded cells are re-marked for the renderer and the foam alike (the foam was missing here before 2026-11-16).
+    if(resync && flood_count)for(unsigned hex=0;hex<HexCount;++hex)if(flood_from[hex]) {
+        terrain_render::mark(hex,flood_to[hex],flood_from[hex]);
+#ifdef SAN14_TERRAIN_FOAM_INCLUDED
+        terrain_foam::mark(hex,flood_to[hex],flood_from[hex]);
+#endif
+    }
 #if defined(SPLIT_BASE)
     // UI state/load-host only, never the archive IO worker or DllMain.
     if(install_present)unified_overlay::install();
@@ -212,7 +218,7 @@ static bool ice_terrain(bool on) {
 // removed first with the original removal 294B90 (GA_296AA0, the call 건물파괴 makes at durability 0). Only facility kinds 2..4 of the
 // type table 73958 (+0x2C) are removed - never cities or gates; a cell with any other building keeps its terrain. The player's own
 // terrain edits are never touched.
-static unsigned flood_sync(int (__cdecl *want)(int)) {
+unsigned flood_sync(int (__cdecl *want)(int)) {
     if(!want && !flood_count) {if(ice_patched)ice_terrain(false);return 0;}
     if(flood_count && flood_world!=world()) {for(unsigned hex=0;hex<HexCount;++hex)if(flood_from[hex]){flood_from[hex]=flood_to[hex]=0;}flood_count=0;}
     static uint8_t blocked[HexCount];memset(blocked,0,sizeof(blocked));   // 2 player edit, 3 removable facility, 4 city / gate / other

@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "layout",
  "title": "layout",
  "host": "layout",
@@ -68,7 +68,58 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_8678B0",
+   "kind": "block",
+   "via": "direct",
+   "dll": "layout",
+   "owner": "layout_events_destroy",
+   "len": 6,
+   "policy": "refuse_if_changed",
+   "src": "src/native_layout_ui.inl"
+  },
+  {
+   "key": "GA_8706E8",
+   "kind": "call",
+   "via": "direct",
+   "dll": "layout",
+   "owner": "layout_events",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_layout_ui.inl"
+  },
+  {
+   "key": "com:IDXGISwapChain#22",
+   "kind": "com",
+   "via": "layout_self",
+   "dll": "layout",
+   "owner": "layout_present1",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/native_layout_present.inl"
+  },
+  {
+   "key": "com:IDXGISwapChain#8",
+   "kind": "com",
+   "via": "layout_self",
+   "dll": "layout",
+   "owner": "layout_present",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/native_layout_present.inl"
+  },
+  {
+   "key": "wndproc:game",
+   "kind": "wndproc",
+   "via": "direct",
+   "dll": "layout",
+   "owner": "layout_present",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/native_layout_present.inl"
+  }
+ ],
  "registry": {
   "rows": [],
   "subscriptions": [],

@@ -125,29 +125,83 @@ __declspec(noinline) static bool focus_caller() {
 static path_fast_core::Storage *volatile slot_storage[3];
 static thread_local path_fast_core::Storage *storage;   // current call's slot storage (no ownership)
 // local72 per-search cell memo (user 2026-11-12): a search evaluates a cell once per neighbour it is reached from (up to six
-// times) with the same answer. For searches without a unit the first answer (blocked, or the adjusted cost) is kept until
-// that search ends; nothing outlives the search. One table per native slot, under the same slot lock as the storage.
+// times) with the same answer. The first answer (blocked, or the adjusted cost) is kept until that search ends; nothing
+// outlives the search. One table per native slot, under the same slot lock as the storage.
+// local265 (user 2026-11-19, performance proposal 4.4-1): searches with a unit too. Decompiled (ghidra_full, current EXE):
+// 18B410 with its unit branch (2C89F0, 2C7420 ring into its own stack buffer), 2B0A20, 2C8C00, 2C8D00 and 188D50 only read
+// the cell, the unit / force tables and their arguments (cell and constants of the search) and write nothing; 187880 divides
+// by a mobility (2B2550) it keeps per terrain-type key (233310) in the search's aux tree, set on the first cell of that type
+// and never changed afterwards. Between allowed() and adjust() the search does not use the cost (path_fast.h search), so a
+// kept adjusted value is the answer a second evaluation would give. [diagnostics] path_fast_verify compares with the original.
+// local267 (user 2026-11-19, local266 verify run): withdrawn. 11 of 21,897 compared searches differed, all with a unit (flags 1,
+// force 6, each on its own AI thread); e.g. one cell cost 12 in the original and 7 from the memo (one evaluation earlier in the
+// same search). Whether a later evaluation reads state another thread changed meanwhile or something above is wrong is not
+// settled; the memo again serves searches without a unit only (no mismatch among those in the same run).
+// local268 (user 2026-11-19 "페이블 조언 다해봐", Fable advice 4): the memo also serves unit searches whose per-cell answers
+// have no flag-1 terms: flags & 0xC without 0x11 (2C8C00 decides, 187880 returns the cost unchanged, no 188D50 term).
+// Only while trial_enabled (below), so the next verify run judges it before it is kept.
 struct Memo {unsigned generation=0;unsigned stamp[path_fast_core::cells]={};std::int32_t value[path_fast_core::cells];};
 static constexpr std::int32_t memo_blocked=(std::numeric_limits<std::int32_t>::min)();
 static Memo *volatile slot_memo[3];
 static thread_local Memo *memo;
 static bool memo_enabled,bounded_enabled;
+// local268 trial (user 2026-11-19 "페이블 조언 다해봐 그리고 또 재보자"): the new equal-answer speed-ups (flag-8 FIFO search,
+// start-region probe, unit memo above) run only in diagnostic builds with [diagnostics] path_fast_verify != 0, so every run
+// that uses them also compares samples with the original (MOD_DEV_LESSONS I). A build without diagnostics never uses them.
+static bool trial_enabled;
+#ifndef NO_RUNTIME_LOG
+// local268 shadow (Fable advice on the local266 mismatches): does a cell's answer change within one unit flag-1 search? On a
+// sample of those searches (memo off for them) every re-evaluation of a cell is compared with its first one: 1 allowed
+// changed, 2 cost after the allowed rules changed, 4 the 187880 output changed. Nothing is reused; the search is unchanged.
+struct Shadow {unsigned generation=0;unsigned stamp[path_fast_core::cells]={};unsigned char state[path_fast_core::cells];
+               std::int32_t cost[path_fast_core::cells],out[path_fast_core::cells];};
+static Shadow *volatile slot_shadow[3];
+static thread_local Shadow *shadow_slot;
+#endif
+struct Native;
+struct SearchCells {
+    unsigned visits=0,hits=0,region=0;LONGLONG region_ticks=0;
+    unsigned probes=0;bool probe_closed=false,began=false,broken=false;LONGLONG setup_ticks=0;   // local268
+    unsigned drift_cells=0,drift_bits=0,drift_cell=0;std::int32_t drift_old=0,drift_new=0;bool shadowed=false;
+    void add(const Native &n);
+};
 #ifndef NO_RUNTIME_LOG
 static unsigned verify;
 static LONGLONG frequency;
 struct Diagnostic {
     unsigned start=0,goal=0,flags=0,ctx10=0,ctx28=0,ctx2c=0;
+    unsigned key=0,trial=0;   // local268: ctx+0x20 key id; trial bits 1 uniform, 2 probed, 4 probe closed, 8 unit memo, 16 rerun
     int valid=0,force=0;
     Node *original=nullptr,*actual=nullptr;
     path_fast_core::Comparison difference;
 };
 struct Totals {
     int day=-1;
-    unsigned fast=0,delegated=0,compared=0,mismatches=0,multi=0,lines=0,details=0,only_fast=0,all_compared=0;
+    unsigned fast=0,delegated=0,compared=0,mismatches=0,multi=0,lines=0,details=0,only_fast=0,all_compared=0,slow_lines=0;
     LONGLONG only_ticks=0;
+    unsigned trial_compared=0,trial_mismatch=0,trial_uniform=0,trial_memo=0;   // local268
+    unsigned drift_sampled=0,drift_searches=0,drift_cells=0,drift_lines=0;
 };
+static volatile LONG64 book_capture,book_record;   // local268 bookkeeping ticks (path_fast_book_day)
 static SRWLOCK day_lock=SRWLOCK_INIT;
 static Totals totals;
+// local265 diagnostics (user 2026-11-19, performance proposal 4.4-2): fast searches by kind = flags & 0xFF | 0x100 with a unit
+// (ctx+0). Kinds add up over days and are logged when 1000 searches have gathered, one pair per kind:
+// path_fast_kind (kind | searches over 5 ms << 16, searches, us) and path_fast_kind_cells (kind, neighbour cells in thousands,
+// memo answers per mille). A search of 5 ms or more logs path_fast_slow (start | goal << 16, us, kind | 0x200 found |
+// 0x400 cost-only heuristic) and path_fast_slow2 (cells | memo per mille << 22, caller frames 1 and 2 as in path_caller_stack),
+// at most 16 a day. Diagnostic builds only; nothing here changes a search.
+// local266: path_fast_kind_fail (kind, failed | start region closed within 2048 cells << 16, us of the failed ones); the slow
+// line's third field adds 0x800 when the start region was closed and the region size << 12 (see start_region).
+// local268: path_fast_kind_split (kind | searches the setup helper rejected << 16, probes | probe "no route" exits << 16, us
+// in prepare + begin); path_fast_drift_day / path_fast_drift / path_fast_drift2 (see Shadow); path_fast_book_day (us in
+// caller_capture, us in record + dup_note, searches); path_fast_verify_trial (compared searches that used a trial speed-up,
+// mismatches among them, of those compared: uniform | unit memo << 16).
+struct SearchInfo {unsigned start,goal,flags;bool unit,found,focus;unsigned visits,hits,region;const SearchCells *cells;};
+struct KindTotal {unsigned key,calls,slow,failed,closed,rejected,probes,probe_closed;unsigned long long visits,hits;LONGLONG ticks,failed_ticks,setup_ticks;};
+static constexpr unsigned kStartRegionCap=2048;   // local266, see start_region
+static constexpr unsigned kKinds=16,kKindFlush=1000,kKindRest=(1u<<16)-1,kCellsField=(1u<<22)-1;   // rest key / 16-bit cap, 22-bit cells
+static KindTotal kinds[kKinds];static unsigned kind_used,kind_calls;   // under day_lock
 // local22 diagnostics (U33, user 2026-11-10 "? ?? ??? ?? ???"): who asks for the paths. Each call keeps six frames
 // above 184D60 (EXE rva; a SAN14 DLL frame is 0x80000000|dll<<24|offset: 1 combat, 2 convenience, 3 layout, 4 ccz).
 // Days with more than 300 calls log their ten costliest stacks: path_caller_day (calls, us, frame0) and
@@ -215,11 +269,19 @@ static unsigned microseconds(LONGLONG elapsed) {
 // fast search is keyed by its inputs (start, goal, flags, the context fields the search reads) and its result chain is
 // hashed. same = an earlier search of that day had the same key and the same result, diff = same key, other result.
 // The top callers of "same" searches are logged with the frame of caller_now[1].
+// local265 (performance proposal 4.4-6): only with [diagnostics] path_count != 0; its hashing sat inside the measured scope.
+static bool dup_enabled;
 struct DupCaller {unsigned frame,same,diff;};
 static std::unordered_map<std::uint64_t,std::uint64_t> dup_seen;   // under day_lock
 static DupCaller dup_callers[16];static unsigned dup_used,dup_calls,dup_same,dup_diff,dup2_same,dup2_diff;
 // Second key without the unit/person pointers (ctx+0, ctx+8): could a table keyed by places and conditions only be exact?
 static std::unordered_map<std::uint64_t,std::uint64_t> dup2_seen;
+// local268 (Fable advice 6): per kind, and a third key = the second plus a hash of the 27D4140 keyed cell list the search
+// reads (ctx+0x20 id): path_dup_kind (kind, same, diff) with the full key, path_dup_kind_list (kind, same, diff) with the
+// place + list key, for kinds with at least 100 searches that day.
+static std::unordered_map<std::uint64_t,std::uint64_t> dup3_seen;
+struct DupKind {unsigned key,calls,same,diff,list_same,list_diff;};
+static DupKind dup_kinds[16];static unsigned dup_kind_used;
 static std::uint64_t dup_mix(std::uint64_t h,std::uint64_t v) {return (h^v)*0x100000001b3ull;}
 static void dup_flush() {   // under day_lock
     if(dup_calls) {
@@ -227,8 +289,12 @@ static void dup_flush() {   // under day_lock
         log_event("path_dup_place_day",static_cast<unsigned>(dup2_seen.size()),dup2_same,dup2_diff);
         for(unsigned i=0;i<dup_used;++i)if(dup_callers[i].same+dup_callers[i].diff>20)
             log_event("path_dup_caller",dup_callers[i].frame,dup_callers[i].same,dup_callers[i].diff);
+        for(unsigned i=0;i<dup_kind_used;++i)if(dup_kinds[i].calls>=100) {
+            log_event("path_dup_kind",dup_kinds[i].key,dup_kinds[i].same,dup_kinds[i].diff);
+            log_event("path_dup_kind_list",dup_kinds[i].key,dup_kinds[i].list_same,dup_kinds[i].list_diff);
+        }
     }
-    dup_seen.clear();dup2_seen.clear();dup_used=dup_calls=dup_same=dup_diff=dup2_same=dup2_diff=0;
+    dup_seen.clear();dup2_seen.clear();dup3_seen.clear();dup_used=dup_calls=dup_same=dup_diff=dup2_same=dup2_diff=0;dup_kind_used=0;
 }
 static void dup_note(Obj ctx,unsigned start,unsigned goal,unsigned flags,const Node *output) {   // under day_lock
     std::uint64_t key=0xcbf29ce484222325ull;
@@ -240,19 +306,42 @@ static void dup_note(Obj ctx,unsigned start,unsigned goal,unsigned flags,const N
     for(const Node *n=output;n && guard<path_fast_core::cells;n=n->parent,++guard)
         result=dup_mix(dup_mix(result,n->cell),static_cast<std::uint32_t>(n->g));
     ++dup_calls;
+    int kind=0;
     {std::uint64_t k2=0xcbf29ce484222325ull;
         for(std::uint64_t v:{static_cast<std::uint64_t>(start),static_cast<std::uint64_t>(goal),static_cast<std::uint64_t>(flags),
                 static_cast<std::uint64_t>(dword(ctx,0x10)),reinterpret_cast<std::uint64_t>(pointer(ctx,0x20)),
                 static_cast<std::uint64_t>(dword(ctx,0x28)),static_cast<std::uint64_t>(dword(ctx,0x2C))})k2=dup_mix(k2,v);
         auto j=dup2_seen.find(k2);
         if(j==dup2_seen.end()) {if(dup2_seen.size()<200000)dup2_seen.emplace(k2,result);}
-        else if(j->second==result)++dup2_same;else {++dup2_diff;j->second=result;}}
-    int kind=0;
-    auto it=dup_seen.find(key);
-    if(it==dup_seen.end()) {if(dup_seen.size()<200000)dup_seen.emplace(key,result);}
-    else if(it->second==result) {++dup_same;kind=1;}
-    else {++dup_diff;kind=2;it->second=result;}
-    if(!kind)return;
+        else if(j->second==result)++dup2_same;else {++dup2_diff;j->second=result;}
+        // local268: place key + the keyed cell list (unlocked read, as 18C080 / 18C540 read it)
+        const unsigned kind_key=(flags&0xFF)|(pointer(ctx,0)?0x100u:0u);
+        unsigned slot=0;while(slot<dup_kind_used && dup_kinds[slot].key!=kind_key)++slot;
+        if(slot==dup_kind_used && dup_kind_used<16)dup_kinds[dup_kind_used++]=DupKind{kind_key,0,0,0,0,0};
+        DupKind *dk=slot<dup_kind_used?&dup_kinds[slot]:nullptr;
+        if(dk)++dk->calls;
+        std::uint64_t k3=k2;
+        if(!(flags&0xC)) {
+            Obj list_key=pointer(ctx,0x20);
+            const unsigned id_key=list_key?dword(list_key,0):0x14000;
+            Obj lists=pointer(image,GA(GA_27D4140));
+            unsigned n=0;
+            if(lists && id_key<dword(image,GA(GA_27D4170)))
+                for(Obj item=pointer(lists,id_key*8);item && n<4096;item=pointer(item,8),++n)
+                    k3=dup_mix(k3,reinterpret_cast<std::uint64_t>(pointer(item,0)));
+            k3=dup_mix(k3,n);
+        }
+        auto j3=dup3_seen.find(k3);
+        if(j3==dup3_seen.end()) {if(dup3_seen.size()<200000)dup3_seen.emplace(k3,result);}
+        else if(j3->second==result) {if(dk)++dk->list_same;}
+        else {if(dk)++dk->list_diff;j3->second=result;}
+        auto it=dup_seen.find(key);
+        if(it==dup_seen.end()) {if(dup_seen.size()<200000)dup_seen.emplace(key,result);}
+        else if(it->second==result) {++dup_same;kind=1;}
+        else {++dup_diff;kind=2;it->second=result;}
+        if(dk && kind==1)++dk->same;
+        if(dk && kind==2)++dk->diff;
+        if(!kind)return;}
     const unsigned frame=caller_now[kCallerFrames-1];   // deepest captured frame: tells search/recruit (1F7AF0) from supply etc.
     for(unsigned i=0;i<dup_used;++i)if(dup_callers[i].frame==frame) {(kind==1?dup_callers[i].same:dup_callers[i].diff)++;return;}
     if(dup_used<16)dup_callers[dup_used++]=DupCaller{frame,kind==1?1u:0u,kind==2?1u:0u};
@@ -276,8 +365,46 @@ static void focus_flush() {   // under day_lock
     }
     bound_calls=bound_mismatch=0;bound_ticks=bound_plain_ticks=0;
 }
+static unsigned permille(unsigned long long part,unsigned long long whole) {return whole?static_cast<unsigned>(part*1000/whole):0;}
+static void kind_flush() {   // under day_lock, at a day boundary
+    if(kind_calls<kKindFlush)return;
+    for(unsigned i=0;i<kind_used;++i) {
+        const KindTotal &k=kinds[i];
+        log_event("path_fast_kind",k.key|(k.slow<kKindRest?k.slow:kKindRest)<<16,k.calls,microseconds(k.ticks));
+        log_event("path_fast_kind_cells",k.key,static_cast<unsigned>(k.visits/1000),permille(k.hits,k.visits));
+        if(k.failed)log_event("path_fast_kind_fail",k.key,(k.failed<kKindRest?k.failed:kKindRest)|(k.closed<kKindRest?k.closed:kKindRest)<<16,
+                              microseconds(k.failed_ticks));
+        log_event("path_fast_kind_split",k.key|(k.rejected<kKindRest?k.rejected:kKindRest)<<16,
+                  (k.probes<kKindRest?k.probes:kKindRest)|(k.probe_closed<kKindRest?k.probe_closed:kKindRest)<<16,microseconds(k.setup_ticks));
+    }
+    kind_used=kind_calls=0;
+}
+static void kind_add(const SearchInfo &info,LONGLONG elapsed) {   // under day_lock
+    const unsigned key=(info.flags&0xFF)|(info.unit?0x100u:0u);
+    unsigned k=0;while(k<kind_used && kinds[k].key!=key)++k;
+    if(k==kind_used) {
+        if(k<kKinds) {kinds[k]=KindTotal{};kinds[k].key=key;++kind_used;}
+        else {k=kKinds-1;kinds[k].key=kKindRest;}   // more kinds than slots: the last slot gathers the rest
+    }
+    KindTotal &t=kinds[k];++t.calls;++kind_calls;t.ticks+=elapsed;t.visits+=info.visits;t.hits+=info.hits;
+    const bool closed=info.region && info.region<=kStartRegionCap;
+    if(!info.found) {++t.failed;t.failed_ticks+=elapsed;if(closed)++t.closed;}
+    if(info.cells) {
+        t.probes+=info.cells->probes;t.setup_ticks+=info.cells->setup_ticks;
+        if(!info.found && !info.cells->began)++t.rejected;
+        if(info.cells->probe_closed)++t.probe_closed;
+    }
+    const unsigned us=microseconds(elapsed);
+    if(us<5000)return;
+    ++t.slow;
+    if(totals.slow_lines>=16)return;
+    ++totals.slow_lines;
+    log_event("path_fast_slow",info.start|info.goal<<16,us,key|(info.found?0x200u:0u)|(info.focus?0x400u:0u)|(closed?0x800u:0u)|
+              (info.region<kKindRest>>4?info.region:kKindRest>>4)<<12);
+    log_event("path_fast_slow2",(info.visits<kCellsField?info.visits:kCellsField)|permille(info.hits,info.visits)<<22,caller_now[1],caller_now[2]);
+}
 static void record(bool fast,bool compared,bool mismatch,bool dirty,std::uint64_t call,
-                   LONGLONG elapsed=0,const Diagnostic *detail=nullptr,Node *buffer=nullptr) {
+                   LONGLONG elapsed=0,const Diagnostic *detail=nullptr,Node *buffer=nullptr,const SearchInfo *info=nullptr) {
     AcquireSRWLockExclusive(&day_lock);
     const int today=game_day();
     if(today!=totals.day) {
@@ -286,17 +413,40 @@ static void record(bool fast,bool compared,bool mismatch,bool dirty,std::uint64_
             log_event("path_fast_day",totals.fast,totals.delegated,0);
             if(verify)log_event("path_fast_verify_day",totals.compared,totals.mismatches,totals.multi);
             log_event("path_fast_time_day",totals.only_fast,microseconds(totals.only_ticks),totals.all_compared);
+            if(verify && totals.trial_compared)
+                log_event("path_fast_verify_trial",totals.trial_compared,totals.trial_mismatch,
+                          (totals.trial_uniform<kKindRest?totals.trial_uniform:kKindRest)|(totals.trial_memo<kKindRest?totals.trial_memo:kKindRest)<<16);
+            if(totals.drift_sampled)log_event("path_fast_drift_day",totals.drift_sampled,totals.drift_searches,totals.drift_cells);
+            log_event("path_fast_book_day",microseconds(InterlockedExchange64(&book_capture,0)),microseconds(InterlockedExchange64(&book_record,0)),
+                      totals.fast+totals.delegated);
             caller_flush(totals.fast+totals.delegated);
-            dup_flush();focus_flush();
+            dup_flush();focus_flush();kind_flush();
         }
         else {caller_used=0;dup_flush();focus_flush();}
         totals={};totals.day=today;
     }
     if(fast)++totals.fast;else ++totals.delegated;
-    if(fast && !compared) {++totals.only_fast;totals.only_ticks+=elapsed;}
+    if(fast && !compared) {++totals.only_fast;totals.only_ticks+=elapsed;if(info)kind_add(*info,elapsed);}
     caller_add(elapsed);
     if(compared)++totals.all_compared;
     if(compared && !dirty)++totals.compared;
+    if(compared && detail && detail->trial) {
+        ++totals.trial_compared;if(mismatch)++totals.trial_mismatch;
+        if(detail->trial&1)++totals.trial_uniform;
+        if(detail->trial&8)++totals.trial_memo;
+    }
+    if(info && info->cells && info->cells->shadowed) {
+        const SearchCells &c=*info->cells;
+        ++totals.drift_sampled;
+        if(c.drift_cells) {
+            ++totals.drift_searches;totals.drift_cells+=c.drift_cells;
+            if(totals.drift_lines<16) {
+                ++totals.drift_lines;
+                log_event("path_fast_drift",info->start|info->goal<<16,c.drift_cell|c.drift_bits<<16,static_cast<unsigned>(c.drift_old));
+                log_event("path_fast_drift2",static_cast<unsigned>(c.drift_new),(info->flags&0xFF)|(info->unit?0x100u:0u),c.drift_cells);
+            }
+        }
+    }
     if(mismatch && dirty)++totals.multi;
     if(mismatch && !dirty) {
         ++totals.mismatches;
@@ -306,6 +456,7 @@ static void record(bool fast,bool compared,bool mismatch,bool dirty,std::uint64_
     }
     if(mismatch && detail && totals.details<16) {
         ++totals.details;
+        log_event("path_fast_mm_key",detail->key,detail->trial,static_cast<unsigned>(call));
         path_fast_core::mismatch_detail(call,detail->start,detail->goal,detail->flags,detail->ctx10,detail->ctx28,detail->ctx2c,
             detail->valid,detail->force,detail->original,detail->actual,buffer,*storage,detail->difference,
             [](const char *name,auto a,auto b,auto c) {
@@ -336,8 +487,44 @@ struct Native {
     float scale=1.0f;
     bool focus=false,bad=false;int boost=0;   // local71 cost-only heuristic (see focus_caller)
     Memo *seen=nullptr;unsigned seen_generation=0,last_id=0;bool hit=false;   // local72 per-search cell memo
+    unsigned visits=0,hits=0;   // local265 diagnostics: neighbour cells reached / answered from the memo
+    bool began=false;           // local266 diagnostics: prepare() accepted the search and begin() ran
     bool bounded=false;int limit=0;   // local72: 1861E0 rules (no key list / +0x28 / +0x2C checks) and its cost limit
     bool over(std::int32_t g) const {return bounded && g>limit;}
+    // local268 trial (see trial_enabled; path_fast.h uniform / probe_after)
+    bool trial=trial_enabled,no_uniform=false,broken=false;
+    unsigned probe_count=0,probe_region=0;
+    long long setup_ticks=0;   // diagnostics: prepare() + begin()
+    bool uniform() const {return trial && !no_uniform && (flags&0xC) && !(flags&5);}
+    void uniform_failed() {broken=true;}
+    unsigned probe_after() const {
+        if(!trial)return 0;
+        const bool unit=pointer(ctx,0)!=nullptr;
+        if(uniform())return unit?1024u:4096u;   // local266: 0x0108 failures were all shut in (461/461)
+        return unit?0u:4096u;
+    }
+    void probed(unsigned region) {++probe_count;if(region)probe_region=region;}
+#ifndef NO_RUNTIME_LOG
+    Shadow *shadow=nullptr;unsigned shadow_generation=0;bool shadow_store=false,shadow_compare=false;
+    unsigned drift_cells=0,drift_bits=0,drift_cell=0;std::int32_t drift_old=0,drift_new=0;
+    void drift(unsigned id,unsigned bits,std::int32_t before,std::int32_t now) {
+        if(!drift_cells++) {drift_cell=id;drift_old=before;drift_new=now;}
+        drift_bits|=bits;
+    }
+    void shadow_allowed(unsigned id,bool ok,std::int32_t cost) {
+        if(shadow->stamp[id]!=shadow_generation) {
+            shadow->stamp[id]=shadow_generation;shadow->state[id]=ok?1:0;shadow->cost[id]=cost;shadow_store=ok;return;
+        }
+        if(((shadow->state[id]&1)!=0)!=ok)drift(id,1,shadow->state[id]&1,ok?1:0);
+        else if(ok && shadow->cost[id]!=cost)drift(id,2,shadow->cost[id],cost);
+        shadow_compare=ok && (shadow->state[id]&2);
+    }
+    void shadow_adjust(unsigned id,std::int32_t out) {
+        if(shadow_store) {shadow->out[id]=out;shadow->state[id]|=2;}
+        else if(shadow_compare && shadow->out[id]!=out)drift(id,4,shadow->out[id],out);
+        shadow_store=shadow_compare=false;
+    }
+#endif
     Obj aux[2]={};
     // local25b: the native callbacks of the per-cell loop, resolved once per search instead of per call (same targets).
     Obj world_root=nullptr;
@@ -362,12 +549,26 @@ struct Native {
         f_2ACB80=fn<decltype(f_2ACB80)>(GA(GA_2ACB80));f_2B0A20=fn<decltype(f_2B0A20)>(GA(GA_2B0A20));
     }
     bool prepare(Node *nodes,unsigned from,unsigned to,unsigned bits) {
+#ifndef NO_RUNTIME_LOG
+        const LONGLONG t0=diagnostic_logging?ticks():0;
+        struct Setup {Native &n;LONGLONG t0;~Setup() {if(t0)n.setup_ticks+=ticks()-t0;}} setup{*this,t0};
+#endif
         start=from;goal=to;flags=bits;
-        if(memo && !pointer(ctx,0)) {
+        // local267: searches without a unit; local268 trial: also unit searches without flag-1 terms (see the Memo comment)
+        if(memo && (!pointer(ctx,0) || (trial && (flags&0xC) && !(flags&0x11)))) {
             seen=memo;
             if(!++seen->generation) {memset(seen->stamp,0,sizeof(seen->stamp));seen->generation=1;}
             seen_generation=seen->generation;
+#ifndef NO_RUNTIME_LOG
+            shadow=nullptr;
+#endif
         }
+#ifndef NO_RUNTIME_LOG
+        else if(shadow) {
+            if(!++shadow->generation) {memset(shadow->stamp,0,sizeof(shadow->stamp));shadow->generation=1;}
+            shadow_generation=shadow->generation;
+        }
+#endif
         int x,y;
         fn<void(__fastcall *)(unsigned,int *,int *)>(GA(GA_2B11B0))(start,&x,&y);
         army=pointer(ctx,0);
@@ -401,6 +602,11 @@ struct Native {
             (flags,force,local_b0,start,&goal,1,nodes,&root)!=0;
     }
     void begin() {
+#ifndef NO_RUNTIME_LOG
+        const LONGLONG t0=diagnostic_logging?ticks():0;
+        struct Setup {Native &n;LONGLONG t0;~Setup() {if(t0)n.setup_ticks+=ticks()-t0;}} setup{*this,t0};
+#endif
+        began=true;
         aux[0]=fn<Obj(__fastcall *)(Obj *)>(GA(GA_18F0D0))(aux);
         const int base=fn<Unary>(GA(GA_BF1B0))(pointer(world(),0x73870));
         const __m128 numerator=_mm_cvtepi32_ps(_mm_cvtsi32_si128(base));
@@ -435,6 +641,10 @@ struct Native {
     }
     Obj tile(unsigned id) {
         last_id=id;hit=seen && id<path_fast_core::cells && id!=start && seen->stamp[id]==seen_generation;
+#ifndef NO_RUNTIME_LOG
+        ++visits;hits+=hit?1u:0u;
+        shadow_store=shadow_compare=false;
+#endif
         return pointer(world_root,0xE270+(id<path_fast_core::cells?id:0)*8);
     }
     int terrain(Obj cell) {return hit?0:f_2B0A20(cell,force,c8);}
@@ -445,6 +655,9 @@ struct Native {
         }
         const bool ok=allowed_raw(id,cell,cost);
         if(!ok && seen && id<path_fast_core::cells) {seen->stamp[id]=seen_generation;seen->value[id]=memo_blocked;}
+#ifndef NO_RUNTIME_LOG
+        if(shadow && id<path_fast_core::cells)shadow_allowed(id,ok,cost);
+#endif
         return ok;
     }
     bool allowed_raw(unsigned id,Obj cell,std::int32_t &cost) {
@@ -481,6 +694,9 @@ struct Native {
         if(boost && cost<boost)bad=true;   // the bound would not hold: the caller repeats without it
         const int out=f_187880(cost,flags,cell,pointer(ctx,0),a0,a8,aux);
         if(seen && last_id<path_fast_core::cells && last_id!=start) {seen->stamp[last_id]=seen_generation;seen->value[last_id]=out;}
+#ifndef NO_RUNTIME_LOG
+        if(shadow && last_id<path_fast_core::cells && last_id!=start)shadow_adjust(last_id,out);
+#endif
         return out;
     }
     void coordinate(unsigned) {}   // local25: 2B11B0 only writes id%220 / id/220 to its two outputs, which were unused
@@ -528,6 +744,20 @@ static bool acquire_storage(const Node *buffer) {
         }
     }
     memo=memo_enabled?m:nullptr;
+#ifndef NO_RUNTIME_LOG
+    shadow_slot=nullptr;
+    if(trial_enabled && diagnostic_logging) {
+        Shadow *h=slot_shadow[slot];
+        if(!h) {
+            try {h=new Shadow;}catch(...) {h=nullptr;}
+            if(h) {
+                auto *previous=static_cast<Shadow *>(InterlockedCompareExchangePointer(reinterpret_cast<PVOID volatile *>(&slot_shadow[slot]),h,nullptr));
+                if(previous) {delete h;h=previous;}
+            }
+        }
+        shadow_slot=h;
+    }
+#endif
     return true;
 }
 static Node *delegate(Obj ctx,unsigned start,const int *goals,int count,Node *buffer,int clear_bytes,unsigned flags) {
@@ -536,7 +766,32 @@ static Node *delegate(Obj ctx,unsigned start,const int *goals,int count,Node *bu
     path_fast_core::clear_delegate(buffer,known_slot(buffer),skip_clear!=0);
     return original(ctx,start,goals,count,buffer,clear_bytes,flags);
 }
-static Node *run_search(Obj ctx,unsigned start,unsigned goal,unsigned flags,Node *buffer) {
+inline void SearchCells::add(const Native &n) {
+        visits+=n.visits;hits+=n.hits;probes+=n.probe_count;setup_ticks+=n.setup_ticks;began=n.began;broken=broken || n.broken;
+        if(n.probe_region) {region=n.probe_region;probe_closed=true;}
+#ifndef NO_RUNTIME_LOG
+        if(n.shadow) {shadowed=true;drift_cells+=n.drift_cells;drift_bits|=n.drift_bits;
+            if(n.drift_cells && !drift_cell) {drift_cell=n.drift_cell;drift_old=n.drift_old;drift_new=n.drift_new;}}
+#endif
+}
+#ifndef NO_RUNTIME_LOG
+// local266 diagnostics (user 2026-11-19): a search without a route spreads over everything reachable from the goal (about
+// 20 ms for a whole-map failure, local265 path_fast_slow). Is the start shut in? After such a search the cells reachable from
+// the start through allowed cells are counted, up to kStartRegionCap, with the same per-cell answers (mostly from the memo).
+// The route exists exactly when start and goal share that region (the goal is never tested, the start is exempt), so a
+// region closed within the cap means the search could have answered "no route" after that many cells. 0 = not measured,
+// kStartRegionCap + 1 = still open at the cap. Time and LastError are kept out of the search's own figures.
+// local268: the count is path_fast_core::closed_region (slot storage, no 48 KB vector per call); a search the probe already
+// ended keeps the probe's answer.
+static void measure_region(SearchCells *cells,Native &n,unsigned start,unsigned goal) {
+    if(!cells || !diagnostic_logging || cells->probe_closed || !n.began || start>=path_fast_core::cells)return;
+    const DWORD error=GetLastError();const LONGLONG t0=ticks();
+    const unsigned region=path_fast_core::closed_region(*storage,start,goal,n.flags,n,kStartRegionCap);
+    cells->region=region?region:kStartRegionCap+1;
+    cells->region_ticks=ticks()-t0;SetLastError(error);
+}
+#endif
+static Node *run_search(Obj ctx,unsigned start,unsigned goal,unsigned flags,Node *buffer,SearchCells *cells=nullptr,bool shadowed=false) {
 #ifndef NO_RUNTIME_LOG
     if(focus_now && focus_check) {
         Native quick(ctx);quick.focus=true;
@@ -548,6 +803,7 @@ static Node *run_search(Obj ctx,unsigned start,unsigned goal,unsigned flags,Node
         Node *result=path_fast_core::search(*storage,start,goal,flags,plain);
         const LONGLONG t2=ticks();
         const int plain_g=result?result->g:-1;
+        if(cells) {cells->add(quick);cells->add(plain);}
         AcquireSRWLockExclusive(&day_lock);
         ++focus_calls;focus_ticks+=t1-t0;focus_plain_ticks+=t2-t1;
         if(quick.bad)++focus_bad;
@@ -560,8 +816,24 @@ static Node *run_search(Obj ctx,unsigned start,unsigned goal,unsigned flags,Node
     }
 #endif
     Native native(ctx);native.focus=focus_now;
+#ifndef NO_RUNTIME_LOG
+    if(shadowed)native.shadow=shadow_slot;
+#else
+    (void)shadowed;
+#endif
     Node *result=path_fast_core::search(*storage,start,goal,flags,native);
-    if(native.bad) {Native plain(ctx);result=path_fast_core::search(*storage,start,goal,flags,plain);}
+    if(cells)cells->add(native);
+    if(native.bad || native.broken) {
+        // local71 bound broken, or local268 a uniform search met a step other than 10000: repeat the ordinary way
+        Native plain(ctx);plain.no_uniform=true;result=path_fast_core::search(*storage,start,goal,flags,plain);
+        if(cells)cells->add(plain);
+#ifndef NO_RUNTIME_LOG
+        if(!result)measure_region(cells,plain,start,goal);
+#endif
+    }
+#ifndef NO_RUNTIME_LOG
+    else if(!result)measure_region(cells,native,start,goal);
+#endif
     return path_fast_core::materialize(buffer,result);
 }
 static Node *path_body(Obj ctx,unsigned start,const int *goals,int count,Node *buffer,int clear_bytes,unsigned flags) {
@@ -586,6 +858,7 @@ static Node *path_body(Obj ctx,unsigned start,const int *goals,int count,Node *b
     bool compared=false,mismatch=false,dirty=false;
     Diagnostic detail;
     LONGLONG elapsed=0;
+    SearchCells cells;
 #endif
     __try {
 #ifndef NO_RUNTIME_LOG
@@ -604,6 +877,10 @@ static Node *path_body(Obj ctx,unsigned start,const int *goals,int count,Node *b
             const DWORD native_error=GetLastError();
             Native native(ctx);
             Node *actual=path_fast_core::search(*storage,start,detail.goal,flags,native);
+            if(native.broken) {Native plain(ctx);plain.no_uniform=true;actual=path_fast_core::search(*storage,start,detail.goal,flags,plain);}
+            detail.trial=(native.uniform()?1u:0u)|(native.probe_count?2u:0u)|(native.probe_region?4u:0u)|(native.seen && pointer(ctx,0)?8u:0u)|
+                         (native.broken?16u:0u);
+            {Obj key=pointer(ctx,0x20);detail.key=key?dword(key,0):0x14000;}
             detail.original=output;detail.actual=actual;detail.valid=native.valid;detail.force=native.force;
             detail.difference=path_fast_core::compare(output,actual);
             mismatch=detail.difference.mismatch;compared=true;
@@ -617,17 +894,26 @@ static Node *path_body(Obj ctx,unsigned start,const int *goals,int count,Node *b
             const LONGLONG begin=ticks();
 #endif
             SetLastError(incoming_error);
+#ifndef NO_RUNTIME_LOG
+            // local268 shadow sample: one in eight unit flag-1 searches (the memo stays off for them)
+            const bool shadowed=shadow_slot && diagnostic_logging && (call&7)==5 && (flags&1) && pointer(ctx,0);
+            output=run_search(ctx,start,static_cast<unsigned>(*goals),flags,buffer,&cells,shadowed);
+#else
             output=run_search(ctx,start,static_cast<unsigned>(*goals),flags,buffer);
+#endif
 #ifndef NO_RUNTIME_LOG
             const DWORD result_error=GetLastError();
-            elapsed=ticks()-begin;
+            elapsed=ticks()-begin-cells.region_ticks;   // local266: the start-region count is not part of the search
             SetLastError(result_error);
 #endif
         }
 #ifndef NO_RUNTIME_LOG
         const DWORD result_error=GetLastError();
-        record(true,compared,mismatch,dirty,call,elapsed,&detail,buffer);
-        if(!compared && diagnostic_logging) {AcquireSRWLockExclusive(&day_lock);dup_note(ctx,start,static_cast<unsigned>(*goals),flags,output);ReleaseSRWLockExclusive(&day_lock);}
+        const LONGLONG book0=ticks();
+        const SearchInfo info{start,static_cast<unsigned>(*goals),flags,pointer(ctx,0)!=nullptr,output!=nullptr,focus_now,cells.visits,cells.hits,cells.region,&cells};
+        record(true,compared,mismatch,dirty,call,elapsed,&detail,buffer,&info);
+        if(!compared && diagnostic_logging && dup_enabled) {AcquireSRWLockExclusive(&day_lock);dup_note(ctx,start,static_cast<unsigned>(*goals),flags,output);ReleaseSRWLockExclusive(&day_lock);}
+        InterlockedExchangeAdd64(&book_record,ticks()-book0);
         SetLastError(result_error);
 #endif
     } __finally {busy=false;}
@@ -637,7 +923,8 @@ static Node *path_body(Obj ctx,unsigned start,const int *goals,int count,Node *b
 static Node *__fastcall path(Obj ctx,unsigned start,const int *goals,int count,Node *buffer,int clear_bytes,unsigned flags) { COST_SCOPE_HOT("path");
     const DWORD error=GetLastError();
 #ifndef NO_RUNTIME_LOG
-    caller_capture();
+    if(diagnostic_logging) {const LONGLONG c0=ticks();caller_capture();InterlockedExchangeAdd64(&book_capture,ticks()-c0);}
+    else caller_now[0]=0;
 #endif
     COST_SCOPE("path_fast");
     focus_now=focus_enabled && flags==1 && count==1 && ctx && !pointer(ctx,0) && focus_caller();
@@ -749,6 +1036,8 @@ static bool install() {
     LARGE_INTEGER q;if(!QueryPerformanceFrequency(&q) || q.QuadPart<=0)return false;frequency=q.QuadPart;
     caller_ranges();
     focus_check=dev_group() && mod_setting(L"diagnostics",L"path_count",0)==2?1u:0u;
+    dup_enabled=dev_group() && mod_setting(L"diagnostics",L"path_count",0)!=0;
+    trial_enabled=verify!=0;   // local268 trial: only with sampled comparison (see trial_enabled)
 #endif
     Obj relay=allocate_near(image+entry);if(!relay)return false;
     DWORD old;
@@ -770,7 +1059,7 @@ static bool install() {
     // local72: the three cost-only accelerations follow [performance] path_fast itself (no keys of their own).
     focus_enabled=GA(GA_9DAD7)!=0;memo_enabled=true;bounded_enabled=true;
     active=true;bounded_install();
-    log_event("path_fast_installed",skip_clear?1:0,(focus_enabled?1u:0u)|(memo_enabled?2u:0u)|(bounded_enabled?4u:0u));return true;
+    log_event("path_fast_installed",skip_clear?1:0,(focus_enabled?1u:0u)|(memo_enabled?2u:0u)|(bounded_enabled?4u:0u)|(trial_enabled?8u:0u));return true;
 }
 #endif
 }

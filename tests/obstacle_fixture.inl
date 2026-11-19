@@ -106,6 +106,38 @@ static void wall_path_policy_tests() {
         check(wall_path::pick_waypoint({wall_hex(25,120),wall_hex(20,100)},route_from,route_goal)==1,
               "waypoint: a straight wall beats a detouring one");
     }
+    {   // local226 tower_reach: wall / facility stands outside hostile 망루 (1..2) and 투석대 (2..3) range
+        using tower_reach::Tower;
+        const unsigned target=wall_hex(25,100),from=wall_hex(10,100),none=wall_path::cells;
+        auto any=[](unsigned){return true;};
+        const std::vector<Tower> no_towers;
+        unsigned s=tower_reach::stand(target,from,1,no_towers,any);
+        check(s<none && wall_path::distance(s,target)==1 && wall_path::distance(from,s)==wall_path::distance(from,target)-1,
+              "tower reach: without towers the melee stand is the ring hex nearest the army");
+        check(tower_reach::stand(target,wall_hex(26,100),1,no_towers,any)==wall_hex(26,100),
+              "tower reach: an army already next to the wall stays where it is");
+        const std::vector<Tower> over={{target,1,2}};
+        check(tower_reach::stand(target,from,2,over,any)==none,
+              "tower reach: every stand under a watchtower's fire - no stand (the wall is left alone)");
+        check(tower_reach::stand(target,from,2,over,any,none,false)<none,
+              "tower reach: the ship rule may still stand under fire when nothing safe exists");
+        const std::vector<Tower> catapult={{target,2,3}};
+        s=tower_reach::stand(target,from,1,catapult,any);
+        check(s<none && wall_path::distance(s,target)==1,"tower reach: a catapult does not hit its own neighbours (range 2..3)");
+        const std::vector<Tower> west={{wall_hex(23,100),1,2}};
+        s=tower_reach::stand(target,from,1,west,any);
+        check(s<none && !tower_reach::covered(s,west) && wall_path::distance(s,target)==1,
+              "tower reach: the near side under a watchtower gives way to a safe far-side stand");
+        const unsigned repairer=wall_hex(27,100);
+        s=tower_reach::stand(target,from,2,no_towers,any,repairer);
+        check(s<none && wall_path::distance(s,target)<=2 && wall_path::distance(s,repairer)<=2,
+              "tower reach: the ship stand reaches the facility and its repairer together");
+        const unsigned only=wall_hex(25,102);
+        check(tower_reach::stand(target,from,2,no_towers,[&](unsigned h){return h==only;})==only,
+              "tower reach: only hexes the army may stand on are chosen");
+        check(tower_reach::stand(target,from,1,no_towers,[](unsigned){return false;})==none,
+              "tower reach: no open hex - no stand");
+    }
 }
 static void nth_counter_tests() {
     static wall_path::NthCounter counter;

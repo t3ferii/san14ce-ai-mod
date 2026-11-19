@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "domestic",
  "title": "domestic",
  "host": "convenience",
@@ -80,7 +80,28 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_1349E98",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "domestic_selection",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_134F918",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "domestic_selection",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  }
+ ],
  "registry": {
   "rows": [],
   "subscriptions": [

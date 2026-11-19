@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "module-manifests",
  "title": "module-manifests",
  "host": "tool",
@@ -15,15 +15,21 @@
   "development/installer_map.json",
   "tools/gen_module_manifests.py",
   "tools/gen_installer_catalog.py",
+  "tools/add_setting.py",
   "tools/installer_preflight.py",
   "tools/mod_compat.py",
+  "tools/switch_deps.py",
+  "development/module_layers.json",
+  "development/compat_matrix.json",
+  "development/switch_deps_baseline.json",
   "docs/MOD_MANAGER_DESIGN.md"
  ],
  "sources": [
   "tools/gen_module_manifests.py",
   "tools/gen_installer_catalog.py",
   "tools/installer_preflight.py",
-  "tools/mod_compat.py"
+  "tools/mod_compat.py",
+  "tools/switch_deps.py"
  ],
  "tests": [
   "module-manifests"

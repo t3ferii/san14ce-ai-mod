@@ -209,6 +209,45 @@ inline Status after_release(Status status,unsigned reason) {
 inline bool holds(Status status) {return status==locked || status==done;}
 }
 
+// tower_reach (local226, user 2026-11-18 "중립건물 부술때 투석대랑 망루 사거리 고려안하나? 거기 밖에서 중립건물 부쉈으면해",
+// "누선 사거리가 안행처럼 주변 2헥스"). Pure stand choice, no game access. A hostile tower (망루 5: 1..2, 투석대 6: 2..3 hexes,
+// the original facility record +0x2B..+0x2C, KB rules_domestic 4) hits a hex whose distance is inside [lo, hi]. stand()
+// picks the hex an army hits `target` from (distance 1..reach); when `also` is a hex the stand must reach it too (the 누선
+// rule: the wall/facility and its repairer at once). Hexes outside every tower range come first, then the nearest to
+// `from`; safe_only drops covered hexes (the wall breach never stands under fire). open(h) = the army may stand there
+// (the army's own hex counts as open). Returns wall_path::cells when there is none.
+namespace tower_reach {
+struct Tower {unsigned hex;unsigned char lo,hi;};
+inline bool covered(unsigned hex,const std::vector<Tower> &towers) {
+    for(const Tower &t:towers) {const int d=wall_path::distance(hex,t.hex);if(d>=t.lo && d<=t.hi)return true;}
+    return false;
+}
+template<class Open> unsigned stand(unsigned target,unsigned from,int reach,const std::vector<Tower> &towers,Open open,
+                                    unsigned also=wall_path::cells,bool safe_only=true) {
+    if(target>=wall_path::cells || reach<1)return wall_path::cells;
+    const int tx=static_cast<int>(target%wall_path::width),ty=static_cast<int>(target/wall_path::width);
+    unsigned best=wall_path::cells;bool best_safe=false;int best_range=1<<20;
+    for(int y=ty-reach-1;y<=ty+reach+1;++y) {
+        if(y<0 || y>=static_cast<int>(wall_path::width))continue;
+        for(int x=tx-reach;x<=tx+reach;++x) {
+            if(x<0 || x>=static_cast<int>(wall_path::width))continue;
+            const unsigned h=static_cast<unsigned>(y)*wall_path::width+static_cast<unsigned>(x);
+            const int d=wall_path::distance(h,target);
+            if(d<1 || d>reach)continue;
+            if(also<wall_path::cells && wall_path::distance(h,also)>reach)continue;
+            if(h!=from && !open(h))continue;
+            const bool safe=!covered(h,towers);
+            if(safe_only && !safe)continue;
+            const int range=from<wall_path::cells?wall_path::distance(from,h):0;
+            if(best==wall_path::cells || (safe && !best_safe) || (safe==best_safe && (range<best_range || (range==best_range && h<best)))) {
+                best=h;best_safe=safe;best_range=range;
+            }
+        }
+    }
+    return best;
+}
+}
+
 // neutral_breach (user 2026-11-10 "중립건물 존재 x판정으로 계산하고 최단거리 막고 있으면 뚫기", docs/COMBAT_REDESIGN.md 5절).
 // Pure decision on the 220x220 hex grid, no game access. walk[hex]: 0 blocked (terrain or a class 2/3 facility, which the
 // original path search skips whatever its owner), 1 open, 2 neutral wall (토성/석벽/철쇄, owner 0). The goal (a city or gate)

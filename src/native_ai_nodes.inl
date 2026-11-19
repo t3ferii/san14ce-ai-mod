@@ -532,7 +532,7 @@ static std::vector<Obj> trade_officers(unsigned own,Obj force,unsigned count) {
     struct Pick {Obj p;bool envoy;bool low;int politics;unsigned city;};
     std::vector<Pick> picks;
     signed char front[0x34];for(auto &f:front)f=-1;
-    Obj lord=table(0x158,word(force,0x52),6000);
+    Obj lord=table(0x158,word(force,0x10),6000);   // ruler +0x10 (structs.md FORCE); +0x52 = 군사, read until local257
     for(unsigned id=1;id<=6000;++id) {
         Obj p=table(0x158,id,6000);
         if(!valid(p) || p==lord || fn<unsigned(__fastcall *)(Obj)>(GA(GA_22E870))(p)!=own)continue;

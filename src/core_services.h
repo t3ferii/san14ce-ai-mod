@@ -35,24 +35,24 @@ template<class Fn,unsigned N=8> struct Subscribers {
 };
 // map-tick: per-frame work on the game thread inside the map states' busy slot (installed by fast_menu).
 using MapTick=void (*)();
-static Subscribers<MapTick> map_tick;
+inline Subscribers<MapTick> map_tick;
 inline void run_map_tick() {for(unsigned i=0;i<map_tick.count;++i)if(map_tick.live(i))map_tick.rows[i].fn();}
 // domestic-tick: GA 297070 (the per-city domestic tick). pre runs before the native tick, post after it for the subscribers whose
 // pre ran. Failing guard of the hook switches all subscribers off.
 struct DomesticTick {void (*pre)(Obj);void (*post)(Obj);};
-static Subscribers<DomesticTick> domestic_tick;
+inline Subscribers<DomesticTick> domestic_tick;
 // appear-prefetch: frame hook of the army-appearance update (appear_batch) before its batch runs; face_keep subscribes to fetch the faces of the
 // armies about to appear. Without a live subscriber the call does nothing (as the former direct call, which returned at once with face_prefetch off).
 using AppearPrefetch=void (*)(Obj);
-static Subscribers<AppearPrefetch> appear_prefetch;
+inline Subscribers<AppearPrefetch> appear_prefetch;
 inline void run_appear_prefetch(Obj state) {for(unsigned i=0;i<appear_prefetch.count;++i)if(appear_prefetch.live(i))appear_prefetch.rows[i].fn(state);}
 // ui-dialogs: users of the native dialog hooks (frame/controls/destroy slots of native_unified_dialogs.inl); the hooks are
 // published only while a user is live. fn unused.
-static Subscribers<void (*)()> ui_dialogs;
+inline Subscribers<void (*)()> ui_dialogs;
 // progress-flush: runs on the AI thread right after the timed original AI root (progress_native_ai); path_count flushes its per-thread
 // counters here.
 using ProgressFlush=void (*)();
-static Subscribers<ProgressFlush> progress_flush;
+inline Subscribers<ProgressFlush> progress_flush;
 inline void run_progress_flush() {for(unsigned i=0;i<progress_flush.count;++i)if(progress_flush.live(i))progress_flush.rows[i].fn();}
 // overlay: the shared Present overlay. gate = cheap "has something to draw" probe that lets draw() skip the frame; needs = per frame
 // draw probe (null = always), draw = the work. flags: kContext needs a device context, kWindow binds the game window and records
@@ -68,6 +68,15 @@ struct OverlaySub {
     void (*draw)(ID3D11Device *,ID3D11DeviceContext *,ID3D11Texture2D *,const D3D11_TEXTURE2D_DESC &,bool);
     bool (*input)(HWND,UINT,WPARAM,LPARAM);
 };
-static Subscribers<OverlaySub> overlay;
-inline void reset_all() {map_tick.clear();domestic_tick.clear();appear_prefetch.clear();progress_flush.clear();ui_dialogs.clear();overlay.clear();}
+inline Subscribers<OverlaySub> overlay;
+// duel-grid (local236): the two duel layouts' hide (+0x40) and close (+0x28) slots belong to trait_hover (one owner per slot), while
+// traits9_screens draws its own nine trait markers there. Each side fills its half after its own successful install, only on the UI
+// thread: trait_hover's hide/close hooks call hide/close (traits9_screens: grid off / delete), traits9_screens calls note after
+// drawing a duel grid (trait_hover: tooltip targets = the new markers). A null entry = that side is not installed (nothing happens).
+struct DuelGrid {
+    void (*hide)(Obj);void (*close)(Obj,uint64_t);                 // set by traits9_screens
+    void (*note)(Obj owner,unsigned panel,Obj const *labels,const int *ids);   // set by trait_hover
+};
+inline DuelGrid duel_grid;
+inline void reset_all() {map_tick.clear();domestic_tick.clear();appear_prefetch.clear();progress_flush.clear();ui_dialogs.clear();overlay.clear();duel_grid={};}
 }

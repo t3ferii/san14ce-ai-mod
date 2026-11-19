@@ -16,7 +16,7 @@ powershell -File tools/worktree.ps1 -List
 powershell -File tools/worktree.ps1 -Remove <이름>
 ```
 - 작업본은 게임 폴더 안 `AI_TacticsMod` 옆에 만든다. 그래서 도구가 쓰는 `..`(게임 폴더)는 그대로다.
-- 대용량 폴더는 원본으로 가는 junction이다. **읽기만 한다.** `build/input_package`와 `build/ui_native_analysis`도 junction이다. 나머지 `build/`와 `dist/`는 작업본 전용이다. 생성 헤더(`traits9_payloads.h`, `modpack_payloads.h`)는 복사해 둔다.
+- 대용량 폴더는 원본으로 가는 junction이다. **읽기만 한다.** `build/input_package`와 `build/ui_native_analysis`도 junction이다. 나머지 `build/`와 `dist/`는 작업본 전용이다. 생성 헤더(`modpack_payloads.h`)는 복사해 둔다(`traits9_payloads.h`는 local235에 손으로 쓴 `traits9_sites.h`로 바뀌어 추적 소스다).
 - 해제 스크립트는 junction을 먼저 비재귀로 지운다. junction이 하나라도 남으면 멈춘다. 공용 폴더를 지울 수 없게 하려는 장치다.
 - 작업본에서는 **설치·배포·게임 실행을 하지 않는다.** 기능 검사(`check_feature.ps1 -Feature <기능>`)까지만 한다.
 - 확인된 예: `trait-hover -Build`가 작업본에서 통과했다(2026-11-06).

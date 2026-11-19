@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "corps-domestic",
  "title": "corps-domestic",
  "host": "convenience",
@@ -12,8 +12,7 @@
  ],
  "conflicts": [],
  "owns": [
-  "src/native_corps_domestic.inl",
-  "src/computer_tactics.h"
+  "src/native_corps_domestic.inl"
  ],
  "sources": [
   "src/native_corps_domestic.inl",
@@ -61,9 +60,42 @@
   ]
  },
  "ui": [],
- "provides": [],
+ "provides": [
+  "corps_domestic"
+ ],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_134C580",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "corps_domestic",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_corps_domestic.inl"
+  },
+  {
+   "key": "GA_1355B18",
+   "kind": "vt",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "corps_domestic",
+   "len": 8,
+   "policy": "refuse_if_changed",
+   "src": "src/native_corps_domestic.inl"
+  },
+  {
+   "key": "GA_C4383",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "corps_domestic",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_corps_domestic.inl"
+  }
+ ],
  "registry": {
   "rows": [],
   "subscriptions": [],

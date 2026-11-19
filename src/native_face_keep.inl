@@ -122,11 +122,44 @@ static int face_id(Obj manager,Obj person) {
     const int face=static_cast<int>(*reinterpret_cast<unsigned short *>(person+0xA6));
     return fn<int(__fastcall *)(Obj,int,int)>(kId)(manager,kFaceKind,face);   // table lookup only
 }
+// local254 (user 2026-11-19: some 출진부대설정 portraits blank, fine in v16.3.1 and on a later run). A prefetched request is waited on
+// only when the army flag of that face is set (finish_request). An army that left the appear list or the screen before its flag kept
+// its request unwaited: the job was never pumped, so the image never arrived, and the prefetch pin kept the count above 0, so no later
+// screen (sortie rows 80CD40/80D440 -> 85AE70, not hooked) reloaded it. Log evidence: run 15:02 had 38 requests and 31 waits (blank
+// portraits), run 15:36 17 and 17 (all shown); the morning runs 57/49 and 58/51. Every face path we own (army flag, the selection
+// portraits, the next appear frame) now runs the original wait first for each request older than kDrainMs.
+// local261 (user 2026-11-19 "렉걸리는거 확인해봐. 조금 버벅거리는거 같기도하고"): the blocking drain on every army flag cost each
+// flag ~10-12 ms (function_cost face_1B91E0_1B3523: avg 0.9 ms on 11-16, 9.0 / 10.4 / 11.9 ms on the three local256+ runs), as each
+// flag waited out every other army's prefetched load. Now only the selection portraits (a screen that binds the face now) wait
+// (wait=true); the flag setter and the appear frame poll each due job once (one pump call, done or not) and go on, so the
+// orphaned requests still finish within a few frames without holding the frame.
+static constexpr unsigned long long kDrainMs=100;
+static void drain_pending(Obj manager,bool wait) {
+    if(!pending.count || !manager)return;
+    const void *table=nullptr;count_of(manager,0,&table);sync_table(manager,table);   // count_of fills the table before its range check
+    const unsigned long long now=GetTickCount64();
+    Obj system=pointer(manager,0);
+    unsigned ran=0,stale=0;
+    for(size_t i=0;i<pending.count;++i) {
+        if(!pending.due(i,now,kDrainMs))continue;
+        Obj e=entry_of(manager,pending.ids[i]);Obj job=e?pointer(e,8):nullptr;
+        if(!job || static_cast<const void *>(job)!=pending.jobs[i]){pending.done[i]=true;++stale;continue;}   // reloaded or released: not ours
+        if(wait)while(!static_cast<unsigned char>(fn<Pump>(kPump)(job,0,system)))Sleep(0);   // the skipped original wait, as finish_request
+        else if(!static_cast<unsigned char>(fn<Pump>(kPump)(job,0,system)))continue;   // still loading: polled again next time
+        pending.done[i]=true;++ran;
+    }
+#ifndef NO_RUNTIME_LOG
+    if(ran || stale)log_event("face_prefetch_drain",ran,stale,static_cast<unsigned>(pending.count));
+#else
+    (void)stale;
+#endif
+}
 // Called by appear_batch at the start of each frame of CAppearArmyState, before its armies.
-static void prefetch(Obj state) { COST_SCOPE("face_prefetch");
+void prefetch(Obj state) { COST_SCOPE("face_prefetch");
     if(!mod_features.face_prefetch || !pump_installed || !state)return;
     Obj manager=pointer(image,kManager),persons=pointer(image,kPersons);
     if(!manager || !persons)return;
+    drain_pending(manager,false);
     if(!prefetch_hz) {LARGE_INTEGER hz;QueryPerformanceFrequency(&hz);prefetch_hz=hz.QuadPart;}
     LARGE_INTEGER a,b;QueryPerformanceCounter(&a);unsigned n=0;
     for(Obj node=pointer(state,0x478);node;node=pointer(node,8)) {
@@ -142,7 +175,7 @@ static void prefetch(Obj state) { COST_SCOPE("face_prefetch");
         prefetching=false;
         face_keep_core::add_pin(pins,id);++n;
         Obj e=entry_of(manager,id);
-        if(requested && e && pointer(e,8)==requested)pending.add(id,requested);
+        if(requested && e && pointer(e,8)==requested)pending.add(id,requested,GetTickCount64());
     }
     if(n) {QueryPerformanceCounter(&b);log_event("face_prefetch",n,static_cast<unsigned>((b.QuadPart-a.QuadPart)*1000000/prefetch_hz));}
 }
@@ -172,6 +205,7 @@ static void retain_loaded(Obj manager,int id) {
 }
 static Face next_portrait[4];
 template<unsigned I> static void __fastcall portrait(Obj node,Obj person) { COST_SCOPE("face_keep::portrait");
+    if(pump_installed)drain_pending(pointer(image,kManager),true);   // local254: an unwaited prefetch would bind an empty image here
     face_keep_core::set_then_retain(next_pick(next_portrait[I],kPortrait),[](Obj who) {
         if(!mod_features.face_keep)return;
         Obj manager=pointer(image,kManager);
@@ -194,6 +228,7 @@ static void __fastcall set_face(Obj node,Obj person) { COST_SCOPE("face_1B91E0_1
     Obj manager=pointer(image,kManager);
     const int id=face_id(manager,person);
     const bool valid=id!=0;
+    if(pump_installed)drain_pending(manager,false);   // local254: older requests other armies left behind (local261: poll only)
     if(valid && mod_features.face_prefetch)finish_request(manager,id);
 #ifndef NO_RUNTIME_LOG
     const void *seen=nullptr;const int *before=valid && diagnostic_logging?count_of(manager,id,&seen):nullptr;
@@ -213,7 +248,7 @@ static void __fastcall set_face(Obj node,Obj person) { COST_SCOPE("face_1B91E0_1
 }
 static CallLink link,pump_link;
 static bool installed;
-static bool install() {
+bool install() {
     if(image[kSite]!=0xE8 || kSite+5+*reinterpret_cast<int *>(image+kSite+1)!=kFace || fingerprint(kFace,0x58)!=kFaceHash ||
        fingerprint(kAdd,0x5A)!=kAddHash || fingerprint(kId,0xE0)!=kIdHash || fingerprint(kRelease,0x4A)!=kReleaseHash) {
         log_event("face_keep_guard_rejected");return false;

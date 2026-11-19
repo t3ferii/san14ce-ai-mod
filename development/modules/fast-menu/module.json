@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "fast-menu",
  "title": "fast-menu",
  "host": "convenience",
@@ -45,7 +45,38 @@
  "ui": [],
  "provides": [],
  "uses": [],
- "hooks": [],
+ "hooks": [
+  {
+   "key": "GA_13D9460",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "fast_menu",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_143F550",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "fast_menu",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  },
+  {
+   "key": "GA_145A2C8",
+   "kind": "vt",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "fast_menu",
+   "len": 8,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
+  }
+ ],
  "registry": {
   "rows": [
    {

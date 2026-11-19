@@ -74,7 +74,8 @@ ok('~' not in source,'no loader-lock TLS destructor logger')
 progress=(P/'src/native_progress.inl').read_text(encoding='utf-8')
 ok(progress.count('services::run_progress_flush();')==1 and progress.index('services::run_progress_flush();')>progress.index('__finally {progress_sample=previous;}'),'flush after original root return and TLS scope restoration')
 ok('services::progress_flush.add("path_count",&path_count::flush,nullptr,10)' in (P/'src/module_table_convenience.inl').read_text(encoding='utf-8'),'path_count joins the progress-flush service (W6-D)')
-adapter=(P/'src/native_adapter.cpp').read_text(encoding='utf-8-sig')
+from hub_text import hub_text   # 2026-11-16 multi-unit refactor: hub = native_core.inl + native_patch_core.inl + native_adapter.cpp
+adapter=hub_text(P)
 import registry_text as R   # W5: includes come from the generated per-DLL lists
 ok(R.unity().count('#include "native_path_count.inl"')==1 and R.unity_index('native_path_count.inl')<R.unity_index('native_progress.inl'),'one include before root wrapper')
 split=(P/'src/native_split_install.inl').read_text(encoding='utf-8')
@@ -82,10 +83,14 @@ split=(P/'src/native_split_install.inl').read_text(encoding='utf-8')
 import registry_text as R
 ok('static void split_path_count_install() {\n    if(path_fast::active)log_event("path_count_skipped_path_fast");\n    else path_count::install(progress_native_active && progress_native_profile,[]() {return progress_sample!=nullptr;});\n}' in split and
    'split_path_count_install()' in R.row('path_count') and '!defined(NO_RUNTIME_LOG)' in R.cond('path_count'),'diagnostic install preserves root TLS identity and skips occupied 183A30')
-label='경로 탐색 호출 횟수 기록';note='세력 AI가 경로 탐색을 몇 번 부르고 같은 출발지·목적지·조건을 되풀이하는지 진단 로그에 남깁니다. 게임 동작은 바뀌지 않습니다.'
+# 2026-11-16: the three catalogs are generated from development/installer_map.json (v15.9+); the note text was rewritten there
+# (용도/필요/주의 form), so label and note come from that row. Group, section, key and default 0 stay exact.
+row=next(r for r in json.loads((P/'development/installer_map.json').read_text(encoding='utf-8-sig'))['items'] if r['key']=='path_count')
+ok(row['group']=='diagnostics' and row['section']=='diagnostics' and row['default']==0 and not row['retired'],'catalog source row: diagnostics, default0')
+label=row['label'];notes=row['note'].split('\n')
 for name in ['installer/InstallerGui.cs','distribution/FeatureSelect.ps1','FeatureSelect.ps1']:
     text=(P/name).read_text(encoding='utf-8-sig');lines=[s for s in text.splitlines() if ('"path_count"' if name.endswith('.cs') else "Key='path_count'") in s]
-    ok(len(lines)==1 and label in lines[0] and note in lines[0] and ('"기타(개발용)", "diagnostics", "diagnostics", "path_count", 0' in lines[0] if name.endswith('.cs') else "Group='diagnostics'; Section='diagnostics'; Key='path_count'; Default=0" in lines[0]),name+' catalog exact label, note, group, default')
+    ok(len(lines)==1 and label in lines[0] and all(n in lines[0] for n in notes) and ('"기타(개발용)", "diagnostics", "diagnostics", "path_count", 0' in lines[0] if name.endswith('.cs') else "Group='diagnostics'; Section='diagnostics'; Key='path_count'; Default=0" in lines[0]),name+' catalog exact label, note, group, default')
 ok(json.loads((P/'development/features.json').read_text(encoding='utf-8-sig'))['modules']['path-count']['tests']==['path-count'],'focused check route registered')
 print(json.dumps(dict(status='path_count_static_verified' if not fail else 'failed',checks=checks,failures=fail,direct_call_sites=[hex(x) for x in relative[0xe8]],tail_jump_sites=relative[0xe9],steam_text_encrypted=True,gameplay_verified=False),ensure_ascii=False))
 sys.exit(bool(fail))

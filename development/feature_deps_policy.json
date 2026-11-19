@@ -35,9 +35,37 @@
   "merit_friendship": "merit",
   "awards_ai": "awards",
   "injury_herbal": "injury",
-  "ambush": "ambush-combat"
+  "ambush": "ambush-combat",
+  "ai_search2": "corps-domestic",
+  "ai_learn": "corps-domestic",
+  "ai_policy_cap": "injury"
  },
  "edges": [
+  {
+   "rule": "D2",
+   "from": "ambush",
+   "to": "ambush-combat",
+   "symbols": [
+    "mod_features.ambush"
+   ],
+   "symbol_count": 1,
+   "reason": "reviewed 2026-11-16: not a symbol that crosses DLLs - each DLL parses its own [game_flow] ambush switch; the convenience half (the ambush tickets, row 91) gates on its own copy of the switch of the module it depends on (ambush -> ambush-combat)",
+   "date": "2026-11-16",
+   "until_wave": "W5"
+  },
+  {
+   "rule": "HOOK",
+   "from": "corps-domestic",
+   "to": "injury",
+   "symbols": [
+    "slot GA_134C580",
+    "slot GA_1355B18"
+   ],
+   "symbol_count": 2,
+   "reason": "reviewed 2026-11-16: one publisher by design (local56) - injury publishes both personnel slots with its wounded filter while it is on, otherwise corps-domestic publishes them; never both (native_corps_domestic.inl wrapped, native_injury_links.inl)",
+   "date": "2026-11-16",
+   "until_wave": "W4"
+  },
   {
    "rule": "HOOK",
    "from": "district-intercept",
@@ -49,6 +77,19 @@
    "symbol_count": 2,
    "reason": "W0 baseline (2026-11-07): existing coupling listed in docs/MODULARIZATION_PLAN.md section 1.3",
    "date": "2026-11-07",
+   "until_wave": "W4"
+  },
+  {
+   "rule": "HOOK",
+   "from": "injury",
+   "to": "corps-domestic",
+   "symbols": [
+    "slot GA_134C580",
+    "slot GA_1355B18"
+   ],
+   "symbol_count": 2,
+   "reason": "reviewed 2026-11-16: one publisher by design (local56) - injury publishes both personnel slots with its wounded filter while it is on, otherwise corps-domestic publishes them; never both (native_corps_domestic.inl wrapped, native_injury_links.inl)",
+   "date": "2026-11-16",
    "until_wave": "W4"
   },
   {
@@ -96,36 +137,40 @@
   "d10_undeclared_sccs": 0,
   "d1_edges": 0,
   "d1_symbols": 0,
-  "d2_edges": 0,
+  "d2_edges": 1,
   "d3_dead_include_files": 0,
   "d4_decl_pairs": 0,
   "d4_decl_symbols": 0,
   "d5_flag_edges": 0,
-  "d6:advisor-briefing": 8,
-  "d6:ai": 5,
+  "d6:advisor-briefing": 10,
+  "d6:ai": 18,
+  "d6:ambush-combat": 3,
   "d6:appear-batch": 1,
   "d6:area-index": 1,
+  "d6:auto-commands": 2,
   "d6:awards": 2,
-  "d6:building-destruction": 2,
-  "d6:ccz-sprites": 1,
+  "d6:building-destruction": 4,
+  "d6:ccz-sprites": 5,
   "d6:convenience-misc": 6,
+  "d6:corps-domestic": 3,
   "d6:diplomacy-intel": 3,
   "d6:district-intercept": 2,
   "d6:drag_learn": 2,
-  "d6:expert-combat": 1,
-  "d6:face-keep": 3,
+  "d6:expert-combat": 3,
+  "d6:face-keep": 4,
   "d6:injury": 3,
-  "d6:merit": 11,
+  "d6:merit": 12,
   "d6:name-lookup": 1,
   "d6:path-count": 1,
-  "d6:path-fast": 2,
+  "d6:path-fast": 3,
   "d6:progress-native": 3,
-  "d6_direct_patch_calls": 58,
+  "d6:terrain-edit": 1,
+  "d6_direct_patch_calls": 93,
   "ga_expand_files": 33,
-  "hook_shared_pairs": 4,
+  "hook_shared_pairs": 6,
   "missing_doc_refs": 0,
   "old_build_1fbe6be7_files": 25,
-  "old_build_1fbe6be7_mentions": 78,
+  "old_build_1fbe6be7_mentions": 69,
   "old_image_path_files": 4,
   "tests_unreachable": 0,
   "tools_unreachable": 0,
@@ -136,6 +181,8 @@
  "entry_tools": {
   "tools/install_local.py": "the shared guarded local install (SESSION_RULES 5)",
   "tools/generate_handoff.py": "CURRENT.md generator run after an install (SESSION_RULES 5, AGENTS.md)",
+  "tools/runtime_smoke.py": "one-run diagnostic log comparison after a user game run (docs/RUNTIME_SMOKE.md)",
+  "tools/render_stall_report.py": "render-stall sampler CSV summary after a user game run (docs/FEATURE_SWITCHES.md diagnostics.cost_profile)",
   "tools/ghidra_persistent.ps1": "persistent Ghidra DB export (SESSION_RULES 7, docs/GHIDRA_PERSISTENT.md)",
   "tools/ghidra_scripts/San14AnalysisReport.java": "script loaded by ghidra_persistent.ps1 by directory",
   "tools/ghidra_scripts/San14ExportFunctions.java": "script loaded by ghidra_persistent.ps1 by directory",
@@ -160,6 +207,9 @@
   "tools/installer_preflight.py": "module dependency/conflict preflight of the current 기능설정.ini (docs/MOD_MANAGER_DESIGN.md)",
   "tools/inspect_advisor_briefing.py": "read-only runtime state of the advisor briefing (docs/ADVISOR_BRIEFING.md)",
   "tools/inspect_expert_runtime.py": "read-only runtime snapshot of the expert UI (docs/UI_ADD_GUIDE.md)",
-  "tools/inspect_ccz_ui_trace.py": "CCZ UI trace log reader (docs/UI_FAILURES_AND_RECIPES.md)"
- }
+  "tools/inspect_ccz_ui_trace.py": "CCZ UI trace log reader (docs/UI_FAILURES_AND_RECIPES.md)",
+  "tools/build_season_shaders.ps1": "offline fxc compile of the 4계절 bake/compression shaders into build/season (run by hand when a shader changes)",
+  "tools/vendor_season_rules.py": "regenerates src/season/season_engine.c from the credited 4계절 rules source (run by hand on a new rules version)"
+ },
+ "_review_2026_11_16": "Counters raised after review (features added after the W8 baseline 2026-11-08, each with its own original-byte guard, split_disable path and route check): D6 +30 direct patch calls - ai 5->18 (native_siege_guard.inl 8, native_route_hook.inl 5), ambush-combat 3, corps-domestic 3, auto-commands 2, building-destruction 2->4, expert-combat 1->3 (native_expert_links.inl), face-keep 3->4 (native_face_timing.inl), merit 11->12, path-fast 2->3, terrain-edit 1 (native_modpack_dll.inl season CALL), advisor-briefing 8->9; hook_shared_pairs 4->6 (the corps-domestic/injury one-publisher slots); d2_edges 0->1 (the per-DLL ambush switch). Moving these hooks behind the Layout manager is separate work."
 }

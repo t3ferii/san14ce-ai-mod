@@ -165,7 +165,7 @@ static int menu_entries(MenuEntry *out,int *actions,unsigned terrain) {
     return 26;
 }
 // Existing native state computes the original four entries and positions first.
-static uint64_t __fastcall hex_menu_state(Obj state) { COST_CRUMB("terrain_edit::hex_menu_state",state);
+uint64_t __fastcall hex_menu_state(Obj state) { COST_CRUMB("terrain_edit::hex_menu_state",state);
     Obj previous=menu_scope;
     if(active())check_world();
     menu_scope=state;clear_menu_context();
@@ -202,7 +202,7 @@ static uint64_t menu_build_from(Obj caller,Obj menu,int x,int y,uint64_t flag,Me
     if(menu_scope && menu_scope==expanded_state)clear_menu_context();
     return fn<MenuBuild>(GA(GA_6ED8A0))(menu,x,y,flag,entries,count);
 }
-static uint64_t __fastcall menu_build(Obj menu,int x,int y,uint64_t flag,MenuEntry *entries,int count) { COST_SCOPE("terrain_edit::menu_build");
+uint64_t __fastcall menu_build(Obj menu,int x,int y,uint64_t flag,MenuEntry *entries,int count) { COST_SCOPE("terrain_edit::menu_build");
     return menu_build_from(static_cast<Obj>(_ReturnAddress()),menu,x,y,flag,entries,count);
 }
 static bool menu_matches(Obj functor,void **arg) {
@@ -218,7 +218,7 @@ static int menu_action(Obj functor,void **arg) {
     }
     return action_native;
 }
-static uint64_t __fastcall hex_menu_click(Obj functor,void **arg) { COST_SCOPE("terrain_edit::hex_menu_click");
+uint64_t __fastcall hex_menu_click(Obj functor,void **arg) { COST_SCOPE("terrain_edit::hex_menu_click");
 #ifndef NO_RUNTIME_LOG
     if(menu_matches(functor,arg)) {
         int index=*reinterpret_cast<int *>(static_cast<Obj>(*arg)+0x80);
@@ -237,7 +237,7 @@ static uint64_t __fastcall hex_menu_click(Obj functor,void **arg) { COST_SCOPE("
     }
     return fn<MenuClick>(GA(GA_7A9F40))(functor,arg);
 }
-static uint64_t __fastcall hex_menu_hint(Obj functor,void **arg) { COST_SCOPE("terrain_edit::hex_menu_hint");
+uint64_t __fastcall hex_menu_hint(Obj functor,void **arg) { COST_SCOPE("terrain_edit::hex_menu_hint");
     // User 2026-10-29 (local45 crash, odd tooltips): the hint event's [arg] is the
     // hovered column, not the built menu, so menu identity never matched and the
     // picker fell through to 6B88B0's four-entry message table. Match the state
@@ -277,7 +277,7 @@ static void lock_highlight(Obj tile) {
 #endif
 }
 // Shared native exit destroys the menu and invokes completion before we release our lock.
-static uint64_t __fastcall hex_menu_exit(Obj state,uint64_t rdx) { COST_SCOPE("terrain_edit::hex_menu_exit");
+uint64_t __fastcall hex_menu_exit(Obj state,uint64_t rdx) { COST_SCOPE("terrain_edit::hex_menu_exit");
     uint64_t result=fn<uint64_t(__fastcall *)(Obj,uint64_t)>(GA(GA_720530))(state,rdx);
     if(highlight_locked) {
         Obj manager=fn<Obj(__fastcall *)()>(GA(GA_18E70))();
@@ -307,7 +307,7 @@ static void open_hex_menu(Obj tile) {
     fn<void(__fastcall *)(Obj,const char *,HexParams *,HexFunctor *)>(GA(GA_435390))(
         fn<Obj(__fastcall *)()>(GA(GA_11040))(),"CStrategyAreaHexState",&params,&functor);
 }
-static uint64_t __fastcall domestic_click(Obj functor,void **arg) { COST_SCOPE("terrain_edit::domestic_click");
+uint64_t __fastcall domestic_click(Obj functor,void **arg) { COST_SCOPE("terrain_edit::domestic_click");
     Obj input=fn<Obj(__fastcall *)()>(GA(GA_111F0))();
     if(fn<int(__fastcall *)(Obj,int)>(GA(GA_3F6080))(input,1)==0 ||
         fn<int(__fastcall *)(Obj)>(GA(GA_3F6570))(input)!=0)
@@ -346,4 +346,4 @@ static uint64_t __fastcall domestic_click(Obj functor,void **arg) { COST_SCOPE("
     return fn<MenuClick>(GA(GA_7A9D40))(functor,arg);
 }
 }
-static bool terrain_edit_guards_match() {return terrain_edit::menu_guards_match();}
+bool terrain_edit_guards_match() {return terrain_edit::menu_guards_match();}

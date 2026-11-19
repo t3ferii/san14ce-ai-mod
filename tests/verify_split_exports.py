@@ -2,8 +2,8 @@
 from pathlib import Path
 import hashlib,json,struct,sys
 p=Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(p.parent/'AI_TacticsMod/legacy/FogMod_Source/tools'))
-from audit_native_game import PEImage
+sys.path.insert(0,str(p/'tools'))
+from pe_image import PEImage   # tracked copy (2026-11-16); was the untracked legacy audit_native_game
 binary=p/'build/development/loader_split'
 def exports(path):
     pe=PEImage(path);optional=struct.unpack_from('<I',pe.data,0x3c)[0]+24

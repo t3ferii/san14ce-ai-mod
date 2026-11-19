@@ -37,7 +37,10 @@ static OwnerName original_owner_name;
 static AwardOne original_post_batch,original_award_ui;
 static AwardState original_award_manual;
 static void *award_equipped_vtable[4],*award_storage_vtable[4];
-static unsigned award_item_id(Obj item) { COST_SCOPE("awards:award_item_id");
+// local204: no COST_SCOPE in the per-item helpers below (item id, stored test, predicates, owned-item walk, filter) - the
+// ability getter 231770 reaches them through award_iterator for every officer it rates, tens of thousands of times a
+// strategy turn, and in diagnostic builds the scope itself cost more than the helper (same as award_serving, local165).
+static unsigned award_item_id(Obj item) {
     Obj root=world(),first=root?pointer(root,0x77B18):nullptr;
     uintptr_t p=reinterpret_cast<uintptr_t>(item),b=reinterpret_cast<uintptr_t>(first);
     if(!first || p<b || (p-b)%128 || (p-b)/128>=awards::MaxItems)return awards::MaxItems;
@@ -54,7 +57,7 @@ static std::vector<Obj> award_items() {
 static unsigned award_mask(Obj item) {return awards::slots(item[0x45],item[0x46],item[0x47]);}
 static unsigned award_force_id(Obj person) {return valid(person)?fn<unsigned(__fastcall *)(Obj)>(GA(GA_22E870))(person):0;}
 static Obj award_ruler(unsigned force) {COST_SCOPE("award_ruler");Obj f=table(0xDF30,force,51);return valid(f)?table(0x158,word(f,0x10),6000):nullptr;}
-static bool award_stored(Obj item) { COST_SCOPE("awards:award_stored");
+static bool award_stored(Obj item) {
     unsigned id=award_item_id(item);return id<awards::MaxItems && award_storage[id] &&
         (award_storage[id]==word(item,0x4A) || item==award_selected_item);
 }
@@ -98,7 +101,6 @@ struct AwardSyncCache {
     LONG epoch=0;bool ready=false;
 };
 static void award_capture_inputs(const std::vector<Obj> &items,AwardSyncCache &cache) {
-    COST_SCOPE("award_capture_inputs");
     if(++cache.stamp==0) {for(auto &c:cache.owners)c.stamp=0;for(auto &c:cache.rulers)c.stamp=0;++cache.stamp;}
     cache.current.clear();cache.current.reserve(items.size());
     for(Obj item:items) {
@@ -174,7 +176,6 @@ static void award_synchronize() {
     award_syncing=false;
 }
 static void award_owned_items(Obj iterator,std::vector<Obj> &items) {
-    COST_SCOPE("award_owned_items");
     items.clear();Link *l=reinterpret_cast<Link *>(pointer(iterator,8));Obj end=pointer(iterator,16);
     unsigned visited=0;
     for(;l && reinterpret_cast<Obj>(l)!=end && visited++<awards::MaxItems;l=l->next)
@@ -246,14 +247,13 @@ static int __fastcall award_transfer(Obj *pair) { COST_SCOPE("awards_award_trans
     }
     return result;
 }
-static int __fastcall award_equipment_predicate(Obj iterator,Link *link) { COST_SCOPE("awards_award_equipment_predicate");
+static int __fastcall award_equipment_predicate(Obj iterator,Link *link) {
     return fn<int(__fastcall *)(Obj,Link *)>(GA(GA_3355A0))(iterator,link) && !award_stored(link->value);
 }
-static int __fastcall award_storage_predicate(Obj iterator,Link *link) { COST_SCOPE("awards_award_storage_predicate");
+static int __fastcall award_storage_predicate(Obj iterator,Link *link) {
     return fn<int(__fastcall *)(Obj,Link *)>(GA(GA_3355A0))(iterator,link) && award_stored(link->value);
 }
 static void award_filter_iterator(Obj out,bool storage) {
-    COST_SCOPE("award_filter_iterator");
     *reinterpret_cast<void ***>(out)=storage?award_storage_vtable:award_equipped_vtable;
     auto pred=storage?&award_storage_predicate:&award_equipment_predicate;
     Link *l=reinterpret_cast<Link *>(pointer(out,8));Obj end=pointer(out,16);
@@ -261,7 +261,6 @@ static void award_filter_iterator(Obj out,bool storage) {
     *reinterpret_cast<Link **>(out+8)=l;
 }
 static Obj __fastcall award_iterator(Obj person,Obj out) { COST_SCOPE("awards_award_iterator");
-    COST_SCOPE("award_iterator");
     uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-reinterpret_cast<uintptr_t>(image);
     // Only effect/personal views and diplomacy change. Native death, capture,
     // succession and force destruction retain the native ownership iterator.
@@ -270,9 +269,11 @@ static Obj __fastcall award_iterator(Obj person,Obj out) { COST_SCOPE("awards_aw
     bool storage=caller==GA(GA_6DD83B) || caller==GA(GA_6DD9C5) || caller==GA(GA_6DBDBF) || caller==GA(GA_B258C);
     bool equipped=caller==GA(GA_22EEA5) || caller==GA(GA_23184B) || caller==GA(GA_231ACA) ||
         caller==GA(GA_2B7099) || caller==GA(GA_34BDDF) || caller==GA(GA_6E377B);
-    Obj result;
-    {COST_SCOPE("native_award_iterator");result=original_award_iterator(person,out);}
-    if(enabled && (storage || equipped)) {
+    Obj result=original_award_iterator(person,out);
+    // local204 (render_stall: this reconcile sat in the strategy-turn stall under 231770): the native iterator (93650) stops at
+    // the first item whose owner is this person (3355A0) and leaves +8 null when there is none. Such a person has nothing to
+    // reconcile or filter - a stored item is owned by its ruler - so most officers skip the per-person cache entirely.
+    if(enabled && (storage || equipped) && pointer(out,8)) {
         award_synchronize_person(person,out);award_filter_iterator(out,storage);
     }
     return result;

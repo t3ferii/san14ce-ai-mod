@@ -1,0 +1,5 @@
+{
+ "schema": 1,
+ "doc": "Accepted hidden switch dependencies for tools/switch_deps.py (ratchet). Each entry needs a reason. Prefer fixing the code or adding installer requires.",
+ "accepted": []
+}
