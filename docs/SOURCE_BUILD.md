@@ -39,7 +39,7 @@ python -m pip install capstone
 & .\tools\build_installer.ps1
 ```
 
-진단판은 `build/development/loader_split_diagnostic`, 일반판은 `build/development/loader_split`에 편의·전투·조조전 DLL을 만든다(로더 dinput8.dll 포함 네 개). 설치기는 `build/development/installer`에 생성된다. 필수 split 검사는 fixture와 일반판 빌드를 포함하며 원작 dump·외부 payload도 필요하다. 준비 도구는 `research/traits9`와 `build`에 파생 자료를 쓴다. `build_native.ps1 -InputLoader`의 과거 통합 경로를 최신 split 배포 대신 쓰지 않는다.
+진단판은 `build/development/loader_split_diagnostic`, 일반판은 `build/development/loader_split`에 편의·전투·조조전 DLL을 만든다(로더 dinput8.dll 포함 네 개). 설치기는 `build/development/installer`에 생성된다. 필수 split 검사는 fixture와 일반판 빌드를 포함하며 원작 dump·외부 payload도 필요하다. 준비 도구는 `research/traits9`와 `build`에 파생 자료를 쓴다.
 
 ## 설치와 검증 범위
 

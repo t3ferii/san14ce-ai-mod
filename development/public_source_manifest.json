@@ -737,7 +737,7 @@
     },
     {
       "path": "docs/RELEASE_NOTES.md",
-      "sha256": "5a38e895a0eef5a0796a1973a4fa24419f7ac5ebcbe5ef53240a1707f6e12d2d"
+      "sha256": "bbb249cc311238f1a3d7f062ce93f8e640270bd1d7c2b7e21e6355b640afc55d"
     },
     {
       "path": "docs/RUNTIME_SMOKE.md",
