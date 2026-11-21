@@ -29,7 +29,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "cbacfecb613d3427a806f42e147b645e28c1da005d947eaf3bd43f388e56b943"
+      "sha256": "2e02c286ee8660018d7c21b511025b094681869a679b4d560abde90886c9c57e"
     },
     {
       "path": "SplitManage.ps1",
@@ -585,7 +585,7 @@
     },
     {
       "path": "docs/CHANGES_ALL.md",
-      "sha256": "6ef407da689613a20f564b5bad2e50429b3c3d9878116e2dd792228a7107086a"
+      "sha256": "1008028a4e745648b55b81069575a11b7ea6981b814e0398fadcc62ccc079f70"
     },
     {
       "path": "docs/CHECKS.md",
@@ -737,7 +737,7 @@
     },
     {
       "path": "docs/RELEASE_NOTES.md",
-      "sha256": "bbb249cc311238f1a3d7f062ce93f8e640270bd1d7c2b7e21e6355b640afc55d"
+      "sha256": "74f79c2237422f7edd71d082a336a7f2d4a947a732460d5f3be60c4ddb6f8512"
     },
     {
       "path": "docs/RUNTIME_SMOKE.md",
