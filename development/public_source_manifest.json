@@ -29,7 +29,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "2e02c286ee8660018d7c21b511025b094681869a679b4d560abde90886c9c57e"
+      "sha256": "f72b56954d72baf9508760984fc2c13ad118bc543be4a4c0374c15e3831a2bde"
     },
     {
       "path": "SplitManage.ps1",
@@ -585,7 +585,7 @@
     },
     {
       "path": "docs/CHANGES_ALL.md",
-      "sha256": "1008028a4e745648b55b81069575a11b7ea6981b814e0398fadcc62ccc079f70"
+      "sha256": "64bf4c3ac1d98c379401075559eb19a317089c294958d8e0417b0092ea4ad968"
     },
     {
       "path": "docs/CHECKS.md",
@@ -601,7 +601,7 @@
     },
     {
       "path": "docs/CREDITS.md",
-      "sha256": "08b51bb5a9ef1ce6f108c0940b7e431a821560f1ac0ba543d87eda075dae539a"
+      "sha256": "898b6c179499710cad3f656b33e7bd3c8162f8d2324e36b55d679fcb628330c1"
     },
     {
       "path": "docs/DAMAGE_PREVIEW.md",
@@ -737,7 +737,7 @@
     },
     {
       "path": "docs/RELEASE_NOTES.md",
-      "sha256": "627abda9417ae8edbc8123202311288fdb9c0baa69f504803ce045d2812b0ddc"
+      "sha256": "1f96501bcda6629738bebc2cc849eefb87941abe298483dca1c1dc62959d5c14"
     },
     {
       "path": "docs/RUNTIME_SMOKE.md",
