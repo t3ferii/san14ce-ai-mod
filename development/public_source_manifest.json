@@ -585,7 +585,7 @@
     },
     {
       "path": "docs/CHANGES_ALL.md",
-      "sha256": "36161ade49fddc80142e21200c99cb85b874a91dcfa3cd03a0e15f1f798234ae"
+      "sha256": "ba40cec537d16e2975ef09026f5c0b6e72ab5f85af552d2ed8e63ad0a5e1205a"
     },
     {
       "path": "docs/CHECKS.md",
@@ -741,7 +741,7 @@
     },
     {
       "path": "docs/RELEASE_NOTES.md",
-      "sha256": "3937feb93f4ed45fd1b358c71509d0519e2d7534109d6796f81d1dde5187d591"
+      "sha256": "01090883da541454441449749fdeb33b39f56ec8118d70755719e0770a571ff5"
     },
     {
       "path": "docs/RUNTIME_SMOKE.md",
