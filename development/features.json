@@ -398,6 +398,22 @@
       ],
       "parallel_safe": false
     },
+    "duel-manual": {
+      "est_s": 15,
+      "cache": true,
+      "steps": [
+        {"ps1": "tools/build_duel_manual_fixture.ps1", "args": []}
+      ],
+      "parallel_safe": true
+    },
+    "duel-s11": {
+      "est_s": 20,
+      "cache": true,
+      "steps": [
+        {"ps1": "tools/build_duel_s11_fixture.ps1", "args": []}
+      ],
+      "parallel_safe": true
+    },
     "traits9-save": {
       "est_s": 5,
       "cache": true,
@@ -734,7 +750,12 @@
         "tests/build_terrain_edit_fixture.ps1",
         "installer/InstallerGui.cs",
         "distribution/FeatureSelect.ps1",
-        "FeatureSelect.ps1"
+        "FeatureSelect.ps1",
+        "src/duel_digits_font.h",
+        "src/duel_digits_ps.h",
+        "src/duel_digits_vs.h",
+        "src/duel_window_font.h",
+        "src/native_duel_digits.inl"
       ],
       "tests": [
         "terrain-profile",
@@ -1531,7 +1552,8 @@
         "src/native_campaign_logistics.inl",
         "src/native_campaign_reinforcements.inl",
         "src/campaign_policy.h",
-        "src/native_campaign_operations.inl"
+        "src/native_campaign_operations.inl",
+        "src/wall_age_shared.h"
       ],
       "tests": [
         "native"
@@ -1609,7 +1631,8 @@
         "src/gpu_profile.*",
         "src/computer_tactics.h",
         "src/season_mobility_shared.h",
-        "src/ambush_shared.h"
+        "src/ambush_shared.h",
+        "src/wall_age_shared.h"
       ],
       "sources": [
         "src/native_adapter.cpp",
@@ -2495,7 +2518,12 @@
         "src/native_advisor_overlay.inl",
         "src/native_ccz_preview.inl",
         "tests/shared_overlay_fixture.cpp",
-        "tools/build_shared_overlay_fixture.ps1"
+        "tools/build_shared_overlay_fixture.ps1",
+        "src/duel_digits_font.h",
+        "src/duel_digits_ps.h",
+        "src/duel_digits_vs.h",
+        "src/duel_window_font.h",
+        "src/native_duel_digits.inl"
       ],
       "tests": [
         "shared-overlay"
@@ -2737,23 +2765,59 @@
       "dll": "convenience",
       "build": "split",
       "depends": [],
-      "hook_owners": [],
+      "hook_owners": [
+        "duel_multi"
+      ],
       "owns": [
+        "src/duel_digits.hlsl",
+        "src/duel_digits_font.h",
+        "src/duel_digits_ps.h",
+        "src/duel_digits_vs.h",
+        "src/duel_manual_script.h",
+        "src/duel_s11_rules.h",
+        "src/duel_window_font.h",
         "src/native_caravan_stay.inl",
+        "src/native_duel_digits.inl",
+        "src/native_duel_manual.inl",
+        "src/native_duel_multi.inl",
         "src/native_occupy_fast.inl",
         "src/native_save_codec.inl",
         "src/save_codec.h",
-        "tests/save_codec_fixture.cpp"
+        "tests/duel_manual_fixture.cpp",
+        "tests/duel_s11_fixture.cpp",
+        "tests/save_codec_fixture.cpp",
+        "tools/build_duel_manual_fixture.ps1",
+        "tools/build_duel_s11_fixture.ps1",
+        "tools/gen_duel_window_text.ps1"
       ],
       "sources": [
+        "src/duel_digits.hlsl",
+        "src/duel_digits_font.h",
+        "src/duel_digits_ps.h",
+        "src/duel_digits_vs.h",
+        "src/duel_manual_script.h",
+        "src/duel_s11_rules.h",
+        "src/duel_window_font.h",
         "src/native_caravan_stay.inl",
+        "src/native_duel_digits.inl",
+        "src/native_duel_manual.inl",
+        "src/native_duel_multi.inl",
         "src/native_face_timing.inl",
         "src/native_occupy_fast.inl",
         "src/native_save_codec.inl",
         "src/save_codec.h",
-        "tests/save_codec_fixture.cpp"
+        "tests/duel_manual_fixture.cpp",
+        "tests/duel_s11_fixture.cpp",
+        "tests/save_codec_fixture.cpp",
+        "tools/build_duel_manual_fixture.ps1",
+        "tools/build_duel_s11_fixture.ps1",
+        "tools/gen_duel_window_text.ps1"
       ],
       "tests": [
+        "duel-manual",
+        "duel-s11",
+        "layout-registry",
+        "shared-overlay",
         "split-module"
       ]
     },
@@ -2794,6 +2858,25 @@
       ],
       "sources": [
         "src/native_ambush.inl"
+      ],
+      "tests": [
+        "split-module"
+      ]
+    },
+    "wall-age-save": {
+      "status": "active",
+      "dll": "convenience",
+      "build": "split",
+      "depends": [
+        "ai"
+      ],
+      "hook_owners": [],
+      "owns": [
+        "src/native_wall_age_save.inl"
+      ],
+      "sources": [
+        "src/native_wall_age_save.inl",
+        "src/wall_age_shared.h"
       ],
       "tests": [
         "split-module"

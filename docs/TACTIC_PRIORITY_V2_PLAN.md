@@ -31,7 +31,7 @@
 - 실패: 기능 꺼짐·가드·GA 미해결이면 설치 안 함(원작 화면 그대로). 실행 중 생성 실패면 로그 + `popup_broken`, 이후 클릭 무시.
 
 ## 3. 「출진 기억」 토글
-- 화면 진입 훅(7DE5BD, 원래 함수 뒤)에서 생성: 1노드 창(type 2) + `9309C0(t,0,10,1,1,0)`, 위치 탭 오른쪽 + (154,0), 200×64(최소 너비 `button_styles.py` 확인). 탭 컨트롤 못 찾으면 첫 update로 미룸.
+- 첫 갱신(update 훅 `grid::tick`)에서 생성(처음 계획은 화면 진입 훅 7DE5BD였고 그 CALL 훅은 2026-11-22 삭제): 1노드 창(type 2) + `9309C0(t,0,10,1,1,0)`, 위치 탭 오른쪽 + (154,0), 200×64(최소 너비 `button_styles.py` 확인). 탭 컨트롤 못 찾으면 첫 update로 미룸.
 - 글자 「출진 기억 켬」/「출진 기억 끔」, 켜짐 `85D050(1)`. radio가 스스로 바꿀 수 있어 매 프레임 `+0x198` 비교 후 다르면 다시 씀. 탭 오른쪽 컨트롤의 0xB 비트·투명도 매 프레임 따라감. 기록에 무장 없으면 「출진 기억」만, 클릭 무시.
 - 켜면 그 무장 플래그 on + 기억 바로 적용 + `857EB0`. 끄면 현재 선택은 그대로, 다음 배치부터 공통 규칙.
 
@@ -107,6 +107,6 @@ F1 네이티브 직접: `alloc(0x198)+84CF00+vt+0x188(x,y,w,h,main table[3],3)`,
 - 구현: 떠남 훅이 원래 떠남보다 먼저 Layout `ui_release("tactic_priority",next)`를 부른다(Layout이 이 순서로 모든 창을 소멸하고 컨트롤 추적을 정리). `popup_orphan`은 없어졌고 `tactic_priority_popup_destroyed(released,popupBuilt,toggleBuilt)`를 남긴다. 푸터 버튼은 푸터(+0x4A0)가 원작 떠남에서 소멸시킨다.
 
 ### 12.7 UI 소유 구조 (task 4, 사용자 2026-11-07)
-- UI 진입점(푸터 버튼, 팝업 창·탭·칸·버튼, 「출진 기억」 토글)의 생성·위치·보임·소멸은 SAN14_Layout.dll이 맡는다(`layout_api.h`의 `ui_begin/ui_end/ui_create_window/ui_activate/ui_node/ui_set_node_text/ui_set_node_visible/ui_select/ui_sync_visibility/ui_release`와 기존 `clone_control/set_text/bind_click/set_visible`). 기능 모듈(`native_tactic_priority*.inl`)은 서술자(데이터)·글자·클릭이 하는 일·적용 루프만 갖는다.
+- UI 진입점(우측 하단 버튼 — 2026-11-22 전에는 푸터 버튼, 팝업 창·탭·칸·버튼, 「출진 기억」 토글)의 생성·위치·보임·소멸은 SAN14_Layout.dll이 맡는다(`layout_api.h`의 `ui_begin/ui_end/ui_create_window/ui_activate/ui_node/ui_set_node_text/ui_set_node_visible/ui_select/ui_sync_visibility/ui_release`와 기존 `clone_control/set_text/bind_click/set_visible`). 기능 모듈(`native_tactic_priority*.inl`)은 서술자(데이터)·글자·클릭이 하는 일·적용 루프만 갖는다.
 - 연결 고리 = 기능 스위치: `ui_begin("tactic_priority")`는 그 owner의 레지스트리 훅이 INSTALLED/CHAINED일 때만 성공한다. 기능이 꺼졌거나 게시되지 않았거나 거절·양보되면 UI는 만들어지지 않고 원작 화면이 그대로다. 새 설정 키 없음.
-- 남은 것(기능 모듈에 둔 이유): 훅 자체(CALL 7DC20D, 갱신·떠남 vt, 출발 CALL)는 `layout_registry.h` 행의 owner가 `tactic_priority`이고 한 훅 한 소유자 규칙 때문에 몸체가 이 모듈에 있다. 갱신·떠남 훅이 UI 호출 시점을 정한다(Layout 이벤트가 아니라 게임이 부르는 시점). 부모 화면 객체의 필드 읽기(`+0x470` 등)와 원본 페이지·탭 숨김은 Layout의 `ui_show/ui_node_visible`을 통해서만 한다. 원작 `refresh_tabs`(탭 재선택, 기록 읽기 갱신)는 UI 객체 생성·소멸이 아니라 원작 상태 갱신이라 기능 모듈에 남겼다.
+- 남은 것(기능 모듈에 둔 이유): 훅 자체(갱신·떠남 vt, 출발 CALL; 푸터 버튼용 CALL 7DC20D/7DE5BD는 2026-11-22 삭제)는 `layout_registry.h` 행의 owner가 `tactic_priority`이고 한 훅 한 소유자 규칙 때문에 몸체가 이 모듈에 있다. 갱신·떠남 훅이 UI 호출 시점을 정한다(Layout 이벤트가 아니라 게임이 부르는 시점). 부모 화면 객체의 필드 읽기(`+0x470` 등)와 원본 페이지·탭 숨김은 Layout의 `ui_show/ui_node_visible`을 통해서만 한다. 원작 `refresh_tabs`(탭 재선택, 기록 읽기 갱신)는 UI 객체 생성·소멸이 아니라 원작 상태 갱신이라 기능 모듈에 남겼다.

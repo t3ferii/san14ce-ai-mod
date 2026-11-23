@@ -112,6 +112,10 @@ static void __fastcall band_orig_unit_target(Obj){}
 static unsigned __fastcall band_orig_max_morale(Obj){return 100;}
 static unsigned band_captures=0;
 static bool __fastcall band_orig_capture(Obj,Obj){++band_captures;return true;}
+// 2026-11-22: inside the duel generator 2CCC60 a live band answers its raw force 51 (the original 1..45 filter drops it)
+static unsigned band_duel_seen=0;
+static Obj band_duel_unit=nullptr;
+static void __fastcall band_orig_duel(){band_duel_seen=ccz_bands::hook_army_force(band_duel_unit);}
 static bool near_value(float a,float b){return a>b-0.001f && a<b+0.001f;}
 static void band_tests(){
     using namespace ccz_bands;
@@ -124,6 +128,8 @@ static void band_tests(){
     gates[kBandMaxMorale]=reinterpret_cast<void *>(&band_orig_max_morale);
     {gates[kBandCapture]=nullptr;check(!configure(gates,kFlagOn|kFlagSetters),"configure needs the capture original (2026-11-20)");}
     gates[kBandCapture]=reinterpret_cast<void *>(&band_orig_capture);
+    {gates[kBandDuel]=nullptr;check(!configure(gates,kFlagOn|kFlagSetters),"configure needs the duel generator original (2026-11-22)");}
+    gates[kBandDuel]=reinterpret_cast<void *>(&band_orig_duel);
     void *missing[kBandHookCount]={};check(!configure(missing,kFlagOn),"configure refuses missing originals");
     check(!configure(gates,kFlagOn|kFlagSetters|kFlagPortrait),"portrait mode needs the face texture original");
     check(configure(gates,kFlagOn|kFlagSetters),"configure accepts all nine originals");
@@ -153,6 +159,8 @@ static void band_tests(){
     slot_set(4040,band_unit.data(),3);
     check(hook_max_morale(band_unit.data())==100,"kind 0 band keeps the original cap");
     check(hook_army_force(band_unit.data())==3,"live band answers its patron force");
+    band_duel_unit=band_unit.data();hook_duel();
+    check(band_duel_seen==51 && hook_army_force(band_unit.data())==3,"inside the duel generator a live band answers 51, after it its patron again (2026-11-22)");
     check(hook_army_force(other_unit.data())==51,"another object with the same generic commander stays 51");
     band_raw_other=9;check(hook_army_force(host_unit.data())==9,"regular army answer untouched");
     band_dirty=0xFD626D00u;

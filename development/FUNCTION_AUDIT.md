@@ -1,7 +1,7 @@
 # 현재 소스 조사 범위와 함수 색인
 
-기준: v16.5 공개 무로그 빌드 소스 (2026-11-20). split 빌드 정의·Layout 등록표·주소표·기능 게이트·정책 및 기존 함수 기록을 대조했다.
-일반 설명은 [README](../README.md), 원작 연결 함수와 변경 조건은 [기술 설명](../docs/GITHUB_기능상세.md)에 있다.
+기준: v16.8 공개 무로그 빌드 소스 (2026-11-23). split 빌드 정의·Layout 등록표·주소표·기능 게이트·정책 및 기존 함수 기록을 대조했다.
+일반 설명은 [README](../README.md), 원작과 달라진 동작은 [MOD_CHANGES_VS_ORIGINAL](../docs/MOD_CHANGES_VS_ORIGINAL.md), 원작 함수 기록은 [NATIVE_FUNCTIONS](../docs/NATIVE_FUNCTIONS.md)에 있다.
 
 ## 근거와 한계
 
@@ -29,7 +29,7 @@
 
 ## 파일별 탐색표
 
-현재 src 235개 파일, 정의 후보 4041개. 이 수는 검증 통과 수가 아니다.
+현재 src 247개 파일, 정의 후보 4522개. 이 수는 검증 통과 수가 아니다.
 
 | 파일 | 정의 후보 | 기능 주제 | 조사 범위 |
 |---|---:|---|---|
@@ -55,7 +55,7 @@
 | [src/ccz_appearance_io.h](../src/ccz_appearance_io.h) | 2 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/ccz_appearance_labels.h](../src/ccz_appearance_labels.h) | 0 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/ccz_band_kinds.h](../src/ccz_band_kinds.h) | 14 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/ccz_bands.inl](../src/ccz_bands.inl) | 112 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/ccz_bands.inl](../src/ccz_bands.inl) | 113 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/ccz_catalog.h](../src/ccz_catalog.h) | 6 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/ccz_module.cpp](../src/ccz_module.cpp) | 23 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/ccz_module_api.h](../src/ccz_module_api.h) | 0 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
@@ -80,6 +80,13 @@
 | [src/damage_preview_profile.h](../src/damage_preview_profile.h) | 1 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/diplomacy_intel.h](../src/diplomacy_intel.h) | 8 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/diplomacy_intel_profile.h](../src/diplomacy_intel_profile.h) | 0 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/duel_digits.hlsl](../src/duel_digits.hlsl) | 1 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/duel_digits_font.h](../src/duel_digits_font.h) | 0 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/duel_digits_ps.h](../src/duel_digits_ps.h) | 0 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/duel_digits_vs.h](../src/duel_digits_vs.h) | 0 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/duel_manual_script.h](../src/duel_manual_script.h) | 44 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/duel_s11_rules.h](../src/duel_s11_rules.h) | 58 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/duel_window_font.h](../src/duel_window_font.h) | 0 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/expert_combat_settings.h](../src/expert_combat_settings.h) | 7 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/face_keep.h](../src/face_keep.h) | 14 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/game_addresses.h](../src/game_addresses.h) | 32 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
@@ -112,11 +119,11 @@
 | [src/name_lookup.h](../src/name_lookup.h) | 0 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_adapter.cpp](../src/native_adapter.cpp) | 50 | 설정·원작 자료 접근·전투 우선순위·스레드·연결 공통부 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_adjacency.inl](../src/native_adjacency.inl) | 11 | 공방·인접 지역 배율 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_advisor_briefing.inl](../src/native_advisor_briefing.inl) | 216 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_advisor_overlay.inl](../src/native_advisor_overlay.inl) | 80 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_advisor_briefing.inl](../src/native_advisor_briefing.inl) | 217 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_advisor_overlay.inl](../src/native_advisor_overlay.inl) | 81 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_ai_build.inl](../src/native_ai_build.inl) | 5 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_ai_core.inl](../src/native_ai_core.inl) | 30 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_ai_nodes.inl](../src/native_ai_nodes.inl) | 51 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_ai_nodes.inl](../src/native_ai_nodes.inl) | 53 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_ai_trace.inl](../src/native_ai_trace.inl) | 55 | 정책·자료구조·저장 형식·공통 보조 함수 | 진단/조건부 컴파일; 일반 기능과 구분 |
 | [src/native_ai_wall.inl](../src/native_ai_wall.inl) | 10 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_ambush.inl](../src/native_ambush.inl) | 47 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
@@ -124,13 +131,13 @@
 | [src/native_appear_batch.inl](../src/native_appear_batch.inl) | 8 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_area_index.inl](../src/native_area_index.inl) | 14 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_auto_commands.inl](../src/native_auto_commands.inl) | 38 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_awards.inl](../src/native_awards.inl) | 42 | 명품 6슬롯·창고·수여·관직·보조 저장 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_awards.inl](../src/native_awards.inl) | 43 | 명품 6슬롯·창고·수여·관직·보조 저장 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_awards_links.inl](../src/native_awards_links.inl) | 4 | 명품 6슬롯·창고·수여·관직·보조 저장 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_awards_save.inl](../src/native_awards_save.inl) | 4 | 명품 6슬롯·창고·수여·관직·보조 저장 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_battle_deaths.inl](../src/native_battle_deaths.inl) | 17 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_briefing_sources.inl](../src/native_briefing_sources.inl) | 3 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_building_destruction.inl](../src/native_building_destruction.inl) | 12 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_campaign.inl](../src/native_campaign.inl) | 78 | 지역 점령·집결·원군 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_campaign.inl](../src/native_campaign.inl) | 79 | 지역 점령·집결·원군 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_campaign_assault.inl](../src/native_campaign_assault.inl) | 5 | 지역 점령·집결·원군 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_campaign_departures.inl](../src/native_campaign_departures.inl) | 7 | 지역 점령·집결·원군 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_campaign_logistics.inl](../src/native_campaign_logistics.inl) | 5 | 지역 점령·집결·원군 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
@@ -146,7 +153,7 @@
 | [src/native_ccz_settings.inl](../src/native_ccz_settings.inl) | 10 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_ccz_sprites.inl](../src/native_ccz_sprites.inl) | 85 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_ccz_title.inl](../src/native_ccz_title.inl) | 24 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_core.inl](../src/native_core.inl) | 30 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_core.inl](../src/native_core.inl) | 33 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_corps_domestic.inl](../src/native_corps_domestic.inl) | 13 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_cost_profile.h](../src/native_cost_profile.h) | 9 | 정책·자료구조·저장 형식·공통 보조 함수 | 진단/조건부 컴파일; 일반 기능과 구분 |
 | [src/native_crash_diagnostic.inl](../src/native_crash_diagnostic.inl) | 14 | 정책·자료구조·저장 형식·공통 보조 함수 | 진단/조건부 컴파일; 일반 기능과 구분 |
@@ -157,6 +164,9 @@
 | [src/native_district_intercept_link.inl](../src/native_district_intercept_link.inl) | 5 | 플레이어 위임 군단 방침별 출진·수송 출발지 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_domestic.inl](../src/native_domestic.inl) | 10 | 균형 개발·담당관 임명·명령서 비용 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_drag_learn.inl](../src/native_drag_learn.inl) | 21 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_duel_digits.inl](../src/native_duel_digits.inl) | 74 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_duel_manual.inl](../src/native_duel_manual.inl) | 151 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_duel_multi.inl](../src/native_duel_multi.inl) | 90 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_expert_links.inl](../src/native_expert_links.inl) | 15 | 숙련 설정 UI·입력·저장 값·계수 연결 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_expert_settings.inl](../src/native_expert_settings.inl) | 54 | 숙련 설정 UI·입력·저장 값·계수 연결 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_face_keep.inl](../src/native_face_keep.inl) | 17 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
@@ -165,10 +175,10 @@
 | [src/native_fast_menu.inl](../src/native_fast_menu.inl) | 5 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_injury.inl](../src/native_injury.inl) | 23 | 부상 임무 제한·담당관 해제·본초학 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_injury_links.inl](../src/native_injury_links.inl) | 4 | 부상 임무 제한·담당관 해제·본초학 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_layout_client.inl](../src/native_layout_client.inl) | 29 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_layout_client.inl](../src/native_layout_client.inl) | 32 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_layout_core.inl](../src/native_layout_core.inl) | 47 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_layout_present.inl](../src/native_layout_present.inl) | 12 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_layout_ui.inl](../src/native_layout_ui.inl) | 88 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_layout_ui.inl](../src/native_layout_ui.inl) | 99 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_layout_wait.inl](../src/native_layout_wait.inl) | 6 | 화면자료 유지·선택 진단 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_lord_change.inl](../src/native_lord_change.inl) | 11 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_mediation_plus.inl](../src/native_mediation_plus.inl) | 24 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
@@ -195,19 +205,19 @@
 | [src/native_recruit_ui.inl](../src/native_recruit_ui.inl) | 27 | 등용 화면·알림·컴퓨터 등용 제한 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_region_officer_traits.inl](../src/native_region_officer_traits.inl) | 9 | 담당관·관련개성 표시·분산 생성 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_region_officers.inl](../src/native_region_officers.inl) | 18 | 담당관·관련개성 표시·분산 생성 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_route_hook.inl](../src/native_route_hook.inl) | 59 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_route_hook.inl](../src/native_route_hook.inl) | 73 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_save_codec.inl](../src/native_save_codec.inl) | 4 | 저장 압축 연결·검증·원작 대체 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_season_bake.inl](../src/native_season_bake.inl) | 75 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_season_probe.inl](../src/native_season_probe.inl) | 24 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_siege_guard.inl](../src/native_siege_guard.inl) | 27 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/native_siege_guard.inl](../src/native_siege_guard.inl) | 30 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_sortie.inl](../src/native_sortie.inl) | 62 | 출진 명령·편성·대열·역할·이동속도 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_sortie_links.inl](../src/native_sortie_links.inl) | 16 | 출진 명령·편성·대열·역할·이동속도 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_speed_buttons.inl](../src/native_speed_buttons.inl) | 20 | ×4/×8·호버·진행 프레임 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_split_install.inl](../src/native_split_install.inl) | 36 | DLL별 연결 소유권·검사·게시·복구 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_stat_exp.inl](../src/native_stat_exp.inl) | 9 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_tactic_memory_save.inl](../src/native_tactic_memory_save.inl) | 9 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/native_tactic_priority.inl](../src/native_tactic_priority.inl) | 26 | 시험 플레이어 출진 전법 우선순위 | 시험 기능; 설치기 기본 꺼짐 |
-| [src/native_tactic_priority_grid.inl](../src/native_tactic_priority_grid.inl) | 45 | 시험 플레이어 출진 전법 우선순위 | 시험 기능; 설치기 기본 꺼짐 |
+| [src/native_tactic_priority.inl](../src/native_tactic_priority.inl) | 23 | 시험 플레이어 출진 전법 우선순위 | 시험 기능; 설치기 기본 꺼짐 |
+| [src/native_tactic_priority_grid.inl](../src/native_tactic_priority_grid.inl) | 47 | 시험 플레이어 출진 전법 우선순위 | 시험 기능; 설치기 기본 꺼짐 |
 | [src/native_terrain_edit.inl](../src/native_terrain_edit.inl) | 16 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_terrain_edit_save.inl](../src/native_terrain_edit_save.inl) | 5 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_terrain_edit_ui.inl](../src/native_terrain_edit_ui.inl) | 15 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
@@ -222,8 +232,9 @@
 | [src/native_ui_common.inl](../src/native_ui_common.inl) | 1 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_unified_dialogs.inl](../src/native_unified_dialogs.inl) | 33 | 시험 통합 인사·검색·일괄 작업 | 시험 기능; 설치기 기본 꺼짐 |
 | [src/native_unified_overlay.inl](../src/native_unified_overlay.inl) | 26 | 시험 통합 인사·검색·일괄 작업 | 시험 기능; 설치기 기본 꺼짐 |
+| [src/native_wall_age_save.inl](../src/native_wall_age_save.inl) | 4 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/native_water_diag.inl](../src/native_water_diag.inl) | 26 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
-| [src/obstacle_policy.h](../src/obstacle_policy.h) | 20 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/obstacle_policy.h](../src/obstacle_policy.h) | 33 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/path_count.h](../src/path_count.h) | 7 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/path_fast.h](../src/path_fast.h) | 29 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/personnel_policy.h](../src/personnel_policy.h) | 8 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
@@ -268,3 +279,4 @@
 | [src/tu_terrain_api.h](../src/tu_terrain_api.h) | 0 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/tu_ui_api.h](../src/tu_ui_api.h) | 0 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
 | [src/unified_overlay_policy.h](../src/unified_overlay_policy.h) | 6 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |
+| [src/wall_age_shared.h](../src/wall_age_shared.h) | 6 | 정책·자료구조·저장 형식·공통 보조 함수 | 현재 소스 또는 그 공통 정책/보조부; 연결은 매크로·등록표로 별도 판단 |

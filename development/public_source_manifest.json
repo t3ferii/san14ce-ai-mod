@@ -1,6 +1,6 @@
 {
-  "snapshot_date": "2026-11-20",
-  "type": "v16.5 public build source",
+  "snapshot_date": "2026-11-23",
+  "type": "v16.8 public build source",
   "ai_contract_comments": 19,
   "cpp_files_token_equal": true,
   "assets_not_included": [
@@ -9,7 +9,7 @@
     "assets/ccz/preview_classes.png",
     "data/ (game-derived tables, 4계절 payload)"
   ],
-  "manifest_scope": "Every git-tracked text file of the v16.5 build plus assets/ccz metadata, as staged (LF); excludes this manifest and repository-only files",
+  "manifest_scope": "Every git-tracked text file of the v16.8 build plus assets/ccz metadata, as staged (LF); excludes this manifest and repository-only files",
   "files": [
     {
       "path": "AGENTS.md",
@@ -25,11 +25,11 @@
     },
     {
       "path": "FeatureSelect.ps1",
-      "sha256": "2f783b7ef1b24db7ae55a3e55ce598018595571d5b5b29556083beaf50580349"
+      "sha256": "647d45c386f2b2691893ef7802c83f3d41bd91fbeacd5ff71279d0cb20dddb04"
     },
     {
       "path": "README.md",
-      "sha256": "69b1a9d5500edbcf47063381fecadd230e6df641b1080ab02ba5a2a87e7a18b1"
+      "sha256": "3893b506398ea1a990c6a552c61a0f6eec1c47398e78c1d621f8d3eb43b15cd1"
     },
     {
       "path": "SplitManage.ps1",
@@ -49,11 +49,11 @@
     },
     {
       "path": "development/FUNCTION_AUDIT.md",
-      "sha256": "5d89ed0defa4bba58a1bdb70588acf35e25d392ea831544b9342d1b5b376c690"
+      "sha256": "64f7a8025ab4322cf5afe67340a67864d43a263a52fa57e6d3fa453ecefc1a12"
     },
     {
       "path": "development/FUNCTION_INDEX.csv",
-      "sha256": "1a900e178b6159551cb124cbf7a51b0bb8278f734d4c84323e57356b90079094"
+      "sha256": "16bf14a203c8a64bf14a6683bae2f3b6bcdda7fe4122b5d3492f551c59a03235"
     },
     {
       "path": "development/INSTALLER_NOTES_DRAFT.md",
@@ -109,11 +109,11 @@
     },
     {
       "path": "development/feature_deps_policy.json",
-      "sha256": "b9f09123744f9e6155fda481e15aeb9361dc2d75f6c5b9a687677cb04cff34ae"
+      "sha256": "4ca523dda804705db44ff0814ba63dd582cbb5a0be6a58b420647dc1a1affb22"
     },
     {
       "path": "development/features.json",
-      "sha256": "d9f438a1e5b04bd6c857400f597bef947ba2d60bf05b914c153f5b4b25c7f633"
+      "sha256": "8c571d3635fb7bc3f761030224a2119b3fc361a7ba8e07c393d385d706ff89af"
     },
     {
       "path": "development/fingerprint/allow-refactor-patchcore.json",
@@ -205,11 +205,11 @@
     },
     {
       "path": "development/installer_map.json",
-      "sha256": "0cd0743a8499b320b155d7f9cc5c8f782f9e2885bc3b09b593f3ece83c4bbaa1"
+      "sha256": "099168592ab2ebebbc99d4eb405938589973e23118439a71470124e607bacbd1"
     },
     {
       "path": "development/module_catalog.json",
-      "sha256": "98ebb966a072bc009eea6c501d9fcf64d0e10786b28ba2168094e145e334a63d"
+      "sha256": "9d553b1f4dc4aff7ce9654fcb5c11f2e1e39a2ba4dea092c235b0e1cc3088f58"
     },
     {
       "path": "development/module_layers.json",
@@ -217,7 +217,7 @@
     },
     {
       "path": "development/module_registry.json",
-      "sha256": "cba6af4ada9964049d2da69364eb8f82271e5d893503f3f74fabe19d93e796f9"
+      "sha256": "86a5b3ff42e008a15d18b4592dc165e2348ca75b48d4add9a243ccd25d36cd1c"
     },
     {
       "path": "development/modules/address-table/module.json",
@@ -237,7 +237,7 @@
     },
     {
       "path": "development/modules/ai/module.json",
-      "sha256": "a110baf49437bd53eaa335904104059dc69bb0c18485dde9d8382cf5ed1cb52c"
+      "sha256": "af005f18b9c4ce7cfde18b27ac7a9bdfb36f7451af55b42a262e7fde3fe84439"
     },
     {
       "path": "development/modules/ambush-combat/module.json",
@@ -277,7 +277,7 @@
     },
     {
       "path": "development/modules/ccz-sprites/module.json",
-      "sha256": "786ae18edb7ce29379073d3457d791027376ce97458b1d808fb595b76f5a5d34"
+      "sha256": "27bb47649a5fd9333702f4a02b84b498db66b04a2c96b79ec16380abfc3ab3b6"
     },
     {
       "path": "development/modules/checks/module.json",
@@ -289,11 +289,11 @@
     },
     {
       "path": "development/modules/convenience-misc/module.json",
-      "sha256": "f8d2fe6a023634a8603bd3b52e925a8a971eec0a5320e722a1583c464fc05b9b"
+      "sha256": "9b2dbbbffd25020d7d2916bdedd5f090fab37d954f04115abe4a841388dc641f"
     },
     {
       "path": "development/modules/core/module.json",
-      "sha256": "b2506c265d0abbaaa8f30c2f71547be16e995b830e4ee19c818eac525694f8ea"
+      "sha256": "7fee4e85a14c1d9509a7be4c164278c7c9c9577aa2b794c127fb7f1fb78140a0"
     },
     {
       "path": "development/modules/corps-domestic/module.json",
@@ -441,7 +441,7 @@
     },
     {
       "path": "development/modules/shared-overlay/module.json",
-      "sha256": "1772b9fe5a69a50422bde6391331ce182eab81940229058028d1c4d28ca48371"
+      "sha256": "777cfff8ab338861b840dfcb917252100459750bfb7899f91a144ca040a760e1"
     },
     {
       "path": "development/modules/small-army-campaign/module.json",
@@ -461,11 +461,11 @@
     },
     {
       "path": "development/modules/tactic-priority/module.json",
-      "sha256": "509ec15a02b349a803bf385404ce40e1c1b92d1f5ac30e35761328825b599991"
+      "sha256": "0156bf6cca39495a80c42924baa14333cbe7ab06ce51c089d250ddf3e4433bef"
     },
     {
       "path": "development/modules/terrain-edit/module.json",
-      "sha256": "7701fd33e7763542658e93c9650fa359def56bb228a6b8512fddcc41be407cc9"
+      "sha256": "0d9e466e783d06a87a7f26d106f059fa1fcd3abca39e7d352d26f183bd288d16"
     },
     {
       "path": "development/modules/terrain-profile/module.json",
@@ -484,6 +484,10 @@
       "sha256": "ce2765e6e3bedfa9ee48f63df0989f39aab358f533194cae9247a314232d10a9"
     },
     {
+      "path": "development/modules/wall-age-save/module.json",
+      "sha256": "34120a1a44c825eb0d176260ec3082ce90ca6e5b73b93d12ab7e0ce54d28371b"
+    },
+    {
       "path": "development/preparation_verification.json",
       "sha256": "be3f46ce4f588d39cfe4ef6e4a428f147bc92fc795640e9d86290c971ae96cd1"
     },
@@ -493,7 +497,7 @@
     },
     {
       "path": "development/source_audit.json",
-      "sha256": "2443deea0eed3a9b2ce80b87fe5445b694b366444982eee01f5e1363a91fa1ba"
+      "sha256": "856ca4c8f136a4d532bc5c2d800d36c3756a7409c21f6071c3fe014c550ac838"
     },
     {
       "path": "development/switch_deps_baseline.json",
@@ -505,7 +509,7 @@
     },
     {
       "path": "distribution/FeatureSelect.ps1",
-      "sha256": "2f783b7ef1b24db7ae55a3e55ce598018595571d5b5b29556083beaf50580349"
+      "sha256": "647d45c386f2b2691893ef7802c83f3d41bd91fbeacd5ff71279d0cb20dddb04"
     },
     {
       "path": "distribution/Manage.ps1",
@@ -541,15 +545,11 @@
     },
     {
       "path": "distribution/읽어주세요.txt",
-      "sha256": "9684f405cc1d8d3c4ebf1080969b70fa71ce69c67ccc54f8751f1c477509f0db"
+      "sha256": "e5552ec6e6fddb9f6405895882ff1272b5ffd100daa670319987f1f31bd6f098"
     },
     {
       "path": "docs/ADVISOR_BRIEFING.md",
-      "sha256": "0a5b554e82de67ead355608832e559bff853f22e86ee2374e6485a6763966ae7"
-    },
-    {
-      "path": "docs/AGENTS.md",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "004e6b0df6ef3e9ab67147a6f4bc057dbb16f717396f6bf9db2d735062f089e0"
     },
     {
       "path": "docs/AGENT_WORKER.md",
@@ -585,7 +585,7 @@
     },
     {
       "path": "docs/CHANGES_ALL.md",
-      "sha256": "9fc272295f4f937e4a136ce40f0eac22c1ff5d906c7233b8fd55ce89c2008bd0"
+      "sha256": "36161ade49fddc80142e21200c99cb85b874a91dcfa3cd03a0e15f1f798234ae"
     },
     {
       "path": "docs/CHECKS.md",
@@ -593,11 +593,11 @@
     },
     {
       "path": "docs/COMBAT_AI.md",
-      "sha256": "0f24e734f12db92f8709da73a93538691d2567bad24a789c812b08df1cadd087"
+      "sha256": "44dd4e4732cb23bfb67d2de6040e6b0adacb05fc52bb2fc51bdcb22d4beb26b1"
     },
     {
       "path": "docs/COMBAT_REDESIGN.md",
-      "sha256": "13fbc3a474cfa11d42035d91d55d533e6bdadf577a303d1eaf62c67e3863ac78"
+      "sha256": "9ebbd2f67645cfb9a23fedb59ae9914e273767dfc77d80543198247c9006d96e"
     },
     {
       "path": "docs/CREDITS.md",
@@ -633,7 +633,7 @@
     },
     {
       "path": "docs/FEATURE_SWITCHES.md",
-      "sha256": "c7b42fc7a3e224b2d99d7f504acbea4a96ec2e3ab6ff1db465136660680c966c"
+      "sha256": "bcce9ee1b2fc00518aec818c53cad0d25afc899ef01457ca337f4e3e12b8eb30"
     },
     {
       "path": "docs/FOLDER_LAYOUT.md",
@@ -642,10 +642,6 @@
     {
       "path": "docs/GHIDRA_PERSISTENT.md",
       "sha256": "a4d775bed4c0ed732c9da79dd25bbaf8b3ae962446851ff734f42bdee630e8e7"
-    },
-    {
-      "path": "docs/GITHUB_기능상세.md",
-      "sha256": "0287c58195e810c1873ecb93ea4d7de77af6b27ce77433c34dbf82f82582ec86"
     },
     {
       "path": "docs/GIT_WORKTREE.md",
@@ -657,15 +653,19 @@
     },
     {
       "path": "docs/HISTORY.md",
-      "sha256": "998ab6da270dc830ebd7bb4291ffc082e4413d8d0110eff744dfc6f909c7fb0f"
+      "sha256": "ee3e7affc6c9807037bbf84abc6c327cc43514b349048ddc00d78a30a93d9e0e"
     },
     {
       "path": "docs/LAYOUT_DLL_COMPAT_DESIGN.md",
-      "sha256": "77cdf0e6b0af9f35e009e3b41fb14783a3f8700634612fea125bcc25e527fd63"
+      "sha256": "7873c94ac20cf2648ac181a69a268adc00313a36fec576f5c2047c49375a79c8"
     },
     {
       "path": "docs/LAYOUT_P4_DIAG.md",
       "sha256": "8a67ec9af9e107dad48f928cba44de85a03e3402fb135a200a0ffe6a49ef4de7"
+    },
+    {
+      "path": "docs/MANUAL_DUEL.md",
+      "sha256": "211ae3c394257c1a8f13f380197e1149878dc64a2a2104c9a249aab2286488a3"
     },
     {
       "path": "docs/MODDER_COMPAT.md",
@@ -677,15 +677,15 @@
     },
     {
       "path": "docs/MODULES.md",
-      "sha256": "3b3b3b008f5e6f48a49e948008befe530a25015e6575c4e0728d8e6cfb4a6f9a"
+      "sha256": "cce9d924ce2d98b6569e664465a9e850636f9c6d8f58477d560f52fb9cdcfd5b"
     },
     {
       "path": "docs/MOD_CHANGES_VS_ORIGINAL.md",
-      "sha256": "198b194c56beaa816be55dbc2685f43fccf3a2def7e1a4404118d3f7af9bdc19"
+      "sha256": "5212aa5729139cd7d6c2415a9c19429f4dc3809ad08071709fb42e681d0d79d8"
     },
     {
       "path": "docs/MOD_DEV_LESSONS.md",
-      "sha256": "89994b55368b41c1b06aad58d61ba22bf99d2b6d954408b55851bf29742886af"
+      "sha256": "79e400fdf61d8f99d88a21271e4046992126e07c1d615c409a8b60ecb49958d9"
     },
     {
       "path": "docs/MOD_INTEROP_SPEC.md",
@@ -701,15 +701,19 @@
     },
     {
       "path": "docs/NATIVE_FUNCTIONS.md",
-      "sha256": "98e450616d2d5bf89991db775fa1f23c76cc3dc23dd79f3c3cbcfbe87a63398d"
+      "sha256": "28d7cc1ea20c077665e7c37f6c4b19dd99958fb6128c66d5f5141747ad3a6faf"
     },
     {
       "path": "docs/NEUTRAL_BANDITS.md",
       "sha256": "6c581337b7415574e7766c83ee447655252e4bd5a55346705fcc7b26f572fa06"
     },
     {
+      "path": "docs/NEUTRAL_WALL_AGE.md",
+      "sha256": "e2550e5ae7d195d509b2ffb9a89b7dff6947d970df15dfa7c11c99b2aab4cb46"
+    },
+    {
       "path": "docs/PACKAGE_INDEX.md",
-      "sha256": "b3e80ce81966d2f3f5d26f71e196e17a0954f7e275a1d3dccf930875b3e11bc5"
+      "sha256": "e5ee14cf724b5e095ddb73eecb6376c86ef635b6a79091ee1c95986932618448"
     },
     {
       "path": "docs/PATCH_RESILIENCE.md",
@@ -717,11 +721,11 @@
     },
     {
       "path": "docs/PUBLISH.md",
-      "sha256": "ef43f92eccce38a0d991e43c73c4e556d4dcb3350344696e09fa8ed15ce539be"
+      "sha256": "e7a3b3196d756ddb99439ae1a811aa070349f4167ff0869044225ab950cfb0d0"
     },
     {
       "path": "docs/README.md",
-      "sha256": "0f01cd0174bf34a173929bf0a525cbf9444f9056da732f1ef2f850afc00cfb2e"
+      "sha256": "3aceaa802970d0dc63924fc0f70bd063d6bbbf46df2010f969e953298b92849c"
     },
     {
       "path": "docs/REFACTOR_EQUIVALENCE.md",
@@ -745,7 +749,7 @@
     },
     {
       "path": "docs/SESSION_RULES.md",
-      "sha256": "01a98db8997b168a2ff7ab10b898b6d7510ba841de2b4671e68c8eafec097d5e"
+      "sha256": "1a6f6da1834b00465c7a6ea7f8ed47109a251194c9cef260bdf80ae17a002423"
     },
     {
       "path": "docs/SPEED_AND_SAVE.md",
@@ -753,15 +757,15 @@
     },
     {
       "path": "docs/START.md",
-      "sha256": "c6d000fb26c8c6ed4622d07cd737c8db9e03c48326b4849a0fb1b13a12d98aa5"
+      "sha256": "d38bab680fe17a93510095a572cfe24dfa9f1a162bf2277813fa480c4d390c54"
     },
     {
       "path": "docs/TACTIC_PRIORITY.md",
-      "sha256": "fbe310c1c8043e2445af866b594bc73e780b4a5494d5f814b6c7915ab5da299d"
+      "sha256": "ff2caea0a8c6de248f2687ff927401837915e8b9e7c474237874d8433b7b1e01"
     },
     {
       "path": "docs/TACTIC_PRIORITY_V2_PLAN.md",
-      "sha256": "8b2b48458bd016492846953b14c62b1fb8b153232b3fc86f540a4e6472684c8f"
+      "sha256": "6150b34048b2be2f52fc4e7449f5a7ddb69ce6f0f71ba7fe1cc8a8c34768adbe"
     },
     {
       "path": "docs/TRAIT_HOVER_TACTIC_TEXT.md",
@@ -781,7 +785,7 @@
     },
     {
       "path": "docs/UI_RESOURCE_LIFECYCLE.md",
-      "sha256": "b1356a0aeea2467f2c9fa5e5f9693db7378754c711f4df0640775c2f63b8e0ec"
+      "sha256": "3f7b6590a333e889edc43ab7730f9a06f0ee2964dcad6a317d0abee560f1ea4c"
     },
     {
       "path": "docs/UNIFIED_PERSONNEL.md",
@@ -837,7 +841,7 @@
     },
     {
       "path": "installer/InstallerGui.cs",
-      "sha256": "f904e3845030fe6cc96b1e222ced64e708bd02354fe5d9f6536ad5bdd34c4942"
+      "sha256": "723686711e0fc419e06b9770386c00153ccf9113ad7a7dbf4f848654c023f2d3"
     },
     {
       "path": "installer/app.manifest",
@@ -865,7 +869,7 @@
     },
     {
       "path": "package_files.txt",
-      "sha256": "9528cd30fa991b67f05de2e33d15e9cd5668c189dee5d78db51cb309726c603a"
+      "sha256": "8d1bcd65f29d84210341d838ac62fd54ed6e5a6d1b2fb6a70f890e0724d9801c"
     },
     {
       "path": "src/advisor_ambush_bridge.h",
@@ -957,7 +961,7 @@
     },
     {
       "path": "src/ccz_bands.inl",
-      "sha256": "6d9ced5b2309a7000987cd8fb7fb4be327879013244db304d1ca47a88e9099af"
+      "sha256": "ccfafd8f75d952317c0c3962e5e982f5b6c12af4b1ffce3b098afec2d03df7ec"
     },
     {
       "path": "src/ccz_catalog.h",
@@ -965,11 +969,11 @@
     },
     {
       "path": "src/ccz_module.cpp",
-      "sha256": "698edae0d4ef2f9c019cae29cec9d4af1956149111482f3a1278f34d25a4433c"
+      "sha256": "7ac7a4ea9770f745224ac1cf5e0ce9140a32fef9a40ddd99bafc9195b1ffd6a8"
     },
     {
       "path": "src/ccz_module_api.h",
-      "sha256": "8c732c3a8ff04760e31e731930831e5ad73cfa242f014df4747061ecc843b383"
+      "sha256": "b1cc835bba7a9c3487af7627a28fd2ba865954bda9cc7a407ff42c80f494fe6b"
     },
     {
       "path": "src/ccz_portrait.h",
@@ -1037,7 +1041,7 @@
     },
     {
       "path": "src/core_services.h",
-      "sha256": "784618ea0d906083d2ec094aff2b4b83a0d6dfe50050c88af385a5271b3f3e3c"
+      "sha256": "6e1bec5c7f02b42ba1592882a4a11d4be7e8cd9930fb681b92b2ffd73a046e95"
     },
     {
       "path": "src/damage_preview.h",
@@ -1056,6 +1060,34 @@
       "sha256": "462245c3a83704c2122c571a7f1f99de2b9b546369737c2b9e157fa398ed67f9"
     },
     {
+      "path": "src/duel_digits.hlsl",
+      "sha256": "acc5a84587bc2c3553b01403c83f2e62a0127250fc6c5ec486351497a6ae3c6b"
+    },
+    {
+      "path": "src/duel_digits_font.h",
+      "sha256": "e9ce01a77a6c033caba29f00133c50892af21e514050d87944b0b4c28e8abd45"
+    },
+    {
+      "path": "src/duel_digits_ps.h",
+      "sha256": "8a5c6e29289984b5bb09e892652047c86e66916a5f9f6b05088bd52bba2bc023"
+    },
+    {
+      "path": "src/duel_digits_vs.h",
+      "sha256": "b6434e2f672a4461f5a62276a1457bc4a43c78f1f46da288ca24e890b0804815"
+    },
+    {
+      "path": "src/duel_manual_script.h",
+      "sha256": "369631440952d9650073f4d9be7bfc9acc217710fd9d57c559f8445c68b2526e"
+    },
+    {
+      "path": "src/duel_s11_rules.h",
+      "sha256": "c66fc6712bed0bbf4c972fb24f65b97c3d0218ffcad66fc1b739daf569ff559e"
+    },
+    {
+      "path": "src/duel_window_font.h",
+      "sha256": "5b7e904dd89d86ec4cafe11526995cfd5e4c92de02366bf77ba996e687bf7d21"
+    },
+    {
       "path": "src/expert_combat_settings.h",
       "sha256": "43df80a64db481aa1e6074d5edb2e32c9d667ef52c2f32e7774b9ddb1670938b"
     },
@@ -1069,7 +1101,7 @@
     },
     {
       "path": "src/game_addresses_data.inl",
-      "sha256": "ffcdc48e4e24d8a6ac33bf35fdbb27685ccb41462e1d267f5e5e6a8ad81ab2ad"
+      "sha256": "5af054af2fd90b8902c64dd776a2980319a926456773426caf18b5108fca5071"
     },
     {
       "path": "src/game_addresses_gates.inl",
@@ -1097,7 +1129,7 @@
     },
     {
       "path": "src/layout_api.h",
-      "sha256": "1907d59be8f19541d49c532ab2234e490665de15375aee596cef23e039204043"
+      "sha256": "2c0d81fe15ed37e1b451cdeca462edbc6cbafb937eaba63e158f3a4a4cfe190b"
     },
     {
       "path": "src/layout_keep_policy.h",
@@ -1105,11 +1137,11 @@
     },
     {
       "path": "src/layout_main.cpp",
-      "sha256": "e8c6bc30fa0a72261c711ef2666979ee9c365cbea292586a9af31ee1347db57b"
+      "sha256": "475e942bb27660344b0eeb23c21ad786dc5fed718db4342b3c06dd4888549bbf"
     },
     {
       "path": "src/layout_registry.h",
-      "sha256": "3c350c8e4fa405668f9508ded0196cb0159e1fe33d1adf5da4f2fe7e57908165"
+      "sha256": "a2ad5033944a4b34a59bf99da5501b5f389e4719d8b5e9de8475eaa5b89ff71d"
     },
     {
       "path": "src/log_append.h",
@@ -1137,7 +1169,7 @@
     },
     {
       "path": "src/module_flags.h",
-      "sha256": "07887e1a1366fbe71c280d618db1a847611e6861bde4d185a4c73d5ae5a7f19c"
+      "sha256": "309627dd32c60a7b60e0ca96155ce3bd7de8db892bfa2e72c36bafebd133e665"
     },
     {
       "path": "src/module_loader.cpp",
@@ -1145,7 +1177,7 @@
     },
     {
       "path": "src/module_overlay_subscriptions.inl",
-      "sha256": "f9ea540df7caf3974e826e52431d1638a5a4a5581f77405e6d31cb14a0c3af54"
+      "sha256": "8eb1e07930d3c1b29dc6e03a553c4c49763438676906c2b96c80d24c2cee4231"
     },
     {
       "path": "src/module_pointers.inl",
@@ -1153,7 +1185,7 @@
     },
     {
       "path": "src/module_table_convenience.inl",
-      "sha256": "cceabb172b8f6cdcc6b545d1f3bd462c6b66023a2778dc7e31b61713fdd57086"
+      "sha256": "72060eec660689ed34fc17e6c910acf795d29601e883053714c8fa4709eb89f0"
     },
     {
       "path": "src/module_unity.inl",
@@ -1165,11 +1197,11 @@
     },
     {
       "path": "src/module_unity_convenience.inl",
-      "sha256": "fe85efbb163b449d3639a2dd36172f02cad0b9a925717c21c5cdc399c16f7100"
+      "sha256": "1d9a066a56a1c25df7aa581c44a3ab96f8327190fd19c60b5c69dcdf8a2de160"
     },
     {
       "path": "src/module_unity_fixture.inl",
-      "sha256": "9cec00ad145b0d9721ad22fee4fd05a034382db5d70b5e358cde9bb679d52d32"
+      "sha256": "51d9127773452f17f926fa3bfe95a16877ab975e1ebf69f1826864417e2ced05"
     },
     {
       "path": "src/name_lookup.h",
@@ -1185,11 +1217,11 @@
     },
     {
       "path": "src/native_advisor_briefing.inl",
-      "sha256": "d5eb4c54a6dd1f7ced3c169d685699e8f66e2d66f5d2d7f1e6b709e785664c68"
+      "sha256": "da4e387c129a7430b1dc2f0e3a9684153b2b1b598216477b0222466be6578540"
     },
     {
       "path": "src/native_advisor_overlay.inl",
-      "sha256": "c015ed1049ba13e923fb19e1242379c7432bd24b55e4a51e84f6d044c0dcbef1"
+      "sha256": "9fd4de67346b9fca9abd54d58d3ca33b968ec4d8f1b47a6ae14eb0c1cc43a184"
     },
     {
       "path": "src/native_ai_build.inl",
@@ -1197,11 +1229,11 @@
     },
     {
       "path": "src/native_ai_core.inl",
-      "sha256": "3cd2aca120bdeef4b4f5bc47672e55e2addf530ed6e21fc95134f2fad1f364ac"
+      "sha256": "e52926d7aeed5cd40d7cb5e79c435dd31d7448057c1580407d407a4416f45f2d"
     },
     {
       "path": "src/native_ai_nodes.inl",
-      "sha256": "c3bf0fffb0dbf5e378feac6357ebbfb109c34ea9ce90c73482da1d1612078c91"
+      "sha256": "5b6f9cb365adb96fc79b88fe2deb58112a699c760dc65f0d0528bec2c2593b38"
     },
     {
       "path": "src/native_ai_trace.inl",
@@ -1209,7 +1241,7 @@
     },
     {
       "path": "src/native_ai_wall.inl",
-      "sha256": "db7c50e543962c8a2b3502b13757d121e5f184d5791cfda09954acba05fd062b"
+      "sha256": "8de960366254a820d49497457f4fb8481491ce4b05b1cfec375fdd0ff72f5c64"
     },
     {
       "path": "src/native_ambush.inl",
@@ -1233,7 +1265,7 @@
     },
     {
       "path": "src/native_awards.inl",
-      "sha256": "9d95c6b1563d88454b67217e111b9cc0863a87eaa40f8d46fec15a6c4cd34851"
+      "sha256": "ef9b90df82bf373b1d78f323cd13c69819f7aa3f8d38e48bc8c2c0d463a1e9f0"
     },
     {
       "path": "src/native_awards_links.inl",
@@ -1257,7 +1289,7 @@
     },
     {
       "path": "src/native_campaign.inl",
-      "sha256": "bcaa8b9b6709dfb5dbce979385c8cfe54d6a76687d3be3f34abe80fac713d5bc"
+      "sha256": "45dd4315e4f3fc1a2d96a0fa9059ec00667d095928d9b023837d7aaadeb6683c"
     },
     {
       "path": "src/native_campaign_assault.inl",
@@ -1265,7 +1297,7 @@
     },
     {
       "path": "src/native_campaign_departures.inl",
-      "sha256": "14e489e3ad7e8c8638de9128cae0c528e3f173665c5fb049aa31b999458d37cc"
+      "sha256": "a6c23a060d54220b3b36cf800ae8d447dd25277a186a6a88598ccf40d0fc1421"
     },
     {
       "path": "src/native_campaign_logistics.inl",
@@ -1293,11 +1325,11 @@
     },
     {
       "path": "src/native_ccz_bands.inl",
-      "sha256": "4205272510d09fb8233a07f2248af10bd94d53034be28e32bbb52f51b2977115"
+      "sha256": "5ec83be0737d82df04f9d39628dfd1053fa1b0ccaac04f2d7032073395ec249a"
     },
     {
       "path": "src/native_ccz_bridge.inl",
-      "sha256": "a61baf2c043e8f78891a83d870d35483be30e682bc0eafe90a26ee48a8871794"
+      "sha256": "fb39fa67993e2e2f58050a4e6346321fda2fb44363084377674583e70294c101"
     },
     {
       "path": "src/native_ccz_editor.inl",
@@ -1321,11 +1353,11 @@
     },
     {
       "path": "src/native_core.inl",
-      "sha256": "568a1994b3c66f7ede4caba2ef8e4e284972509743ab9eaca13c2bb36f2c6e5e"
+      "sha256": "927adbfca4c245bd8b7e35cd066a634f146ae75ef2dc80a3ca30716b4919ebfa"
     },
     {
       "path": "src/native_corps_domestic.inl",
-      "sha256": "13810c4abee386ca8e8f626f3a6a42eb98d6a221a40c0f5605893689b4e170bd"
+      "sha256": "d9a3dabff331cb2e7ea760c2703c1fbdb40643441a4b8ae115cb81c4b4305eb1"
     },
     {
       "path": "src/native_cost_profile.h",
@@ -1357,11 +1389,23 @@
     },
     {
       "path": "src/native_domestic.inl",
-      "sha256": "e351f4dc5ce999810735d87c2422391b5a152c724adaa14eb515d2aea5198996"
+      "sha256": "06eee8e104eb242c7a04638d9bcd98c58236b86f87c053d8f2b6f6b153deaf6b"
     },
     {
       "path": "src/native_drag_learn.inl",
       "sha256": "a01dd3326799824eed05266fee6747db5a8998875ed9946427bef240e3f6edc6"
+    },
+    {
+      "path": "src/native_duel_digits.inl",
+      "sha256": "abdbcb4de31963e3d9fe6068eb61d0d87c843b729982f0d6af70b786045711e9"
+    },
+    {
+      "path": "src/native_duel_manual.inl",
+      "sha256": "e74c10c55ecdf50a22377fa02d2ae1f3f4eb59c39bde3ad7bb049a37b9fc2bdc"
+    },
+    {
+      "path": "src/native_duel_multi.inl",
+      "sha256": "d461d14451500e597c774870a44923a61c73034a2b7f8cccdbcf178239f9cfda"
     },
     {
       "path": "src/native_expert_links.inl",
@@ -1389,7 +1433,7 @@
     },
     {
       "path": "src/native_injury.inl",
-      "sha256": "5a75b47693f5a68ad335aadc4bc18b26d2f270cf3585854cd6aba75771a02ad9"
+      "sha256": "e9150eed4f40721c50c49cc0d6b6c6a84452ef982183459d7ac2c0b735a81923"
     },
     {
       "path": "src/native_injury_links.inl",
@@ -1397,7 +1441,7 @@
     },
     {
       "path": "src/native_layout_client.inl",
-      "sha256": "88dc6c358a347e91882de3b8d2e718d5a71d2913d68104352c825d1e47d414c4"
+      "sha256": "b20ed824ed146905d443fa33dcf4c1dadfdcad49f66773c6ce5b42d3196341e3"
     },
     {
       "path": "src/native_layout_core.inl",
@@ -1409,7 +1453,7 @@
     },
     {
       "path": "src/native_layout_ui.inl",
-      "sha256": "7f59fabe61216bcc63600d5afd070433c6e5b9e56427491de43404edd2e444b2"
+      "sha256": "16a312c4770ef190462e9d61848ac0b40f6648568475944480933a0aa84fd54c"
     },
     {
       "path": "src/native_layout_wait.inl",
@@ -1433,7 +1477,7 @@
     },
     {
       "path": "src/native_merit_save.inl",
-      "sha256": "64cfc20014aeb455558b276513ab2598d7a32ff73916c7b00056fe72c7cca111"
+      "sha256": "dfa7eef4e263e563d7e0f1c9948bc2dfb46fd378ee600496e616284b17cbaff4"
     },
     {
       "path": "src/native_merit_scroll.inl",
@@ -1453,7 +1497,7 @@
     },
     {
       "path": "src/native_obstacles.inl",
-      "sha256": "f0352692e6364179b6b80e04fb5e5a3ee11662ff9a4418ab85069b9276dfce62"
+      "sha256": "0fa440ed0de222e0d14c377e20d6b7531ff3fd6b88ff7d0d9c40be97802b6f2c"
     },
     {
       "path": "src/native_occupy_fast.inl",
@@ -1477,7 +1521,7 @@
     },
     {
       "path": "src/native_personnel.inl",
-      "sha256": "0e10f9388bd51ea148167bba1642f91769c5b72677834d1d70da9f65f38f6a72"
+      "sha256": "71a739d1d5f80730703ca7a9f445d97e2cce90663aa38a03ead06ca3272c2ffe"
     },
     {
       "path": "src/native_personnel_batch.inl",
@@ -1517,7 +1561,7 @@
     },
     {
       "path": "src/native_route_hook.inl",
-      "sha256": "95e98e051661382b373638dc8d3361f25d5561c31cbdf2765ef114317649a7b2"
+      "sha256": "0858b562c36a56153b84ea894345826f99eb05b9b73a3f2aeecdbbda10a71673"
     },
     {
       "path": "src/native_save_codec.inl",
@@ -1533,11 +1577,11 @@
     },
     {
       "path": "src/native_siege_guard.inl",
-      "sha256": "cab3468658c42ecc7d294168179fda80b97c5908b4df3bbee21a37ae59be941a"
+      "sha256": "6a02ad414be674956f5ec08b0d59e8671566a1826762a3d98077066fcab703a1"
     },
     {
       "path": "src/native_sortie.inl",
-      "sha256": "84810f26990a82e159008ef53253bb29b762ddde6a5d9fc7c039289702b45ef4"
+      "sha256": "03d0ea0a96d23c6a644f157b8bb4fff88721e3cb6199b8170182281dfb726223"
     },
     {
       "path": "src/native_sortie_links.inl",
@@ -1549,7 +1593,7 @@
     },
     {
       "path": "src/native_split_install.inl",
-      "sha256": "8c55c43b9494b37ba6cdc2645ab1c7a2bd175c45b414c6ba4a3cbf1cdf649780"
+      "sha256": "6ebdf726c7633aa3c808abc17c1e2738d0c9c9f10b9ab891ef0447e4f49f4710"
     },
     {
       "path": "src/native_stat_exp.inl",
@@ -1561,11 +1605,11 @@
     },
     {
       "path": "src/native_tactic_priority.inl",
-      "sha256": "36d72c426e01053da67c747a81eec4046a7be6e08b5b75c429edc4bf106eb9c3"
+      "sha256": "972e369256a9fdb6c05d79c1f11fffba107dd2c73e1e1894d10cbb85fc6b5dec"
     },
     {
       "path": "src/native_tactic_priority_grid.inl",
-      "sha256": "59c6215b80f891a2ee5f9809f71c15e402be0f9b27cc7404262b10a1766d3bfa"
+      "sha256": "01e20949254a22c327315675a3bf5e9011bea98e22112ffbfc0d7eba5bc1c0eb"
     },
     {
       "path": "src/native_terrain_edit.inl",
@@ -1624,12 +1668,16 @@
       "sha256": "791e5e012d2f6762a8b9f88cdb28288eebe4f20791a9d835a14ebd33d22429a1"
     },
     {
+      "path": "src/native_wall_age_save.inl",
+      "sha256": "5314f73836544c777fb1ebe857cde4e4d677b1b9fc30f13c25e8ca4de5271464"
+    },
+    {
       "path": "src/native_water_diag.inl",
       "sha256": "b348ad8ca260a51351f705745a799a56065d0280f292c0a7706d2766a7a31865"
     },
     {
       "path": "src/obstacle_policy.h",
-      "sha256": "6d771eaa0c76cbc7c6ab16e61c532c2a51dceb40fae2dca9e20c9a9431736e12"
+      "sha256": "55b05dd5181f568f0c5e1a343d890d7c655ca54d936eb1780cfbd4a99dcb83e2"
     },
     {
       "path": "src/path_count.h",
@@ -1808,6 +1856,10 @@
       "sha256": "b2902a42b3c4b16357cfb771f25e87133bf433dada1fc5e6bee6228492224542"
     },
     {
+      "path": "src/wall_age_shared.h",
+      "sha256": "708ea992b7d9ae5dd059ae257f518621bed1f92c04f785096c446b2922025847"
+    },
+    {
       "path": "tests/addr_resolver_fixture.cpp",
       "sha256": "56f517c69cca6f2d89cce6bea108061c31f8978067b1f25c485bde26fa15c275"
     },
@@ -1817,11 +1869,11 @@
     },
     {
       "path": "tests/advisor_briefing_fixture.cpp",
-      "sha256": "12d203984152364a73e921bb9dd4c3101345ff0a0772368e6b03e794e21aacc3"
+      "sha256": "e1fb715e410d0b87e9191dd98a0e75c477aa72e613846da84296dbb192d14c80"
     },
     {
       "path": "tests/advisor_overlay_fixture.cpp",
-      "sha256": "4d7199ba9b50583c609775ca17c7af81207579b0c94fe71353b032c9922f8dd2"
+      "sha256": "0cebd9eacaed9014f64ea4015f1d3abf883e955923ff11a7bb8120e4ec6106fc"
     },
     {
       "path": "tests/ai_trace_fixture.cpp",
@@ -1841,7 +1893,7 @@
     },
     {
       "path": "tests/awards_native_fixture.cpp",
-      "sha256": "f9e7375360491cbc80006f999c3da3b1238377654b24064366679a905050c8e2"
+      "sha256": "b6bb5832151ace451865087d55270c37df6b6686fe9e6825a2f4c1668a05193b"
     },
     {
       "path": "tests/battle_deaths_fixture.cpp",
@@ -1889,7 +1941,7 @@
     },
     {
       "path": "tests/ccz_battle_fixture.cpp",
-      "sha256": "d5e77d4f19774ea25df62acf8b6c4179d539eeca3dda3b1e0ff0ade2c4238e3c"
+      "sha256": "e57eb508ed9326e6d5f514aa74a5e5256a0b831619e0353707cabf0376c83b53"
     },
     {
       "path": "tests/ccz_native_editor_build.ps1",
@@ -1925,7 +1977,7 @@
     },
     {
       "path": "tests/core_services_fixture.cpp",
-      "sha256": "8e1856e1e52add357eddee6fcaf49210bd2d14509f8df39fea52ba289d394993"
+      "sha256": "e952549b5fcc48d31a647276d7762613528b99b04c8813742af2961415e479d8"
     },
     {
       "path": "tests/cost_profile_fixture.cpp",
@@ -1945,7 +1997,7 @@
     },
     {
       "path": "tests/data/feature_order_7b343e3.txt",
-      "sha256": "4e28a33130a296d989cb01144c1cfcca66d8c91b86b9651e7e6f4ed5ddbda19b"
+      "sha256": "06a26580adbef279ab0ffcc47a8eb40ae46dc5d774e119efaa4d05e517d9df74"
     },
     {
       "path": "tests/diplomacy_intel_fixture.cpp",
@@ -1958,6 +2010,14 @@
     {
       "path": "tests/domestic_fixture.inl",
       "sha256": "04f458d2feb23f8d047aae8a64681f8199b806411cb434723c2cfb31429723f8"
+    },
+    {
+      "path": "tests/duel_manual_fixture.cpp",
+      "sha256": "e106da738611d4e077628048fc169722bb32a3938536e284e86d8b810907aaf2"
+    },
+    {
+      "path": "tests/duel_s11_fixture.cpp",
+      "sha256": "1a3ade9258eabca2b76a9cdf67a6936c08a23926e54a9d7766bcfc88def6fbda"
     },
     {
       "path": "tests/expert_settings_fixture.inl",
@@ -1981,7 +2041,7 @@
     },
     {
       "path": "tests/injury_fixture.inl",
-      "sha256": "a4299c77ee028aadbf535cd6a2da5e5b6cd66c2a9ca8d0261da5df6235ae0bb2"
+      "sha256": "958d2a34235bdc1014da5c72bb52412a62a0673cfaad62372fbc3b8828989d62"
     },
     {
       "path": "tests/installer_atomic_fixture.ps1",
@@ -2001,7 +2061,7 @@
     },
     {
       "path": "tests/layout_p3_fixture.cpp",
-      "sha256": "166f0f61b4eb5950f555eed938a49faa188cdf59843ec883ea6738d396597442"
+      "sha256": "6de272ab408fe70191325bf4a1326d8d35c79a8dbf2ee12f1a8f243704bcca74"
     },
     {
       "path": "tests/layout_p4_fixture.cpp",
@@ -2049,7 +2109,7 @@
     },
     {
       "path": "tests/native_fixture.cpp",
-      "sha256": "642c6262a39d9b28e83ea8f58599a707216d782faa89a711a7ef85c83e00a596"
+      "sha256": "ceacf5d1fcfaa63d7ed09011cf6be23bf0473496389d650bd471ae2cc0f7a09c"
     },
     {
       "path": "tests/native_install_fixture.inl",
@@ -2061,7 +2121,7 @@
     },
     {
       "path": "tests/obstacle_fixture.inl",
-      "sha256": "f8720c508ee183e9ce35ed583aa03f2b1e05ac774fe9eef3d17685f9374e5d67"
+      "sha256": "dc22299a4013c96e96f447e6c4fa5164773fe4c2533a96577102054c2358568e"
     },
     {
       "path": "tests/path_count_fixture.cpp",
@@ -2117,7 +2177,7 @@
     },
     {
       "path": "tests/save_host_fixture.cpp",
-      "sha256": "15ad259ecf12ae7fab5a2782f6c800f00dee4013f40cd9a823cd089ea21db42c"
+      "sha256": "39c26b7225157af4b4eea646b9cbf9afdbecf0e765b59e6b3a933f2f854d5ad0"
     },
     {
       "path": "tests/season_bake_fixture.cpp",
@@ -2129,7 +2189,7 @@
     },
     {
       "path": "tests/shared_overlay_fixture.cpp",
-      "sha256": "47ff92b6713c01f7df65fef6703bd7e652bd70c42e6c16b84c67e169540a770f"
+      "sha256": "a1495dbe05f41b0e8373481b3c912f727783fa08679e7f1e7708efc3abe63c76"
     },
     {
       "path": "tests/sortie_fixture.inl",
@@ -2209,7 +2269,7 @@
     },
     {
       "path": "tests/terrain_render_overlay_fixture.cpp",
-      "sha256": "5794f8da507c95b56e3cf4b493ba34967b591860a1c98f54406faa3e09a20785"
+      "sha256": "ee11adfd34e48562fac3ceca38ffa58746e5a0930f4bbfa62f3d8d6be6621e80"
     },
     {
       "path": "tests/terrain_render_r2_fixture.cpp",
@@ -2293,11 +2353,11 @@
     },
     {
       "path": "tests/verify_ccz_settings.py",
-      "sha256": "0ac2932873773cc77317cc5d789103da6f347f0420178d2b872c47cab3c925b4"
+      "sha256": "f29302934f5bdbe4080c230cbeebbc1a1070d2294a148f4c3acd2a4f8bb4b522"
     },
     {
       "path": "tests/verify_ccz_sprites.py",
-      "sha256": "fb2a1a73082d289fcaf4feaab9157af7ab27a70bfb763d7d643db5d0ad4a113b"
+      "sha256": "de71a42d4facb14c515d9e6b0e4e011806be095915b77c88b10fcd5d78bdf052"
     },
     {
       "path": "tests/verify_check_manifest.py",
@@ -2341,7 +2401,7 @@
     },
     {
       "path": "tests/verify_installer_gui.py",
-      "sha256": "a104e32b6110a23ca6d2b2aafd0aa69f8284429b0333214850d443c02b8cedfe"
+      "sha256": "706ed1cbfdac3d5ded18ddc0320a74c483aa3441d119ae7b4dd9519ea47aa7b9"
     },
     {
       "path": "tests/verify_installer_layout.ps1",
@@ -2357,7 +2417,7 @@
     },
     {
       "path": "tests/verify_layout_registry.py",
-      "sha256": "eed8781db5aeca9b6ac8e4a035aca8f994c3cd6f63cec243f8dae59d62625ebb"
+      "sha256": "920bba850c3a7f684790e90f5f11c4c803fcde96f43cfde66bc66ecd400900b9"
     },
     {
       "path": "tests/verify_layout_restore.ps1",
@@ -2413,7 +2473,7 @@
     },
     {
       "path": "tests/verify_split_exports.py",
-      "sha256": "bde5fc9dde5b3d45af36f97e6a8d9e8f502039c1ef452be64bd3292a443df3d9"
+      "sha256": "e36cd03783084d2acb3e15d8481c73ca77e6575408e68ddf5e0e26ef328ebc96"
     },
     {
       "path": "tests/verify_split_install_failure.py",
@@ -2425,7 +2485,7 @@
     },
     {
       "path": "tests/verify_traits9_save.py",
-      "sha256": "224533af472ba06f86193183f5e496381f59dbdb036c0a8c3d747b3b71305fc0"
+      "sha256": "82baa812cb753c5f17a507963e5dbbc422b93801738e42d802f0e61d427aa939"
     },
     {
       "path": "tests/water_diag_build.ps1",
@@ -2469,7 +2529,7 @@
     },
     {
       "path": "tools/audit_current_source.py",
-      "sha256": "a9ce9c9a446f8c7b8d5a21ae6a404d120d842cc9954fe6a99cd3c11ff0c5d213"
+      "sha256": "d1b0065e83902024ba6cb7d2599448da69692678ee41127e9e2e0e33c5942b6a"
     },
     {
       "path": "tools/audit_feature_settings.py",
@@ -2522,6 +2582,14 @@
     {
       "path": "tools/build_diplomacy_intel_fixture.ps1",
       "sha256": "4f1f25fea560948f90f2763618b3c9cb2501194574db5fd2cd591df9765cf622"
+    },
+    {
+      "path": "tools/build_duel_manual_fixture.ps1",
+      "sha256": "2551c4a6130a8f1127c0d60db3e4665e77a537855ba9a076e0267d1e73fc1c9a"
+    },
+    {
+      "path": "tools/build_duel_s11_fixture.ps1",
+      "sha256": "7c59a67173d298b1e38fbd1685669321975bc7cc1547d0ca57d45a5cb86d75db"
     },
     {
       "path": "tools/build_face_keep_fixture.ps1",
@@ -2581,7 +2649,7 @@
     },
     {
       "path": "tools/build_share.py",
-      "sha256": "3f7cdb45ff4093fd788559cfc6773e3483d24a4f436e30f9df46999b037f57ed"
+      "sha256": "01ee3248f1f0465266939078d9ef3e71ec826b5bd4464d3a1969a38d22b38bea"
     },
     {
       "path": "tools/build_shared_overlay_fixture.ps1",
@@ -2684,6 +2752,10 @@
       "sha256": "32d80fb83d77ea34c1f2ad98c7fb5d8e191a5c157111210c618977fde0dee95c"
     },
     {
+      "path": "tools/gen_duel_window_text.ps1",
+      "sha256": "8d9b392a4469857c0259bb62762425097b5cf9a8de302c40c13e438f4526cf93"
+    },
+    {
       "path": "tools/gen_emit.py",
       "sha256": "4bc1fbb8fbeb1bc499491222f741e7125c0f785bef85f1b3c05ba81cc78b7811"
     },
@@ -2761,7 +2833,7 @@
     },
     {
       "path": "tools/install_local.py",
-      "sha256": "82dad0f739e2d0e666e260342ce8bc5370d854b7658415d21bef64b6a9fa7bbc"
+      "sha256": "e32381d30224cdebce3dc811481472d98b5570dcc0c54001b20a911161efdc3e"
     },
     {
       "path": "tools/installer_preflight.py",
@@ -2833,7 +2905,7 @@
     },
     {
       "path": "tools/prepare_public_release.py",
-      "sha256": "3c628bcf845bd325841fff17235c9b251c4d48be80dec8501879aec30843f770"
+      "sha256": "312d63b09bf0b08e61f700d1bebca9d500719adc95ba84a96628a4390f40ae48"
     },
     {
       "path": "tools/reference_index.py",
@@ -2841,7 +2913,7 @@
     },
     {
       "path": "tools/release_features.py",
-      "sha256": "37469bd2e7ee6c522bd19dcd29dce14ec3bf2f5068e6795131e713dc7a729177"
+      "sha256": "058c0144ec37867dbd7c5433cc12f499084940339e63072e615e4e876395328e"
     },
     {
       "path": "tools/render_stall_report.py",

@@ -22,7 +22,7 @@ NAMES={'loader':'dinput8.dll','combat':'SAN14_CombatAI.dll','convenience':'SAN14
 # 2026-11-05 user exception: SAN14_Layout.dll (5th DLL) and the dinput8 loader (loads Layout first) are modules too.
 # 'loader' = dinput8.dll only; it is bundled with 'layout' in practice (loader + layout + the three feature DLLs = all five).
 EXPORTS={'loader':['DirectInput8Create'],'layout':['SAN14LayoutGetApi','SAN14LayoutInitialize','SAN14LayoutPublish'],
-         'combat':['AIInitialize','SAN14CombatAmbush','SAN14CombatGetApi','SAN14CombatSeasonMobility','SAN14CombatTraceStep'],
+         'combat':['AIInitialize','SAN14CombatAmbush','SAN14CombatGetApi','SAN14CombatSeasonMobility','SAN14CombatTraceStep','SAN14CombatWallAge'],
          'convenience':['AIInitialize','SAN14ConvenienceInitialize'],'ccz':['SAN14CczGetApi'],'modpack':['SAN14ModPackGetApi']}
 DIAG_EXPORTS={'ccz':['SAN14CczDiagCrumbs']}   # diagnostic-only crash breadcrumb export (2026-11-04)
 def exports_ok(found,key): return found==EXPORTS[key] or sorted(found)==sorted(EXPORTS[key]+DIAG_EXPORTS.get(key,[]))

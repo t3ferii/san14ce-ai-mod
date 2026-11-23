@@ -144,8 +144,9 @@ int main() {
             {"speed_buttons",4},{"lord_change",2},{"region_officers",6},{"ccz_title",4},{"ccz_sprites",1},{"layout_wait",3},{"layout_keep_wrap",1},{"face_keep_portrait",4},
             {"fast_menu",3},{"stat_exp",31},{"dispatch_days",1},{"damage_preview",2},{"expert_links",28},{"unified_dialogs",3},
             {"advisor_hud",2},{"recruit_ui",4},{"merit_save",2},{"merit_prisoner",1},{"merit",2},{"start_guard",1},
-            {"collab",2},{"scenery",2},{"domestic_selection",2},{"mediation_plus",7},{"trait_hover",156},{"battle_deaths",4},{"tactic_priority",4},{"drag_learn",1},{"auto_buttons",4},{"advisor_briefing",20},
-            {"traits9_screens",82}};   // local236 개성 9칸 범위 B 66 + local237 무장 상세 두 탭 16
+            {"collab",2},{"scenery",2},{"domestic_selection",2},{"mediation_plus",7},{"trait_hover",156},{"battle_deaths",4},{"tactic_priority",3},{"drag_learn",1},{"auto_buttons",4},{"advisor_briefing",20},
+            {"traits9_screens",82},    // local236 개성 9칸 범위 B 66 + local237 무장 상세 두 탭 16
+            {"duel_multi",1}};         // local283 다중 일기토 아래 체력바의 UI 소유 행(82AF0F)
         unsigned total=0;
         for(const auto &e:expected) {check(rows_of(e.owner)==e.rows,e.owner);total+=e.rows;}
         check(total==layout_row_count,"every registry row belongs to a known owner");
@@ -172,7 +173,7 @@ int main() {
             check(row.rva+8<=kImage && row.original<kImage,"row inside the image");
         }
         check(whitelist==6+1+1+1,"whitelist rows: 1473F50, six region officer slots, ccz_sprites, merit 1413600");
-        check(layout_row_count==389,"registry holds 389 manager rows (local237 +16 traits9_screens detail tabs; local236 +66 traits9_screens; interop S7 +20 advisor_briefing state slots; local166 +1 start_guard; local105 +2 normal-mode frame and 확인; local102 +10 normal-mode rows; U35 local29 +4 face_keep_portrait); (local17: +3 expert_ingame, +1 drag_learn, +4 auto_buttons; U35 +1 layout_keep_wrap; 31 stat_exp + 66 others + 156 trait_hover + 4 battle_deaths + 4 tactic_priority) beside 13 traits9 patches and 70E9C1");
+        check(layout_row_count==389,"registry holds 389 manager rows (2026-11-22 -1 tactic_priority footer CALL 7DE5BD; local283 +1 duel_multi bottom bar owner; local237 +16 traits9_screens detail tabs; local236 +66 traits9_screens; interop S7 +20 advisor_briefing state slots; local166 +1 start_guard; local105 +2 normal-mode frame and 확인; local102 +10 normal-mode rows; U35 local29 +4 face_keep_portrait); (local17: +3 expert_ingame, +1 drag_learn, +4 auto_buttons; U35 +1 layout_keep_wrap; 31 stat_exp + 66 others + 156 trait_hover + 4 battle_deaths + 3 tactic_priority) beside 13 traits9 patches and 70E9C1");
         check(layout_row_count+layout_traits9_site_count+2+16+1+1<=kMaxHooks,"manager capacity (512, local236) covers every row, the traits9 patches, the 2 traits9_screens unit-tab spans, the 16 stats200 registrations, 70E9C1 and Present");
         // C-4 / 8.3: no row is an entry patch of a blocked entry (calls are 5-byte patches at the site, vtable rows write data)
         const unsigned blocked_count=sizeof(layout_blocked_entries)/sizeof(layout_blocked_entries[0]);

@@ -28,6 +28,9 @@
 | src/traits9_payloads.h | ~2026-11-18 | 에디터 케이브 기계어 덩어리 3개(무장 상세·능력 탭·무장 목록 개성 열)를 굳힌 117KB 생성물 퇴역. local235에 같은 동작의 C++(`native_traits9.inl`)와 자리 표(`traits9_sites.h`)로 대체, 출처(에디터 소스 traits9ui/abil/list) 유지. | c3ba8be |
 | src/native_friendship.inl 및 native_friendship_save.inl, friendship_store.h/save.h | ~2026-11-07 | 거절된 500명 친애 후보 전체·설치 브리지·후보 전용 fixture 제거. 논공 공용 자료형은 save_binding.h에 보존. | 3a528a2 |
 | docs/SIEGE_STAGE_HANDOFF.md | ~2026-11-10 | 원작 공성 단계(siege_stage) 인계. 기능은 local52에서 삭제됨. 2026-11-16 문서 정리로 내림. | 6398d14 |
+| docs/MULTI_DUEL.md | 2026-11-20 ~ 2026-11-22 | 자동 다중 일기토(인접 아군 최대 2명, 뒤 짝 동시 1:1, 5합마다 교대) 설계·관문·판별 기록. 기능은 local298에서 은퇴하고 릴레이 일기토(MANUAL_DUEL.md)로 대체. 2026-11-23 문서 정리로 내림 | 024e9c4 |
+| docs/GITHUB_기능상세.md | ~2026-11-06 | 함수·주소별 변경 근거(공개 README·배포 ZIP에 실렸음). 11-06 이후 기능(일기토·의용병·군사보고·조조전 등)이 없어 낡음. 대체: MOD_CHANGES_VS_ORIGINAL.md(원작과 달라진 동작)·NATIVE_FUNCTIONS.md(원작 함수 기록). 2026-11-23 문서 정리로 내림 | c132915 |
+| docs/AGENTS.md | ~2026-11-23 | 기준 커밋부터 빈 파일(0바이트). 작업 규칙은 루트 AGENTS.md. 2026-11-23 문서 정리로 내림 | c132915 |
 | docs/SIEGE_STAGE_NEXT_PROMPT.md | ~2026-11-10 | 원작 공성 단계(siege_stage) 시작 프롬프트. 기능은 local52에서 삭제됨. 2026-11-16 문서 정리로 내림. | 6398d14 |
 | development/HANDOFF_U35_LAG.md | ~2026-11-10 | U35 렉 작업 인계(local29 설치로 끝남). 2026-11-16 문서 정리로 내림. | 6f5790f |
 | development/V15_1_CCZ_FOLLOWUP.md | ~2026-11-06 | v15.1 후속·최종 줌아웃 렉 조사 기록(2026-11-02). 2026-11-16 문서 정리로 내림. | c132915 |

@@ -111,6 +111,13 @@
 #include "native_save_codec.inl"
 #endif
 #include "native_occupy_fast.inl"
+#endif
+#if defined(SPLIT_BASE)
+#include "native_duel_digits.inl"
+#endif
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+#include "native_duel_multi.inl"
+#include "native_duel_manual.inl"
 #ifndef SAN14_MULTI_TU
 #include "native_caravan_stay.inl"
 #endif
@@ -187,6 +194,7 @@
 #include "native_advisor_briefing.inl"
 #endif
 #include "native_ambush.inl"
+#include "native_wall_age_save.inl"
 #ifndef SAN14_MULTI_TU
 #include "native_modpack_dll.inl"
 #endif

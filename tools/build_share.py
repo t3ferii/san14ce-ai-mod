@@ -62,7 +62,7 @@ for name,key in (('traits9_layout.bin','bank_sha256'),('traits9_layout.json','js
 # Current releases use 기능설정.ini; old installations retain legacy fallback files.
 for document in ('FEATURE_SWITCHES.md','COMBAT_AI.md','DOMESTIC.md','REGION_OFFICERS.md',
                  'SPEED_AND_SAVE.md','EXPERT_SETTINGS.md','EXTENSIONS.md','UNIFIED_PERSONNEL.md',
-                 'CHANGES_ALL.md','GITHUB_기능상세.md','DAMAGE_PREVIEW.md','BUILDING_DESTRUCTION.md','CREDITS.md'):
+                 'CHANGES_ALL.md','MOD_CHANGES_VS_ORIGINAL.md','DAMAGE_PREVIEW.md','BUILDING_DESTRUCTION.md','CREDITS.md'):
     files['AI_TacticsMod/docs/'+document]=windows_text(PROJECT/'docs'/document,True)
 files['AI_TacticsMod/README.md']=windows_text(PROJECT/'README.md',True)
 files['AI_TacticsMod/사용안내.md']=windows_text(PROJECT/'사용안내.md',True)

@@ -472,6 +472,14 @@ int main() {
     mask_report(true);c->UpdateSubresource(back,0,nullptr,flash.data(),1920*4,0);draw(d,c,back,desc);
     check(sample()==scene[300*1920+900],"report mask uses the refreshed map rather than stale diplomacy");mask_report(false);frame();frame();
     m.collecting=false;publish(m,true);
+    // local307: a running duel (the flag the briefing hooks publish) hides everything, drops the input blocks, and gives it back as it was
+    check(needs_draw() && is_visible(),"briefing drawn before a duel");
+    InterlockedExchange(&wheel_block,1);InterlockedExchange(&block_buttons,1);
+    check(set_duel(true) && !set_duel(true),"the duel flag reports only its change");
+    check(!needs_draw() && is_visible() && !flag(&wheel_block) && !flag(&block_buttons),"a running duel stops drawing and the input blocks without touching the briefing's own visibility");
+    mask_report(true);check(!needs_draw(),"the report mask does not draw during a duel either");mask_report(false);
+    check(!input(nullptr,WM_MOUSEWHEEL,0,0) && !flag(&wheel_block),"no input is taken during a duel");
+    check(set_duel(false) && needs_draw() && is_visible(),"the briefing is back after the duel");
     m.open=true;m.title=L"수입과 지출 · 4건";m.body=L"• 10일차 · "+income+L"\n\n• 10일차 · "+income_summary(L"제2군단",{{10,L"22667"},{11,L"(-3005)"},{12,L"0"},{13,L"3005"},{19,L"128268"},{20,L"(-2406)"},{21,L"0"},{22,L"2406"},{28,L"41626"},{29,L"(+0)"},{30,L"0"},{31,L"—"},{37,L"0"},{38,L"(+0)"},{39,L"0"},{40,L"—"}});++m.generation;post_input(4,m.generation);check(take(generation)==4,"navigation latency probe consumes its own posted ticket");publish(m,true,true);opened_at=GetTickCount64()-300;frame();c->CopyResource(readback,back);
     check(input_accepted==1 && render_input_started==0 && input_posts>=3,"accepted input is timed through updated GPU command submission without changing its dispatch");
     check(SUCCEEDED(c->Map(readback,0,D3D11_MAP_READ,0,&mapped)),"aligned income preview mapped");for(unsigned y=0;y<1080;++y)memcpy(pixels.data()+y*1920,static_cast<unsigned char *>(mapped.pData)+y*mapped.RowPitch,1920*4);c->Unmap(readback,0);bitmap("advisor_income_preview.bmp",pixels,1920,1080);

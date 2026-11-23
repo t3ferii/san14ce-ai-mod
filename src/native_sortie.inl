@@ -91,7 +91,7 @@ struct SortieGroup {
 static SortieGroup sortie_groups[501];
 static SRWLOCK sortie_state_lock=SRWLOCK_INIT;
 static bool sortie_auto_person(Obj person) { COST_SCOPE("sortie:sortie_auto_person");
-    if(!valid(person) || !world())return false;
+    if(!valid(person) || !world() || tribe_person(person))return false;   // tribe_hands_off: tribe sorties stay original
     Obj district=table(0xE0D0,person[0xE0],51),context=pointer(world(),0x871E8);
     return valid(district) && context &&
         district!=fn<Obj(__fastcall *)(Obj)>(GA(GA_330B50))(context);
@@ -102,6 +102,7 @@ static bool sortie_auto_person(Obj person) { COST_SCOPE("sortie:sortie_auto_pers
 // unchanged. local94: always on (the installer option is gone; the flag is kept for the unit-test shells only).
 static bool sortie_controlled(Obj army) { COST_SCOPE("sortie:sortie_controlled");
     if(mod_features.delegated_exclude && valid(army) && !computer_side_force(army_force(army)))return false;
+    if(valid(army) && tribe_force_id(army_force(army)))return false;   // tribe_hands_off
     return valid(army) && !army[0x140] && sortie_auto_person(table(0x158,word(army,0x12),6000));
 }
 static Obj sortie_goal(unsigned city) { COST_SCOPE("sortie:sortie_goal");
@@ -277,7 +278,7 @@ static bool computer_tactic_strong(unsigned t) { COST_SCOPE("sortie:computer_tac
 static void computer_tactic_order(unsigned *command) { COST_SCOPE("sortie:computer_tactic_order");
     if(!mod_features.ai_tactic_order || !command || !command[0] || command[0]>=6000 || command[3]>20)return;
     Obj person=table(0x158,command[0],6000);if(!valid(person))return;
-    Obj corps=table(0xE0D0,person[0xE0],51);if(!valid(corps))return;
+    Obj corps=table(0xE0D0,person[0xE0],51);if(!valid(corps) || tribe_force_id(corps[0x10]))return;   // tribe_hands_off
     Obj root=world();Obj ctx=root?pointer(root,0x871E8):nullptr;
     const bool demo=ctx && ctx[0x3A]==0;
     if(!demo && fn<int(__fastcall *)(Obj)>(GA(GA_2350F0))(corps)!=0)return;

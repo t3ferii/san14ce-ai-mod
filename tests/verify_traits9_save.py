@@ -49,7 +49,10 @@ check(0x118+9*2==0x12A and 0x12A<0x12C,'nine traits fit existing record before n
 # reads only) and the local166/183 game-start holder guard (start_state_guard, a crash fix on the start state); neither touches the
 # merit sidecar format, its read/write path or the save binding. native_awards_save.inl: local23 COST_SCOPE markers only (profiling, no
 # code in release). merit_bond.h: local17 contains_ext/list_ext, a live family extension with no stored state (format unchanged).
-SAVE_CONTRACT_PIN={'src/native_merit_save.inl': '8224b0fc10cd703c9c55df589244b2e43d79b6ee520dca6a7454f80606d322f5', 'src/native_awards_save.inl': 'd52436cf9a654ca13d1f24d00b0a5a58c162c6b9664875a3faa5024265876b5f', 'src/sidecar_cache.h': 'eacc735d3f39fe57698485cc28c3080b283399dd6d6af5e9eb6759b597ede1ec', 'src/merit_bond.h': '7d8cdaeb50571796bede1da56ed45ed7f0018b154c75cc3d2fe0008875f3966c', 'src/save_binding.h': 'bcb431dc6c4996f8402c8a9e8a1c00cf9776c13001d791386487e451ae4ca1b4'}
+# Reviewed 2026-11-22: 45bd841 (neutral wall age) changed native_merit_save.inl only by the sidecar plugin list capacity
+# (save_host::Plugins<8> -> <12>, the wallage row is the 9th); the merit sidecar format, its read/write path and the binding
+# are unchanged, the new row is checked by the save_host fixture.
+SAVE_CONTRACT_PIN={'src/native_merit_save.inl': '7e5804b18740a1ba9f5c60f5c58421dabe49b2d1e0e66a66363d40cc18f485a9', 'src/native_awards_save.inl': 'd52436cf9a654ca13d1f24d00b0a5a58c162c6b9664875a3faa5024265876b5f', 'src/sidecar_cache.h': 'eacc735d3f39fe57698485cc28c3080b283399dd6d6af5e9eb6759b597ede1ec', 'src/merit_bond.h': '7d8cdaeb50571796bede1da56ed45ed7f0018b154c75cc3d2fe0008875f3966c', 'src/save_binding.h': 'bcb431dc6c4996f8402c8a9e8a1c00cf9776c13001d791386487e451ae4ca1b4'}
 for name,expected in SAVE_CONTRACT_PIN.items():
     check(hashlib.sha256((P/name).read_bytes().replace(b'\r\n',b'\n')).hexdigest()==expected,
           'save source matches reviewed contract '+name)

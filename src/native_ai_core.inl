@@ -44,6 +44,7 @@ static bool computer_army(Obj army)
     // only the band's own follow orders. Original bandits/tribes with such commanders answer 46..51 and are unchanged.
     const unsigned commander = word(army, 0x12);
     if (commander >= 4033 && commander <= 4100 && force <= 45) return false;
+    if (tribe_force_id(force)) return false;   // tribe_hands_off: tribe armies keep the original orders
     return force > 0 && force < 52 && force != player && (player != 0 || observer_mode());
 }
 // user 2026-11-10: a rule written for computer corps never reaches the player force - neither its direct
@@ -51,7 +52,7 @@ static bool computer_army(Obj army)
 [[maybe_unused]] static bool computer_side_force(unsigned force)
 { COST_SCOPE("ai_core:computer_side_force");
     unsigned player = player_force();
-    return force > 0 && force < 52 && force != player && (player != 0 || observer_mode());
+    return force > 0 && force < 52 && !tribe_force_id(force) && force != player && (player != 0 || observer_mode());
 }
 static bool computer_side_army(Obj army) { return computer_army(army); }
 // U39 route_hook (native_route_hook.inl) publishes these while its CALLs are live; the older per-army morale and
@@ -59,6 +60,17 @@ static bool computer_side_army(Obj army) { return computer_army(army); }
 static bool route_hook_morale, route_hook_breach;
 static bool route_hook_hit;   // local108: the hit response (obstacle reason 2) is a route_hook breach entry
 namespace route_hook { static bool assign_fifth(Obj a, unsigned wall_hex); static bool wall_has_stand(Obj a, unsigned wall_hex); }   // local55, native_route_hook.inl
+// docs/NEUTRAL_WALL_AGE.md (native_route_hook.inl): the age/count pick of path 3, the chase hold and the siege-weapon units.
+namespace route_hook {
+static unsigned age_pick_fifth(Obj a, unsigned origin_hex, bool origin_clear);
+static unsigned holds_wall(Obj a);
+static bool assign_siege(Obj a, unsigned wall_id, bool fresh);
+static bool siege_holding(Obj a);
+static unsigned siege_wall_hex(unsigned wall_id);
+static void siege_count(unsigned wall_id);
+static unsigned siege_retarget(Obj a, int radius, unsigned skip);
+static std::vector<wall_age::SiegeTarget> siege_targets(unsigned own);
+}
 static bool (*route_hook_owns)(Obj army);
 
 static bool campaign_controlled(Obj army) { COST_SCOPE("ai_core:campaign_controlled");
@@ -198,6 +210,10 @@ struct Progress {
     int helm_seen_day;
     unsigned short helm_noway[4];   // local273: regions left in this 순 because none of their picks had a water way
     int helm_noway_period;          // the 순 (day / 10) helm_noway belongs to
+    // wall_age_siege (user 2026-11-21, docs/NEUTRAL_WALL_AGE.md 5절): a 충차·투석 unit the mod sent at an old neutral wall. It rides
+    // the regional worker plumbing (group kind 10, retake_tree_hook) and wall_siege_step steers it until it is home.
+    bool siege_unit;
+    unsigned short siege_wall;      // the wall building id it is sent at (0 = between targets or on the way home)
     unsigned short work_source,work_reviewed_center,near_capture_hex;
     unsigned char near_capture_owner;
     int near_capture_day;

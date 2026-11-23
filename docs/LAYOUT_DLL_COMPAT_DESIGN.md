@@ -710,7 +710,7 @@ P3 구현자는 이 절을 보고 바로 코딩한다. 판단 근거는 §6의 �
 
 | 행 | owner | 지점 | 종류 | 원래 대상 | 플래그 | 비고 |
 |---|---|---|---|---|---|---|
-| 258 | tactic_priority | 7DC20D (`CStrategyUnitMakeState` enter 안, 하단 바 텍스트 버튼 CALL) | E8 | 85FEF0 | C | 블록을 넘는 CALL(lord_change 503C9C와 같은 종류). 1a4a447d는 7DE5BD |
+| ~~258~~ | tactic_priority | 7DC20D (`CStrategyUnitMakeState` enter 안, 하단 바 텍스트 버튼 CALL) | E8 | 85FEF0 | C | 2026-11-22 삭제: 버튼을 우측 하단 자체 창(「군사제안수행」 토글 아래)으로 옮김(다른 모드 하단 버튼과 겹침). 1a4a447d는 7DE5BD |
 | 259 | tactic_priority | 1458848 (update, 칸5) | vt | 7DF540 | C | 1a4a447d는 145B8D8 → 7E18E0 |
 | 260 | tactic_priority | 1458830 (leave, 칸2) | vt | 7D9E50 | C | 1a4a447d는 145B8C0 → 7DC200 |
 | 261 | tactic_priority | 7EBBC4 (출발 7EBB30 안) | E8 | 1EC890 | C | 출발 기록. 1a4a447d는 7EE1C4 |

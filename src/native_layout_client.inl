@@ -142,6 +142,10 @@ inline int ui_follow(void *own,void *source) {const San14LayoutApiV1 *a=get();re
 inline int ui_release(const char *owner,void *next) {const San14LayoutApiV1 *a=get();return a&&a->ui_release?a->ui_release(owner,next):-1;}
 inline int ui_enable(void *control,int on) {const San14LayoutApiV1 *a=get();return a&&a->size>=offsetof(San14LayoutApiV1,ui_enable)+sizeof(void *)&&a->ui_enable?a->ui_enable(control,on):-1;}
 inline int ui_tooltip(const wchar_t *text) {const San14LayoutApiV1 *a=get();return a&&a->size>=offsetof(San14LayoutApiV1,ui_tooltip)+sizeof(void *)&&a->ui_tooltip?a->ui_tooltip(text):-1;}
+inline void *ui_duel_gauge(void *cell_a,void *cell_b,int x,int y) {const San14LayoutApiV1 *a=get();return a&&a->size>=offsetof(San14LayoutApiV1,ui_duel_gauge)+sizeof(void *)&&a->ui_duel_gauge?a->ui_duel_gauge(cell_a,cell_b,x,y):nullptr;}
+inline int ui_move(void *object,int x,int y) {const San14LayoutApiV1 *a=get();return a&&a->set_position?a->set_position(object,x,y):-1;}
+inline int ui_pane_scale(void *pane,float scale) {const San14LayoutApiV1 *a=get();return a&&a->size>=offsetof(San14LayoutApiV1,ui_pane_scale)+sizeof(void *)&&a->ui_pane_scale?a->ui_pane_scale(pane,scale):-1;}
+inline int ui_node_rects(void *pane,int *out,int max) {const San14LayoutApiV1 *a=get();return a&&a->size>=offsetof(San14LayoutApiV1,ui_node_rects)+sizeof(void *)&&a->ui_node_rects?a->ui_node_rects(pane,out,max):-1;}
 inline void *ui_button(void *layout,int node,int style,int kind) {const San14LayoutApiV1 *a=get();return a&&a->clone_control?a->clone_control(layout,node,style,kind):nullptr;}
 inline int ui_text(void *control,const wchar_t *text) {const San14LayoutApiV1 *a=get();return a&&a->set_text?a->set_text(control,text):-1;}
 inline int ui_show(void *object,int on) {const San14LayoutApiV1 *a=get();return a&&a->set_visible?a->set_visible(object,on):-1;}

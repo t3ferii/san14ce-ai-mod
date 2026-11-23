@@ -307,7 +307,9 @@ static void refresh_path_wall(Obj army,Progress &p) { COST_SCOPE("obstacles:refr
         p.path_wall_hex=static_cast<unsigned short>(hex);p.path_wall_day=day;
         if(route_hook_breach) {   // local55: held by route_hook until the wall falls; this army is not picked again
             p.path_wall_hex=48400;
-            if(route_hook::assign_fifth(army,hex))p.path_wall_done=true;
+            // wall_age_pick (docs/NEUTRAL_WALL_AGE.md 3절): the final wall within 6 hexes of this pick by age - count.
+            const unsigned final_hex=route_hook::age_pick_fifth(army,hex,enemy[static_cast<unsigned>(pick)]>wall_path::enemy_near);
+            if(route_hook::assign_fifth(army,final_hex))p.path_wall_done=true;
         }
         int detour=wall_path::distance(from,hex)+wall_path::distance(hex,goal)-wall_path::distance(from,goal);
         const int max_detour=(1<<20)-1;

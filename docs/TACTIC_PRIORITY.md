@@ -4,7 +4,7 @@
 
 ## 1. 사용자 동작
 - 설치기 `편의성`의 「출진 화면 전법 우선순위·출진 기억」(`[officer_ui] tactic_priority`, 설치기 기본 켬, 코드 기본값 꺼짐).
-- 출진 편성 화면(`CStrategyUnitMakeState`) 좌하단 「전법 우선순위」 버튼을 누르면 오른쪽 창 자리에 그리드 팝업이 겹쳐 열린다(페이지 없음, 칸 수에 따라 5~6열, 많으면 왼쪽으로 확장).
+- 출진 편성 화면(`CStrategyUnitMakeState`) 우측 하단 「전법 우선순위」 버튼(매복 「군사제안수행」 토글 바로 아래, 1920×1080 기준 1560~1880 × 1024~1072, 토글이 없어도 같은 자리)을 누르면 오른쪽 창 자리에 그리드 팝업이 겹쳐 열린다(페이지 없음, 칸 수에 따라 5~6열, 많으면 왼쪽으로 확장).
 - 위쪽 모드 탭 「무력형」「지력형」(무력 ≥ 지력인 무장은 무력형). 칸 = 「고유전법」과 공용·교역 전법. 누른 순서가 우선순위(칸에 `1.`, `2.` 표시), 다시 누르면 해제되고 뒤 순위가 당겨진다. 순위가 없는 칸은 기본 순서로 뒤에 붙는다.
 - 버튼: 「초기화」(현재 모드 순위 비움), 「기본값」(기본 순서로 전부 지정), 「닫기」. ESC·다른 부대 선택·원작 대화창·화면 이탈에도 닫힌다. 바꿀 때마다 즉시 적용, 닫을 때 `기능설정.ini`에 저장.
 - 「무장정보」 탭 오른쪽 「출진 기억 켬/끔」 토글(무장별, 세이브별): 켜면 그 무장은 마지막 출진 진형과 전법 3개를 되살린다(보유 전법 수와 무관, 못 쓰는 것은 건너뛰고 남는 칸은 공통 순서). 끄면 현재 선택은 그대로 두고 다음 배치부터 공통 규칙.
@@ -21,17 +21,16 @@
 | vtable `CStrategyUnitMakeState` | 1458820 | 145B8B0 |
 | 칸2 leave 슬롯 → 함수 | 1458830 → 7D9E50 | 145B8C0 → 7DC200 |
 | 칸5 update 슬롯 → 함수 | 1458848 → 7DF540 | 145B8D8 → 7E18E0 |
-| 하단 바 텍스트 버튼 CALL(enter 안) | 7DC20D → 85FEF0 | 7DE5BD → 862220 |
+| 하단 바 텍스트 버튼 CALL(enter 안, 2026-11-22부터 훅하지 않음) | 7DC20D → 85FEF0 | 7DE5BD → 862220 |
 | 출발 CALL | 7EBBC4 → 1EC890 | 7EE1C4 → 1EDC30 |
 - 상태 객체(두 판 동일): +0x470 메인 레이아웃, +0x488 탭 그룹(+0x148 현재 기록, `*(*(+0x130)+0x138)+0x18` 현재 탭), +0x490/+0x498 부대정보·무장정보 페이지, +0x4A0 하단 바, +0x4B0 원작 modal, **+0x4C0..+0x4C8 편성 기록 포인터 목록**(기록 0x94바이트, `cmd=rec+4`: [0] 인물 [2] 병력 [3] 진형 [5..7] 전법), +0x540 출발 목록(출발 순간에만 유효).
 - 팝업은 원작 「설명자 배열로 창 만들기」 `870410`(옛 `86E060`) 경로: 설명자 type 8 프레임(`000_cmn_base_dialog_00`), type 2 노드 → `9309C0`으로 탭(style 9/10, kind 1)·칸(style 3, kind 0). 신규 GA: `GA_86E060`, `GA_3F3C30`(취소 입력 조회 `3F6150`), `GA_85AD20`(radio 선택 `85D050`), `GA_855BC0`(탭 그룹 다시 고르기 `857EB0`).
 - 게이트 근거(ghidra export `research/ghidra_full/1a4a447d14e68c40`): G1 `866FA0`은 +0x130 표를 만들지 않는다 → vtable 1342530 → `92D020(pane+0x130)` → 최종 vtable 13E4E80(`native_ccz_title.inl` 선례). G2 `868E00`(vt+0xD8)은 부모별 풀에 등록만 하고 부모 소멸자는 자식을 해제하지 않는다 → 떠날 때 숨기고 포인터만 버린다(방문마다 작은 누수, 이중 해제 방지). G3 `92DAC0`의 조건은 표가 비어 있고 개수<256이고 설명자가 있는 것뿐.
 - 모든 주소는 GA 식별자로, 주소표는 `gen_signatures.py all`이 만든다(`_tactic_priority_ids()`). W8(2026-11-07)부터 이 파일들도 `GA_<1a4a447d RVA>`를 직접 쓴다(`game_addresses_compat.h` 삭제).
 
-## 4. Layout 행 (owner `tactic_priority`, 4행, 257 → 261)
+## 4. Layout 행 (owner `tactic_priority`, 3행; 하단 바 CALL `GA_7DE5BD` 행은 2026-11-22 버튼을 자체 창으로 옮기며 삭제)
 | 지점 | 종류 | 대상 |
 |---|---|---|
-| GA_7DE5BD | CALL | GA_862220 |
 | GA_145B8D8 | VT | GA_7E18E0 |
 | GA_145B8C0 | VT | GA_7DC200 |
 | GA_7EE1C4 | CALL | GA_1EDC30 |
@@ -45,8 +44,9 @@
 - 위험: 예전 DLL로 되돌리면 v2를 거부하고 v1으로 덮어써 플래그가 사라진다.
 
 ## 6. 로그 이벤트 (`log_event`, 앞에 `tactic_priority`)
-- 설치: `_installed`, `_guard_rejected(1 하단 바/2 출발/3 미해결)`, `_register_rejected`, feature_off 39.
-- 화면: `_button_added`, `_footer_style(index,flag,kind)`, `_no_layout_node(n)`, `_click`, `_state(records,mode)`, `_record(i,person,formation)`, `_profile_invalid`, `_profile_migrated`.
+- 설치: `_installed`, `_guard_rejected(2 출발/3 미해결; 1 하단 바는 2026-11-22 삭제)`, `_register_rejected`, feature_off 39.
+- 버튼 자리 내력(2026-11-22): 하단 바 노드 24(다른 모드의 하단 버튼과 겹침) → 「출진부대설정」 제목 오른쪽 (440,23) 164×48(사용자 「어색하다」) → 지금 자리 320×48. 로그 이름의 `head`는 첫 이동 때 이름이다.
+- 화면: `_head_built(1 성공·0 실패, x<<16|y 또는 실패 단계 1 창/2 컨트롤/3 UI 소유 불가, w<<16|h)`, `_head_rect(1 창/2 컨트롤/3 메인 레이아웃, x, y)`, `_head_vis(창 bits40, 컨트롤 bits40, activate)`, `_click`, `_state(records,mode)`, `_record(i,person,formation)`, `_profile_invalid`, `_profile_migrated`.
 - 팝업 생성: `_popup_build(stage 1..6,n,ok)`(6 = 생성 µs), `_popup_anchor(src,x,y)`, `_popup_rect(x,y,w<<16|h)`, `_popup_vis(대상,alpha,bits40)`, `_popup_broken`, `_popup_orphan`.
 - 팝업 조작: `_popup_open(mode,ranked)`, `_popup_close(reason 1 닫기/2 ESC/3 modal/4 다른 부대/5 이탈)`, `_cancel_frames`, `_leak(1 닫힌 팝업 클릭/2 원작 탭 노출/3 modal)`, `_page_restore`, `_tile(id,rank,mode)`, `_mode`, `_tiles`, `_saved(generation)`, `_save_failed`, `_refresh(kind 1 적용/2 팝업 닫음,tab)`.
 - 토글: `_toggle_built(ok,x,y)`, `_toggle(person,on)`, `_toggle_sync(person,state)`.

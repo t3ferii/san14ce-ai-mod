@@ -31,6 +31,9 @@
 | 전투 | combat.combat_cut | 1 | groups.combat | 컴퓨터 군세의 플레이어 병참선 차단 |
 | 전투 | combat.hit_response | 1 | groups.combat | 피격 대응 (적 성·관문 피격 시 공성 고정, 피격 부대 보호) |
 | 전투 | combat.obstacle | 1 | groups.combat | 중립 장애물 파괴 판단 |
+| 전투 | combat.wall_age_pick | 1 | groups.combat + combat.path_wall | 중립건물 나이·대상 횟수로 부술 벽 고르기 (6칸 안, 사이드카 wallage) |
+| 전투 | combat.wall_hold_chase | 1 | groups.combat + combat.obstacle | 모드가 맡긴 중립 방벽 공격 중 추격 억제 (그 밖에는 저돌·교전 원작) |
+| 전투 | combat.wall_age_siege | 1 | groups.combat + combat.obstacle | 3년(108순) 넘은 중립 방벽에 충차·투석 출진 (매달 상순 세력당 2부대, 동시 10부대 상한) |
 | 전투 | combat.recall_veto | 1 | groups.combat | 갓 출진한 공격 군단의 회군 방지 |
 | 편의성 | groups.convenience | 1 | — | 편의·게임성 기능 전체 (SAN14_Convenience.dll) |
 | 편의성 | battle_rules.battle_rules | 1 | groups.convenience | 숙련 모드 공방 설정 + 인접지역 효과 |
@@ -78,11 +81,19 @@
 | 게임성 | extensions.traits9 | 1 | groups.convenience | 개성 9칸 |
 | 게임성 | extensions.stats200 | 1 | groups.convenience | 능력치 상한 200 |
 | 게임성 | extensions.stats200_growth | 1 | groups.convenience + extensions.stats200 | 능력치 100 이후 자연 성장 |
+| 게임성 | extensions.duel_multi | 0 | 은퇴(2026-11-22) | 다중 일기토 — 시험(v16.6~local297: 인접 아군 최대 2명씩, 뒤 짝 동시 1:1, 5합마다 교대) → 사용자 「다중일기토 삭제」로 삭제. DLL은 읽지 않고 일기토는 원작 1:1. 대기 무장 장면·대기 체력바·결과 훅·줌은 릴레이 일기토(diagnostics.duel_manual_test)가 씀. 근거: 옛 MULTI_DUEL.md(은퇴, 마지막 커밋은 HISTORY.md) |
+| 게임성 | extensions.duel_relay | 0 | groups.convenience | 릴레이 일기토 (삼11식, 최대 3:3) — 시험(v16.7~, local298~309 진단판 `diagnostics.duel_manual_test`): 플레이어가 낀 일기토에 양쪽 2칸 안 같은 세력 지휘 무장 최대 2명씩이 대기 무장으로 나오고, 1합씩 반실시간으로(합 사이 짧은 대기, 시작·필살·교대·난입 때 확정 대기) 삼11 규칙 엔진이 최대 30합 진행. 자동 = 컴퓨터가 고름(짧은 대기 없이 이어짐). 결과는 싸운 무장 모두가 편의 사기·공적·부상(패자 체력 ≤ 60, 승자 ≤ 30), 포획·사망은 마지막 패자만. duel_multi 모듈은 이 키만으로 설치. 근거: docs/MANUAL_DUEL.md 10절 |
+| 게임성 | extensions.duel_relay_gap | 0 | groups.convenience / extensions.duel_relay | 릴레이 일기토 짧은 대기 길이(v16.7~): 0~5 = 0.25 / 0.5 / 0.75 / 1.0 / 1.25 / 1.5초, 6 = 없음(local312, 바로 다음 합·난입 때만 확정 대기)(설치기 드롭다운, 기본·키 없음 = 0.25초). 근거: docs/MANUAL_DUEL.md 10-14·10-15·10-18 |
+| 게임성 | extensions.duel_relay_join | 5 | groups.convenience / extensions.duel_relay | 릴레이 일기토 난입 확률(local313~): 0~10 = 0~100%(10% 단위, 설치기 드롭다운, 기본 50%). 편마다 2칸 안 무력 순 최대 2명에게 장면 시작 때 한 번씩 묻고, 거절하면 그 자리는 비고 다시 묻지 않음. 릴레이 일기토가 꺼지면 읽지 않음 |
 | 기타(개발용) | groups.diagnostics | 1 | — | 개발용 기능 전체 |
 | 기타(개발용) | diagnostics.enabled | 0 | groups.diagnostics | 진단 로그 기록 (SAN14_*.log) |
 | 기타(개발용) | diagnostics.reuse_handle | 1 | groups.diagnostics | 로그 파일 핸들 재사용 |
 | 기타(개발용) | diagnostics.ai_trace | 0 | groups.diagnostics | 원작 AI 행동 추적 (CSV) |
 | 기타(개발용) | diagnostics.ai_trace_original | 0 | groups.diagnostics + diagnostics.ai_trace | 원작만 추적 (모드 훅 연결 안 함) |
+| 기타(개발용) | diagnostics.duel_multi_test | 0 | 은퇴(v16.6) | 다중 일기토 관문 실험(local274~288, 진단 빌드 전용) → v16.6에서 extensions.duel_multi로 옮겼고 그 기능도 2026-11-22 삭제 |
+| 기타(개발용) | diagnostics.duel_multi_motion | 0 | 은퇴(v16.6) | 세운 무장이 같은 편 대표의 동작을 따라 함 → v16.6부터 늘 켬 |
+| 기타(개발용) | diagnostics.duel_manual_test | 0 | 은퇴(v16.7) | 삼11식 릴레이 일기토(local298~309, 진단 빌드 전용) → v16.7에서 extensions.duel_relay로 옮김(이 값은 읽지 않음) |
+| 기타(개발용) | diagnostics.duel_manual_gap | 4 | 은퇴(v16.7) | 릴레이 일기토 짧은 대기(local308~309) → v16.7에서 extensions.duel_relay_gap으로 옮김(이 값은 읽지 않음) |
 | 기타(개발용) | diagnostics.layout_wait | 0 | groups.diagnostics | 화면 레이아웃 대기 기록 |
 | 기타(개발용) | diagnostics.day_stage | 0 | groups.diagnostics | 하루 처리 단계 기록: 하루 처리 단계별 머문 시간·계산 시간(day_stage), 진단판·진행 속도 버튼 필요 (2026-10-25) |
 | 기타(개발용) | diagnostics.cost_profile | 0 | groups.diagnostics | 함수 시간 측정 (CSV): function_cost_*.csv(모드 함수), node_cost_*.csv(원작 판단 노드), 부대 깃발 얼굴 지정 1B91E0 호출 지점 7곳(face_1B91E0_*, 2026-10-25), 원작 하루 진행 44DEE0의 단계 호출 33곳·순/월 처리 7곳(day_c*/xun_*/month_*, local159), 50ms 이상 걸린 최상위 범위의 자식별 시간(function_stall_*.csv, local159), 화면 멈춤(Present 간격 80ms 이상) 때 렌더·하루 진행·창·바쁜 스레드의 호출 스택 표본(render_stall_*.csv, local203, 읽기만 함, 요약 `tools/render_stall_report.py`), 진단판에서만 동작 |

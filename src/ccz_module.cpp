@@ -98,7 +98,7 @@ static const CczBands bands={{reinterpret_cast<void *>(&ccz_bands::hook_army_for
     reinterpret_cast<void *>(&ccz_bands::hook_day_move),reinterpret_cast<void *>(&ccz_bands::hook_set_action),
     reinterpret_cast<void *>(&ccz_bands::hook_set_target),reinterpret_cast<void *>(&ccz_bands::hook_face_texture),
     reinterpret_cast<void *>(&ccz_bands::hook_unit_target),reinterpret_cast<void *>(&ccz_bands::hook_max_morale),
-    reinterpret_cast<void *>(&ccz_bands::hook_capture)},
+    reinterpret_cast<void *>(&ccz_bands::hook_capture),reinterpret_cast<void *>(&ccz_bands::hook_duel)},
     ccz_bands::configure,ccz_bands::save,ccz_bands::load,ccz_bands::reset,ccz_bands::power,ccz_bands::exchange,ccz_bands::fire};
 static const CczApi api={sizeof(CczApi),ccz_module_abi,initialize,sprites_guards,install_sprites,needs_present,on_present,configure_combat,ccz_combat::fix,&bands,
     install_idle_flags};

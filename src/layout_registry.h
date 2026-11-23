@@ -310,8 +310,7 @@ inline const LayoutRow layout_rows[]={
     {"battle_deaths",LR_CALL,GA(GA_27F716),GA(GA_36A850),LF_CY}, // 158 27D4B0 전사 컷인 화면 판정
     {"battle_deaths",LR_CALL,GA(GA_25B0EB),GA(GA_2979B0),LF_CY}, // 159 258EE0 전사 기록 호출(범위)
     {"battle_deaths",LR_CALL,GA(GA_27F7A9),GA(GA_2979B0),LF_CY}, // 160 27D4B0 전사 기록 호출(범위)
-    // 258-261 tactic_priority (sortie setup footer button, per-frame pick, leave, departure record)
-    {"tactic_priority",LR_CALL,GA(GA_7DE5BD),GA(GA_862220),LF_C},
+    // 258-260 tactic_priority (per-frame pick + bottom-right button pane, leave, departure record; the footer button CALL 7DE5BD was removed 2026-11-22)
     {"tactic_priority",LR_VT,  GA(GA_145B8D8),GA(GA_7E18E0),LF_C},
     {"tactic_priority",LR_VT,  GA(GA_145B8C0),GA(GA_7DC200),LF_C},
     {"tactic_priority",LR_CALL,GA(GA_7EE1C4),GA(GA_1EDC30),LF_C},
@@ -434,6 +433,10 @@ inline const LayoutRow layout_rows[]={
 {"traits9_screens",LR_VT,GA(GA_14AECC0),GA(GA_8FF7E0),LF_CY},   // 79 장수용 능력 탭 해제
 {"traits9_screens",LR_VT,GA(GA_14AECD0),GA(GA_8C99D0),LF_CY},   // 80 장수용 능력 탭 열기
 {"traits9_screens",LR_VT,GA(GA_14AECD8),GA(GA_8CCE40),LF_CY},   // 81 장수용 능력 탭 숨김
+// local283 duel_multi ([diagnostics] duel_multi_test): the duel page update 82AEB0 refreshes its gauge 8269A0 when a duelist's HP changed.
+// The row is the UI owner of the multi-duel bottom bar (ui_duel_gauge needs an installed owner); the replacement forwards unchanged.
+// 80B37D (the gauge fill) already belongs to traits9_screens and two of our owners cannot chain one site.
+{"duel_multi",LR_CALL,GA(GA_82AF0F),GA(GA_8269A0),LF_C},
 };
 static const unsigned layout_row_count=sizeof(layout_rows)/sizeof(layout_rows[0]);
 // Block / span / byte rows that are not a vtable slot or call site. expect[] is the original bytes.

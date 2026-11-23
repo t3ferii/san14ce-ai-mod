@@ -34,8 +34,29 @@ static bool player_side_army(Obj army) { COST_SCOPE("siege_guard:player_side_arm
     return player && valid(army) && army_force(army) == player;
 }
 
+// [combat] wall_hold_chase (user 2026-11-21 「저돌이나 적근접시 공격을 가진 부대가 중립건물을 공격하고 있으면 바다위에서 갈팡질팡」,
+// 2026-11-22 「중립건물 칠때만 무효화되어야해 다른때에는 저돌이 켜져야해」, docs/NEUTRAL_WALL_AGE.md 4절): the wall a computer-side army
+// is attacking for the mod - a route_hook breach entry (hit response, shortest way, every fifth army, siege weapons) whose wall
+// stands, or without route_hook the older destroy mission (destroy_reason 1..3, order 6/11 on a neutral wall). 0 = none: the
+// original engage option and 저돌 work as usual (on the way home, between targets, every other army).
+static unsigned wall_held(Obj army) { COST_SCOPE("siege_guard:wall_held");
+    if (!mod_features.wall_hold_chase || !valid(army) || army[0x140] || !computer_side_army(army)) return 0;
+    const unsigned id = army_id(army);
+    const Progress *p = id && id <= 500 && progress[id].army == army && progress[id].root == world() ? &progress[id] : nullptr;
+    unsigned wall = route_hook::holds_wall(army);
+    // The older path still gives reason 2 without route_hook_hit and reasons 1/3 without route_hook_breach (path_wall off).
+    if (!wall && p && p->destroy_reason >= 1 && p->destroy_reason <= 3 &&
+        army[0x37] == 6 && army[0x38] == 11) {
+        Obj b = table(0x6DA98, word(army, 0x3A), 3000);
+        const unsigned kind = valid(b) ? b[0x12] : 0u;
+        if ((kind == 9 || kind == 10 || kind == 16) && !b[0x13] && word(b, 0x14) && word(b, 0x10) < 48400) wall = word(army, 0x3A);
+    }
+    return wall_age::hold_chase(true, wall != 0, true, p && (p->returning || p->forced_return)) ? wall : 0u;
+}
+
 static bool capable(Obj army) { COST_SCOPE("siege_guard:capable");
     if (!valid(army) || army[0x140] || !computer_side_army(army)) return false;
+    if (wall_held(army)) return false;   // wall_hold_chase: a wall breaker is no guard
     // local88: a home-capture / retake worker rides in a group of kind 10 too, but it is no siege army.
     { const unsigned id = army_id(army); if (id && id <= 500 && progress[id].army == army && progress[id].regional_worker) return false; }
     if (path_wall_locked(army, 0) || path_wall_done(army, 0)) return false;   // a path_wall demolition keeps its mission
@@ -98,7 +119,8 @@ static void __fastcall tick(Obj army) { COST_SCOPE("siege_guard:tick");
     Tick original = fn<Tick>(GA(GA_273AC0));
     if (!enabled || !mod_features.siege_guard || !army || active_army) { original(army); return; }
     rebuild();
-    if (!is_guard(army) || !player_near(army)) { original(army); return; }
+    // wall_hold_chase: an army assigned to a wall during the day leaves the guards at once (rebuild runs once a day).
+    if (!is_guard(army) || wall_held(army) || !player_near(army)) { original(army); return; }
     unsigned char old = army[0x40];
     static int logged_day[501];
     const unsigned id = army_id(army);
@@ -114,12 +136,27 @@ static void __fastcall tick(Obj army) { COST_SCOPE("siege_guard:tick");
 }
 
 // The engage-branch search (sole 2B76B0 caller). Radius 5 only for the guard inside its wrapped tick.
+// wall_hold_chase: for an army that breaks a neutral wall for the mod, no candidate (0 found, the list left empty), so 273AC0
+// does not call 2903E0 and sets no chase target (KB: 273AC0 only acts on a count > 0; the engage option and 저돌 both reach
+// the chase through this one call). Fighting an adjacent enemy stays the original combat's.
 static unsigned __fastcall collect(Obj army, int radius, Obj list) { COST_SCOPE("siege_guard:collect");
     Collect original = fn<Collect>(GA(GA_2B76B0));
+    if (enabled && army) {
+        if (const unsigned wall = wall_held(army)) {
+            static int logged_day[501];
+            const unsigned id = army_id(army);
+            if (id && id <= 500 && logged_day[id] != game_day() + 1) {   // once per army and day
+                logged_day[id] = game_day() + 1;
+                log_event("wall_chase_hold", id, wall, static_cast<unsigned>(radius));
+            }
+            return 0;
+        }
+    }
     if (enabled && mod_features.siege_guard && army && army == active_army && radius < guard_radius())
         radius = guard_radius();
     return original(army, radius, list);
 }
+static bool wanted() { return mod_features.siege_guard || mod_features.wall_hold_chase; }
 
 static bool call_targets(unsigned site, unsigned target) { COST_SCOPE("siege_guard:call_targets");
     if (!image || image[site] != 0xE8) return false;
@@ -136,7 +173,7 @@ static bool ready;
 static unsigned prepare() { COST_SCOPE("siege_guard:prepare");
     for (auto &c : calls) c = CallLink{};
     ready = false;
-    if (!mod_features.siege_guard) return 0;
+    if (!wanted()) return 0;   // the tick CALLs pass straight through without siege_guard
     const unsigned sites[3] = {GA(GA_2732CA), GA(GA_276296), GA(GA_27402F)};
     const unsigned targets[3] = {GA(GA_273AC0), GA(GA_273AC0), GA(GA_2B76B0)};
     for (unsigned i = 0; i < 3; ++i) if (!sites[i] || !targets[i] || !call_targets(sites[i], targets[i])) return 1;
@@ -161,7 +198,7 @@ static void restore() { COST_SCOPE("siege_guard:restore");
 
 // Each CALL is re-validated at publish; any failure restores the ones already written.
 static bool publish() { COST_SCOPE("siege_guard:publish");
-    if (!mod_features.siege_guard) return true;   // an off switch is not a publish failure
+    if (!wanted()) return true;   // an off switch is not a publish failure
     bool ok = ready;
     for (unsigned i = 0; i < 3 && ok; ++i) {
         int delta = 0;
@@ -301,6 +338,7 @@ using Tree = void(__fastcall *)(Obj, Obj);
 static CallLink calls[2];
 static Obj relay;
 static bool ready;
+static bool wanted() { return mod_features.retake_adjacent || mod_features.gate_intercept || mod_features.helm_intercept || mod_features.wall_age_siege; }
 static bool retake_group(Obj troops) { COST_SCOPE("retake_tree:retake_group");
     if (!valid(troops)) return false;
     bool any = false;
@@ -311,13 +349,15 @@ static bool retake_group(Obj troops) { COST_SCOPE("retake_tree:retake_group");
         if (p.army != a || p.root != world() || p.commander != word(a, 0x12) || !p.regional_worker || !computer_side_army(a)) return false;
         // gate_intercept: an intercept unit is the mod's until it is home (its return order is the mod's too).
         if (p.intercept) { if (!(p.helm ? mod_features.helm_intercept : mod_features.gate_intercept)) return false; any = true; continue; }
+        // wall_age_siege (docs/NEUTRAL_WALL_AGE.md 5절): a siege-weapon unit is the mod's until it is home too.
+        if (p.siege_unit) { if (!mod_features.wall_age_siege) return false; any = true; continue; }
         if (!mod_features.retake_adjacent || !p.retake || p.forced_return || p.returning) return false;
         any = true;
     }
     return any;
 }
 static void __fastcall tree(Obj manager, Obj troops) { COST_SCOPE("retake_tree:tree");
-    if (!enabled || (!mod_features.retake_adjacent && !mod_features.gate_intercept && !mod_features.helm_intercept) || in_policy || native_search_depth || !retake_group(troops)) {
+    if (!enabled || !wanted() || in_policy || native_search_depth || !retake_group(troops)) {
         fn<Tree>(GA(GA_D4E20))(manager, troops);
         return;
     }
@@ -329,6 +369,7 @@ static void __fastcall tree(Obj manager, Obj troops) { COST_SCOPE("retake_tree:t
         Progress *p = observe_capture(a);
         if (!p) continue;
         if (p->intercept) { intercept_step(a, *p); continue; }
+        if (p->siege_unit) { wall_siege_step(a, *p); continue; }
 #ifndef NO_RUNTIME_LOG
         static volatile LONG lines;   // value = position, hex = first hex of the stored way (+0x48)
         if (InterlockedIncrement(&lines) <= 400) log_event("retake_tree_skipped", i, word(a, 0x2A), word(a, 0x48));
@@ -343,7 +384,7 @@ static void __fastcall tree(Obj manager, Obj troops) { COST_SCOPE("retake_tree:t
 }
 static unsigned prepare() { COST_SCOPE("retake_tree:prepare");
     calls[0] = calls[1] = CallLink{}; ready = false;
-    if (!mod_features.retake_adjacent && !mod_features.gate_intercept && !mod_features.helm_intercept) return 0;
+    if (!wanted()) return 0;
     const unsigned sites[2] = {GA(GA_44079D), GA(GA_4414D0)}, target = GA(GA_D4E20);
     if (!target || !siege_guard_hook::call_targets(sites[0], target) || !siege_guard_hook::call_targets(sites[1], target)) return 1;
     if (!relay) relay = allocate_near(image + sites[0], 0x1000);
@@ -359,7 +400,7 @@ static unsigned prepare() { COST_SCOPE("retake_tree:prepare");
 }
 static void restore() { COST_SCOPE("retake_tree:restore"); call_restore(calls[1]); call_restore(calls[0]); ready = false; }
 static bool publish() { COST_SCOPE("retake_tree:publish");
-    if (!mod_features.retake_adjacent && !mod_features.gate_intercept && !mod_features.helm_intercept) return true;
+    if (!wanted()) return true;
     bool ok = ready;
     for (unsigned i = 0; i < 2 && ok; ++i) {
         int delta = 0;

@@ -105,6 +105,13 @@
 #include "gpu_profile.h"
 #include "native_save_codec.inl"
 #include "native_occupy_fast.inl"
+#endif
+#if defined(SPLIT_BASE)
+#include "native_duel_digits.inl"
+#endif
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+#include "native_duel_multi.inl"
+#include "native_duel_manual.inl"
 #include "native_caravan_stay.inl"
 #include "native_auto_commands.inl"
 #include "native_stat_exp.inl"
@@ -145,6 +152,7 @@
 #include "native_tactic_priority.inl"
 #include "native_advisor_briefing.inl"
 #include "native_ambush.inl"
+#include "native_wall_age_save.inl"
 #include "native_modpack_dll.inl"
 #endif
 #endif

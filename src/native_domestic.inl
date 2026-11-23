@@ -104,7 +104,13 @@ static int __fastcall domestic_tick(Obj city,int preview,int *output) {
     COST_SCOPE("domestic_tick");
     NativePhase phase("domestic_tick");
     // This tick hook is shared by its subscribers (domestic-tick service: awards, injury, domestic, in that order).
-    const bool run=enabled && preview==0;
+    bool run=enabled && preview==0;
+    // tribe_hands_off: a base of a tribe force (46..50) gets no subscriber (awards, injury, domestic, rotation). The owner comes from
+    // the district (city vtable +0x80 -> district+0x10 -> force table), as injury_synchronize_city reads it on every tick target.
+    if(run && valid(city)) {
+        Obj district=(*reinterpret_cast<Obj(__fastcall **)(Obj)>(pointer(city,0)+0x80))(city);
+        if(valid(district) && tribe_force_object(table(0xDF30,district[0x10],51)))run=false;
+    }
     unsigned ran=0;
     if(run)for(unsigned i=0;i<services::domestic_tick.count;++i)if(services::domestic_tick.live(i)) {
         ran|=1u<<i;

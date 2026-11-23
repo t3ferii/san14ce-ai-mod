@@ -11,6 +11,7 @@
 // The original orders written just before a correction are kept in memory; the daily check (CALL 44E50D -> 2E6E00,
 // time slot 0) writes them back when morale reaches 100, the band is gone or the wall has fallen, and the next
 // original re-plan takes over. Memory only, nothing in the save. Switch off / DLL unload: the four CALLs are restored.
+#include "wall_age_shared.h"
 namespace route_hook {
 
 using Route = uint64_t(__fastcall *)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
@@ -20,18 +21,17 @@ struct Orders {
     unsigned char action = 0, kind = 0;
     unsigned short id = 0, relay[5] = {48400, 48400, 48400, 48400, 48400};
 };
-enum Kind : unsigned char {none = 0, hold = 1, build = 2, breach = 3, ship = 4};
+enum Kind : unsigned char {none = 0, hold = 1, build = 2, breach = 3};
 struct Entry {
     Obj root = nullptr, army = nullptr;
     unsigned commander = 0, troops = 0;
     Kind kind = none;
-    unsigned band = 0, hex = 48400, wall = 0;   // band id / hold or build hex / wall building id (ship: the facility)
+    unsigned band = 0, hex = 48400, wall = 0;   // band id / hold or build hex / wall building id
     unsigned goal = 0;                          // breach: the group goal (city/gate id) the wall blocks
     bool hit = false;                           // local108: breach for the hit response (no group goal)
     unsigned stand = 48400;                     // local226: the hex the army hits the wall / facility from (48400 = where it is)
     bool forced = false;                        // local226: no way around the wall, so it is broken even under tower fire
-    unsigned repairer = 0;                      // local226 ship: the hostile army repairing the facility
-    int day = 0;                                // local226 ship: start day
+    bool siege = false;                         // wall_age_siege: a siege-weapon unit's wall (no group goal, docs/NEUTRAL_WALL_AGE.md 5절)
     Orders original, mine;
 };
 static Entry entries[501];
@@ -199,6 +199,76 @@ static void build_grid() { COST_SCOPE("route_hook:build_grid");
         if (valid(type) && (type[0x2C] == 2 || type[0x2C] == 3)) grid[hex] = neutral_breach::blocked;
     }
 }
+// ---- wall age (user 2026-11-21, docs/NEUTRAL_WALL_AGE.md 2절): records and target counts, shared with the convenience
+// sidecar through SAN14CombatWallAge. Game reads happen outside the lock; only the pure record work runs under it.
+static WallAgeTable age_table = {sizeof(WallAgeTable), kWallAgeVersion, SRWLOCK_INIT, 0, -1, {}};
+static bool age_ready;   // route_hook published with wall_age_pick or wall_age_siege
+static bool age_wanted() { return mod_features.wall_age_pick || mod_features.wall_age_siege; }
+// Once a day (daily slot 0): finished neutral walls (+0x16 bit 0) against the records.
+static void age_reconcile() { COST_SCOPE("route_hook:age_reconcile");
+    if (!age_ready) return;
+    const int day = game_day();
+    AcquireSRWLockShared(&age_table.lock);
+    const bool done = age_table.last_day == day;
+    ReleaseSRWLockShared(&age_table.lock);
+    if (done) return;
+    std::vector<wall_age::Live> live;
+    unsigned unfinished = 0;
+    for (unsigned id = wall_age::first_id; id <= wall_age::last_id; ++id) {
+        Obj b = table(0x6DA98, id, 3000);
+        if (!valid(b) || !neutral_wall(b)) continue;
+        if (!(b[0x16] & 1)) { ++unfinished; continue; }
+        live.push_back({id, word(b, 0x10), b[0x12]});
+    }
+    AcquireSRWLockExclusive(&age_table.lock);
+    const unsigned started = wall_age::reconcile(age_table.rec, static_cast<int>(age_table.last_day), live.data(), live.size(), day);
+    age_table.last_day = day;
+    ReleaseSRWLockExclusive(&age_table.lock);
+#ifndef NO_RUNTIME_LOG
+    log_event("wall_age_day", static_cast<unsigned>(live.size()), started, unfinished);   // value = live walls, hex = (re)started, third = without the finish bit
+#else
+    (void)started; (void)unfinished;
+#endif
+}
+// Target count +1: only where a new destroy order is written (hit_check, breach_group, assign_fifth, assign_siege).
+static void age_count(unsigned id) {
+    if (!age_ready || id < wall_age::first_id || id > wall_age::last_id) return;
+    Obj b = table(0x6DA98, id, 3000);
+    if (!valid(b) || !neutral_wall(b)) return;
+    const unsigned hex = word(b, 0x10), kind = b[0x12];
+    const int day = game_day();
+    AcquireSRWLockExclusive(&age_table.lock);
+    wall_age::count(age_table.rec[id], hex, kind, day);
+    ReleaseSRWLockExclusive(&age_table.lock);
+}
+static WallAgeRecord age_record(unsigned id, unsigned hex) {
+    WallAgeRecord r{};
+    if (id < wall_age::first_id || id > wall_age::last_id) return r;
+    AcquireSRWLockShared(&age_table.lock);
+    r = age_table.rec[id];
+    ReleaseSRWLockShared(&age_table.lock);
+    if (r.hex != hex) r = WallAgeRecord{};   // another wall on this id since the last reconcile
+    return r;
+}
+static int age_score(unsigned id, unsigned hex, int day) { return wall_age::score(age_record(id, hex), day); }
+static unsigned age_log_score(int score) { return score < -512 ? 0u : score > 511 ? 1023u : static_cast<unsigned>(score + 512); }
+// Live neutral walls of today's grid within `radius` hexes of `hex`.
+static std::vector<wall_age::Live> grid_walls_near(unsigned hex, int radius) {
+    std::vector<wall_age::Live> out;
+    if (hex >= wall_path::cells) return out;
+    const int x0 = static_cast<int>(hex % wall_path::width), y0 = static_cast<int>(hex / wall_path::width);
+    for (int y = y0 - radius - 1; y <= y0 + radius + 1; ++y) {
+        if (y < 0 || y >= static_cast<int>(wall_path::width)) continue;
+        for (int x = x0 - radius; x <= x0 + radius; ++x) {
+            if (x < 0 || x >= static_cast<int>(wall_path::width)) continue;
+            const unsigned h = static_cast<unsigned>(y) * wall_path::width + static_cast<unsigned>(x);
+            if (grid[h] != neutral_breach::wall || distance(h, hex) > radius) continue;
+            Obj b = table(0x6DA98, grid_wall[h], 3000);
+            if (valid(b) && neutral_wall(b)) out.push_back({grid_wall[h], h, b[0x12]});
+        }
+    }
+    return out;
+}
 struct GroupPlan { Obj root = nullptr; int day = -1000000; unsigned goal = 0; unsigned wall = 0; };
 static GroupPlan plans[501];
 static bool wall_near(unsigned from, unsigned goal) {
@@ -213,7 +283,8 @@ static bool wall_near(unsigned from, unsigned goal) {
     }
     return false;
 }
-// ---- local226 stands: outside hostile tower range (path_wall / hit response), and the 누선 repair strike ----
+// ---- local226 stands: outside hostile tower range (path_wall / hit response) ----
+// (The local226 누선 repair strike was removed in v16.6, user 2026-11-21 「누선일때 수리하는적 죽일려고 한칸 앞으로 가는 코드 … 지우자」.)
 // Tower ranges are the original ones (KB rules_domestic 4, 192110 / 2AD8F0: 투석대 2..3, 망루 1..2 hexes, finished
 // facilities only). The army's reach is the original combat radius (2C9080(force, formation) != 0) + 1 (KB
 // rules_combat 1: 안행·누선 2, others 1). A stand two hexes away keeps the army on the same land/water kind, so its
@@ -258,77 +329,6 @@ static void breach_write(Obj a, Entry &e) {
     if (e.stand < 48400 && e.stand != word(a, 0x2A)) o.relay[0] = static_cast<unsigned short>(e.stand);
     write(a, o);
     e.mine = read(a);
-}
-
-// [combat] ship_repair_strike (local226, user 2026-11-18 "컴퓨터가 누선일때 플레이어가 수리하면 달라붙어서 플레이어 수리하는
-// 부대도 동시에 쳤으면해 누선 사거리가 안행처럼 주변 2헥스"): a computer-side 누선 (water formation 13 on 대하/격류) attacking a
-// hostile facility (original order 6/11) within 8 hexes, while a hostile army stands next to that facility repairing it
-// (order 8 or 9 on it), moves to a water hex within 2 of both, so the original combat (every hostile unit and facility
-// within the radius, up to 3 records) hits the facility and the repairer together. Hexes outside hostile tower range
-// first, then the nearest. Held until the repair stops, the facility falls, the ship leaves the water or its 누선
-// formation, retreats, or 10 days pass. Player direct armies and delegated corps never take it.
-static bool ship_ready(Obj a) {
-    if (!mod_features.ship_repair_strike || !valid(a) || a[0x140] || !computer_side_army(a) || word(a, 0x16) < 1000) return false;
-    if (a[0x1C] != 13 || !water_hex(word(a, 0x2A)) || a[0x37] == 11 || a[0x37] == 12 || campaign_castle_locked(a)) return false;
-    return strike_reach(a) >= 2;
-}
-static Obj ship_repairer(unsigned own, unsigned facility, unsigned facility_hex) {
-    for (unsigned i = 1; i <= 500; ++i) {
-        Obj r = table(0x7E838, i, 500);
-        if (!valid(r) || word(r, 0x2A) >= 48400 || !word(r, 0x16)) continue;
-        if ((r[0x37] != 8 && r[0x37] != 9) || r[0x38] != 11 || word(r, 0x3A) != facility) continue;
-        if (distance(word(r, 0x2A), facility_hex) > 1) continue;
-        if (!fn<int(__fastcall *)(unsigned, unsigned)>(GA(GA_2CC630))(own, army_force(r))) continue;
-        return r;
-    }
-    return nullptr;
-}
-static Obj ship_facility(Obj a) {
-    if (a[0x37] != 6 || a[0x38] != 11) return nullptr;
-    const unsigned id = word(a, 0x3A);
-    Obj f = id && id <= 3000 ? table(0x6DA98, id, 3000) : nullptr;
-    if (!valid(f) || !word(f, 0x14) || word(f, 0x10) >= 48400 || !f[0x13]) return nullptr;
-    return fn<int(__fastcall *)(unsigned, unsigned)>(GA(GA_2CC630))(army_force(a), f[0x13]) ? f : nullptr;
-}
-static void ship_check(Obj a) { COST_SCOPE("route_hook:ship_check");
-    if (!ship_ready(a)) return;
-    Entry *e = entry(a);
-    if (!e || e->kind != none) return;
-    Obj f = ship_facility(a);
-    if (!f) return;
-    const unsigned fid = word(a, 0x3A), fhex = word(f, 0x10), here = word(a, 0x2A), own = army_force(a);
-    if (distance(here, fhex) > 8) return;
-    Obj r = ship_repairer(own, fid, fhex);
-    if (!r) return;
-    const unsigned rhex = word(r, 0x2A);
-    if (distance(here, fhex) <= 2 && distance(here, rhex) <= 2) return;   // already hits both
-    const std::vector<tower_reach::Tower> towers = hostile_towers(own);
-    auto open = [&](unsigned h) { return water_hex(h) && intercept_open(h, a); };
-    const unsigned s = tower_reach::stand(fhex, here, 2, towers, open, rhex, false);
-    if (s >= 48400) {
-        static volatile LONG misses;
-        if (InterlockedIncrement(&misses) <= 200) log_event("ship_repair_no_stand", army_id(a), fid, rhex);
-        return;
-    }
-    Entry next; next.root = world(); next.army = a; next.commander = word(a, 0x12); next.troops = word(a, 0x58);
-    next.kind = ship; next.wall = fid; next.hex = fhex; next.repairer = army_id(r); next.stand = s; next.day = game_day();
-    next.original = read(a);
-    breach_write(a, next);
-    *e = next;
-    log_event("ship_repair_strike", army_id(a), fid | (army_id(r) << 16), s);
-}
-// Keeps or ends a ship entry; true while it holds.
-static bool ship_keep(Obj a, Entry &e) {
-    Obj r = e.repairer && e.repairer <= 500 ? table(0x7E838, e.repairer, 500) : nullptr;
-    Obj f = table(0x6DA98, e.wall, 3000);
-    const bool repairing = valid(r) && word(r, 0x2A) < 48400 && (r[0x37] == 8 || r[0x37] == 9) && r[0x38] == 11 &&
-                           word(r, 0x3A) == e.wall && valid(f) && word(f, 0x14) && word(f, 0x10) == e.hex;
-    const bool alive = mod_features.ship_repair_strike && a[0x1C] == 13 && water_hex(word(a, 0x2A)) && a[0x37] != 11 && a[0x37] != 12 &&
-                       word(a, 0x16) >= 1000 && game_day() - e.day <= 10;
-    if (repairing && alive) return true;
-    log_event("ship_repair_done", army_id(a), e.wall, repairing ? 2u : 1u);
-    finish(a, e, "ship_repair_released");
-    return false;
 }
 
 static unsigned plain_hexes(unsigned c) { return c == neutral_breach::none ? 65535u : (c / 240u > 65534u ? 65534u : c / 240u); }
@@ -378,8 +378,43 @@ static void hit_check(Obj a) { COST_SCOPE("route_hook:hit_check");
     next.stand = stand; next.forced = forced;
     breach_write(a, next);
     *e = next;
+    age_count(wall_id);
     log_event("route_breach_hit", id, wall_id | (static_cast<unsigned>(wall[0x12]) << 16), plan.wall_hex);
     log_event("route_breach_stand", id, stand | (forced ? (1u << 16) : 0u), plan.wall_hex);
+}
+// wall_age_pick, path 2 (docs/NEUTRAL_WALL_AGE.md 3절): candidates = live neutral walls within 6 hexes of the wall the judgment
+// chose (that one included, nearest first, 8 at most). Another wall qualifies only when breaking it alone opens the way
+// (search with only_wall: closed >= alt + max(5 hexes, alt / 4), or no way around) and a member that is free to break can
+// hit it from outside hostile tower range. The best age - count score wins (ties: the original wall).
+static bool member_stand(Obj troops, unsigned hex, const std::vector<tower_reach::Tower> &towers) {
+    for (unsigned i = 1; i <= 500; ++i) {
+        Obj a = table(0x7E838, i, 500);
+        if (!valid(a) || a[0x140] || !belongs_to_troops(a, troops) || !computer_side_army(a) || word(a, 0x16) < 1000 || owns(a)) continue;
+        if (wall_stand(a, hex, towers) < 48400) return true;
+    }
+    return false;
+}
+static unsigned age_pick_breach(Obj troops, unsigned tid, Obj lead, unsigned goal, const neutral_breach::Plan &plan,
+                                const std::vector<tower_reach::Tower> &towers) { COST_SCOPE("route_hook:age_pick_breach");
+    const unsigned origin_id = grid_wall[plan.wall_hex];
+    const std::vector<wall_age::Live> live = grid_walls_near(plan.wall_hex, wall_age::near_hexes);
+    const std::vector<wall_age::Candidate> close = wall_age::nearby(origin_id, plan.wall_hex, live.data(), live.size());
+    const int day = game_day();
+    std::vector<wall_age::Candidate> ok;
+    for (wall_age::Candidate c : close) {
+        if (c.id != origin_id) {
+            const unsigned alt = neutral_breach::search(grid, word(lead, 0x2A), goal, 0, false, nullptr, grid_cost, nullptr, c.hex);
+            if (!wall_age::opens(plan.closed, alt, 240) || !member_stand(troops, c.hex, towers)) continue;
+        }
+        c.score = age_score(c.id, c.hex, day);
+        ok.push_back(c);
+    }
+    const int k = wall_age::pick(ok, origin_id);
+    if (k < 0) return plan.wall_hex;
+    const wall_age::Candidate &f = ok[static_cast<size_t>(k)];
+    // value = group, hex = final id | original id << 16, third = path 2 | candidates << 4 | final score + 512 << 12
+    log_event("wall_age_pick", tid, f.id | (origin_id << 16), 2u | (static_cast<unsigned>(ok.size()) << 4) | (age_log_score(f.score) << 12));
+    return f.hex;
 }
 static void breach_group(Obj troops, unsigned tid) { COST_SCOPE("route_hook:breach_group");
     if (!mod_features.path_wall || !route_hook_breach || !tid || tid > 500) return;
@@ -425,36 +460,40 @@ static void breach_group(Obj troops, unsigned tid) { COST_SCOPE("route_hook:brea
     auto hexes = [](unsigned c) { return c == neutral_breach::none ? 65535u : (c / 240u > 65534u ? 65534u : c / 240u); };
     log_event("route_breach_plan", tid, hexes(plan.closed), hexes(plan.free) | (hexes(plan.open) << 16));
     if (!neutral_breach::breach(plan)) return;
-    gp.wall = grid_wall[plan.wall_hex];
     // Breaker = the member nearest the wall (any army may cross water by boat). local226: it must have a stand outside
     // hostile tower range (wall_stand); none = the group walks around, unless no way around exists (then as before).
     const bool forced = plan.closed == neutral_breach::none;
     const std::vector<tower_reach::Tower> towers = hostile_towers(army_force(lead));
+    // wall_age_pick (docs/NEUTRAL_WALL_AGE.md 3절): the judgment stays; the final wall is the best age - count score within 6
+    // hexes of the one it chose, another wall only when breaking it alone opens the shortcut and a member can hit it unseen.
+    const unsigned wall_hex = mod_features.wall_age_pick && age_ready ? age_pick_breach(troops, tid, lead, goal, plan, towers) : plan.wall_hex;
+    gp.wall = grid_wall[wall_hex];
     Obj breaker = nullptr; int best = 1 << 20; unsigned breaker_stand = 48400;
     for (unsigned i = 1; i <= 500; ++i) {
         Obj a = table(0x7E838, i, 500);
         if (!valid(a) || a[0x140] || !belongs_to_troops(a, troops) || !computer_side_army(a) || word(a, 0x16) < 1000) continue;
         if (owns(a)) continue;
-        int range = distance(word(a, 0x2A), plan.wall_hex);
+        int range = distance(word(a, 0x2A), wall_hex);
         if (range >= best) continue;
-        const unsigned s = wall_stand(a, plan.wall_hex, towers);
+        const unsigned s = wall_stand(a, wall_hex, towers);
         if (s >= 48400 && !forced) continue;
         best = range; breaker = a; breaker_stand = s;
     }
     if (!breaker) {
-        log_event("route_breach_no_stand", tid, gp.wall, plan.wall_hex);
+        log_event("route_breach_no_stand", tid, gp.wall, wall_hex);
         gp.wall = 0;
         return;
     }
     Entry *e = entry(breaker);
     if (!e) return;
     Entry next; next.root = world(); next.army = breaker; next.commander = word(breaker, 0x12); next.troops = tid;
-    next.kind = breach; next.wall = gp.wall; next.hex = plan.wall_hex; next.goal = goal_id; next.original = read(breaker);
+    next.kind = breach; next.wall = gp.wall; next.hex = wall_hex; next.goal = goal_id; next.original = read(breaker);
     next.stand = breaker_stand; next.forced = forced;
     breach_write(breaker, next);
     *e = next;
-    log_event("route_breach_start", army_id(breaker), gp.wall | (static_cast<unsigned>(table(0x6DA98, gp.wall, 3000)[0x12]) << 16), plan.wall_hex);   // value = wall id | kind (9 토성 / 10 석벽 / 16 철쇄) << 16
-    log_event("route_breach_stand", army_id(breaker), breaker_stand | (forced ? (1u << 16) : 0u), plan.wall_hex);
+    age_count(gp.wall);
+    log_event("route_breach_start", army_id(breaker), gp.wall | (static_cast<unsigned>(table(0x6DA98, gp.wall, 3000)[0x12]) << 16), wall_hex);   // value = wall id | kind (9 토성 / 10 석벽 / 16 철쇄) << 16
+    log_event("route_breach_stand", army_id(breaker), breaker_stand | (forced ? (1u << 16) : 0u), wall_hex);
 }
 // local55 (user 2026-11-11 "출진하는 5번째 부대마다 중립건물 파괴명령 코드 다시 부활", "부수다가 뒤로가다가"): the
 // every-fifth-army pick (refresh_path_wall, PW14/PW15) comes back, but its order is no longer written once from the
@@ -483,6 +522,7 @@ static bool assign_fifth(Obj a, unsigned wall_hex) {
     next.stand = stand;
     breach_write(a, next);
     *e = next;
+    age_count(wall);
     log_event("route_breach_fifth", army_id(a), wall | (static_cast<unsigned>(table(0x6DA98, wall, 3000)[0x12]) << 16), wall_hex);
     log_event("route_breach_stand", army_id(a), stand, wall_hex);
     return true;
@@ -490,6 +530,144 @@ static bool assign_fifth(Obj a, unsigned wall_hex) {
 static bool wall_standing(const Entry &e) {
     Obj b = table(0x6DA98, e.wall, 3000);
     return valid(b) && neutral_wall(b) && word(b, 0x10) == e.hex;
+}
+// wall_age_pick, path 3 (docs/NEUTRAL_WALL_AGE.md 3절): refresh_path_wall chose origin_hex; the final wall is the best age - count
+// score among the live neutral walls within 6 hexes of it that this army can hit from outside hostile tower range and, when the
+// original had no hostile army within 2 hexes (origin_clear), have none either. Returns the hex to assign.
+static unsigned age_pick_fifth(Obj a, unsigned origin_hex, bool origin_clear) { COST_SCOPE("route_hook:age_pick_fifth");
+    if (!mod_features.wall_age_pick || !age_ready || !valid(a) || origin_hex >= wall_path::cells) return origin_hex;
+    build_grid();
+    const unsigned origin_id = grid_wall[origin_hex];
+    if (!origin_id) return origin_hex;
+    const std::vector<wall_age::Live> live = grid_walls_near(origin_hex, wall_age::near_hexes);
+    const std::vector<wall_age::Candidate> close = wall_age::nearby(origin_id, origin_hex, live.data(), live.size());
+    const unsigned own = army_force(a);
+    const std::vector<tower_reach::Tower> towers = hostile_towers(own);
+    std::vector<unsigned> foes;
+    if (origin_clear)
+        for (unsigned i = 1; i <= 500; ++i) {
+            Obj b = table(0x7E838, i, 500);
+            if (!valid(b) || b == a || b[0x140] || word(b, 0x2A) >= 48400) continue;
+            if (fn<int(__fastcall *)(unsigned, unsigned)>(GA(GA_2CC630))(own, army_force(b))) foes.push_back(word(b, 0x2A));
+        }
+    const int day = game_day();
+    std::vector<wall_age::Candidate> ok;
+    for (wall_age::Candidate c : close) {
+        if (c.id != origin_id) {
+            if (wall_stand(a, c.hex, towers) >= 48400) continue;
+            bool foe_near = false;
+            for (unsigned h : foes) if (distance(h, c.hex) <= wall_path::enemy_near) { foe_near = true; break; }
+            if (foe_near) continue;
+        }
+        c.score = age_score(c.id, c.hex, day);
+        ok.push_back(c);
+    }
+    const int k = wall_age::pick(ok, origin_id);
+    if (k < 0) return origin_hex;
+    const wall_age::Candidate &f = ok[static_cast<size_t>(k)];
+    log_event("wall_age_pick", army_id(a), f.id | (origin_id << 16), 3u | (static_cast<unsigned>(ok.size()) << 4) | (age_log_score(f.score) << 12));
+    return f.hex;
+}
+
+// ---- wall_age_siege (user 2026-11-21, docs/NEUTRAL_WALL_AGE.md 5절): the siege-weapon units' targets and breach entries ----
+// A breach entry marked siege: no group goal; it is put back by daily/after like the other breach entries and ends when the
+// wall falls, the switch is off, the army retreats (action 11/12), drops under 1,000 or its stand falls under tower fire.
+static Entry *siege_entry(Obj a) {
+    if (!valid(a)) return nullptr;
+    const unsigned id = army_id(a);
+    if (!id || id > 500) return nullptr;
+    Entry &e = entries[id];
+    return e.kind == breach && e.siege && e.root == world() && e.army == a && e.commander == word(a, 0x12) ? &e : nullptr;
+}
+static bool siege_holding(Obj a) { const Entry *e = siege_entry(a); return e && wall_standing(*e); }
+// The hex of a standing neutral wall, else 48400.
+static unsigned siege_wall_hex(unsigned wall_id) {
+    Obj b = wall_id >= wall_age::first_id && wall_id <= wall_age::last_id ? table(0x6DA98, wall_id, 3000) : nullptr;
+    return valid(b) && neutral_wall(b) ? word(b, 0x10) : 48400u;
+}
+static void siege_count(unsigned wall_id) { age_count(wall_id); }   // the departure's new destroy order
+// fresh = a new destroy order (a retarget): the target count goes up; the departure counted already (siege_count).
+static bool assign_siege(Obj a, unsigned wall_id, bool fresh) { COST_SCOPE("route_hook:assign_siege");
+    if (!mod_features.wall_age_siege || !age_ready || !valid(a) || a[0x140] || !computer_side_army(a) || word(a, 0x16) < 1000) return false;
+    if (a[0x37] == 11 || a[0x37] == 12 || siege_wall_hex(wall_id) >= 48400) return false;
+    Obj b = table(0x6DA98, wall_id, 3000);
+    Entry *e = entry(a);
+    if (!e || e->kind != none) return false;
+    const unsigned hex = word(b, 0x10);
+    const unsigned stand = wall_stand(a, hex);
+    if (stand >= 48400) { log_event("route_breach_no_stand", army_id(a), wall_id, hex); return false; }
+    Entry next; next.root = world(); next.army = a; next.commander = word(a, 0x12); next.troops = word(a, 0x58);
+    next.kind = breach; next.siege = true; next.wall = wall_id; next.hex = hex; next.goal = 0; next.original = read(a);
+    next.stand = stand;
+    breach_write(a, next);
+    *e = next;
+    if (fresh) age_count(wall_id);
+    log_event("route_breach_siege", army_id(a), wall_id | (static_cast<unsigned>(b[0x12]) << 16), hex);
+    log_event("route_breach_stand", army_id(a), stand, hex);
+    return true;
+}
+// Targets of force `own`: finished neutral walls older than wall_age::siege_age (108 순 = 3 years) whose area, or one of its eight neighbours, is an area of one of
+// the force's castles (wall_path::serves), with a hex outside hostile tower range next to them (stand = that hex). `assigned`
+// counts the siege units already sent at each wall (on the way or breaking; not those going home).
+static std::vector<wall_age::SiegeTarget> siege_targets(unsigned own) { COST_SCOPE("route_hook:siege_targets");
+    std::vector<wall_age::SiegeTarget> out;
+    if (!mod_features.wall_age_siege || !age_ready || !own || own > 51) return out;
+    const int day = game_day();
+    std::vector<std::pair<unsigned, WallAgeRecord>> old;
+    AcquireSRWLockShared(&age_table.lock);
+    for (unsigned id = wall_age::first_id; id <= wall_age::last_id; ++id)
+        if (age_table.rec[id].kind && wall_age::siege_target(wall_age::age(age_table.rec[id], day))) old.push_back({id, age_table.rec[id]});
+    ReleaseSRWLockShared(&age_table.lock);
+    if (old.empty()) return out;
+    build_grid();
+    bool mine[wall_path::max_city] = {};
+    for (unsigned id = 1; id <= 51; ++id) { Obj c = campaign_goal(id); mine[id] = c && intercept_base_owner(c) == own; }
+    WallAreaTable areas;
+    const std::vector<tower_reach::Tower> towers = hostile_towers(own);
+    for (const auto &o : old) {
+        Obj b = table(0x6DA98, o.first, 3000);
+        if (!valid(b) || !neutral_wall(b) || !(b[0x16] & 1) || word(b, 0x10) != o.second.hex) continue;
+        const unsigned hex = o.second.hex, area = campaign_area_id(hex);
+        bool serves = false;
+        for (unsigned home = 1; home <= 51 && !serves; ++home) serves = mine[home] && wall_path::serves(area, home, areas);
+        if (!serves) continue;
+        const unsigned stand = tower_reach::stand(hex, wall_path::cells, 1, towers, [&](unsigned h) { return grid[h] == neutral_breach::open_cell; });
+        if (stand >= wall_path::cells) continue;
+        unsigned assigned = 0;
+        for (unsigned i = 1; i <= 500; ++i) {
+            const Progress &q = progress[i];
+            if (!q.siege_unit || q.siege_wall != o.first || q.returning || q.forced_return || q.root != world()) continue;
+            Obj x = table(0x7E838, i, 500);
+            if (valid(x) && q.army == x && q.commander == word(x, 0x12)) ++assigned;
+        }
+        out.push_back({o.first, hex, wall_age::score(o.second, day), assigned, stand});
+    }
+    return out;
+}
+// The wall fell (or the entry ended): the next target within `radius` hexes by the same round robin, assigned now. 0 = none.
+static unsigned siege_retarget(Obj a, int radius, unsigned skip) { COST_SCOPE("route_hook:siege_retarget");
+    if (!valid(a) || word(a, 0x2A) >= 48400) return 0;
+    std::vector<wall_age::SiegeTarget> close;
+    for (const wall_age::SiegeTarget &t : siege_targets(army_force(a)))
+        if (t.id != skip && distance(word(a, 0x2A), t.hex) <= radius) close.push_back(t);
+    while (!close.empty()) {
+        const int k = wall_age::siege_pick(close);
+        if (k < 0) break;
+        const unsigned id = close[static_cast<size_t>(k)].id;
+        if (assign_siege(a, id, true)) return id;
+        close.erase(close.begin() + k);
+    }
+    return 0;
+}
+// wall_hold_chase (docs/NEUTRAL_WALL_AGE.md 4절): the wall a live breach entry of this army attacks while it stands (any path:
+// hit response, shortest way, every fifth army, siege weapons), else 0.
+static unsigned holds_wall(Obj a) {
+    if (!valid(a)) return 0;
+    const unsigned id = army_id(a);
+    if (!id || id > 500) return 0;
+    const Entry &e = entries[id];
+    if (e.kind != breach || e.root != world() || e.army != a || e.commander != word(a, 0x12) || !wall_standing(e)) return 0;
+    return e.wall;
 }
 
 // ---- supply relay (local46, user 2026-11-11 "목표가 바뀔 때만, 한 거점 뒤 아군 칸을 밟고 병참을 이어서") ----
@@ -639,6 +817,8 @@ static void supply_check(Obj a) { COST_SCOPE("route_hook:supply_check");
 }
 
 // ---- after each original route write ----
+// The switch an entry belongs to: hit response, siege weapons (wall_age_siege) or the shortest-way breach (path_wall).
+static bool entry_feature(const Entry &e) { return e.hit ? route_hook_hit : e.siege ? mod_features.wall_age_siege && age_ready : mod_features.path_wall; }
 static __declspec(thread) unsigned depth;
 static void after(Obj troops) { COST_SCOPE("route_hook:after");
     if (!enabled || !valid(troops) || depth) return;
@@ -654,23 +834,18 @@ static void after(Obj troops) { COST_SCOPE("route_hook:after");
         if (!e) continue;
         if (e->kind == none) hit_check(a);   // local108
         if (e->kind == breach) {
-            const bool hit = e->hit;
-            if ((hit ? !route_hook_hit : !mod_features.path_wall) || !wall_standing(*e)) {
-                finish(a, *e, "route_breach_done"); if (!hit) fallen = true; continue;
+            const bool hit = e->hit, siege = e->siege;
+            if (!entry_feature(*e) || !wall_standing(*e)) {
+                finish(a, *e, "route_breach_done"); if (!hit && !siege) fallen = true; continue;
             }
-            if (hit ? !ranged_hit_ready(a, 20) : (!attack_mode(word(troops, 0x14)) || word(troops, 0x16) != e->goal)) {
+            if (siege ? (a[0x37] == 11 || a[0x37] == 12 || word(a, 0x16) < 1000) :
+                hit ? !ranged_hit_ready(a, 20) : (!attack_mode(word(troops, 0x14)) || word(troops, 0x16) != e->goal)) {
                 finish(a, *e, "route_breach_released"); continue;
             }
             const Orders now = read(a);
             if (!same(now, e->mine)) { e->original = now; breach_write(a, *e); }   // local226: keeps the stand relay
             continue;
         }
-        if (e->kind == ship) {   // local226 ship_repair_strike
-            if (ship_keep(a, *e)) { const Orders now = read(a); if (!same(now, e->mine)) { e->original = now; breach_write(a, *e); } }
-            continue;
-        }
-        if (e->kind == none) ship_check(a);
-        if (e->kind == ship) continue;
         morale_member(a, *e);
         supply_check(a);
     }
@@ -736,9 +911,9 @@ static void __fastcall daily(int slot) {
     if (!enabled || slot != 0) return;
     COST_SCOPE("route_hook:daily");
     if (diagnostic_logging) { watch_young(); AI_TRACE_DAILY(); }
+    age_reconcile();   // wall_age (docs/NEUTRAL_WALL_AGE.md 2절): before today's picks
     if (mod_features.supply_relay) for (unsigned i = 1; i <= 500; ++i) supply_check(table(0x7E838, i, 500));
     if (route_hook_hit) for (unsigned i = 1; i <= 500; ++i) hit_check(table(0x7E838, i, 500));   // local108
-    if (mod_features.ship_repair_strike) for (unsigned i = 1; i <= 500; ++i) ship_check(table(0x7E838, i, 500));   // local226
     for (unsigned i = 1; i <= 500; ++i) {
         Entry &e = entries[i];
         if (e.kind == none) continue;
@@ -751,14 +926,15 @@ static void __fastcall daily(int slot) {
             // local41 (user 2026-11-10 정원지 left the chain half broken for the long land way): the group run clears
             // member relays (B6B00) without always rebuilding them, so a relay difference alone is not a rival order.
             // While the wall stands and the group still attacks the same goal, a rewritten order is put back.
-            const bool hit = e.hit;
-            if ((hit ? !route_hook_hit : !mod_features.path_wall) || !wall_standing(e)) {
+            const bool hit = e.hit, siege = e.siege;
+            if (!entry_feature(e) || !wall_standing(e)) {
                 // local42 (user 2026-11-10 토성 left standing after the chain fell): the next wall on the way is judged
-                // at once instead of waiting for the group's next route write.
+                // at once instead of waiting for the group's next route write. A siege unit takes its next wall in
+                // wall_siege_step (native_campaign.inl).
                 const unsigned tid = e.troops;
                 finish(a, e, "route_breach_done");
                 Obj t = tid && tid <= 500 ? table(0x7F8D8, tid, 500) : nullptr;
-                if (!hit && mod_features.path_wall && valid(t)) { plans[tid].day = -1000000; breach_group(t, tid); }
+                if (!hit && !siege && mod_features.path_wall && valid(t)) { plans[tid].day = -1000000; breach_group(t, tid); }
                 continue;
             }
             if (hit && !ranged_hit_ready(a, 20)) { finish(a, e, "route_breach_released"); continue; }
@@ -771,19 +947,25 @@ static void __fastcall daily(int slot) {
                 moved_stand = s != e.stand;
                 e.stand = s;
             }
+            // wall_hold_chase (docs/NEUTRAL_WALL_AGE.md 4절): a chase target (+0x3C = 0x1B army, set by 2903E0) that is still on
+            // the army is dropped with the original clear 26E260 (as 273AC0 does when the chased army is gone). New chases do not
+            // start: siege_guard_hook::collect returns no candidate for this army while the wall stands.
+            if (mod_features.wall_hold_chase && a[0x3C] == 0x1B && !a[0x25]) {
+                log_event("wall_chase_cleared", i, e.wall, word(a, 0x3E));
+                fn<void(__fastcall *)(Obj)>(GA(GA_26E260))(a);
+            }
             const Orders now = read(a);
             const bool relay_ok = e.stand >= 48400 || e.stand == word(a, 0x2A) || now.relay[0] == e.stand;
             if (now.action == e.mine.action && now.kind == e.mine.kind && now.id == e.mine.id && relay_ok && !moved_stand) continue;
             Obj t = table(0x7F8D8, word(a, 0x58), 500);
             const bool alive = now.action != 11 && now.action != 12 && word(a, 0x16) >= 1000;
-            const bool keep = alive && (hit || (word(a, 0x58) == e.troops && valid(t) && attack_mode(word(t, 0x14)) && word(t, 0x16) == e.goal));
+            const bool keep = alive && (hit || siege || (word(a, 0x58) == e.troops && valid(t) && attack_mode(word(t, 0x14)) && word(t, 0x16) == e.goal));
             if (!keep) { log_event("route_breach_released", i, packed_order(a), group_state(a)); e = Entry{}; continue; }
             log_event("route_breach_reapply", i, packed_order(a), e.wall);
             if (!same(now, e.mine)) e.original = now;
             breach_write(a, e);
             continue;
         }
-        if (e.kind == ship) { if (ship_keep(a, e) && !same(read(a), e.mine)) breach_write(a, e); continue; }   // local226
         if (!same(read(a), e.mine)) { e = Entry{}; continue; }   // someone else (original/player) wrote: let go
         if (e.kind == hold) {
             if (!mod_features.morale || a[0x1A] >= 100 || !campaign_band(a, e.band)) finish(a, e, "route_morale_done");
@@ -801,11 +983,11 @@ static CallLink calls[4];
 static Obj relay;
 static bool ready;
 static bool hit_wanted() { return mod_features.obstacle && mod_features.hit_response; }   // local108
-static bool wanted() { return mod_features.morale || mod_features.path_wall || mod_features.supply_relay || hit_wanted() || mod_features.ship_repair_strike; }
+static bool wanted() { return mod_features.morale || mod_features.path_wall || mod_features.supply_relay || hit_wanted() || age_wanted(); }
 // 0 = prepared (or off), 1 = a CALL no longer targets its original function, 2 = prepare failed.
 static unsigned prepare() { COST_SCOPE("route_hook:prepare");
     for (auto &c : calls) c = CallLink{};
-    ready = false; route_hook_morale = route_hook_breach = route_hook_hit = false; route_hook_owns = nullptr;
+    ready = false; route_hook_morale = route_hook_breach = route_hook_hit = false; route_hook_owns = nullptr; age_ready = false;
     if (!wanted()) return 0;
     const unsigned sites[4] = {GA(GA_64F1B), GA(GA_667C7), GA(GA_667C0), GA(GA_44E50D)};
     const unsigned targets[4] = {GA(GA_CC160), GA(GA_CC160), GA(GA_CAA60), GA(GA_2E6E00)};
@@ -826,7 +1008,7 @@ static unsigned prepare() { COST_SCOPE("route_hook:prepare");
 }
 static void restore() { COST_SCOPE("route_hook:restore");
     for (unsigned i = 4; i > 0; --i) call_restore(calls[i - 1]);
-    ready = false; route_hook_morale = route_hook_breach = route_hook_hit = false; route_hook_owns = nullptr;
+    ready = false; route_hook_morale = route_hook_breach = route_hook_hit = false; route_hook_owns = nullptr; age_ready = false;
     for (auto &e : entries) e = Entry{};
     for (auto &b : bridges) b = Bridge{};
 }
@@ -839,14 +1021,22 @@ static bool publish() { COST_SCOPE("route_hook:publish");
         ok = image[calls[i].site] == 0xE8 && delta == calls[i].original && call_publish(calls[i]);
     }
     if (!ok) restore();
-    else { route_hook_morale = mod_features.morale; route_hook_breach = mod_features.path_wall; route_hook_hit = hit_wanted(); route_hook_owns = &owns; }
+    else { route_hook_morale = mod_features.morale; route_hook_breach = mod_features.path_wall; route_hook_hit = hit_wanted(); route_hook_owns = &owns; age_ready = age_wanted(); }
 #ifndef NO_RUNTIME_LOG
-    log_event("route_hook_installed", ok ? 1u : 0u, route_hook_morale, (route_hook_breach ? 1u : 0u) | (route_hook_hit ? 2u : 0u) | (ok && mod_features.ship_repair_strike ? 4u : 0u));
+    log_event("route_hook_installed", ok ? 1u : 0u, route_hook_morale, (route_hook_breach ? 1u : 0u) | (route_hook_hit ? 2u : 0u) | (age_ready ? 4u : 0u));
 #endif
+    if (ok && mod_features.wall_age_siege) log_event("wall_siege_installed", 1, mod_features.wall_age_pick ? 1u : 0u, mod_features.wall_hold_chase ? 1u : 0u);
     return ok;
 }
 
 }   // namespace route_hook
+
+#if defined(SPLIT_COMBAT) && !defined(SPLIT_MODULE_FIXTURE)
+// docs/NEUTRAL_WALL_AGE.md A-2: the convenience sidecar asks once at install; nullptr = wrong version or both switches off.
+extern "C" __declspec(dllexport) WallAgeTable *__cdecl SAN14CombatWallAge(unsigned version) { COST_SCOPE("SAN14CombatWallAge");
+    return version == kWallAgeVersion && route_hook::age_wanted() ? &route_hook::age_table : nullptr;
+}
+#endif
 
 // local108 (user 2026-11-13 "망루나 투석대도"): the facility attack 192AF0 applies its damage by CALL 192FBB ->
 // 179DE0(kind 0x1B, army id, amount, 0xB, facility id = 22F930 on the stack), not through 175950 where army fire is

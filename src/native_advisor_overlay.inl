@@ -461,9 +461,19 @@ static void release_device() {
     painted_generation=~0u;painted_unread=~0u;painted_tickets=~0u;painted_coupon=~0u;painted_offer=-1;painted_content=~0u;portrait_attempt_at=0;
 }
 static bool is_visible(){return flag(&visible)!=0;}
+// local307 (user 「일기토 발생하면 군사보고좀 숨겨줘 거슬린다」): while the original's duel runs nothing of the briefing draws or takes
+// input (the inbox keeps collecting, the model keeps updating). The flag is a copied value: native_advisor_briefing.inl's game-frame
+// and event-thread hooks read CDuelManager +0x10 and publish it here (no game read on Present / WndProc). True when it changed.
+static volatile LONG duel_hide;
+bool set_duel(bool on) {
+    const LONG v=on?1:0;
+    if(InterlockedExchange(&duel_hide,v)==v)return false;
+    if(on){InterlockedExchange(&wheel_block,0);InterlockedExchange(&block_buttons,0);}
+    return true;
+}
 static void mask_report(bool value){InterlockedExchange(&report_masked,value?1:0);}
 static bool report_window(){return static_cast<LONG64>(GetTickCount64())<=InterlockedCompareExchange64(&report_window_until,0,0) && InterlockedCompareExchange64(&report_window_until,0,0)!=0;}
-bool needs_draw(){return is_visible() || flag(&report_masked) || flag(&report_tail) || report_window();}
+bool needs_draw(){return !flag(&duel_hide) && (is_visible() || flag(&report_masked) || flag(&report_tail) || report_window());}
 static void progress_flags(bool show,bool clean,bool update_visible=true) {
     InterlockedExchange(&scene_clean,clean?1:0);
     if(update_visible){InterlockedExchange64(&report_window_until,GetTickCount64()+8000);InterlockedExchange(&visible,show?1:0);}
@@ -730,7 +740,7 @@ bool input(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
         InterlockedExchange(&wheel_block,0);InterlockedExchange(&block_buttons,0);
         if(message!=WM_CAPTURECHANGED && GetCapture()==hwnd)ReleaseCapture();return consume;
     }
-    if(!is_visible() || !available()){InterlockedExchange(&wheel_block,0);InterlockedExchange(&block_buttons,0);return false;}
+    if(!is_visible() || !available() || flag(&duel_hide)){InterlockedExchange(&wheel_block,0);InterlockedExchange(&block_buttons,0);return false;}
     if(message!=WM_MOUSEMOVE && message!=WM_LBUTTONDOWN && message!=WM_LBUTTONUP && message!=WM_LBUTTONDBLCLK && message!=WM_RBUTTONDOWN && message!=WM_RBUTTONUP && message!=WM_MOUSEWHEEL && message!=WM_KEYDOWN && message!=WM_KEYUP)return false;
     enter_model_lock(false);
     ULONGLONG now=GetTickCount64();

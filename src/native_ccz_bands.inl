@@ -103,12 +103,13 @@ bool install(bool dev) {
         {GA(GA_8AD530),5,{0x48,0x8B,0xC4,0x56,0x57}},        // face texture from zp1 bytes (mov rax,rsp; push rsi; push rdi)
         {GA(GA_4522B0),6,{0x40,0x55,0x56,0x57,0x41,0x54}},   // selection list -> command window (2026-11-19: bands leave the list)
         {GA(GA_230460),6,{0x40,0x53,0x48,0x83,0xEC,0x20}},   // army max morale (2026-11-20: elite bands 130)
-        {GA(GA_2801C0),5,{0x48,0x89,0x54,0x24,0x10}}};       // capture roll (2026-11-20: band commanders are never captured)
+        {GA(GA_2801C0),5,{0x48,0x89,0x54,0x24,0x10}},        // capture roll (2026-11-20: band commanders are never captured)
+        {GA(GA_2CCC60),6,{0x48,0x8B,0xC4,0x55,0x41,0x54}}};  // duel generator (2026-11-22: bands stay out of duels; mov rax,rsp; push rbp; push r12)
     if(installed)return true;
     if(!ccz_module::load())return false;
     const CczBands *api=ccz_module::api->bands;
     const bool setters=!mod_features.trace_original;
-    auto wanted=[&](unsigned i){return i<kBandSetAction || (i<=kBandSetTarget && setters) || (i==kBandFaceTexture && portrait) || i==kBandUnitTarget || i==kBandMaxMorale || i==kBandCapture;};
+    auto wanted=[&](unsigned i){return i<kBandSetAction || (i<=kBandSetTarget && setters) || (i==kBandFaceTexture && portrait) || i==kBandUnitTarget || i==kBandMaxMorale || i==kBandCapture || i==kBandDuel;};
     unsigned count=0;
     for(unsigned i=0;i<kBandHookCount;++i) {
         if(!wanted(i))continue;
@@ -157,7 +158,7 @@ bool install(bool dev) {
         VirtualFree(relay,0,MEM_RELEASE);relay=nullptr;log_event("band_prepare_rejected",0xFE);return false;
     }
     // Scopes and the owner writer first, the army-force answer after them, the face texture, the day driver last.
-    static const unsigned order[]={kBandPaint,kBandSupply,kBandRemove,kBandPaintWrite,kBandMorale,kBandSetAction,kBandSetTarget,
+    static const unsigned order[]={kBandPaint,kBandSupply,kBandRemove,kBandPaintWrite,kBandMorale,kBandSetAction,kBandSetTarget,kBandDuel,
                                    kBandArmyForce,kBandMaxMorale,kBandCapture,kBandFaceTexture,kBandUnitTarget,kBandDayMove};
     static_assert(sizeof(order)/sizeof(order[0])==kBandHookCount,"every band entry has a publish slot");
     for(unsigned i:order) {

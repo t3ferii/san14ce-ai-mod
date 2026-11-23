@@ -105,6 +105,8 @@ static bool apply_priority(Obj army, Obj node, Obj context)
         remember_campaign(army,*p);
         // gate_intercept: the unit behind a gate takes no other order (individual priorities, cuts, builds included).
         if(p->regional_worker && p->intercept && computer_side_army(army)) {intercept_step(army,*p);return mod_step("ap:intercept"),true;}
+        // wall_age_siege: a siege-weapon unit takes no other order either (its wall order is route_hook's breach entry).
+        if(p->regional_worker && p->siege_unit && computer_side_army(army)) {wall_siege_step(army,*p);return mod_step("ap:wall_siege"),true;}
         if(campaign_individual_priority(army,*p)) {
 #ifdef SORTIE_FORMATION
             SortieGroup g;unsigned id;
@@ -410,7 +412,104 @@ static void garrison_recall_tick(unsigned own) { COST_SCOPE("ai_nodes:garrison_r
         }
     }
 }
-namespace trade_hire {static void trade_tick(unsigned own);}
+namespace trade_hire {static void trade_tick(unsigned own);static bool front_city(unsigned id,unsigned own);static bool computer_force(unsigned own);}
+// [combat] wall_age_siege (user 2026-11-21 「aging이 36순(3년)이 넘는 중립건물이 있으면 충차/투석기가 출진해서 … 전선이 아닌도시에서 …
+// 한번에 여러도시에서 최대 10부대」, docs/NEUTRAL_WALL_AGE.md 5절). Computer forces only (never the player's direct or delegated
+// corps: the corps tick skips the player force, computer_force). Pace (user 2026-11-22 「매달 상순에 … 상순마다 2부대」 → 「군주
+// 세력 전체 2부대」): only on the 상순 days (1..10) of a month, at most kWallSiegePerMonth departures per force and month, each
+// from a different castle; the daily tick retries inside 상순 until both left (trade_tick's calendar). Targets: route_hook::siege_targets
+// (finished neutral 토성·석벽·철쇄 older than 108 순 in or next to an area of the force's castles, with a hex outside hostile tower
+// range). Sources (user decision 5, no distance limit): a castle of the force that is no front castle (trade_hire::front_city)
+// but has an area touching an area of a front castle of the force (neighbour list +0x56[8], mask +0x66, neighbour +0x35), holding
+// kWallSiegeKeep + kWallSiegeSoldiers. While fewer than ten siege units of the force are out (on their way home not counted) and
+// the month's quota is open, the target with the fewest units on it (then the higher score) gets one from the nearest source that
+// has not sent one this month nor tried today.
+static constexpr unsigned kWallSiegeSoldiers=3000,kWallSiegeKeep=6000,kWallSiegePerMonth=2;
+static unsigned wall_siege_out(unsigned own) {
+    unsigned out=0;
+    for(unsigned i=1;i<=500;++i) {
+        Obj a=table(0x7E838,i,500);if(!valid(a) || army_force(a)!=own)continue;
+        const Progress &p=progress[i];
+        if(p.army==a && p.root==world() && p.commander==word(a,0x12) && p.siege_unit && !p.returning && !p.forced_return)++out;
+    }
+    return out;
+}
+static void wall_siege_tick(unsigned own) { COST_SCOPE("ai_nodes:wall_siege_tick");
+    if(!trade_hire::computer_force(own) || own>=52)return;
+    Obj ctx=pointer(world(),0x871E8);if(!ctx)return;
+    const unsigned mday=ctx[0x37];if(mday<1 || mday>10)return;   // 상순 only
+    const int month=static_cast<int>(word(ctx,0x34))*12+ctx[0x36];
+    static Obj seen_root;static int skip_day[52],month_of[52];static unsigned month_sent[52];static uint64_t month_castles[52];
+    if(seen_root!=world()) {seen_root=world();for(int &d:skip_day)d=-1;for(int &m:month_of)m=-1;}
+    if(month_of[own]!=month) {month_of[own]=month;month_sent[own]=0;month_castles[own]=0;}
+    if(month_sent[own]>=kWallSiegePerMonth)return;   // this month's departures are done
+    const int day=game_day();
+    auto skip=[&](unsigned why,unsigned targets,unsigned sources) {   // once per force and day
+        if(own>=52 || skip_day[own]==day)return;
+        skip_day[own]=day;
+        log_event("wall_siege_skip",own,why,(targets&0xFFFF)|(sources<<16));
+    };
+    unsigned out=wall_siege_out(own);
+    if(!wall_age::siege_room(out)) {skip(3,0,0);return;}
+    std::vector<wall_age::SiegeTarget> targets=route_hook::siege_targets(own);
+    if(targets.empty()) {skip(1,0,0);return;}
+    bool front[52]={},mine[52]={};
+    for(unsigned id=1;id<=51;++id) {Obj c=campaign_goal(id);mine[id]=c && intercept_base_owner(c)==own;if(mine[id])front[id]=trade_hire::front_city(id,own);}
+    struct Source {Obj city;unsigned id,castle;bool used;};
+    std::vector<Source> sources;
+    for(unsigned id=1;id<=51;++id) {
+        if(!mine[id] || front[id] || ((month_castles[own]>>id)&1u))continue;   // one departure per castle and month
+        Obj city=campaign_goal(id);
+        bool touches=false;
+        for(unsigned n=1;n<=500 && !touches;++n) {
+            Obj a=table(0x6CAF0,n,500);if(!valid(a) || a[0x35]!=id)continue;
+            for(unsigned i=0;i<8 && !touches;++i) {
+                const unsigned m=word(a,0x56+i*2);if(!(a[0x66]&(1u<<i)) || !m || m>500)continue;
+                Obj b=table(0x6CAF0,m,500);const unsigned other=valid(b)?b[0x35]:0u;
+                touches=other && other<=51 && other!=id && mine[other] && front[other];
+            }
+        }
+        if(!touches)continue;
+        const unsigned castle=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(city);
+        if(castle<48400)sources.push_back({city,id,castle,false});
+    }
+    if(sources.empty()) {skip(2,static_cast<unsigned>(targets.size()),0);return;}
+    unsigned last_why=0,sent=0;
+    while(wall_age::siege_room(out) && month_sent[own]<kWallSiegePerMonth) {
+        const int k=wall_age::siege_pick(targets);if(k<0)break;
+        wall_age::SiegeTarget &t=targets[static_cast<size_t>(k)];
+        std::vector<Source *> order;
+        for(Source &s:sources)if(!s.used)order.push_back(&s);
+        if(order.empty())break;
+        std::sort(order.begin(),order.end(),[&](const Source *a,const Source *b){
+            const int da=distance(a->castle,t.hex),db=distance(b->castle,t.hex);return da!=db?da<db:a->id<b->id;});
+        Obj army=nullptr;Source *from=nullptr;
+        for(Source *s:order) {
+            if(dword(s->city,0x3C)<kWallSiegeKeep+kWallSiegeSoldiers || campaign::available(dword(s->city,0x3C))<kWallSiegeSoldiers) {s->used=true;last_why=5;continue;}
+            unsigned why=0;
+            army=campaign_paid_single(s->city,s->city,t.stand,kWallSiegeSoldiers,true,false,0,false,false,&why,t.id);
+            s->used=true;   // one try per castle and day
+            if(valid(army)) {from=s;break;}
+            last_why=why==1?5u:why==2 || why==6?4u:why==3?6u:7u;   // soldiers / officer·formation / no way / gold·slot·refused
+        }
+        if(!valid(army)) {
+            // this target has no source left today; leave the others a chance
+            targets.erase(targets.begin()+k);
+            if(targets.empty())break;
+            continue;
+        }
+        // The unit marches on its departure way (relays around hostile armies); wall_siege_step gives it the wall order (the
+        // route_hook breach entry) once it is near. The new destroy order counts now.
+        route_hook::siege_count(t.id);
+        ++out;++t.assigned;++sent;
+        ++month_sent[own];month_castles[own]|=1ull<<from->id;
+        const unsigned formation=army[0x1B];
+        // army = force | source castle << 8, value = army | formation << 12 | wall << 16, hex = wall hex
+        log_event("wall_siege_departed",own|(from->id<<8),army_id(army)|(formation<<12)|(t.id<<16),t.hex);
+        if(month_sent[own]>=kWallSiegePerMonth)log_event("wall_siege_month_done",own,month_sent[own],mday);
+    }
+    if(!sent)skip(last_why?last_why:4,static_cast<unsigned>(targets.size()),static_cast<unsigned>(sources.size()));
+}
 static void retake_adjacent_tick(Obj context) { COST_SCOPE("ai_nodes:retake_adjacent_tick");
     static thread_local int seen_day=-1;
     const int day=game_day();
@@ -418,13 +517,14 @@ static void retake_adjacent_tick(Obj context) { COST_SCOPE("ai_nodes:retake_adja
     seen_day=day;
     // local167: the monthly computer trade rides on the same per-force daily tick, independent of mission_v2.
     const bool v2=(mod_features.retake_adjacent || mod_features.gate_intercept || mod_features.helm_intercept || mod_features.garrison_recall) && mod_features.mission_v2;
-    if((!v2 && !mod_features.computer_trade) || !enabled || in_policy)return;
+    // wall_age_siege rides on the same per-force daily tick (its own switch, independent of mission_v2).
+    if((!v2 && !mod_features.computer_trade && !mod_features.wall_age_siege) || !enabled || in_policy)return;
     Obj blackboard=fn<Obj(__fastcall *)(Obj)>(GA(GA_1137FF0))(context),corps=nullptr;
     if(!blackboard || !fn<char(__fastcall *)(Obj,unsigned,Obj *,int)>(GA(GA_B28D20))(blackboard,0xD6A5EAAEu,&corps,0) || !valid(corps))
         {seen_day=-1;return;}   // not a corps tree yet: try again at a later condition of this thread
     if(fn<int(__fastcall *)(Obj)>(GA(GA_2350F0))(corps))return;   // corps of the player force
     const unsigned own=corps[0x10];
-    if(!own || own>51 || own==player_force())return;
+    if(!own || own>51 || own==player_force() || tribe_force_id(own))return;   // tribe_hands_off: no tribe intercept / retake / trade
     static Obj tick_root;static int tick_day[52];
     if(tick_root!=world()) {tick_root=world();for(int &d:tick_day)d=-1;}
     if(tick_day[own]==day)return;
@@ -435,6 +535,7 @@ static void retake_adjacent_tick(Obj context) { COST_SCOPE("ai_nodes:retake_adja
     if(v2 && mod_features.gate_intercept)gate_intercept_tick(own);
     if(v2 && mod_features.helm_intercept)helm_intercept_tick(own);
     if(v2 && mod_features.garrison_recall)garrison_recall_tick(own);
+    if(mod_features.wall_age_siege)wall_siege_tick(own);
     for(unsigned id=1;v2 && mod_features.retake_adjacent && id<=51;++id) {
         Obj city=campaign_goal(id);if(!city)continue;
         Obj lord=fn<Obj(__fastcall *)(Obj)>(GA(GA_22E3E0))(city);

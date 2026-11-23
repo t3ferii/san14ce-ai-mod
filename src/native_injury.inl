@@ -150,6 +150,7 @@ static void ai_policy_cap(Obj force,Obj advisor,GameList *lists) {
 }
 static Obj __fastcall injury_government_selection(Obj force,Obj layout,GameList *lists) { COST_SCOPE("injury_injury_government_selection");
     Obj advisor=fn<Obj(__fastcall *)(Obj,Obj,GameList *)>(GA(GA_263520))(force,layout,lists);
+    if(tribe_force_object(force))return advisor;   // tribe_hands_off: no policy cap, no herb plan
     ai_policy_cap(force,advisor,lists);
     if(enabled && mod_features.injury_herbal && lists && valid(force) && injury_force_needs_herb(force)) {
         for(unsigned i=0;i<7;++i) {
@@ -176,7 +177,7 @@ static void injury_synchronize_city(Obj city) {
     Obj district=get_district(city);
     if(!injury_auto_district(district))return;
     Obj force=table(0xDF30,district[0x10],51);
-    if(!valid(force))return;
+    if(!valid(force) || tribe_force_object(force))return;   // tribe_hands_off
     // v12.8: removal of wounded assignments = protection; herb planning = injury_herbal.
     if(mod_features.injury) {
     for(unsigned off:{0xCAu,0xCCu}) {
@@ -226,7 +227,7 @@ static uint64_t __fastcall injury_departure_create(Obj node,Obj context,Obj subj
         Obj output=personnel_context_object(node,context,0x38);
         if(output)for(Link *l=list_first(*reinterpret_cast<GameList *>(output));l;l=l->next) {
             Obj p=valid(l->value)?table(0x158,word(l->value,0x12),6000):nullptr;
-            if(valid(p) && !personnel::may_auto_work(p[0x161]))return 2;
+            if(valid(p) && !personnel::may_auto_work(p[0x161]) && !tribe_person(p))return 2;   // tribe_hands_off
         }
     }
     return fn<Execute>(GA(GA_365A0))(node,context,subject);

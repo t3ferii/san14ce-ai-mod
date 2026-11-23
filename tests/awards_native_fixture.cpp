@@ -164,8 +164,11 @@ static void test_warehouse(Obj ruler,Obj p,Obj q,Obj district) {
     pair[0]=p;pair[1]=war3;expect(award_transfer(pair));
     busy[p]=1;award_selected_item=war2;list_init(list);award_recipients(district,&list);
     expect(!contains(list,p) && contains(list,q));list_free(list);award_selected_item=nullptr;busy[p]=0;
-    put32(p,0x1E8,1);expect(award_active(p));put32(p,0x1E8,0);
-    put16(p,0x15E,1);expect(award_active(p) && !award_allowed(p,war2) && award_allowed(p,intel));
+    // User 2026-11-20: the original post list 1EEEF0 keeps 도시·지역담당관 selectable - region duty (+0x1E8) and
+    // +0x15E bit 0 are not active, so they take any treasure; bit 14 (left out by 1EEEF0) still is.
+    put32(p,0x1E8,1);expect(!award_active(p) && award_allowed(p,war2));put32(p,0x1E8,0);
+    put16(p,0x15E,1);expect(!award_active(p) && award_allowed(p,war2));
+    put16(p,0x15E,0x4000);expect(award_active(p) && !award_allowed(p,war2) && award_allowed(p,intel));
     award_selected_item=intel;list_init(list);award_recipients(district,&list);expect(contains(list,p));
     list_free(list);award_selected_item=nullptr;put16(p,0x15E,0);
     // Full UI scope: temporary no-owner storage permits ruler selection,
@@ -212,6 +215,14 @@ static void test_posts(Obj p,Obj q) {
     armies[p]=object(2);put32(node,0x28,73);award_post_batch(map);expect(dword(node,0x28)==1);
     busy[p]=0;armies[p]=nullptr;put32(node,0x28,0);award_post_batch(map);expect(dword(node,0x28)==0);
     put32(node,0x28,3);award_post_batch(map);expect(dword(node,0x28)==1);
+    // 도시·지역담당관 (region duty +0x1E8, +0x15E bit 0) may move to a lower post or none; a deployed one may not.
+    put32(p,0x1E8,1);put16(p,0x15E,1);p[0xE7]=1;
+    expect(award_post_select(nullptr,p,table(0x784F8,0,255))==1);
+    put32(node,0x28,0);award_post_batch(map);expect(dword(node,0x28)==0);
+    put32(node,0x28,73);award_post_batch(map);expect(dword(node,0x28)==73);
+    armies[p]=object(2);expect(!award_post_select(nullptr,p,table(0x784F8,0,255)));
+    put32(node,0x28,0);award_post_batch(map);expect(dword(node,0x28)==1);
+    armies[p]=nullptr;put32(p,0x1E8,0);put16(p,0x15E,0);
     armies[q]=nullptr;occupants.clear();
     Obj state=static_cast<Obj>(calloc(1,0x500)),layout=object(1);
     putptr(state,0x4C0,layout);putptr(state,0x470,table(0xDF30,1,51));

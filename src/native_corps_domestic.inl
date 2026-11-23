@@ -24,7 +24,7 @@ static Obj corps_of(Obj context,unsigned var) {
 }
 // Demo play (game +0x3A == 0) hands the player's corps to the computer too, although 2350F0 still names them.
 static bool demo_play() {Obj root=world();Obj ctx=root?pointer(root,0x871E8):nullptr;return ctx && ctx[0x3A]==0;}
-static bool computer(Obj corps) {return corps && (demo_play() || fn<int(__fastcall *)(Obj)>(GA(GA_2350F0))(corps)==0);}
+static bool computer(Obj corps) {return corps && !tribe_force_id(corps[0x10]) && (demo_play() || fn<int(__fastcall *)(Obj)>(GA(GA_2350F0))(corps)==0);}   // tribe_hands_off
 static bool skip_second_search(Obj context) { COST_SCOPE("corps_domestic:skip_second_search");
     if(!mod_features.ai_search2 || !context)return false;
     Obj blackboard=fn<Obj(__fastcall *)(Obj)>(GA(GA_1137FF0))(context);int phase=0;

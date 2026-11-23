@@ -4,7 +4,7 @@
 
 [다른 모더용 호환 지침](docs/MODDER_COMPAT.md) · [소스 수정·빌드 안내](docs/SOURCE_BUILD.md) · [AI 수정 지침](docs/AI_EDITING.md) · [검증 결과](docs/SOURCE_VALIDATION.md) · [수정·재배포 허용 범위](LICENSE)
 
-`src/`, `tests/`, `tools/`, `installer/`, `distribution/`에서 원하는 기능을 fork하여 수정할 수 있습니다. 핵심 코드의 `AI-CONTRACT` 주석은 AI가 지켜야 할 스레드·ABI·훅 소유권·저장 호환성 제약을 설명합니다. **v16.5 공개 빌드 소스를 옮겼습니다(2026-11-20).** 생성·검사 도구, 설치기 카탈로그(`development/installer_map.json`), 모듈 목록(`development/modules/`), 개발 문서까지 git으로 관리하는 텍스트 파일을 모두 넣었습니다. 설치기(`installer/InstallerGui.cs`), 조조전 DLL(`src/ccz_module.cpp`), 훅 관리 DLL(`src/layout_main.cpp`) 소스도 포함합니다. 개성·전법 툴팁과 AI 전사 연출은 자체 소스로 다시 만들어 다른 모드의 기계어를 포함하지 않습니다. 개인 PC 경로만 `<user>`로 가렸고 C/C++ 실행 토큰은 원본과 같습니다. 전체 빌드에 필요한 원작 자료·외부 모드 payload는 [별도 의존성](docs/SOURCE_DEPENDENCIES.md)을 확인하세요.
+`src/`, `tests/`, `tools/`, `installer/`, `distribution/`에서 원하는 기능을 fork하여 수정할 수 있습니다. 핵심 코드의 `AI-CONTRACT` 주석은 AI가 지켜야 할 스레드·ABI·훅 소유권·저장 호환성 제약을 설명합니다. **v16.8 공개 빌드 소스를 옮겼습니다(2026-11-23).** 생성·검사 도구, 설치기 카탈로그(`development/installer_map.json`), 모듈 목록(`development/modules/`), 개발 문서까지 git으로 관리하는 텍스트 파일을 모두 넣었습니다. 설치기(`installer/InstallerGui.cs`), 조조전 DLL(`src/ccz_module.cpp`), 훅 관리 DLL(`src/layout_main.cpp`) 소스도 포함합니다. 개성·전법 툴팁과 AI 전사 연출은 자체 소스로 다시 만들어 다른 모드의 기계어를 포함하지 않습니다. 개인 PC 경로만 `<user>`로 가렸고 C/C++ 실행 토큰은 원본과 같습니다. 전체 빌드에 필요한 원작 자료·외부 모드 payload는 [별도 의존성](docs/SOURCE_DEPENDENCIES.md)을 확인하세요.
 
 버전별 변경사항은 [GitHub 릴리스](https://github.com/t3ferii/san14ce-ai-mod/releases)에서 확인하세요.
 
@@ -411,4 +411,4 @@ v15.6 설치기의 기능은 대부분 기본으로 켜져 있고, **건물파�
 - 능력치 상한 200·추가 성장 → 삼갤 통합패치(180.71·175.115 유동)·모음팩 v1.9
 - 릴레이 일기토 규칙·글자 → 삼국지11(KOEI) 일기토 · 나눔손글씨 붓·나눔명조(SIL OFL 1.1)
 
-개발 자료: [함수·주소 설명](docs/GITHUB_기능상세.md) · 소스 함수 색인과 조사 범위
+개발 자료: [원작과 달라진 동작](docs/MOD_CHANGES_VS_ORIGINAL.md) · [원작 함수 기록](docs/NATIVE_FUNCTIONS.md) · 소스 함수 색인과 조사 범위

@@ -52,7 +52,7 @@
   - 버전 이름: 현재 계열 + `-localN`(예: `v1571-plus-local194`).
 - 설치 후 본 폴더에서 `python -X utf8 tools/generate_handoff.py`로 `development/CURRENT.md`를 갱신한다. 보고에 "미서명"과 실게임 확인 여부를 적는다.
 - 작업 트리에서는 위 순서를 한 번에: `powershell -File tools/local_install.ps1 -Version <버전> -Modules <자기 소유> [-Gui] -Note "무엇을"`(정합성 경로 → 빌드(캐시) → 본 폴더 동기화·빌드 복사 → `install_local.py prepare/install` → handoff → CURRENT.md 커밋 → 본 폴더 detach, 단계별 시간 출력). 검사는 먼저 돌린다.
-- 인계·설치 직전 점검은 `powershell -File tools/local_install.ps1 -CheckOnly [-Gui]` 한 번(커밋 확인 → 미추적 소스 경고 → 정합성 경로 → `check_feature.ps1 -Feature dll-split` → `build_split.ps1 -Both`, 설치·본 폴더 변경 없음, 마지막에 인계 초안 한 줄). Claude Code 스킬 `san14-handoff`가 등록 누락 확인부터 인계까지 이 순서를 안내한다(2026-11-18).
+- 설치 직전 점검은 `powershell -File tools/local_install.ps1 -CheckOnly [-Gui]` 한 번(커밋 확인 → 미추적 소스 경고 → 정합성 경로 → `check_feature.ps1 -Feature dll-split` → `build_split.ps1 -Both`, 설치·본 폴더 변경 없음, 마지막에 요약 한 줄 `handoff draft:`). Claude Code 스킬 `san14-handoff`가 등록 누락 확인부터 설치까지 이 순서를 안내한다(2026-11-18). 설치는 변경을 만든 세션이 직접 한다 — 다른 세션에 넘기지 않는다(사용자 2026-11-22, 설치 담당 세션 규칙 폐지).
 - `development/installer_map.json`(설치기 항목·설명)을 바꾼 설치는 반드시 `-Gui`. 없으면 게임 폴더 설치기가 옛 빌드로 남아 새 항목이 안 보인다(MOD_DEV_LESSONS G29). `install_local.py`가 설치기에 없는 키가 있으면 거절한다.
 - 세션 전용 설치 스크립트를 만들지 않는다(`tools/local_install.ps1`은 공용 `install_local.py`를 그대로 부르는 공용 순서다).
 

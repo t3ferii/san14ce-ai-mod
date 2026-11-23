@@ -85,7 +85,7 @@ def main():
         'files':files},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     lines=['# 현재 소스 조사 범위와 함수 색인','',
       '기준: v15.6 공개 무로그 빌드 소스 (2026-11-06). split 빌드 정의·Layout 등록표·주소표·기능 게이트·정책 및 기존 함수 기록을 대조했다.',
-      '일반 설명은 [README](../README.md), 원작 연결 함수와 변경 조건은 [기술 설명](../docs/GITHUB_기능상세.md)에 있다.','',
+      '일반 설명은 [README](../README.md), 원작과 달라진 동작은 [MOD_CHANGES_VS_ORIGINAL](../docs/MOD_CHANGES_VS_ORIGINAL.md), 원작 함수 기록은 [NATIVE_FUNCTIONS](../docs/NATIVE_FUNCTIONS.md)에 있다.','',
       '## 근거와 한계','',
       '- `FUNCTION_INDEX.csv`: 파일·행·함수 정의 후보·기능 주제·범위·본문 지문. `source_audit.json`: 모든 src 파일 지문과 정의 후보.',
       '- 정의 후보는 정규식과 괄호 대응으로 수집했다. 조건부 컴파일과 fixture 분기를 포함하며 템플릿·연산자·생성자 등을 완전히 파싱하는 컴파일러 색인이 아니다.',

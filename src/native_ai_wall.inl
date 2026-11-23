@@ -10,7 +10,7 @@ static unsigned blocked_wall_force(Obj force, Obj definition) { COST_SCOPE("ai_w
     unsigned player = player_force();
     if (!player && !observer_mode()) return 0;
     for (unsigned id = 1; id < 52; ++id)
-        if (force && force == table(0xDF30,id,51) && valid(force)) return id != player ? id : 0;
+        if (force && force == table(0xDF30,id,51) && valid(force)) return id != player && !tribe_force_id(id) ? id : 0;
     return 0;
 }
 // 2026-10-29: only owned castle/gate regions and their first neighbours.

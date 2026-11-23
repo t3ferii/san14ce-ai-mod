@@ -135,7 +135,7 @@ ok('if(!far_keep_enabled || armed<=0' in src and 'else if(far_keep_enabled && !c
    'OFF disables stale-camera refresh and far-distance arming')
 ok('bool ccz_far_keep = false;' in adapter and 'f.ccz_far_keep = false;' in adapter,
    'far keep remains OFF regardless of config (user 2026-11-03)')
-ok('ccz_module_abi=9' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8') and 'kBandMaxMorale' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8') and 'kBandCapture' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8') and
+ok('ccz_module_abi=10' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8') and 'kBandMaxMorale' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8') and 'kBandCapture' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8') and
    'install_sprites(hide,depth,far_keep,fallback)' in bridge and 'ccz_sprites::install(hide,depth,far_keep,fallback)' in module and
    '!found->bands || !found->bands->configure' in bridge and 'kBandFaceTexture' in (P/'src/ccz_module_api.h').read_text(encoding='utf-8'),
    'ABI 5 carries far/fallback flags, the band entries (2026-11-17) and the band face texture entry (2026-11-18); mismatched module is rejected')

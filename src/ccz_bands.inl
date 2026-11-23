@@ -38,8 +38,9 @@ using SetTarget=void (__fastcall *)(Obj,unsigned char,unsigned short);
 using FaceTexture=unsigned long long (__fastcall *)(Obj,Obj,int,unsigned);   // 8AD530(manager, zp1 bytes, image id, p4): 0 = failed
 using MaxMorale=unsigned (__fastcall *)(Obj);   // 230460(army): 26A600 of the army's force (22E690) = 100 + policy terms
 using Capture=bool (__fastcall *)(Obj,Obj);     // 2801C0(person, captor person): capture roll (rules_people.md 6.1)
+using DuelDay=void (__fastcall *)();             // 2CCC60(): the once-a-day duel generator (rules_combat.md 9.5)
 struct Originals {ArmyForce army_force;UnitCall paint,supply;Remove remove;PaintWrite paint_write;Morale morale;DayMove day_move;SetAction set_action;SetTarget set_target;
-                  FaceTexture face_texture;UnitCall unit_target;MaxMorale max_morale;Capture capture;};
+                  FaceTexture face_texture;UnitCall unit_target;MaxMorale max_morale;Capture capture;DuelDay duel;};
 static Originals original;
 static unsigned flags;
 static volatile LONG64 (&slots)[kSlots]=ccz_idle::slots;   // shared with the sprite renderer (ccz_module.cpp)
@@ -47,6 +48,7 @@ static_assert(kSlots==ccz_idle::kSlots && kFirstGeneric==ccz_idle::kFirstGeneric
 static __declspec(thread) Obj face_unit;
 static __declspec(thread) unsigned paint_force,paint_refused,paint_allowed;
 static __declspec(thread) bool spawning,own_order;
+static __declspec(thread) unsigned duel_depth;   // inside 2CCC60 (hook_duel): bands answer their raw force 51
 static SRWLOCK lock=SRWLOCK_INIT;
 static Band bands[kMaxBands];
 static Obj band_world;
@@ -141,7 +143,7 @@ static volatile LONG paint_logs,supply_logs;
 // ---------------------------------------------------------------- hooks (game threads)
 static unsigned __fastcall hook_army_force(Obj unit) {
     const unsigned raw=original.army_force(unit)&255u;
-    if(raw!=kBandit || unit==face_unit)return raw;
+    if(raw!=kBandit || unit==face_unit || duel_depth)return raw;
     unsigned f=band_force(unit);if(!f)return raw;
 #ifndef NO_RUNTIME_LOG
     note_ask(_ReturnAddress(),f);
@@ -262,6 +264,18 @@ static bool __fastcall hook_capture(Obj person,Obj captor) {
         }
     }
     return original.capture(person,captor);
+}
+// 2026-11-22 user 「의용병무리는 일기토에서 아예빼버려 걸지도 걸리지도 않게」: the once-a-day duel generator 2CCC60 filters candidates
+// (2C6930), opponents (2C6AE0) and substitutes by force 1..45 (rules_combat.md 9.5; both pickers are called only from 2CCC60). Inside it a
+// band army answers its raw force 51 (hook_army_force), so the original filter drops band commanders on every side. duel_band_days counts
+// generator calls for the log (band_duel_scope, once per 30 days).
+static volatile LONG duel_band_days;
+static void __fastcall hook_duel() {
+    ++duel_depth;
+    __try {original.duel();}
+    __finally {--duel_depth;}
+    const LONG n=InterlockedIncrement(&duel_band_days);
+    if(n<=3 || n%30==0)log_event("band_duel_scope",static_cast<unsigned>(n),0,0);
 }
 // bands->exchange (CALL 16B86C after 16B180): cavalry attacker by its terrain, rattan-armour target; poison/sorcery may confuse.
 // The no-message sentinel 1A4AB88 (as the event commands 3AB0E0 pass it) keeps 2F0E50 from opening a notice.
@@ -1429,8 +1443,9 @@ static bool __cdecl configure(void *const *gates,unsigned new_flags) {
     o.unit_target=reinterpret_cast<UnitCall>(gates[kBandUnitTarget]);
     o.max_morale=reinterpret_cast<MaxMorale>(gates[kBandMaxMorale]);
     o.capture=reinterpret_cast<Capture>(gates[kBandCapture]);
+    o.duel=reinterpret_cast<DuelDay>(gates[kBandDuel]);
     if(!o.army_force || !o.paint || !o.supply || !o.remove || !o.paint_write || !o.morale || !o.day_move || !o.unit_target || !o.max_morale ||
-       !o.capture)return false;
+       !o.capture || !o.duel)return false;
     const unsigned level=(new_flags>>12)&15u;   // [ccz] band_morale 1..3, 0 (older convenience DLL) = x1
     morale_pct=level==1?50u:level==3?150u:100u;
     if((new_flags&kFlagSetters) && (!o.set_action || !o.set_target))return false;

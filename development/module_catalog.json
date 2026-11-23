@@ -249,6 +249,18 @@
     {
      "section": "combat",
      "key": "tribe_terrain_path"
+    },
+    {
+     "section": "combat",
+     "key": "wall_age_pick"
+    },
+    {
+     "section": "combat",
+     "key": "wall_age_siege"
+    },
+    {
+     "section": "combat",
+     "key": "wall_hold_chase"
     }
    ],
    "installer": {
@@ -375,7 +387,20 @@
      },
      {
       "section": "combat",
-      "key": "ship_repair_strike"
+      "key": "wall_age_pick"
+     },
+     {
+      "section": "combat",
+      "key": "wall_hold_chase"
+     },
+     {
+      "section": "combat",
+      "key": "wall_age_siege"
+     },
+     {
+      "section": "combat",
+      "key": "ship_repair_strike",
+      "retired": true
      },
      {
       "section": "combat",
@@ -939,7 +964,7 @@
    "uses": [],
    "hook_policy": {
     "chain": 8,
-    "refuse_if_changed": 17
+    "refuse_if_changed": 18
    },
    "foreign_overlap": []
   },
@@ -994,9 +1019,45 @@
    "depends": [],
    "conflicts": [],
    "checks": [
+    "duel-manual",
+    "duel-s11",
+    "layout-registry",
+    "shared-overlay",
     "split-module"
    ],
    "ini": [
+    {
+     "section": "diagnostics",
+     "key": "duel_manual_gap"
+    },
+    {
+     "section": "diagnostics",
+     "key": "duel_manual_test"
+    },
+    {
+     "section": "diagnostics",
+     "key": "duel_multi_motion"
+    },
+    {
+     "section": "diagnostics",
+     "key": "duel_multi_test"
+    },
+    {
+     "section": "extensions",
+     "key": "duel_multi"
+    },
+    {
+     "section": "extensions",
+     "key": "duel_relay"
+    },
+    {
+     "section": "extensions",
+     "key": "duel_relay_gap"
+    },
+    {
+     "section": "extensions",
+     "key": "duel_relay_join"
+    },
     {
      "section": "game_flow",
      "key": "caravan_stay"
@@ -1032,6 +1093,43 @@
      {
       "section": "game_flow",
       "key": "fast_save"
+     },
+     {
+      "section": "extensions",
+      "key": "duel_multi",
+      "retired": true
+     },
+     {
+      "section": "extensions",
+      "key": "duel_relay"
+     },
+     {
+      "section": "extensions",
+      "key": "duel_relay_gap"
+     },
+     {
+      "section": "extensions",
+      "key": "duel_relay_join"
+     },
+     {
+      "section": "diagnostics",
+      "key": "duel_multi_test",
+      "retired": true
+     },
+     {
+      "section": "diagnostics",
+      "key": "duel_multi_motion",
+      "retired": true
+     },
+     {
+      "section": "diagnostics",
+      "key": "duel_manual_test",
+      "retired": true
+     },
+     {
+      "section": "diagnostics",
+      "key": "duel_manual_gap",
+      "retired": true
      }
     ]
    },
@@ -1039,7 +1137,8 @@
    "provides": [],
    "uses": [],
    "hook_policy": {
-    "refuse_if_changed": 6
+    "chain": 1,
+    "refuse_if_changed": 19
    },
    "foreign_overlap": []
   },
@@ -2628,7 +2727,7 @@
    "provides": [],
    "uses": [],
    "hook_policy": {
-    "chain": 4
+    "chain": 3
    },
    "foreign_overlap": []
   },
@@ -2877,6 +2976,28 @@
    "provides": [
     "native_ui.officer_notice"
    ],
+   "uses": [],
+   "hook_policy": {},
+   "foreign_overlap": []
+  },
+  "wall-age-save": {
+   "title": "wall-age-save",
+   "host": "convenience",
+   "status": "active",
+   "hub": false,
+   "depends": [
+    "ai"
+   ],
+   "conflicts": [],
+   "checks": [
+    "split-module"
+   ],
+   "ini": [],
+   "installer": {
+    "items": []
+   },
+   "ui": [],
+   "provides": [],
    "uses": [],
    "hook_policy": {},
    "foreign_overlap": []

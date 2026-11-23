@@ -5,7 +5,7 @@
 #include "merit_bond.h"
 #include "save_host.h"   // sidecar writer, paths, plugin list and manifest (docs/MODULARIZATION_PLAN.md F-09)
 static SidecarCache merit_sidecar_cache;
-static save_host::Plugins<8> merit_sidecars;   // joined through the generated registry (terrain, tactic memory, merit, warehouse)
+static save_host::Plugins<12> merit_sidecars;   // joined through the generated registry (9 rows since wall_age_save, docs/NEUTRAL_WALL_AGE.md A-2)
 using SaveHost=void(__fastcall *)(Obj);
 using RemoteWrite=unsigned char(__fastcall *)(Obj,const char *,const void *,int);
 using RemoteRead=int(__fastcall *)(Obj,const char *,void *,int);

@@ -14,10 +14,15 @@ static bool helm_person(Obj person) {
 }
 // local166: *why (optional) says why no army left: 1 soldiers, 2 no free officer (for helm: no idle 조타 officer), 3 no way
 // around hostile armies to hex, 4 gold, 5 no free army slot, 6 capacity/formation, 7 the original departure refused.
-static Obj campaign_paid_single(Obj source,Obj target,unsigned hex,unsigned wanted,bool worker,bool retake=false,unsigned avoid_area=0,bool intercept=false,bool helm=false,unsigned *why=nullptr) {
+// siege_wall (wall_age_siege, docs/NEUTRAL_WALL_AGE.md 5절): with worker, exactly `wanted` soldiers in 충차 (formation 9) or else
+// 투석 (10) from an officer who holds one (233CF0), marching to `hex` (a hex next to that neutral wall) through the relay points
+// of the way around hostile armies; the unit is a siege unit (Progress siege_unit) and the caller gives it its wall.
+static Obj campaign_paid_single(Obj source,Obj target,unsigned hex,unsigned wanted,bool worker,bool retake=false,unsigned avoid_area=0,bool intercept=false,bool helm=false,unsigned *why=nullptr,unsigned siege_wall=0) {
     COST_SCOPE("campaign_paid_single");
     unsigned why_local=2;unsigned &reason=why?*why:why_local;reason=2;
-    unsigned budget=campaign::available(dword(source,0x3C));if(budget<(intercept?wanted:worker?1000u:3000u)) {reason=1;return nullptr;}
+    const bool siege=worker && siege_wall!=0;
+    const bool exact=intercept || siege;   // leaves with exactly `wanted`
+    unsigned budget=campaign::available(dword(source,0x3C));if(budget<(exact?wanted:worker?1000u:3000u)) {reason=1;return nullptr;}
     GameList people;list_init(people,GA(GA_13466B0));
     fn<void(__fastcall *)(Obj,GameList *)>(GA(GA_2D9530))(source,&people);
     fn<void(__fastcall *)(GameList *)>(GA(GA_2A26B0))(&people);
@@ -31,7 +36,7 @@ static Obj campaign_paid_single(Obj source,Obj target,unsigned hex,unsigned want
     });
     for(Obj person:candidates) {
         if(helm && !helm_person(person))continue;
-        if((!worker || intercept) && sortie_female_capped(person))continue;   // capped officers leave with 1,000 only
+        if((!worker || exact) && sortie_female_capped(person))continue;   // capped officers leave with 1,000 only
         bool deployed=false;for(unsigned i=1;i<=500;++i) {Obj a=table(0x7E838,i,500);
             if(valid(a) && word(a,0x12)==word(person,0x10)) {deployed=true;break;}}
         if(deployed)continue;
@@ -68,15 +73,16 @@ static Obj campaign_paid_single(Obj source,Obj target,unsigned hex,unsigned want
             helm_formation_pick=pick;
         }
         unsigned formation=helm?helm_formation_pick:
+                           siege?(fn<int(__fastcall *)(Obj,unsigned)>(GA(GA_233CF0))(person,9)?9u:fn<int(__fastcall *)(Obj,unsigned)>(GA(GA_233CF0))(person,10)?10u:0u):
                            intercept?(fn<int(__fastcall *)(Obj,unsigned)>(GA(GA_233CF0))(person,3)?3u:0u):
                            worker?sortie_capture_formation(person):sortie_field_formation(person);
         int capacity=fn<int(__fastcall *)(Obj)>(GA(GA_232C00))(person);
-        if(!valid(district) || !district[0x14] || !formation || capacity<(intercept?static_cast<int>(want_now):worker?1000:3000)) {reason=6;continue;}
+        if(!valid(district) || !district[0x14] || !formation || capacity<(exact?static_cast<int>(want_now):worker?1000:3000)) {reason=6;continue;}
         // local84: a worker leaves with the asked size (1,000 from the older callers), within budget and capacity.
         unsigned soldiers=(std::min)(budget,(std::min)(worker?(std::max)(want_now,1000u):want_now,static_cast<unsigned>(capacity)));
         unsigned cmd[30];sortie_command(nullptr,target,person,formation,soldiers,cmd);
         if(worker) {cmd[13]=1;cmd[14]=9;cmd[15]=hex;}
-        if(retake || intercept) {   // local86: the way around hostile armies decides the side the unit comes out on
+        if(retake || intercept || siege) {   // local86: the way around hostile armies decides the side the unit comes out on
             std::vector<unsigned> way;unsigned points[5];
             const unsigned castle=fn<unsigned(__fastcall *)(Obj)>(GA(GA_22F190))(source),own=campaign_city_owner(source);
             // local269: a 조타 ship's departure way prices land kHelmLandMul times (its first relays were on land: 27259, 28350)
@@ -113,6 +119,11 @@ static Obj campaign_paid_single(Obj source,Obj target,unsigned hex,unsigned want
                 Obj goal_tile=table(0xE270,hex,48399);p->region_owner=valid(goal_tile)?goal_tile[0x14]:0;
                 *reinterpret_cast<unsigned *>(army+0x1F0)|=2;
                 log_event("intercept_first_step",army_id(army),word(army,0x48),word(army,0x2C));
+            }
+            else if(siege) {
+                p->siege_unit=true;p->siege_wall=static_cast<unsigned short>(siege_wall);p->retake_day=game_day();
+                *reinterpret_cast<unsigned *>(army+0x1F0)|=2;
+                log_event("wall_siege_first_step",army_id(army),word(army,0x48),word(army,0x2C));
             }
             else campaign_assign_safe(army,*p,hex,true);
             log_event("home_capture_worker_departed",army_id(army),soldiers,hex);

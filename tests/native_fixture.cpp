@@ -868,6 +868,14 @@ int main() {
     check(!observer_mode() && !computer_army(army),"missing game context cannot enable demo commands");
     putptr(root,0x871E8,context);context[0x3A]=1;player=saved_player;
     check(!computer_army(human) && computer_army(army),"returning from demo restores human order exclusion");
+    {   // tribe_hands_off (user 2026-11-22): the five tribes 46..50 are never computer armies; bandits (51) are unchanged.
+        const unsigned char saved_force=army[0x150];
+        for(unsigned f=46;f<=50;++f) {army[0x150]=static_cast<unsigned char>(f);check(!computer_army(army) && !computer_side_force(f),"tribe armies keep the original orders");}
+        army[0x150]=51;check(computer_army(army) && computer_side_force(51),"bandit armies stay computer armies");
+        army[0x150]=45;check(computer_army(army) && computer_side_force(45),"regular force 45 stays a computer army");
+        army[0x150]=saved_force;
+        check(tribe_force_id(46) && tribe_force_id(50) && !tribe_force_id(45) && !tribe_force_id(51),"tribe range is exactly 46..50");
+    }
     // Late-loaded friendly region is a construction opportunity without
     // inventing a capture, and released groups must recheck regional work.
     Obj recovery=object(1);army_ids[recovery]=7;recovery[0x1A]=100;slot(0x7E838,7,recovery);

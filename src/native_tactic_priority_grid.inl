@@ -1,7 +1,7 @@
 // Tactic priority grid popup + per-officer 「출진 기억」 toggle: BEHAVIOUR ONLY (docs/TACTIC_PRIORITY_V2_PLAN.md 2, 3, 8, 9, 12).
 // Included by native_tactic_priority.inl inside namespace tactic_priority, after publish/catalog and the state helpers (record_list, current_record).
 // UI ownership (user 2026-11-07, docs/UI_RESOURCE_LIFECYCLE.md 10): SAN14_Layout.dll creates, positions, shows and destroys every UI object
-// (popup frame/tabs/tiles/buttons, toggle, footer button) through layout_client::ui_*; this file only supplies the descriptors (data),
+// (popup frame/tabs/tiles/buttons, toggle, bottom-right button) through layout_client::ui_*; this file only supplies the descriptors (data),
 // the labels, and what a click does. It never allocates, registers or destructs a game UI object. All calls run on the update-slot
 // thread (grid::tick) or the leave hook; the original click callbacks only queue a node number.
 //  Tiles are grouped (tp::build_tiles: unique / 아수라진.. / 분전.. / 매성.. / 철벽.. / 대갈.. / other, siege and naval tactics hidden), each group
@@ -131,7 +131,7 @@ static void probe_state(Obj state) {
     if(Obj page=pointer(state,0x490))dump_region(3,page+0x178,0x94);
     if(Obj tabs=pointer(state,0x488))dump_region(4,tabs+0x140,0x10);
 }
-// Footer click (click thread, read only): everything open_popup looks at. bits: 1 main, 2 tabs, 4 +0x4B0, 8 current record, 16 broken, 32 open, 64 built, 128 state known.
+// Button click (click thread, read only): everything open_popup looks at. bits: 1 main, 2 tabs, 4 +0x4B0, 8 current record, 16 broken, 32 open, 64 built, 128 state known.
 static void probe_click() {
     if(!diagnostic_logging)return;
     Obj state=grid_state;
@@ -402,6 +402,36 @@ void handle_click(Obj state,int node) {
     else return;
     pop.dirty=true;refresh_tiles(false);publish(pop.draft);   // live: the apply loop recomputes units without the remember flag (tactic_priority_live_apply)
 }
+// 「전법 우선순위」 button, bottom-right (user 2026-11-22): moved out of the footer where it overlapped another mod's footer buttons,
+// first next to the 「출진부대설정」 title (440,23, "어색하다"), then right under the ambush 「군사제안수행」 toggle (native_ambush.inl:
+// 1560..1880 x 954..1018, shown only with ready tickets) with the same left edge and width; fixed even when that toggle is absent.
+// 1024..1072 leaves 8 px to the 1080 bottom. Identifiers/logs keep the "head" name of the first placement.
+// One-node Layout pane like the toggle, the popup's own text button style (style 3, kind 0); it follows the main layout's visibility.
+const int kHeadX=1920-320-40,kHeadY=1080-62+6,kHeadW=320,kHeadH=48;   // = ambush x, ambush bottom (1018) + 6
+struct HeadButton {Obj pane=nullptr,control=nullptr,main=nullptr;bool built=false;unsigned tries=0;};
+static HeadButton head;
+void __cdecl head_clicked(void *,void *) {open_requested=true;log_event("tactic_priority_click");probe_click();}
+void build_head(Obj state) {
+    Obj main=pointer(state,0x470);
+    if(!main || ++head.tries>600)return;
+    layout_client::UiScope scope("tactic_priority");   // = kOwner, written out so gen_module_manifests lists the module's UI owner (the footer button did)
+    if(!scope.ok) {head.tries=601;log_event("tactic_priority_head_built",0,3,0);return;}
+    Desc desc=make_desc(2,0,0,kHeadW,kHeadH,kImageId);
+    Obj pane=static_cast<Obj>(layout_client::ui_window(main,kHeadX,kHeadY,kHeadW,kHeadH,&desc,1));
+    if(!pane) {head.tries=601;log_event("tactic_priority_head_built",0,1,0);return;}
+    Obj control=make_control(pane,0,3,0,&head_clicked,nullptr);
+    if(!control) {head.pane=pane;head.tries=601;log_event("tactic_priority_head_built",0,2,0);return;}   // Layout releases the pane at leave
+    set_button_text(control,L"전법 우선순위");
+    const int activated=layout_client::ui_activate(pane);
+    follow(pane,main);
+    head.pane=pane;head.control=control;head.main=main;head.built=true;
+    // Placement check for the next in-game test (user: move it if it overlaps): wanted rect, pane and control positions, main position.
+    log_event("tactic_priority_head_built",1,(static_cast<unsigned>(kHeadX)<<16)|static_cast<unsigned>(kHeadY),(static_cast<unsigned>(kHeadW)<<16)|static_cast<unsigned>(kHeadH));
+    log_event("tactic_priority_head_rect",1,dword(pane,0x20),dword(pane,0x24));         // 1 pane, 2 control, 3 main layout: x, y
+    log_event("tactic_priority_head_rect",2,dword(control,0x20),dword(control,0x24));
+    log_event("tactic_priority_head_rect",3,dword(main,0x20),dword(main,0x24));
+    log_event("tactic_priority_head_vis",dword(pane,0x40),dword(control,0x40),static_cast<unsigned>(activated&0xFF));
+}
 // Remember toggle: one-node Layout pane right of the second tab, a radio (style 10) following the tab visibility.
 void build_toggle(Obj state) {
     COST_SCOPE("tactic_priority_toggle_sync");
@@ -471,7 +501,7 @@ void run_toggle(Obj state) {
     tog.shown=-1;
 }
 void reset_all() {
-    pop=Popup();tog=Toggle();hover_text.clear();hover_tile=-1;hover_shown=false;hover_logged=0;open_requested=false;pending_count=0;toggle_pending=0;cancel_guard=0;cancel_tail=0;page_check=0;fields_logged=false;
+    pop=Popup();tog=Toggle();head=HeadButton();hover_text.clear();hover_tile=-1;hover_shown=false;hover_logged=0;open_requested=false;pending_count=0;toggle_pending=0;cancel_guard=0;cancel_tail=0;page_check=0;fields_logged=false;
 #ifndef NO_RUNTIME_LOG
     probe_dumps=0;probe_index=-2;probe_record=nullptr;
 #endif
@@ -491,11 +521,14 @@ bool tick(Obj state) {
     if(!fields_logged)log_fields(state);
     probe_state(state);
     bool work=false;
+    if(!head.built && head.tries<=600)build_head(state);
+    const bool head_work=head.built && (((dword(head.pane,0x40)^dword(head.main,0x40))&0xBu) || dword(head.pane,0x30)!=dword(head.main,0x30));
     if(!tog.built && tog.tries<=600)build_toggle(state);
     sync_toggle(state,work);
-    if(work || toggle_pending || open_requested || pending_count || pop.open || page_check) {
+    if(work || head_work || toggle_pending || open_requested || pending_count || pop.open || page_check) {
         layout_client::UiScope scope(kOwner);   // opened only when there is UI work: the closed idle frame touches nothing
         if(scope.ok) {
+            if(head_work)follow(head.pane,head.main);
             if(tog.built && work)apply_toggle(state);
             if(toggle_pending) {InterlockedExchange(&toggle_pending,0);run_toggle(state);}
             if(open_requested) {open_requested=false;open_popup(state);}
@@ -532,7 +565,7 @@ bool tick(Obj state) {
     }
     return false;
 }
-// Leave hook (before the original leave): save, then Layout releases popup and toggle with the original destroy sequence while the parent
+// Leave hook (before the original leave): save, then Layout releases popup, toggle and bottom-right button with the original destroy sequence while the parent
 // (main layout) still exists, so nothing is orphaned or left in the UI manager's lists. `next` = leave's second argument (7DC200 param_2).
 bool leave(Obj state,Obj next) {   // true = this owner's panes (bridge panes included) were released
     if(grid_state!=state)return false;

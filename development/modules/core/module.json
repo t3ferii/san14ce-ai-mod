@@ -27,7 +27,8 @@
   "src/gpu_profile.*",
   "src/computer_tactics.h",
   "src/season_mobility_shared.h",
-  "src/ambush_shared.h"
+  "src/ambush_shared.h",
+  "src/wall_age_shared.h"
  ],
  "sources": [
   "src/native_adapter.cpp",

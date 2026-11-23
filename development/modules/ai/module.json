@@ -58,7 +58,8 @@
   "src/native_campaign_logistics.inl",
   "src/native_campaign_reinforcements.inl",
   "src/campaign_policy.h",
-  "src/native_campaign_operations.inl"
+  "src/native_campaign_operations.inl",
+  "src/wall_age_shared.h"
  ],
  "tests": [
   "native"
@@ -209,6 +210,18 @@
   {
    "section": "combat",
    "key": "tribe_terrain_path"
+  },
+  {
+   "section": "combat",
+   "key": "wall_age_pick"
+  },
+  {
+   "section": "combat",
+   "key": "wall_age_siege"
+  },
+  {
+   "section": "combat",
+   "key": "wall_hold_chase"
   }
  ],
  "installer": {
@@ -335,7 +348,20 @@
    },
    {
     "section": "combat",
-    "key": "ship_repair_strike"
+    "key": "wall_age_pick"
+   },
+   {
+    "section": "combat",
+    "key": "wall_hold_chase"
+   },
+   {
+    "section": "combat",
+    "key": "wall_age_siege"
+   },
+   {
+    "section": "combat",
+    "key": "ship_repair_strike",
+    "retired": true
    },
    {
     "section": "combat",

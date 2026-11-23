@@ -45,7 +45,7 @@ def main():
     m=read(P/'build/input_package/manifest.json')
     inputs=sources()
     newest=max((P/n).stat().st_mtime for n in inputs if n.startswith('src/'))
-    expected={'dinput8.dll':['DirectInput8Create'],'SAN14_CombatAI.dll':['AIInitialize','SAN14CombatAmbush','SAN14CombatGetApi','SAN14CombatSeasonMobility'],
+    expected={'dinput8.dll':['DirectInput8Create'],'SAN14_CombatAI.dll':['AIInitialize','SAN14CombatAmbush','SAN14CombatGetApi','SAN14CombatSeasonMobility','SAN14CombatWallAge'],
               'SAN14_Convenience.dll':['AIInitialize','SAN14ConvenienceInitialize'],'SAN14_CCZ.dll':['SAN14CczGetApi'],
               # 2026-11-05 user exception: 5th DLL, loaded first by dinput8; without it the Layout-managed features stay off.
               'SAN14_Layout.dll':['SAN14LayoutGetApi','SAN14LayoutInitialize','SAN14LayoutPublish'],

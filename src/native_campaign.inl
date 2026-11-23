@@ -1574,10 +1574,47 @@ static bool intercept_step(Obj army,Progress &p) { COST_SCOPE("campaign:intercep
     }
     return true;
 }
+// wall_age_siege (user 2026-11-21, docs/NEUTRAL_WALL_AGE.md 5절): the siege-weapon unit. It first marches on its departure way
+// (move order with the relay points around hostile armies); within kWallSiegeNear hexes of its wall, or once that move order is
+// over, it takes the wall order - the route_hook breach entry (assign_siege, put back by daily/after like every breach). While
+// the wall stands the entry holds; when it fell or the entry ended, the same wall again if it still stands, else the next target
+// within kWallSiegeRetarget hexes (round robin); none, the switch off, under 1,000 soldiers or a retreat = home by the intercept
+// units' return (recovery_return). On the way home the unit no longer counts towards the ten.
+static constexpr int kWallSiegeRetarget=30,kWallSiegeNear=6;
+static bool wall_siege_step(Obj army,Progress &p) { COST_SCOPE("campaign:wall_siege_step");
+    if(p.returning) {recovery_return(army,p);return true;}
+    unsigned why=0;
+    if(!mod_features.wall_age_siege)why=1;
+    else if(word(army,0x16)<1000)why=2;
+    else if(army[0x37]==11 || army[0x37]==12)why=3;
+    // a hit-response breach or a morale stop (route_hook hold) first, a status (+0x140) waits: no retarget or way home for that
+    if(!why && !route_hook::siege_holding(army) && (army[0x140] || (route_hook_owns && route_hook_owns(army)))) {p.motion_day=game_day();return true;}
+    if(!why && !route_hook::siege_holding(army)) {
+        const unsigned wall_hex=p.siege_wall?route_hook::siege_wall_hex(p.siege_wall):48400u;
+        if(wall_hex<48400 && army[0x37]==1 && distance(word(army,0x2A),wall_hex)>kWallSiegeNear) {p.motion_day=game_day();return true;}   // on the way
+        unsigned next=wall_hex<48400 && route_hook::assign_siege(army,p.siege_wall,false)?p.siege_wall:0u;
+        if(!next) {
+            next=route_hook::siege_retarget(army,kWallSiegeRetarget,p.siege_wall);
+            // value = army, hex = old wall | new wall << 16, third = army hex
+            if(next)log_event("wall_siege_retarget",army_id(army),p.siege_wall|(next<<16),word(army,0x2A));
+        }
+        if(next)p.siege_wall=static_cast<unsigned short>(next);else why=4;
+    }
+    if(why) {
+        // value = army, hex = last wall, third = reason (1 switch off, 2 under 1,000, 3 retreat, 4 no wall left) | soldiers << 8
+        log_event("wall_siege_home",army_id(army),p.siege_wall,why|(static_cast<unsigned>(word(army,0x16))<<8));
+        p.siege_wall=0;
+        if(!recovery_return(army,p) && !p.returning) {p.forced_return=true;recovery_return(army,p);}
+        return true;
+    }
+    p.motion_day=game_day();   // breaking the wall is the mission, not a stall
+    return true;
+}
 static bool campaign_regional_step(Obj army,Progress &p) {
     COST_SCOPE("campaign_regional_step");
     if(!p.regional_worker)return false;
     if(p.intercept)return intercept_step(army,p);
+    if(p.siege_unit)return wall_siege_step(army,p);
     if(p.credit || p.build_chain || p.facility)return true;
     if(p.retake)return retake_step(army,p);
     for(unsigned h:campaign_home_bases(army,p.work_source))if(campaign_assign_safe(army,p,h,true))return true;

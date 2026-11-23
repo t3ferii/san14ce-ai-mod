@@ -12,7 +12,7 @@ static Obj personnel_context_object(Obj node,Obj context,unsigned field) {
 }
 static bool personnel_healthy_actor(Obj node,Obj context,unsigned field) {
     Obj actor=personnel_context_object(node,context,field);
-    return !valid(actor) || personnel::may_auto_work(actor[0x161]);
+    return !valid(actor) || personnel::may_auto_work(actor[0x161]) || tribe_person(actor);   // tribe_hands_off
 }
 static Obj personnel_district(Obj officer) {
     return valid(officer)?table(0xE0D0,officer[0xE0],51):nullptr;
@@ -73,7 +73,7 @@ static void personnel_filter_wounded(GameList &list) {
     Link *link=list_first(list);
     while(link) {
         Obj person=link->value;
-        if(valid(person) && !personnel::may_auto_work(person[0x161])) {
+        if(valid(person) && !personnel::may_auto_work(person[0x161]) && !tribe_person(person)) {   // tribe_hands_off
             personnel_remove(list,person);link=list_first(list);
         } else link=link->next;
     }

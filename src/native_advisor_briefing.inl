@@ -656,7 +656,21 @@ static void live_success_pass(unsigned code);
 // 2026-11-01 user: duel (일기토) lines play as in the original but are still collected. 37ACF0 (duel end) clears
 // CDuelManager(*2783730)+10, 448C10 tests it as "duel running"; pure read.
 static bool duel_running(){Obj m=pointer(image,GA(GA_2786780));return m && dword(m,0x10)!=0;}
+// local307 (user 「일기토 발생하면 군사보고좀 숨겨줘 거슬린다」): every hook below that runs on a game frame or the event thread publishes
+// the duel flag to the overlay (hidden while it is set; briefing_overlay::set_duel). advisor_duel_hide (a change only): army 1 hidden /
+// 0 shown again, value the hook that saw it (1 time wait, 2 message, 3 HUD frame, 4 progress, 5 event speech, 6 advice frame), hex
+// the overlay's visible flag at that moment.
+static void note_duel(unsigned hook) {
+    const bool on=duel_running();
+    if(!briefing_overlay::set_duel(on))return;
+#ifndef NO_RUNTIME_LOG
+    log_event("advisor_duel_hide",on?1u:0u,hook,briefing_overlay::is_visible()?1u:0u);
+#else
+    (void)hook;
+#endif
+}
 static void __fastcall time_wait(unsigned milliseconds,int *result,unsigned allow_skip) { COST_SCOPE("time_wait");
+    note_duel(1);
     if(native_scene_active()){native_scene_pass(1);original_time_wait(milliseconds,result,allow_skip);return;}   // local220: a 원작대로 scene waits as in the original
     const bool live=live_success_active();
     if(live)live_success_pass(1);   // the live success scene's own waits must run to completion
@@ -677,6 +691,7 @@ static void name_speaker(Event &e,Obj person) { COST_SCOPE("advisor_briefing:nam
 #include "native_briefing_sources.inl"
 // caller: the hook's return address (the original function that called the entry; native_briefing_sources.inl).
 static bool capture_message(unsigned path,int speaker,const wchar_t *text,const void *caller) { COST_SCOPE("advisor_briefing:capture_message");
+    note_duel(2);
     if(native_scene_active()){native_scene_pass(2);return false;}   // local220: a line of a 원작대로 scene (e.g. the scenery bonus 424B00 -> 1F1E90)
     // 2026-11-09 user (PW17/PW19), local17 briefing16: a plain message is not the scene's own dialogue; on the scene's own
     // thread it ends the window. Another thread's attempt passes natively: nothing is stored or taken over.
@@ -1173,6 +1188,7 @@ static DiplomaticFacts report_facts(Obj owner,Obj person) { COST_SCOPE("advisor_
 static void refresh_progress() { COST_SCOPE("advisor_briefing:refresh_progress");
     // The command HUD can stop updating while days advance. Notifications push
     // their badge snapshot directly from this original UI callback instead.
+    note_duel(4);
     if(!inbox.collecting)return;
     briefing_overlay::Model m;m.adviser=adviser_name();m.generation=inbox.generation;
     m.unread=inbox.unread();m.tickets=ambush_badge();m.collecting=true;m.title=L"이번 순의 소식을 모으고 있습니다";
@@ -1234,6 +1250,7 @@ void hud(Obj layout,bool eligible,bool modal) { COST_SCOPE("advisor_briefing:hud
     person_principle_survey();
 #endif
     briefing_overlay::set_extended(mod_features.briefing16);   // local17: the overlay has no feature table of its own
+    note_duel(3);
 #ifndef NO_RUNTIME_LOG
     FrameTiming timing(0);
 #endif
@@ -1711,6 +1728,7 @@ static void __fastcall event_speech(Obj owner,Obj person,const wchar_t *text,uns
 #ifndef NO_RUNTIME_LOG
     hook_called(6);
 #endif
+    note_duel(5);
     bool captured=capture_event(owner,person,text);
 #ifndef NO_RUNTIME_LOG
     InterlockedIncrement64(&message_entry_counts[3][captured?0:1]);
@@ -2964,6 +2982,7 @@ static void __fastcall advice_frame(Obj layout) { COST_SCOPE("advisor_briefing::
 #ifndef NO_RUNTIME_LOG
     hook_called(2);
 #endif
+    note_duel(6);
     bind(old_advice,layout);
     if(native_hud.main && native_hud.part[1]==layout && !native_hud.hold && remove_native()) {
         // local232: 88E4B0 does not run while the report has the advice (the adviser and his face are read on the log frame).

@@ -1,0 +1,43 @@
+{
+ "schema": 2,
+ "id": "wall-age-save",
+ "title": "wall-age-save",
+ "host": "convenience",
+ "build": "split",
+ "status": "active",
+ "hub": false,
+ "alias_of": "",
+ "depends": [
+  "ai"
+ ],
+ "conflicts": [],
+ "owns": [
+  "src/native_wall_age_save.inl"
+ ],
+ "sources": [
+  "src/native_wall_age_save.inl",
+  "src/wall_age_shared.h"
+ ],
+ "tests": [
+  "split-module"
+ ],
+ "hook_owners": [],
+ "checks": [
+  "split-module"
+ ],
+ "ini": [],
+ "installer": {
+  "items": []
+ },
+ "ui": [],
+ "provides": [],
+ "uses": [],
+ "hooks": [],
+ "registry": {
+  "rows": [],
+  "subscriptions": [],
+  "unity": [],
+  "flags": []
+ },
+ "notes": ""
+}

@@ -43,6 +43,7 @@ static const char *const kModuleNames[]={
     "auto_commands",
     "ambush",
     "season_rules",
+    "duel_multi",
     "ccz_bands",
     "ai_trace",
 };
@@ -59,6 +60,7 @@ static const ModuleSubscription kSubscriptions[]={
     {"overlay","terrain_render",10,20},
     {"overlay","ccz_sprites",20,30},
     {"overlay","ccz_preview",30,40},
+    {"overlay","duel_digits",35,50},
     {"overlay","advisor_briefing",40,10},
     {"progress_flush","path_count",10,0},
     {"sidecars","terrain_edit",10,0},
@@ -69,6 +71,7 @@ static const ModuleSubscription kSubscriptions[]={
     {"sidecars","ambush",60,0},
     {"sidecars","expert_links",70,0},
     {"sidecars","ccz_bands",80,0},
+    {"sidecars","wall_age_save",90,0},
 };
 #ifndef MODULE_TABLE_NAMES_ONLY
 // {name, feature id for feature_off logs (0 none), wanted, install (false = refused), refused}
@@ -193,6 +196,9 @@ static const ModuleDesc kModules[]={
     {"season_rules",0,[]{return mod_features.season_weather;},[]{return (season_rules::install(),true);},[]{}},
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+    {"duel_multi",0,[]{return mod_features.duel_relay;},[]{return duel_multi::install();},[]{}},
+#endif
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
     {"ccz_bands",96,[]{return mod_features.ccz_bands;},[]{return ccz_bands::install(false);},[]{split_disable(mod_features.ccz_bands,96);}},
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
@@ -235,6 +241,7 @@ static void module_subscribe_all() {
     log_event("overlay_sub",10,20,0);
     log_event("overlay_sub",20,30,0);
     log_event("overlay_sub",30,40,0);
+    log_event("overlay_sub",35,50,0);
     log_event("overlay_sub",40,10,0);
 #endif
 #if !defined(NO_RUNTIME_LOG) && defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
@@ -263,6 +270,9 @@ static void module_subscribe_all() {
 #endif
 #if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
     if(!merit_sidecars.add(&ccz_bands::sidecar_plugin,80))log_event("sidecar_slot_full",80,0,0);
+#endif
+#if defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)
+    if(!merit_sidecars.add(&wall_age_save::sidecar_plugin,90))log_event("sidecar_slot_full",90,0,0);
 #endif
     // svc_install: service id, subscriber count, hash of the owners in call order (tests/core_services_fixture.cpp prints the expected ones)
     log_event("svc_install",1,services::map_tick.count,services::map_tick.order_hash());

@@ -69,6 +69,13 @@ static void test_injury() {
         expect(injury_departure_create(node,node,node)==(state?2u:1u));
         expect(native_orders==(state?0u:1u));
     }
+    // tribe_hands_off (user 2026-11-22): a wounded officer of a tribe force (46..50) is never held back, nor are his commands.
+    slot(0xDF30,46,force);wounded[0x161]=1;native_orders=0;
+    expect(injury_departure_create(node,node,node)==1 && native_orders==1);
+    values={{1,ordinary},{2,wounded}};native_orders=0;
+    expect(injury_hidden_poison(node,node,node)==1 && native_orders==1);
+    expect(injury_government_selection(force,node,herb_rows)==injury_selected_advisor);
+    slot(0xDF30,46,nullptr);values={{1,reinterpret_cast<Obj>(&actors)}};
     personnel_remove(actors,army);free(army);
     wounded[0x161]=1;injury_capacity=3;
     put16(force,0xCC,2204);put16(force,0xCE,2205);put16(force,0xD0,2206);

@@ -63,7 +63,7 @@ int main() {
     all_permutations("domestic_tick",services::domestic_tick,{"awards","injury","domestic","officer_rotation"},
         [](auto &l,const ModuleSubscription &s){return l.add(s.owner,services::DomesticTick{&note_city<1>,nullptr},yes,s.order);},"domestic-tick order");
     // overlay draw order
-    all_permutations("overlay",services::overlay,{"terrain_render","ccz_sprites","ccz_preview","advisor_briefing"},
+    all_permutations("overlay",services::overlay,{"terrain_render","ccz_sprites","ccz_preview","duel_digits","advisor_briefing"},
         [](auto &l,const ModuleSubscription &s){return l.add(s.owner,services::OverlaySub{0,s.gate_order,nullptr,nullptr,nullptr,nullptr},yes,s.order);},"overlay draw order");
     // overlay entry gate order (probe order of the old short-circuit chain), independent of the registration order
     {
@@ -71,7 +71,7 @@ int main() {
         for(const auto &s:kSubscriptions)if(!strcmp(s.service,"overlay"))gate.push_back({s.gate_order,s.owner});
         std::sort(gate.begin(),gate.end());
         std::vector<std::string> owners;for(auto &g:gate)owners.push_back(g.second);
-        check(owners==std::vector<std::string>({"advisor_briefing","terrain_render","ccz_sprites","ccz_preview"}),"overlay gate order");
+        check(owners==std::vector<std::string>({"advisor_briefing","terrain_render","ccz_sprites","ccz_preview","duel_digits"}),"overlay gate order");
     }
     // ui-dialogs: the CCZ editor is the only user
     all_permutations("ui_dialogs",services::ui_dialogs,{"ccz_sprites"},[](auto &l,const ModuleSubscription &s){return l.add(s.owner,nullptr,yes,s.order);},"ui-dialogs users");
@@ -87,8 +87,8 @@ int main() {
     }
     // the hash printed by svc_install matches the owner order
     unsigned expected_hash=kModuleHashSeed;
-    for(const char *owner:{"terrain_render","ccz_sprites","ccz_preview","advisor_briefing"})expected_hash=module_name_hash(owner,expected_hash);
-    std::vector<unsigned> identity={0,1,2,3};
+    for(const char *owner:{"terrain_render","ccz_sprites","ccz_preview","duel_digits","advisor_briefing"})expected_hash=module_name_hash(owner,expected_hash);
+    std::vector<unsigned> identity={0,1,2,3,4};
     registered("overlay",services::overlay,identity,[](auto &l,const ModuleSubscription &s){return l.add(s.owner,services::OverlaySub{0,s.gate_order,nullptr,nullptr,nullptr,nullptr},yes,s.order);});
     check(services::overlay.order_hash()==expected_hash,"overlay svc_install hash");
     printf("{\"status\":\"core_services_fixture_passed\",\"checks\":%u,\"overlay_hash\":\"%08x\",\"gameplay_verified\":false}\n",checks,expected_hash);

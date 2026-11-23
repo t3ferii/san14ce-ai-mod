@@ -667,6 +667,7 @@ static int svc_bind_click(void *control,void (*cb)(void *,void *),void *ctx) {
         gf<void(__fastcall *)(Obj,int,void *)>(GA(GA_1A4FB0))(button,0x7FFFFFFE,local);   // copies, then destroys local
     })?0:-1;
 }
+static void ctl_forget(void *pane);   // local288 ui_pane_scale control bases (below)
 static int svc_destroy(void *object) {
     if(!object)return LAYOUT_DESTROY_REJECTED;
     void *owner=nullptr;
@@ -681,6 +682,7 @@ static int svc_destroy(void *object) {
         int self=find_created_locked(object);
         if(self>=0) {created[self]=created[created_count-1];--created_count;}
         ReleaseSRWLockExclusive(&ui_lock);
+        ctl_forget(object);
         raw_destroy(static_cast<Obj>(object));
         return LAYOUT_DESTROY_DONE;
     }
@@ -878,6 +880,7 @@ static int svc_ui_release(const char *owner,void *next) {
     int done=0;
     for(unsigned k=n;k>0;--k) {   // newest first
         Obj p=static_cast<Obj>(panes[k-1]);
+        ctl_forget(p);
         if(guarded([&] {
             reinterpret_cast<void(__fastcall *)(Obj)>(vslot(p,0x40))(p);
             reinterpret_cast<void(__fastcall *)(Obj,Obj)>(vslot(p,0x28))(p,static_cast<Obj>(next));
@@ -887,6 +890,283 @@ static int svc_ui_release(const char *owner,void *next) {
     }
     if(n)emit("layout_ui_released",n,static_cast<unsigned>(done),hash32(owner));
     return done;
+}
+// local283 multi-duel bar (layout_api.h ui_duel_gauge). Same assembly as the talk page init 80B220 (allocate 0x1D8, ctor 804B90 = vtable
+// 1463548 and the round-pip node ids, 809110(gauge, cell A, cell B)); 809110 loads its layout through 870470 with x = y = 0 and no parent.
+// The load check is +0x98 set plus the gauge's node count (right group up to node 0x37). local284: not +0x12C == 1 (svc_load_sublayout's
+// check): 86E920 sets it to 1 and then calls vt+0x140, and the local283 play saw +0x12C 0 with all 60 nodes and +0x98 present
+// (layout_ui_gauge_failed 0 / 60 / 1); 80B220 never reads it. The layout_ui_gauge log carries it. Then
+// vt+0x78(x, y) = 876AD0 -> vt+0x80 position, vt+0xC8(0) hidden (the caller follows the original gauge with ui_sync_visibility) and
+// vt+0x38 = 869210 (UI manager layers). Tagged with the scope owner like ui_create_window panes.
+static void *svc_ui_duel_gauge(void *cell_a,void *cell_b,int x,int y) {
+    if(!in_event() || scope_depth<=0 || !cell_a || !cell_b || !image)return nullptr;
+    Obj gauge=nullptr;bool ok=false;
+    const bool clean=guarded([&] {
+        gauge=gf<Obj(__fastcall *)(size_t)>(GA(GA_3F90E0))(0x1D8);
+        if(!gauge)return;
+        memset(gauge,0,0x1D8);
+        gf<Obj(__fastcall *)(Obj)>(GA(GA_804B90))(gauge);
+        gf<void(__fastcall *)(Obj,void *,void *)>(GA(GA_809110))(gauge,cell_a,cell_b);
+        ok=rdptr(gauge,0x98)!=nullptr && rd32(gauge+0x130,0x10)>=0x38;
+    });
+    if(!clean) {emit("layout_ui_fault",6,0,0);return nullptr;}   // partially built gauge is leaked on purpose
+    if(!gauge)return nullptr;
+    if(!ok) {
+        emit("layout_ui_gauge_failed",rd32(gauge,0x12C),rd32(gauge+0x130,0x10),rdptr(gauge,0x98)?1u:0u);
+        raw_destroy(gauge);return nullptr;
+    }
+    const bool shown=guarded([&] {
+        reinterpret_cast<void(__fastcall *)(Obj,int,int)>(vslot(gauge,0x78))(gauge,x,y);
+        reinterpret_cast<void(__fastcall *)(Obj,int)>(vslot(gauge,0xC8))(gauge,0);
+        reinterpret_cast<void(__fastcall *)(Obj)>(vslot(gauge,0x38))(gauge);
+    });
+    if(!shown) {emit("layout_ui_fault",7,0,0);return nullptr;}   // registration state unknown: leaked rather than freed while listed
+    track(gauge,CK_PANE,nullptr);
+    emit("layout_ui_gauge",static_cast<unsigned>(x)|(static_cast<unsigned>(y)<<16),rd32(gauge+0x130,0x10)|(rd32(gauge,0x12C)<<16),hash32(scope_owner));
+    return gauge;
+}
+// local285 multi-duel half bars (layout_api.h ui_pane_scale). A layout pane has no original scale setter: position (+0x20, vt+0x78 ->
+// 8769B0), size (+0x28) and alpha (+0x30) are integers. 8769B0 applies a position only through vt+0xE8 = 877220 when the scene root
+// pane +0xA0 is set (870700 = vt+0xC0 sets it lazily: AD4540 cast of *(+0x98)+0x10); 877220 writes the translation (row 3, +0x30 /
+// +0x34 / +0x38) of the root's local matrix behind +0xE8 and sets +0x104 bit 0x10.
+// local286: local285 wrote the scale diagonal of that matrix with bit 0x10 only. The root shrank, but the node update ACA4F0 moves the
+// children by translation only on 0x10, so they stayed at full size. Now the scale goes where the original scale setters put it
+// (85E9B0 / 843DC0 on the control's node, which vt+0x108 resolves to this root): node +0xF4 / +0xF8 = scale, +0x104 &= ~4, |= 0x20000.
+// ACA4F0 first calls ACA370, which rebuilds the local matrix behind +0xE8 from +0x90 and +0xF4 / +0xF8 (keeping the translation)
+// while bit 4 is clear; 0x20000 makes the children recompute their world matrices and their accumulated scale +0xFC = parent +0xFC *
+// own +0xF4. The pane shrinks toward the root's origin (its top-left corner).
+// local287: the local286 play wrote 0.6 but the root's matrix stayed 1.0 for 240 frames: the copies were hidden (they follow the
+// original gauge, hidden through the intro and the charge) and a hidden pane's nodes are not updated, so the bar gave up one second
+// before the rounds. Now every call runs the node update itself, vt+0x180(node, 0, 0) (ACA4F0, parents first: the call 92F050 makes
+// before it reads a position), on the root and on one direct child (a control whose node, vt+0x108, has the root at +0xD0), so the
+// scale is applied and checked whether the pane is shown or not. Result 1 written this call, 2 applied (that child's +0xFC = scale *
+// its +0xF4, or with no such child the root's rebuilt local m[0] = scale), 6 written but not applied after the update, -1 refused (no
+// root yet, no matrix, not ours). layout_ui_scale (when a pane's result changes, up to 64 per process): army result (1, 2, 3 no
+// root, 4 no matrix, 6) | scale * 1000 << 8 | child seen << 24, value root +0xF4 * 1000 before | root local m[0] * 1000 after the
+// update << 16, hex the child's +0xFC * 1000 after its update | translation x << 16 (whole units).
+struct ScaleSeen {void *pane;unsigned why;};
+static ScaleSeen scale_seen[4];   // the last result of the last few panes (only the game thread calls in here: in_event)
+static unsigned scale_logs,scale_next;
+static bool scale_changed(void *pane,unsigned why) {
+    for(ScaleSeen &e:scale_seen)if(e.pane==pane) {const bool changed=e.why!=why;e.why=why;return changed;}
+    scale_seen[scale_next++&3]={pane,why};
+    return true;
+}
+static bool own_pane(void *pane) {   // a pane the open scope's owner made
+    if(!pane || !game_object(pane))return false;
+    AcquireSRWLockShared(&ui_lock);
+    const int i=find_created_locked(pane);
+    const bool ours=i>=0 && created[i].kind==CK_PANE && !strcmp(created[i].feature,scope_owner);
+    ReleaseSRWLockShared(&ui_lock);
+    return ours;
+}
+static float rdflt(const void *base,unsigned off) {float v=0;copy_safe(&v,static_cast<const Bytes *>(base)+off,sizeof(v));return v;}
+// local287: a control's scene node is vt+0x108 (00F3E0 = +0xA0 for layout elements, the getter 85E9B0 / 843DC0 call); the control
+// itself has its integer position / size at +0x20 / +0x28, not the node fields. Call inside guarded().
+static Obj node_of(Obj control) {
+    if(!game_object(control))return nullptr;
+    void *get=vslot(control,0x108);
+    Obj node=get?reinterpret_cast<Obj(__fastcall *)(Obj)>(get)(control):nullptr;
+    return game_object(node)?node:nullptr;
+}
+static void node_update(Obj node) {   // vt+0x180(node, 0, 0) = ACA4F0: parents first, then ACA370 and the world matrix
+    void *update=vslot(node,0x180);
+    if(update)reinterpret_cast<int(__fastcall *)(Obj,long long,char)>(update)(node,0,0);
+}
+// local288: controls are layout elements of their own (each loads its own scene, root +0xA0: 86E590 / 871B70). 877220 places a
+// control's root from the sum of the integer positions +0x20 up the element chain (+8) plus the 92EDB0 alignment term, never from the
+// pane's matrix, and 930640 anchored each one at the build (control vt+0x80 with the pane-relative offset of its table node, whose
+// table+8 entry it then clears). So the pane root's scale left the faces, the 닫기 button and the emblem at full size at their
+// full-size offsets (local287 play: 만총's face at 768 + its unscaled x, off screen). Every call now also scales each control of the
+// pane's table whose parent element (+8) is the pane: its root the 85E9B0 way (+0xF4 / +0xF8 = scale, +0x104 &= ~4, |= 0x20000), its
+// size +0x28 = base * scale (85E9B0 multiplies it; here from the base so repeated calls do not shrink it again) and its position =
+// base * scale through vt+0x78 (876AD0 -> vt+0x80 = 8769B0: writes +0x20, repositions the control's own child elements through
+// 879630 and re-runs 877220, whose alignment term uses the new own scale: scale first, then position). The pane shrinks toward its
+// top-left corner (local287 log: root translation x -960 at pane x 0), so pane offset * scale keeps each control on its bar. Base =
+// +0x20 / +0x28 the first time the control is seen (side table, forgotten with the pane), so scale 1 puts everything back. 8269A0 (the
+// gauge refresh) does not re-anchor controls (it calls no position setter).
+struct CtlBase {void *pane;Obj control;int x,y,w,h;};
+static CtlBase ctl_base[64];
+static unsigned ctl_count,ctl_logs;
+static void ctl_forget(void *pane) {   // the pane is destroyed or released (only the game thread: in_event)
+    for(unsigned i=ctl_count;i>0;--i)if(ctl_base[i-1].pane==pane)ctl_base[i-1]=ctl_base[--ctl_count];
+}
+static CtlBase *ctl_find(void *pane,Obj control) {   // call inside guarded()
+    for(unsigned i=0;i<ctl_count;++i)if(ctl_base[i].pane==pane && ctl_base[i].control==control)return &ctl_base[i];
+    if(ctl_count>=64) {   // panes freed without a release: drop the bases of panes no longer tracked
+        AcquireSRWLockShared(&ui_lock);
+        for(unsigned i=ctl_count;i>0;--i)if(find_created_locked(ctl_base[i-1].pane)<0)ctl_base[i-1]=ctl_base[--ctl_count];
+        ReleaseSRWLockShared(&ui_lock);
+        if(ctl_count>=64)return nullptr;
+    }
+    CtlBase &b=ctl_base[ctl_count++];
+    const int *pos=reinterpret_cast<const int *>(control+0x20),*size=reinterpret_cast<const int *>(control+0x28);
+    b={pane,control,pos[0],pos[1],size[0],size[1]};
+    return &b;
+}
+// local288 face check (a face control: table kind 0xB / 0xD, class 84D140, itself a pane with its own table): it draws the portrait on
+// the node at +0x178 of its own scene, +0x180 while +0x194 / +0x198 / +0x19C is set (85AF40 hands it to 931E20 / 932DD0). After the
+// update that node's accumulated scale +0xFC is
+// expected to be the root's scale times its own +0xF4. 0 follows, 1 under the root but not scaled (the caller hides the faces), 2
+// cannot tell (no node there or not under the root: left shown). `seen` = that node's +0xFC.
+static unsigned face_follows(Obj control,Obj root,float scale,float &seen) {   // call inside guarded()
+    Obj img=rdptr(control,rd32(control,0x194) || rd32(control,0x198) || rd32(control,0x19C)?0x180u:0x178u);
+    if(!game_object(img))return 2;
+    bool under=false;
+    Obj p=rdptr(img,0xD0);
+    for(int depth=0;p && depth<16 && !under;++depth){under=p==root;p=rdptr(p,0xD0);}
+    if(!under)return 2;
+    node_update(img);
+    seen=rdflt(img,0xFC);
+    const float want=scale*rdflt(img,0xF4),d=seen-want;
+    return d<2e-3f && d>-2e-3f?0u:1u;
+}
+struct CtlSeen {unsigned id,kind,flags;int bx,by;unsigned long long xy;};
+static int svc_ui_pane_scale(void *pane,float scale) {
+    if(!in_event() || scope_depth<=0 || !image || !(scale>0.05f && scale<=4.0f) || !own_pane(pane))return -1;
+    Obj p=static_cast<Obj>(pane);
+    unsigned why=3;bool child=false,written=false;float before[2]={},after[2]={};
+    unsigned controls=0,ctl_off=0,ctl_unplaced=0,ctl_noroot=0,ctl_writes=0,faces=0,face_bad=0,face_unknown=0,seen_n=0;
+    CtlSeen seen[32]={};
+    auto near_value=[](float a,float b){const float d=a-b;return d<1e-3f && d>-1e-3f;};
+    const bool clean=guarded([&] {
+        Obj root=rdptr(p,0xA0);
+        if(!root)return;
+        why=4;
+        const float *m=reinterpret_cast<const float *>(rdptr(root,0xE8));
+        if(!m)return;
+        float *own=reinterpret_cast<float *>(root+0xF4);
+        before[0]=own[0];before[1]=m[12];
+        if(!near_value(own[0],scale) || !near_value(own[1],scale)) {
+            own[0]=scale;own[1]=scale;
+            unsigned *flags=reinterpret_cast<unsigned *>(root+0x104);
+            *flags=(*flags&~4u)|(1u<<17);   // 0x20000: scale changed
+            written=true;
+        }
+        node_update(root);
+        why=6;
+        Obj table=p+0x130,desc=rdptr(table,0);
+        const unsigned count=rd32(table,0x10);
+        for(unsigned id=0;id<count && id<256;++id) {
+            Obj c=gf<Obj(__fastcall *)(Obj,int)>(GA(GA_92F390))(table,static_cast<int>(id));
+            if(!game_object(c))continue;
+            Obj r=node_of(c);
+            if(r && !child && rdptr(r,0xD0)==root) {   // a node of the pane's own scene (not seen in local287: controls have their own)
+                child=true;node_update(r);after[1]=rdflt(r,0xFC);
+            }
+            if(rdptr(c,8)!=p)continue;   // a control whose parent element is the pane
+            ++controls;
+            const unsigned kind=desc?rd32(desc,id*0x30)&0xFFu:255u;
+            const bool face=kind==0xB || kind==0xD;
+            CtlBase *b=r?ctl_find(pane,c):nullptr;
+            if(!b) {++ctl_noroot;if(face){++faces;++face_bad;}continue;}
+            bool w=false;
+            float *cs=reinterpret_cast<float *>(r+0xF4);
+            if(!near_value(cs[0],scale) || !near_value(cs[1],scale)) {
+                cs[0]=scale;cs[1]=scale;
+                unsigned *flags=reinterpret_cast<unsigned *>(r+0x104);
+                *flags=(*flags&~4u)|(1u<<17);
+                w=true;
+            }
+            int *size=reinterpret_cast<int *>(c+0x28);
+            const int tw=to_int(static_cast<float>(b->w)*scale),th=to_int(static_cast<float>(b->h)*scale);
+            const int tx=to_int(static_cast<float>(b->x)*scale),ty=to_int(static_cast<float>(b->y)*scale);
+            if(size[0]!=tw || size[1]!=th) {size[0]=tw;size[1]=th;w=true;}
+            const int *pos=reinterpret_cast<const int *>(c+0x20);
+            if(w || pos[0]!=tx || pos[1]!=ty) {
+                void *move=vslot(c,0x78);
+                if(move)reinterpret_cast<void(__fastcall *)(Obj,int,int)>(move)(c,tx,ty);
+                w=true;
+            }
+            node_update(r);
+            const float *cm=reinterpret_cast<const float *>(rdptr(r,0xE8));
+            const bool scaled=cm && near_value(cm[0],scale),placed=pos[0]==tx && pos[1]==ty;
+            if(!scaled)++ctl_off;
+            if(!placed)++ctl_unplaced;
+            if(w) {++ctl_writes;written=true;}
+            unsigned flags=(scaled?1u:0u)|(placed?2u:0u)|(w?32u:0u);
+            if(face) {   // a face that is not scaled, not placed or whose portrait does not follow = result 8 (the caller hides faces)
+                ++faces;flags|=4u;
+                float img=0.0f;
+                const unsigned f=face_follows(c,r,scale,img);
+                if(f==0)flags|=8u;else if(f==2){++face_unknown;flags|=16u;}
+                if(!scaled || !placed || f==1)++face_bad;
+            }
+            if(seen_n<32)seen[seen_n++]={id,kind,flags,b->x,b->y,gf<unsigned long long(__fastcall *)(Obj)>(GA(GA_92F050))(r)};
+        }
+        after[0]=m[0];
+        // Other controls (buttons, emblems: the duel bar hides them) are best effort: their state is logged and never holds the result.
+        if(near_value(m[0],scale))why=face_bad?8u:2u;
+        if(written)why=1;   // a write every call = the game resets it (the caller gives up)
+    });
+    if(!clean) {emit("layout_ui_fault",8,0,0);return -1;}
+    if(scale_changed(pane,why) && scale_logs<64) {
+        ++scale_logs;
+        auto milli=[](float f){return static_cast<unsigned>(static_cast<int>(f*1000.0f))&0xFFFFu;};
+        auto whole=[](float f){return static_cast<unsigned>(static_cast<int>(f))&0xFFFFu;};
+        emit("layout_ui_scale",why|(milli(scale)<<8)|(child?1u<<24:0u),milli(before[0])|(milli(after[0])<<16),
+             milli(after[1])|(whole(before[1])<<16));
+        emit("layout_ui_scale_sum",controls|(ctl_off<<8)|(faces<<16)|(face_bad<<20)|(face_unknown<<24),
+             ctl_writes|(ctl_unplaced<<8)|(ctl_noroot<<16),why);
+        for(unsigned i=0;i<seen_n && ctl_logs<192;++i,++ctl_logs)
+            emit("layout_ui_scale_ctl",seen[i].id|(seen[i].kind<<8)|(seen[i].flags<<16),
+                 (static_cast<unsigned>(seen[i].bx)&0xFFFFu)|(static_cast<unsigned>(seen[i].by)<<16),
+                 (static_cast<unsigned>(seen[i].xy)&0xFFFFu)|((static_cast<unsigned>(seen[i].xy>>32)&0xFFFFu)<<16));
+    }
+    return why==1 || why==2 || why==6 || why==8?static_cast<int>(why):-1;
+}
+// local286 multi-duel half bars (layout_api.h ui_node_rects): the screen rectangle of every id of a pane the scope owner made, out[id
+// * 5 ..] = x, y (top-left), w, h, link. local288 (local287 play: 46 of the 60 ids have no control, so reading every id through its
+// control left them without a rectangle): an id with a control (92F390; anchored by 930640, which cleared its table+8 node) is read
+// from the control's integers: x / y = the sum of +0x20 up the element chain (+8), what 877220 places the control's root at before the
+// alignment term, w / h = +0x28; link = -3 - its table kind (desc +0, 0xB / 0xD = a face). Any other id is read from its table node
+// table+8[id] (kinds 0-3): x / y from the original position getter 92F050 (world translation minus the alignment share of the size,
+// +960 / 540 - ...; it updates the world matrix through vt+0x180 first), w / h = size +0xF0 / +0xF2 * accumulated scale +0xFC / +0x100
+// (own scale +0xF4 / +0xF8 while +0xFC is still 0), link = the id whose node is its parent (+0xD0), -1 = the scene root or none.
+// link -2 = neither. Returns the number of ids filled (min(count, max)), -1 refused.
+static int svc_ui_node_rects(void *pane,int *out,int max) {
+    if(!in_event() || scope_depth<=0 || !out || max<=0 || !image || !own_pane(pane))return -1;
+    Obj table=static_cast<Obj>(pane)+0x130;
+    const unsigned count=rd32(table,0x10);
+    const int n=static_cast<int>(count)<max?static_cast<int>(count):max;
+    if(n<=0 || n>256)return -1;
+    Obj node[256]={},ctl[256]={};
+    unsigned kind[256]={};
+    const bool clean=guarded([&] {
+        Obj nodes=rdptr(table,8),desc=rdptr(table,0);
+        for(int id=0;id<n;++id) {
+            Obj c=gf<Obj(__fastcall *)(Obj,int)>(GA(GA_92F390))(table,id);
+            if(game_object(c)) {ctl[id]=c;kind[id]=desc?rd32(desc,static_cast<unsigned>(id)*0x30)&0xFFu:255u;continue;}
+            Obj nd=nodes?rdptr(nodes,static_cast<unsigned>(id)*8):nullptr;
+            if(game_object(nd))node[id]=nd;
+        }
+        for(int id=0;id<n;++id) {
+            int *r=out+id*5;
+            r[0]=r[1]=r[2]=r[3]=0;r[4]=-2;
+            if(Obj c=ctl[id]) {
+                int x=0,y=0;
+                Obj e=c;
+                for(int depth=0;e && depth<30;++depth){x+=static_cast<int>(rd32(e,0x20));y+=static_cast<int>(rd32(e,0x24));e=rdptr(e,8);}
+                r[0]=x;r[1]=y;r[2]=static_cast<int>(rd32(c,0x28));r[3]=static_cast<int>(rd32(c,0x2C));
+                r[4]=-3-static_cast<int>(kind[id]);
+                continue;
+            }
+            Obj nd=node[id];
+            if(!nd)continue;
+            const unsigned long long xy=gf<unsigned long long(__fastcall *)(Obj)>(GA(GA_92F050))(nd);
+            r[0]=static_cast<int>(static_cast<unsigned>(xy));r[1]=static_cast<int>(static_cast<unsigned>(xy>>32));
+            float sx=rdflt(nd,0xFC),sy=rdflt(nd,0x100);
+            if(!(sx>1e-3f))sx=rdflt(nd,0xF4);
+            if(!(sy>1e-3f))sy=rdflt(nd,0xF8);
+            r[2]=static_cast<int>(static_cast<float>(*reinterpret_cast<const short *>(nd+0xF0))*sx);
+            r[3]=static_cast<int>(static_cast<float>(*reinterpret_cast<const short *>(nd+0xF2))*sy);
+            r[4]=-1;
+            Obj parent=rdptr(nd,0xD0);
+            for(int j=0;parent && j<n;++j)if(node[j]==parent){r[4]=j;break;}
+        }
+    });
+    if(!clean) {emit("layout_ui_fault",9,count,0);return -1;}
+    return n;
 }
 static void *api_load_sublayout(void *parent,const char *name,float x,float y) {return svc_load_sublayout(parent,name,x,y);}
 static int api_attach(void *parent,int node,void *child) {return svc_attach(parent,node,child);}
@@ -910,4 +1190,7 @@ static int api_ui_sync_visibility(void *own,void *source) {return svc_ui_sync_vi
 static int api_ui_release(const char *owner,void *next) {return svc_ui_release(owner,next);}
 static int api_ui_enable(void *control,int on) {return svc_ui_enable(control,on);}
 static int api_ui_tooltip(const wchar_t *text) {return svc_ui_tooltip(text);}
+static void *api_ui_duel_gauge(void *cell_a,void *cell_b,int x,int y) {return svc_ui_duel_gauge(cell_a,cell_b,x,y);}
+static int api_ui_pane_scale(void *pane,float scale) {return svc_ui_pane_scale(pane,scale);}
+static int api_ui_node_rects(void *pane,int *out,int max) {return svc_ui_node_rects(pane,out,max);}
 }

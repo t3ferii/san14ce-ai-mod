@@ -59,9 +59,9 @@ inline void run_progress_flush() {for(unsigned i=0;i<progress_flush.count;++i)if
 // the buffer size first, kPerfTerrain is timed as terrain_us. input = window procedure hook (true = consumed).
 enum : unsigned {kOverlayContext=1,kOverlayWindow=2,kOverlayPerfTerrain=4};
 // Draw order constants (historical order of draw_locked).
-enum : unsigned {kOverlayTerrain=10,kOverlaySprites=20,kOverlayPreview=30,kOverlayBriefing=40};
+enum : unsigned {kOverlayTerrain=10,kOverlaySprites=20,kOverlayPreview=30,kOverlayDuel=35,kOverlayBriefing=40};   // kOverlayDuel: relay duel round number (local298)
 // Entry-gate probe order constants (historical order of the gate in draw(): briefing, terrain, sprites, preview).
-enum : unsigned {kGateBriefing=10,kGateTerrain=20,kGateSprites=30,kGatePreview=40};
+enum : unsigned {kGateBriefing=10,kGateTerrain=20,kGateSprites=30,kGatePreview=40,kGateDuel=50};
 struct OverlaySub {
     unsigned flags;unsigned gate_order;
     bool (*gate)();bool (*needs)();

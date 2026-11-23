@@ -41,5 +41,6 @@ face_timing
 auto_commands
 ambush
 season_rules
+duel_multi
 ccz_bands
 ai_trace

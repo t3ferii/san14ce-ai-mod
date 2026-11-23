@@ -10,28 +10,100 @@
  "depends": [],
  "conflicts": [],
  "owns": [
+  "src/duel_digits.hlsl",
+  "src/duel_digits_font.h",
+  "src/duel_digits_ps.h",
+  "src/duel_digits_vs.h",
+  "src/duel_manual_script.h",
+  "src/duel_s11_rules.h",
+  "src/duel_window_font.h",
   "src/native_caravan_stay.inl",
+  "src/native_duel_digits.inl",
+  "src/native_duel_manual.inl",
+  "src/native_duel_multi.inl",
   "src/native_occupy_fast.inl",
   "src/native_save_codec.inl",
   "src/save_codec.h",
-  "tests/save_codec_fixture.cpp"
+  "tests/duel_manual_fixture.cpp",
+  "tests/duel_s11_fixture.cpp",
+  "tests/save_codec_fixture.cpp",
+  "tools/build_duel_manual_fixture.ps1",
+  "tools/build_duel_s11_fixture.ps1",
+  "tools/gen_duel_window_text.ps1"
  ],
  "sources": [
+  "src/duel_digits.hlsl",
+  "src/duel_digits_font.h",
+  "src/duel_digits_ps.h",
+  "src/duel_digits_vs.h",
+  "src/duel_manual_script.h",
+  "src/duel_s11_rules.h",
+  "src/duel_window_font.h",
   "src/native_caravan_stay.inl",
+  "src/native_duel_digits.inl",
+  "src/native_duel_manual.inl",
+  "src/native_duel_multi.inl",
   "src/native_face_timing.inl",
   "src/native_occupy_fast.inl",
   "src/native_save_codec.inl",
   "src/save_codec.h",
-  "tests/save_codec_fixture.cpp"
+  "tests/duel_manual_fixture.cpp",
+  "tests/duel_s11_fixture.cpp",
+  "tests/save_codec_fixture.cpp",
+  "tools/build_duel_manual_fixture.ps1",
+  "tools/build_duel_s11_fixture.ps1",
+  "tools/gen_duel_window_text.ps1"
  ],
  "tests": [
+  "duel-manual",
+  "duel-s11",
+  "layout-registry",
+  "shared-overlay",
   "split-module"
  ],
- "hook_owners": [],
+ "hook_owners": [
+  "duel_multi"
+ ],
  "checks": [
+  "duel-manual",
+  "duel-s11",
+  "layout-registry",
+  "shared-overlay",
   "split-module"
  ],
  "ini": [
+  {
+   "section": "diagnostics",
+   "key": "duel_manual_gap"
+  },
+  {
+   "section": "diagnostics",
+   "key": "duel_manual_test"
+  },
+  {
+   "section": "diagnostics",
+   "key": "duel_multi_motion"
+  },
+  {
+   "section": "diagnostics",
+   "key": "duel_multi_test"
+  },
+  {
+   "section": "extensions",
+   "key": "duel_multi"
+  },
+  {
+   "section": "extensions",
+   "key": "duel_relay"
+  },
+  {
+   "section": "extensions",
+   "key": "duel_relay_gap"
+  },
+  {
+   "section": "extensions",
+   "key": "duel_relay_join"
+  },
   {
    "section": "game_flow",
    "key": "caravan_stay"
@@ -67,6 +139,43 @@
    {
     "section": "game_flow",
     "key": "fast_save"
+   },
+   {
+    "section": "extensions",
+    "key": "duel_multi",
+    "retired": true
+   },
+   {
+    "section": "extensions",
+    "key": "duel_relay"
+   },
+   {
+    "section": "extensions",
+    "key": "duel_relay_gap"
+   },
+   {
+    "section": "extensions",
+    "key": "duel_relay_join"
+   },
+   {
+    "section": "diagnostics",
+    "key": "duel_multi_test",
+    "retired": true
+   },
+   {
+    "section": "diagnostics",
+    "key": "duel_multi_motion",
+    "retired": true
+   },
+   {
+    "section": "diagnostics",
+    "key": "duel_manual_test",
+    "retired": true
+   },
+   {
+    "section": "diagnostics",
+    "key": "duel_manual_gap",
+    "retired": true
    }
   ]
  },
@@ -83,6 +192,16 @@
    "len": 8,
    "policy": "refuse_if_changed",
    "src": "src/native_occupy_fast.inl"
+  },
+  {
+   "key": "GA_1C6B0F",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "duel_multi",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_duel_multi.inl"
   },
   {
    "key": "GA_1DB8D2",
@@ -115,6 +234,106 @@
    "src": "src/native_caravan_stay.inl"
   },
   {
+   "key": "GA_2CE966",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "duel_multi",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_duel_multi.inl"
+  },
+  {
+   "key": "GA_374901",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "duel_multi",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_duel_multi.inl"
+  },
+  {
+   "key": "GA_374A22",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "duel_multi",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_duel_multi.inl"
+  },
+  {
+   "key": "GA_37788D",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "duel_multi",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_duel_multi.inl"
+  },
+  {
+   "key": "GA_377DC9",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "duel_multi",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_duel_multi.inl"
+  },
+  {
+   "key": "GA_3785EC",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "duel_multi",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_duel_multi.inl"
+  },
+  {
+   "key": "GA_3788CF",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "duel_multi",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_duel_multi.inl"
+  },
+  {
+   "key": "GA_37892B",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "duel_multi",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_duel_multi.inl"
+  },
+  {
+   "key": "GA_378948",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "duel_multi",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_duel_multi.inl"
+  },
+  {
+   "key": "GA_37B016",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "duel_multi",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_duel_multi.inl"
+  },
+  {
    "key": "GA_42D827",
    "kind": "call",
    "via": "direct",
@@ -123,6 +342,36 @@
    "len": 5,
    "policy": "refuse_if_changed",
    "src": "src/native_occupy_fast.inl"
+  },
+  {
+   "key": "GA_44AEAF",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "duel_multi",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_duel_multi.inl"
+  },
+  {
+   "key": "GA_44DF40",
+   "kind": "call",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "duel_multi",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_duel_multi.inl"
+  },
+  {
+   "key": "GA_82AF0F",
+   "kind": "call",
+   "via": "layout",
+   "dll": "layout",
+   "owner": "duel_multi",
+   "len": 5,
+   "policy": "chain",
+   "src": "src/layout_registry.h"
   },
   {
    "key": "GA_9361FB",
@@ -180,6 +429,17 @@
     "refused": "",
     "after": [],
     "seq": 340
+   },
+   {
+    "name": "duel_multi",
+    "module": "convenience-misc",
+    "cond": "defined(SPLIT_BASE) && !defined(SPLIT_MODULE_FIXTURE)",
+    "off_id": 0,
+    "wanted": "mod_features.duel_relay",
+    "install": "duel_multi::install()",
+    "refused": "",
+    "after": [],
+    "seq": 400
    }
   ],
   "subscriptions": [],

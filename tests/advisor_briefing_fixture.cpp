@@ -20,6 +20,8 @@ static bool scene_clean=false;
 static void progress_flags(bool show,bool clean,bool update=true){scene_clean=clean;if(update)shown=show;}
 static bool report_mask=false;
 static void mask_report(bool value){report_mask=value;}
+static bool duel_hidden=false;static unsigned duel_changes;   // local307: the duel flag the hooks publish
+static bool set_duel(bool on){if(duel_hidden==on)return false;duel_hidden=on;++duel_changes;return true;}
 static void set_extended(bool){}
 template<class T> static void offer_face(T *texture,int){if(texture)texture->Release();}   // local17 briefing16 U6 (no GPU in the fixture)
 static unsigned face_pixel_offers;static int face_pixel_serial=-1;   // local232 the adviser's face file for the badge

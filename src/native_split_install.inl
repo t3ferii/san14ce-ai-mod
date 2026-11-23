@@ -417,7 +417,7 @@ static bool split_prepare() {
        prepare_link(s.core[1],GA(GA_175950),0xE9,r+1536) &&
        prepare_link(s.core[2],GA(GA_27AAC0),0xE9,r+96) && prepare_sortie(s.sortie,r);
     // local17 siege_guard: optional, its own relay page; a refused CALL switches only this feature off (id 40).
-    if(ok) {unsigned why=siege_guard_hook::prepare();if(why) {mod_features.siege_guard=false;log_event("feature_off",40,why);}}
+    if(ok) {unsigned why=siege_guard_hook::prepare();if(why) {mod_features.siege_guard=false;mod_features.wall_hold_chase=false;log_event("feature_off",40,why);}}
     // ambush (docs/AMBUSH.md): condition-29 CALL, its own relay page; a refused CALL switches only this feature off (id 91).
     if(ok) {unsigned why=ambush_hook::prepare();if(why) {mod_features.ambush=false;log_event("feature_off",91,why);}}
     // local74 siege_fort_first: the four original camp-build CALLs, its own relay page (id 92).
@@ -427,7 +427,7 @@ static bool split_prepare() {
     // ranged_facility_kill (user 2026-11-13): the damage cap of 2A0750 for facilities hit from range (id 94).
     if(ok) {unsigned why=ranged_facility_hook::prepare();if(why) {mod_features.ranged_facility_kill=false;log_event("feature_off",94,why);}}
     // U39 route_hook: morale hold / neutral wall breach after the original route writes (id 41).
-    if(ok) {unsigned why=route_hook::prepare();if(why) {mod_features.morale=false;mod_features.path_wall=false;mod_features.supply_relay=false;mod_features.ship_repair_strike=false;log_event("feature_off",41,why);}}
+    if(ok) {unsigned why=route_hook::prepare();if(why) {mod_features.morale=false;mod_features.path_wall=false;mod_features.supply_relay=false;mod_features.wall_age_pick=false;mod_features.wall_age_siege=false;log_event("feature_off",41,why);}}
     // local108 facility_hit: the facility damage CALL 192FBB; refused = facility fire is not recorded for the hit response (id 95).
     if(ok) {unsigned why=facility_hit_hook::prepare();if(why)log_event("feature_off",95,why);}
 #else
@@ -558,12 +558,12 @@ static bool split_publish() { COST_SCOPE("split_publish");
 #endif
 #ifdef SPLIT_COMBAT
     bool ok=publish_sortie(s.sortie);
-    if(ok && !siege_guard_hook::publish()) {mod_features.siege_guard=false;log_event("feature_off",40,3);}
+    if(ok && !siege_guard_hook::publish()) {mod_features.siege_guard=false;mod_features.wall_hold_chase=false;log_event("feature_off",40,3);}
     if(ok && !ambush_hook::publish()) {mod_features.ambush=false;log_event("feature_off",91,3);}
     if(ok && !camp_hook::publish()) {mod_features.siege_fort_first=false;log_event("feature_off",92,3);}
     if(ok && !retake_tree_hook::publish())log_event("feature_off",93,3);
     if(ok && !ranged_facility_hook::publish()) {mod_features.ranged_facility_kill=false;log_event("feature_off",94,3);}
-    if(ok && !route_hook::publish()) {mod_features.morale=false;mod_features.path_wall=false;mod_features.supply_relay=false;mod_features.ship_repair_strike=false;log_event("feature_off",41,3);}
+    if(ok && !route_hook::publish()) {mod_features.morale=false;mod_features.path_wall=false;mod_features.supply_relay=false;mod_features.wall_age_pick=false;mod_features.wall_age_siege=false;log_event("feature_off",41,3);}
     if(ok && !facility_hit_hook::publish())log_event("feature_off",95,3);
 #else
     // 2026-11-05 local3 (user: a refused optional feature switches only itself off). The shared core links and pointers above

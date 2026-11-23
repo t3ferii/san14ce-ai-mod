@@ -161,6 +161,9 @@ unsigned merit_troops_level = 4;                                       // [perso
     bool season_weather = false, season_disaster = false, season_damage = false, season_news = false, season_fire = false, season_domestic = false, season_rain = false, season_cloud = false, season_tiles = false;   // [diagnostics] 4계절 rules (SAN14_ModPack.dll)
     unsigned season_probe = 0;                                              // [diagnostics] season G0 probe bits
     unsigned terrain_diag_mode = 0;                                         // [diagnostics]
+    bool duel_relay = false;                                                // [extensions] relay duel test feature (local298-309 [diagnostics] duel_manual_test; v16.7 every build)
+    unsigned duel_relay_gap = 0;                                            // [extensions] relay short gap 0..5 = 0.25 / 0.5 / 0.75 / 1.0 / 1.25 / 1.5 s, 6 none (local312; missing = 0.25 s, v16.7)
+    unsigned duel_relay_join = 5;                                           // [extensions] relay join chance 0..10 = 0..100 % per asked extra (local313; missing = 50 %)
     bool building_destruction_all = false;                                 // [stratagem], gameplay tab
     bool building_destruction_boost = false;                               // [stratagem] local92: a successful roll counts 1.5 times
     bool diplomacy_overinvest = false, diplomacy_counterturn = false;       // [diplomacy], incoming computer negotiations
@@ -208,7 +211,7 @@ unsigned merit_troops_level = 4;                                       // [perso
     bool siege_no_catapult = false, siege_no_watchtower = false, siege_no_trap = false, ai_policy_cap = false;   // [combat] local54, under mission_v2                    // [combat] under mission_v2
     bool attack_eval70 = false, retreat_eval60 = false;                     // [combat] attack review 70%, field retreat recheck 60%
     bool path_wall = false, siege_guard = false, supply_relay = false, no_tribe_target = false;                          // [combat] path_wall needs obstacle
-    bool ship_repair_strike = false;   // [combat] local226: a computer 누선 hits a facility and its repairer together
+    bool wall_age_pick = false, wall_hold_chase = false, wall_age_siege = false;   // [combat] user 2026-11-21 docs/NEUTRAL_WALL_AGE.md: age/count pick (needs path_wall), chase hold and siege weapons (need obstacle)
     bool delegated_exclude = false;                                         // [combat] local18: player delegated corps leave the campaign rules
     bool ai_search2 = true, officer_first = true;                           // [personnel] local56 computer corps (native_corps_domestic.inl)
     bool ai_learn = true;                                                   // [personnel] local150 computer corps learn a tactic instead of the 2nd search
@@ -283,6 +286,20 @@ inline void load_mod_features()
     f.terrain_diag_mode = terrain_diag >= 0 && terrain_diag <= 3 ? static_cast<unsigned>(terrain_diag) : 0u;
     const int season_probe = dev_group() ? mod_setting(L"diagnostics", L"season_probe", 0) : 0;
     f.season_probe = season_probe > 0 && season_probe <= 15 ? static_cast<unsigned>(season_probe) : 0u;
+    // [extensions] duel_multi (the multi-duel test feature, local274-288 / v16.6) was removed (user 2026-11-22 「다중일기토 삭제」): the
+    // retired key is not read and every duel without a relay stays original. Manual-duel gate (user 2026-11-22 decisions 1-7,
+    // docs/MANUAL_DUEL.md section 7; local298-309 the dev-group diagnostic-build key [diagnostics] duel_manual_test / duel_manual_gap,
+    // v16.7 user 2026-11-23 「배포해」 → 「시험 기능으로 공개」: gameplay-tab test feature in every build; the retired dev keys are not
+    // read): it alone installs the duel_multi module (extras, waiting bars, result hooks) for its relay scenes.
+    f.duel_relay = on && feature_key(config, L"extensions", L"duel_relay", false);
+    // local308 (user 「짧은대기 시간을 0.5초부터 0.25초 단위로 설치기에서 드롭다운 형식으로 최대 1.5초까지」), local309 0 = 0.25 s, the v16.7
+    // default (user 「0.25초 박자 괜찮네 이대로 배포하자」): read only with the relay on
+    // local312 (user 「중간에 넣은 짧은대기 빼고 스피디하게 진행하는거 테스트 해보고 싶어」): 6 = 「없음」, the next 합 at once
+    f.duel_relay_gap = f.duel_relay ? (std::min)(6u, GetPrivateProfileIntW(L"extensions", L"duel_relay_gap", 0, config)) : 0u;
+    // local313 (user 「릴레이일기토 참여율에 확률을 뒀으면 좋겠어 … 최대 두명까지만 물어봐야해 … 확률은 설치기에서 조절할 수 있게하자」,
+    // 「릴레이 일기토에종속기능으로 연결되어야해」): the two strongest same-force commanders within 2 hexes are each asked once at
+    // value * 10 %; a refusal leaves that place empty. A child of duel_relay: read only with the relay on (installer default 5 = 50 %).
+    f.duel_relay_join = f.duel_relay ? (std::min)(10u, GetPrivateProfileIntW(L"extensions", L"duel_relay_join", 5, config)) : 0u;
     // [groups] modpack: master of the 「180(wprkfdid12-ux) 모드팩 호환」 tab (user 2026-11-13). Keys live in [season]; a key still
     // under [diagnostics] (the dev-tab test builds) is the fallback, so an existing setting keeps its value.
     const bool modpack_group = on && GetPrivateProfileIntW(L"groups", L"modpack", 1, config) != 0;
@@ -372,7 +389,10 @@ inline void load_mod_features()
     f.attack_eval70 = feature_key(config, L"combat", L"attack_eval70", false);
     f.retreat_eval60 = feature_key(config, L"combat", L"retreat_eval60", false);
     f.path_wall = f.obstacle && feature_key(config, L"combat", L"path_wall", false);
-    f.ship_repair_strike = feature_key(config, L"combat", L"ship_repair_strike", false);   // local226
+    f.wall_age_pick = f.path_wall && feature_key(config, L"combat", L"wall_age_pick", false);       // docs/NEUTRAL_WALL_AGE.md 3절
+    f.wall_hold_chase = f.obstacle && feature_key(config, L"combat", L"wall_hold_chase", false);    // 4절
+    f.wall_age_siege = f.obstacle && feature_key(config, L"combat", L"wall_age_siege", false);      // 5절
+    // [combat] ship_repair_strike (local226) removed in v16.6 (user 2026-11-21 「그거 지우자」): retired, not read.
     f.siege_guard = feature_key(config, L"combat", L"siege_guard", false);
     f.siege_guard_range = (std::max)(1u, (std::min)(4u, GetPrivateProfileIntW(L"combat", L"siege_guard_range", 2, config)));
     f.supply_relay = feature_key(config, L"combat", L"supply_relay", true);
@@ -494,6 +514,22 @@ inline unsigned player_force()
     auto get_id = *reinterpret_cast<unsigned(__fastcall **)(Obj)>(pointer(force, 0) + 0x60);
     unsigned id = get_id(force);
     return id > 0 && id < 52 ? id : 0;
+}
+// tribe_hands_off (user 2026-11-22 "이민족 요격명령도 원작으로 두자. 그냥 이민족 세력에는 모드가 아예 개입하지마"): the five tribes
+// 산월·강·오환·남만·선비 are forces 46..50 (force vtable +0x60, rules_tribes §1; 51 = bandits stays as before). Every computer
+// rule (army orders, per-force ticks, domestic tick, injury protection, herb / policy planning) leaves them to the original.
+inline bool tribe_force_id(unsigned id) { return id >= 46 && id <= 50; }
+inline bool tribe_force_object(Obj force)
+{
+    // Identity against the force table slots 46..50 (world+0xDF30), as the other force-id loops here do.
+    if (!valid(force)) return false;
+    for (unsigned id = 46; id <= 50; ++id)
+        if (table(0xDF30, id, 51) == force) return true;
+    return false;
+}
+inline bool tribe_person(Obj person)
+{
+    return valid(person) && tribe_force_object(fn<Obj(__fastcall *)(Obj)>(GA(GA_22E450))(person));
 }
 inline bool observer_mode()
 {

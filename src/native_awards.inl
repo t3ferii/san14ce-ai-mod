@@ -68,10 +68,24 @@ static void award_put_storage(Obj item,unsigned force) { COST_SCOPE("awards:awar
     award_storage[id]=award_observed[id]=static_cast<uint16_t>(owner);
 }
 static bool award_deployed(Obj p) {return valid(fn<Obj(__fastcall *)(Obj)>(GA(GA_22C4B0))(p));}
+// "Active" = what the original post list 1EEEF0 leaves out (233BE0 away from its post or in a type-0x10 army, 234AB0
+// special id, +0x15E bit 14) plus an army. The original keeps +0x15E bit 0 (given a command this turn) and +0x1E8
+// (region duty list, 2C5D60) officers selectable, so 도시·지역담당관 are not active for posts or treasures either
+// (user 2026-11-20 "원작에선 담당관을 활동중으로 보지 않아. 명품수여에도 같은 기준을 줘").
 static bool award_active(Obj p) { COST_SCOPE("awards:award_active");
     return award_deployed(p) || fn<int(__fastcall *)(Obj,int)>(GA(GA_234AB0))(p,0)!=0 ||
-        fn<int(__fastcall *)(Obj)>(GA(GA_233BE0))(p)!=0 || (word(p,0x15E)&0x4001)!=0 || dword(p,0x1E8)!=0;
+        fn<int(__fastcall *)(Obj)>(GA(GA_233BE0))(p)!=0 || (word(p,0x15E)&0x4000)!=0;
 }
+#ifndef NO_RUNTIME_LOG
+// Diagnostic: which term made an officer active (1 army, 2 special id, 4 away, 8 bit 14) and the two duty
+// markers that no longer count (16 = +0x15E bit 0, 32 = region duty +0x1E8).
+static unsigned award_busy_bits(Obj p) {
+    if(!valid(p))return 0;
+    return (award_deployed(p)?1u:0u) | (fn<int(__fastcall *)(Obj,int)>(GA(GA_234AB0))(p,0)?2u:0u) |
+        (fn<int(__fastcall *)(Obj)>(GA(GA_233BE0))(p)?4u:0u) | ((word(p,0x15E)&0x4000)?8u:0u) |
+        ((word(p,0x15E)&1)?16u:0u) | (dword(p,0x1E8)?32u:0u);
+}
+#endif
 // local165: no COST_SCOPE here - it runs up to 36,000 times per force a day and the scope itself was most of its cost.
 static bool award_serving(Obj p,unsigned force) {
     return valid(p) && p[0xE6]>=1 && p[0xE6]<=4 && award_force_id(p)==force;
@@ -348,6 +362,9 @@ static int __fastcall award_manual(Obj state) { COST_SCOPE("award_manual");
     if(enabled) {
         Obj layout=pointer(state,0x478),item=layout?pointer(layout,0x188):nullptr,person=layout?pointer(layout,0x190):nullptr;
         if(valid(item) && valid(person) && (award_stored(item) || person!=award_ruler(award_force_id(person))) && !award_allowed(person,item)) {
+#ifndef NO_RUNTIME_LOG
+            log_event("award_item_refused",word(person,0x10),award_item_id(item),award_busy_bits(person));
+#endif
             native_ui::officer_notice(word(person,0x10),L"활동 중에는 능력치가 더 높은 명품만 수여할 수 있습니다.");return 0;
         }
     }
@@ -383,6 +400,9 @@ static Obj __fastcall award_post_picker(Obj state) { COST_SCOPE("award_post_pick
     // of the initial command/AI candidate list handled by 1EDB40.
     auto &blocked=*reinterpret_cast<GameList *>(state+0x498);
     GameList saved=blocked;list_init(blocked);
+#ifndef NO_RUNTIME_LOG
+    unsigned greyed_logged=0;
+#endif
     for(Link *l=list_first(saved);l;l=l->next) {
         Obj p=l->value;
         bool allow=valid(p) && award_serving(p,award_force_id(p)) &&
@@ -390,6 +410,13 @@ static Obj __fastcall award_post_picker(Obj state) { COST_SCOPE("award_post_pick
             award_active(p) && awards::may_post(true,award_deployed(p),id,award_post_capacity(id),award_post_capacity(p[0xE7]),mod_features.awards_v16) &&
             (!valid(occupant) || occupant==p || !award_deployed(occupant));
         if(!allow)list_add(blocked,p);
+#ifndef NO_RUNTIME_LOG
+        // Rows the original greyed and we leave greyed: officer, post, why (award_busy_bits; 64 = a deployed occupant).
+        if(!allow && valid(p) && greyed_logged<40) {
+            ++greyed_logged;
+            log_event("award_post_greyed",word(p,0x10),id,award_busy_bits(p)|(valid(occupant) && occupant!=p && award_deployed(occupant)?64u:0u));
+        }
+#endif
     }
     Obj result=original_post_picker(state);
     list_free(blocked);blocked=saved;return result;
@@ -400,6 +427,9 @@ static int __fastcall award_post_select(Obj state,Obj person,Obj post) { COST_SC
         Obj occupant=fn<Obj(__fastcall *)(Obj)>(GA(GA_6DE3D0))(post);
         if(!awards::may_post(award_active(person),award_deployed(person),id,award_post_capacity(id),award_post_capacity(person[0xE7]),mod_features.awards_v16) ||
             (valid(occupant) && occupant!=person && award_deployed(occupant))) {
+#ifndef NO_RUNTIME_LOG
+            log_event("award_post_refused",word(person,0x10),id,award_busy_bits(person)|(valid(occupant) && occupant!=person && award_deployed(occupant)?64u:0u));
+#endif
             native_ui::officer_notice(word(person,0x10),L"활동 중에는 지휘병사가 같거나 늘어나는 관직만 부여할 수 있습니다.");return 0;
         }
     }
@@ -417,6 +447,9 @@ static void award_guard_post_tree(Obj node,Obj head,unsigned &count) { COST_SCOP
     if(valid(person) && post<=255 && (!awards::may_post(award_active(person),award_deployed(person),post,award_post_capacity(post),award_post_capacity(person[0xE7]),mod_features.awards_v16) ||
         (valid(occupant) && occupant!=person && award_deployed(occupant)))) {
         *reinterpret_cast<unsigned *>(node+0x28)=person[0xE7];log_event("active_post_reduction_blocked",word(person,0x10),post,person[0xE7]);
+#ifndef NO_RUNTIME_LOG
+        log_event("award_post_busy",word(person,0x10),post,award_busy_bits(person)|(valid(occupant) && occupant!=person && award_deployed(occupant)?64u:0u));
+#endif
     }
     award_guard_post_tree(pointer(node,0x10),head,count);
 }

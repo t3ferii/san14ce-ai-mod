@@ -126,7 +126,12 @@
   "tests/build_terrain_edit_fixture.ps1",
   "installer/InstallerGui.cs",
   "distribution/FeatureSelect.ps1",
-  "FeatureSelect.ps1"
+  "FeatureSelect.ps1",
+  "src/duel_digits_font.h",
+  "src/duel_digits_ps.h",
+  "src/duel_digits_vs.h",
+  "src/duel_window_font.h",
+  "src/native_duel_digits.inl"
  ],
  "tests": [
   "terrain-profile",

@@ -4,6 +4,7 @@
 #include <limits>
 #include <cstdint>
 #include <queue>
+#include <algorithm>
 #include <functional>
 #include <utility>
 // Eleven observations span ten native 10-day turns. No forecast is inferred.
@@ -210,23 +211,21 @@ inline bool holds(Status status) {return status==locked || status==done;}
 }
 
 // tower_reach (local226, user 2026-11-18 "중립건물 부술때 투석대랑 망루 사거리 고려안하나? 거기 밖에서 중립건물 부쉈으면해",
-// "누선 사거리가 안행처럼 주변 2헥스"). Pure stand choice, no game access. A hostile tower (망루 5: 1..2, 투석대 6: 2..3 hexes,
+// v16.6: the 누선 rule that also used it is gone). Pure stand choice, no game access. A hostile tower (망루 5: 1..2, 투석대 6: 2..3 hexes,
 // the original facility record +0x2B..+0x2C, KB rules_domestic 4) hits a hex whose distance is inside [lo, hi]. stand()
-// picks the hex an army hits `target` from (distance 1..reach); when `also` is a hex the stand must reach it too (the 누선
-// rule: the wall/facility and its repairer at once). Hexes outside every tower range come first, then the nearest to
-// `from`; safe_only drops covered hexes (the wall breach never stands under fire). open(h) = the army may stand there
-// (the army's own hex counts as open). Returns wall_path::cells when there is none.
+// picks the hex an army hits `target` from (distance 1..reach), never under a tower's fire (the wall breach never stands
+// under fire), the nearest to `from` first. open(h) = the army may stand there (the army's own hex counts as open).
+// Returns wall_path::cells when there is none.
 namespace tower_reach {
 struct Tower {unsigned hex;unsigned char lo,hi;};
 inline bool covered(unsigned hex,const std::vector<Tower> &towers) {
     for(const Tower &t:towers) {const int d=wall_path::distance(hex,t.hex);if(d>=t.lo && d<=t.hi)return true;}
     return false;
 }
-template<class Open> unsigned stand(unsigned target,unsigned from,int reach,const std::vector<Tower> &towers,Open open,
-                                    unsigned also=wall_path::cells,bool safe_only=true) {
+template<class Open> unsigned stand(unsigned target,unsigned from,int reach,const std::vector<Tower> &towers,Open open) {
     if(target>=wall_path::cells || reach<1)return wall_path::cells;
     const int tx=static_cast<int>(target%wall_path::width),ty=static_cast<int>(target/wall_path::width);
-    unsigned best=wall_path::cells;bool best_safe=false;int best_range=1<<20;
+    unsigned best=wall_path::cells;int best_range=1<<20;
     for(int y=ty-reach-1;y<=ty+reach+1;++y) {
         if(y<0 || y>=static_cast<int>(wall_path::width))continue;
         for(int x=tx-reach;x<=tx+reach;++x) {
@@ -234,13 +233,11 @@ template<class Open> unsigned stand(unsigned target,unsigned from,int reach,cons
             const unsigned h=static_cast<unsigned>(y)*wall_path::width+static_cast<unsigned>(x);
             const int d=wall_path::distance(h,target);
             if(d<1 || d>reach)continue;
-            if(also<wall_path::cells && wall_path::distance(h,also)>reach)continue;
             if(h!=from && !open(h))continue;
-            const bool safe=!covered(h,towers);
-            if(safe_only && !safe)continue;
+            if(covered(h,towers))continue;
             const int range=from<wall_path::cells?wall_path::distance(from,h):0;
-            if(best==wall_path::cells || (safe && !best_safe) || (safe==best_safe && (range<best_range || (range==best_range && h<best)))) {
-                best=h;best_safe=safe;best_range=range;
+            if(best==wall_path::cells || range<best_range || (range==best_range && h<best)) {
+                best=h;best_range=range;
             }
         }
     }
@@ -260,8 +257,10 @@ enum : unsigned char {blocked=0,open_cell=1,wall=2};
 struct Plan {unsigned closed=none,open=none,wall_hex=none,free=none,unit=1;};
 // weight (local38b): per-cell terrain movement cost (the original BF1B0, about 240 on plain); null = 1 per hex.
 // extra (local106): an added per-cell cost (enemy armies for the every-fifth pick); null = none. Not applied to the goal.
+// only_wall (wall_age_pick, docs/NEUTRAL_WALL_AGE.md 3절): with through = false this one wall cell is still crossable
+// (plus `penalty`), so the cost says whether breaking that wall alone opens the way.
 inline unsigned search(const unsigned char *walk,unsigned start,unsigned goal,unsigned penalty,bool through,unsigned *wall_hex,
-                       const unsigned short *weight=nullptr,const unsigned short *extra=nullptr) {
+                       const unsigned short *weight=nullptr,const unsigned short *extra=nullptr,unsigned only_wall=0xFFFFFFFFu) {
     using wall_path::cells;
     if(wall_hex)*wall_hex=none;
     if(start>=cells || goal>=cells)return none;
@@ -282,7 +281,7 @@ inline unsigned search(const unsigned char *walk,unsigned start,unsigned goal,un
             unsigned step=weight?(weight[next]?weight[next]:1u):1u;
             if(next!=goal) {
                 if(walk[next]==blocked)continue;
-                if(walk[next]==wall) {if(!through)continue;step+=penalty;}
+                if(walk[next]==wall) {if(!through && next!=only_wall)continue;step+=penalty;}
                 if(extra)step+=extra[next];
             }
             if(c+step<cost[next]) {cost[next]=c+step;parent[next]=h;open.push({c+step,next});}
@@ -315,4 +314,110 @@ inline unsigned penalty(unsigned durability,unsigned daily_damage) {
     const unsigned days=(durability+(daily_damage?daily_damage:1)-1)/(daily_damage?daily_damage:1);
     return days*3u*3u/2u;
 }
+}
+
+// wall_age (user 2026-11-21, docs/NEUTRAL_WALL_AGE.md 2·3·5절): pure record keeping and choices for the neutral wall age, the
+// mod's target count and the siege-weapon departures. No game access; R is any record with hex, kind (0 = empty), count, born.
+//   age (순) = (today - born) / 10, score = age - count.
+//   reconcile: once a day; a live neutral wall (id 62..3000, kind 9/10/16) keeps its record while hex and kind match, else it
+//   starts again {hex, kind, 0, today} (user decision 2: walls older than the record count from the first day seen); a lost
+//   id is cleared; a day earlier than the last reconcile (new game, a save without the sidecar) clears everything first.
+namespace wall_age {
+constexpr unsigned first_id=62,last_id=3000;
+constexpr int near_hexes=6;              // user decision 1: around the wall the original judgment chose
+constexpr unsigned max_candidates=8;
+constexpr int siege_age=108;             // 순 (10 game days); older = a siege-weapon target. 3 years = 108 순 (user 2026-11-22 「3년 유지」:
+                                         // the first build used 36 순 = 1 year from the spec's 「36순(3년)」)
+constexpr unsigned siege_cap=10;         // user decision 3: siege units out at once per force
+struct Live {unsigned id,hex,kind;};
+inline bool wall_kind(unsigned kind) {return kind==9 || kind==10 || kind==16;}
+template<class R> inline int age(const R &r,int today) {return r.kind && today>r.born?(today-r.born)/10:0;}
+template<class R> inline int score(const R &r,int today) {return age(r,today)-static_cast<int>(r.count);}
+template<class R> inline void start(R &r,unsigned hex,unsigned kind,int today) {
+    r=R{};r.hex=static_cast<decltype(r.hex)>(hex);r.kind=static_cast<decltype(r.kind)>(kind);r.count=0;r.born=static_cast<decltype(r.born)>(today);
+}
+// rec has last_id + 1 entries. Returns the records (re)started today.
+template<class R> inline unsigned reconcile(R *rec,int last_day,const Live *live,size_t n,int today) {
+    if(today<last_day)for(unsigned i=0;i<=last_id;++i)rec[i]=R{};
+    std::vector<unsigned char> seen(last_id+1,0);
+    unsigned started=0;
+    for(size_t i=0;i<n;++i) {
+        const Live &l=live[i];
+        if(l.id<first_id || l.id>last_id || !wall_kind(l.kind) || l.hex>=wall_path::cells)continue;
+        seen[l.id]=1;
+        R &r=rec[l.id];
+        if(r.kind==l.kind && r.hex==l.hex)continue;
+        start(r,l.hex,l.kind,today);++started;
+    }
+    for(unsigned id=0;id<=last_id;++id)if(!seen[id] && rec[id].kind)rec[id]=R{};
+    return started;
+}
+// The +1 when a new destroy order is written (never on a re-apply). A wall not recorded yet starts today with count 1.
+template<class R> inline void count(R &r,unsigned hex,unsigned kind,int today) {
+    if(!wall_kind(kind) || hex>=wall_path::cells)return;
+    if(r.kind!=kind || r.hex!=hex)start(r,hex,kind,today);
+    if(r.count<65535u)++r.count;
+}
+struct Candidate {unsigned id,hex;int score,range;};   // range = hexes from the original wall
+// The original wall first, then the other live walls within near_hexes of it, nearest first (then the lower id), at most
+// max_candidates in all.
+inline std::vector<Candidate> nearby(unsigned origin_id,unsigned origin_hex,const Live *live,size_t n) {
+    std::vector<Candidate> out;
+    if(origin_hex>=wall_path::cells)return out;
+    out.push_back({origin_id,origin_hex,0,0});
+    std::vector<Candidate> rest;
+    for(size_t i=0;i<n;++i) {
+        const Live &l=live[i];
+        if(l.id==origin_id || l.hex>=wall_path::cells || !wall_kind(l.kind))continue;
+        const int d=wall_path::distance(l.hex,origin_hex);
+        if(d<=near_hexes)rest.push_back({l.id,l.hex,0,d});
+    }
+    std::sort(rest.begin(),rest.end(),[](const Candidate &a,const Candidate &b){return a.range!=b.range?a.range<b.range:a.id<b.id;});
+    for(const Candidate &c:rest) {if(out.size()>=max_candidates)break;out.push_back(c);}
+    return out;
+}
+// Highest score; ties: the original wall, then nearer to it, then the lower id. -1 when empty.
+inline int pick(const std::vector<Candidate> &c,unsigned origin_id) {
+    int best=-1;
+    for(size_t i=0;i<c.size();++i) {
+        if(best<0) {best=static_cast<int>(i);continue;}
+        const Candidate &a=c[i],&b=c[static_cast<size_t>(best)];
+        bool better=a.score>b.score;
+        if(a.score==b.score) {
+            const bool ao=a.id==origin_id,bo=b.id==origin_id;
+            if(ao!=bo)better=ao;
+            else if(a.range!=b.range)better=a.range<b.range;
+            else better=a.id<b.id;
+        }
+        if(better)best=static_cast<int>(i);
+    }
+    return best;
+}
+// Path 2: another wall replaces the original only when breaking it alone opens a real shortcut, judged as breach():
+// closed >= alt + max(5 hexes, alt / 4), or no way around at all.
+inline bool opens(unsigned closed,unsigned alt,unsigned unit) {
+    if(alt==neutral_breach::none)return false;
+    if(closed==neutral_breach::none)return true;
+    const unsigned u=unit?unit:1u;
+    const unsigned detour=alt/4>5*u?alt/4:5*u;
+    return closed>=alt+detour;
+}
+// Siege targets: older than siege_age.
+inline bool siege_target(int age_in_periods) {return age_in_periods>siege_age;}
+inline bool siege_room(unsigned out) {return out<siege_cap;}
+struct SiegeTarget {unsigned id,hex;int score;unsigned assigned,stand;};   // stand = a hex to march to (outside tower range)
+// Round robin by score: the target with the fewest siege units on it, then the higher score, then the lower id. -1 = none.
+inline int siege_pick(const std::vector<SiegeTarget> &t) {
+    int best=-1;
+    for(size_t i=0;i<t.size();++i) {
+        if(best<0) {best=static_cast<int>(i);continue;}
+        const SiegeTarget &a=t[i],&b=t[static_cast<size_t>(best)];
+        const bool better=a.assigned!=b.assigned?a.assigned<b.assigned:a.score!=b.score?a.score>b.score:a.id<b.id;
+        if(better)best=static_cast<int>(i);
+    }
+    return best;
+}
+// wall_hold_chase (user 2026-11-22 「저돌효과 적근접시 공격은 중립건물 칠때만 무효화 ... 다른때에는 저돌이 켜져야해」): only an
+// army the mod sent at a neutral wall that still stands, and not on its way home or between targets.
+inline bool hold_chase(bool feature,bool assigned,bool standing,bool returning) {return feature && assigned && standing && !returning;}
 }

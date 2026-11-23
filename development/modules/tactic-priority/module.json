@@ -103,16 +103,6 @@
    "src": "src/layout_registry.h"
   },
   {
-   "key": "GA_7DE5BD",
-   "kind": "call",
-   "via": "layout",
-   "dll": "layout",
-   "owner": "tactic_priority",
-   "len": 5,
-   "policy": "chain",
-   "src": "src/layout_registry.h"
-  },
-  {
    "key": "GA_7EE1C4",
    "kind": "call",
    "via": "layout",

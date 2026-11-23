@@ -16,7 +16,7 @@ AI_TacticsMod/docs/DOMESTIC.md
 AI_TacticsMod/docs/EXPERT_SETTINGS.md
 AI_TacticsMod/docs/EXTENSIONS.md
 AI_TacticsMod/docs/FEATURE_SWITCHES.md
-AI_TacticsMod/docs/GITHUB_기능상세.md
+AI_TacticsMod/docs/MOD_CHANGES_VS_ORIGINAL.md
 AI_TacticsMod/docs/README.md
 AI_TacticsMod/docs/REGION_OFFICERS.md
 AI_TacticsMod/docs/SPEED_AND_SAVE.md

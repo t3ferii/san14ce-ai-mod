@@ -77,7 +77,10 @@ static class Catalog {
         new Feature("전투", "combat", "combat", "hit_response", 1, "", "", "피격 대응 (적 성·관문 피격 시 공성 고정, 피격 부대 보호)", "배경: 모드가 \"누가 누구를 때렸는지\"를 기록하는 기능입니다. 다른 판단이 이 기록을 씁니다.\n변경: 적 성·관문에 실제로 피해를 준 부대는 그 성 공격을 계속하도록 고정합니다. 맞아서 병력이 1,000명 아래로 떨어진 부대는 돌려보냅니다.\n효과: 컴퓨터가 치던 성을 두고 딴 데로 가지 않습니다.\n필요: 전투 AI 교정 전체"),
         new Feature("전투", "combat", "combat", "obstacle", 1, "", "", "중립 장애물 파괴 판단", "원작: 컴퓨터는 중립 토성·석벽·철쇄를 부술지 스스로 잘 판단하지 못합니다.\n변경: 두 경우에만 중립 방벽을 부숩니다. ① 방벽 너머에서 플레이어의 안행·수상 진형 부대나 망루·투석대·망대에게 맞았고, 쏜 쪽까지 방벽을 돌아가는 길이 2칸 이상 길거나 없을 때(가까우면 돌아갑니다). ② 방벽 앞에서 같은 구간을 왔다 갔다 하며 막혔을 때.\n효과: 컴퓨터 군세가 방벽 뒤에서 일방적으로 맞거나 방벽 앞에서 멈추지 않습니다.\n필요: 전투 AI 교정 전체"),
         new Feature("전투", "combat", "combat", "path_wall", 0, "combat.obstacle", "", "중립 방벽 돌파 (가장 짧은 길을 막을 때)", "원작: 중립 방벽이 길을 막으면 먼 길로 돌아갑니다.\n변경: 방벽이 없다고 친 길보다 돌아가는 길이 5칸 이상이고 4분의 1 이상 길거나 길이 아예 없으면, 가장 가까운 부대 하나가 방벽을 부숩니다. 또 같은 성에서 나오는 5번째 부대마다 성 옆 중립 방벽 하나를 부수러 갑니다. 방벽은 적 망루(1~2칸)·투석대(2~3칸) 사거리 밖 칸에서 부수고, 그런 칸이 없으면 부수지 않고 돌아갑니다(돌아갈 길이 아예 없을 때만 예전처럼 부숨). 방벽이 무너질 때까지 명령을 유지합니다.\n효과: 컴퓨터가 방벽을 뚫고 짧은 길로 옵니다.\n필요: 중립 장애물 파괴 판단"),
-        new Feature("전투", "combat", "combat", "ship_repair_strike", 1, "", "", "누선이 수리 부대까지 함께 공격", "원작: 컴퓨터 누선이 시설을 공격할 때, 옆에서 그 시설을 수리하는 적 부대는 따로 노리지 않습니다.\n변경: 컴퓨터 누선(대하·격류 위)이 8칸 안의 적 시설을 공격하는 중에 적 부대가 그 시설 옆에서 수리하면, 시설과 수리 부대가 둘 다 2칸 안에 드는 물 칸으로 옮겨 붙습니다. 원작 전투는 반경 안의 적을 모두 치므로 시설과 수리 부대를 함께 공격합니다. 적 망루·투석대 사거리 밖 칸을 먼저 고릅니다. 수리가 끝나거나 시설이 무너지거나 10일이 지나면 원작 명령으로 돌아갑니다. 플레이어 직할·위임 군단에는 적용하지 않습니다.\n효과: 수리로 버티는 시설을 컴퓨터 누선이 더 빨리 무너뜨립니다.\n필요: 없음"),
+        new Feature("전투", "combat", "combat", "wall_age_pick", 1, "combat.path_wall", "", "중립 방벽 나이·대상 횟수로 최종 선택", "원작: 컴퓨터는 중립 방벽을 부술지 스스로 판단하지 못합니다(모드의 중립 방벽 돌파는 길을 막는 첫 방벽을 부숩니다).\n변경: 돌파 판단(가장 짧은 길을 막을 때·같은 성에서 나오는 5번째 부대)이 고른 방벽에서 6칸 안의 중립 방벽 중 (처음 본 뒤 지난 순 - 모드가 부수라고 보낸 횟수)가 가장 큰 방벽을 부숩니다. 다른 방벽은 그것 하나만 부숴도 지름길이 열릴 때만 고르고, 이미 보낸 부대는 대상을 바꾸지 않습니다. 기록은 세이브 옆 파일에 저장됩니다(편의 DLL).\n효과: 같은 방벽에만 몰리지 않고 오래된 방벽부터 정리합니다.\n필요: 중립 방벽 돌파"),
+        new Feature("전투", "combat", "combat", "wall_hold_chase", 1, "combat.obstacle", "", "중립 방벽 공격 중 추격 억제", "원작: 「적 접근 시 공격」이 켜진 부대나 저돌 개성 부대는 3칸 안의 적을 쫓아갑니다.\n변경: 모드가 중립 방벽 공격을 맡긴 컴퓨터 부대만, 그 방벽이 서 있는 동안 적을 쫓지 않습니다. 붙어 있는 적과의 교전은 원작대로입니다. 그 밖의 때와 다른 부대는 저돌·적 접근 시 공격이 원작대로 동작합니다.\n효과: 방벽을 부수러 간 부대가 바다 위에서 왔다 갔다 하지 않습니다.\n필요: 중립 장애물 파괴 판단"),
+        new Feature("전투", "combat", "combat", "wall_age_siege", 1, "combat.obstacle", "", "오래된 중립 방벽에 공성병기 출진", "원작: 충차·투석 부대는 관문을 칠 때만 나옵니다.\n변경: 처음 본 뒤 3년(108순)이 넘은 중립 토성·석벽·철쇄가 세력의 성 지역이나 그 이웃 지역에 있으면, 전선 성 옆의 전선이 아닌 성(수비 9,000명 이상)에서 충차(없으면 투석) 3,000명이 나가 부숩니다. 매달 상순에 세력마다 2부대(서로 다른 성에서 1부대씩), 동시에 나가 있는 부대는 10개까지. 다 부수면 30칸 안의 다른 대상으로 가고 없으면 돌아옵니다. 컴퓨터 세력만.\n효과: 오래 방치된 중립 방벽이 정리됩니다.\n필요: 중립 장애물 파괴 판단"),
+        new Feature("전투", "combat", "combat", "ship_repair_strike", 1, "", "", "누선이 수리 부대까지 함께 공격", "사용자 요청으로 v16.6에서 삭제된 기능입니다. 컴퓨터 누선은 원작대로 공격 대상만 칩니다."),
         new Feature("전투", "combat", "combat", "supply_relay", 1, "", "", "목표를 바꿀 때 병참 잇기", "원작: 적 지역 안에 우리 부대가 하나뿐일 때 그 부대가 떠나면, 턴 처리에서 적 지역담당관이 칸을 되찾아 병참이 끊깁니다.\n변경: 그런 상황에서 목표가 바뀌면, 뒤쪽 아군 지역의 아군 칸 하나를 먼저 밟고 새 목표로 갑니다. 그 지역 거점이 더 가까우면 거점을 먼저 점령합니다.\n효과: 컴퓨터 부대가 혼자 병참이 끊겨 무너지는 일이 줄어듭니다.\n필요: 전투 AI 교정 전체"),
         new Feature("전투", "combat", "combat", "no_tribe_target", 1, "", "", "이민족 성 공격 금지 (모드 보호용)", "원작: 컴퓨터는 이민족 성을 공격 목표로 삼지 않습니다(차지할 수 없습니다).\n배경: 모드가 새 공격 경로(공격 검토 완화, 대열 출진)를 만들면서 이 금지를 거치지 않는 길이 생겼습니다.\n변경: 원작 공격 검토와 모드의 목표 선택 양쪽에서 이민족 성을 목표에서 뺍니다. 이미 향하던 군단은 다음 재검토에서 물러납니다.\n효과: 컴퓨터가 차지할 수 없는 성에 병력을 버리지 않습니다.\n필요: 전투 AI 교정 전체"),
         new Feature("전투", "combat", "combat", "tribe_terrain_path", 1, "", "", "장사·사이 진형 숲·산 경로", "원작: 장사·사이 진형은 숲·밀림·저산·중산·고산·산길에서 1.5배 보너스를 받지만, 컴퓨터는 경로를 가도로 잡는 일이 많습니다.\n변경: 컴퓨터 부대가 장사·사이 진형이고 15칸 안에 적 부대가 있을 때만, 길 찾기 비용에서 숲·산이 아닌 육지 칸 비용을 약 3.3배로 매깁니다. 적이 없거나, 사기가 50 밑이면(숲·산은 5일마다 사기가 더 깎임) 원작대로 가도·평지로 이동합니다. 목적지(공격 대상)는 원작 판단 그대로라, 적이 평지에 있으면 숲·산으로 붙어 가다가 마지막에 평지로 나옵니다. 실제 이동 속도·표시 기동·물 위·거점 칸·플레이어(직할·위임) 부대는 바뀌지 않습니다.\n효과: 적 근처에서 보너스 지형을 타고 이동합니다.\n필요: 없음"),
@@ -164,6 +167,10 @@ static class Catalog {
         new Feature("게임성", "convenience", "extensions", "traits9", 1, "", "", "개성 9칸", "원작: 세이브에는 개성 칸이 9개 있지만 게임은 5칸만 씁니다.\n변경: 판정·선택에서 9칸 모두 쓰고, 무장 상세·일람·출진·전투 패널·일기토·장수 편집 등 개성을 보여 주는 화면을 9칸으로 바꿉니다.\n효과: 한 장수가 개성을 9개까지 가집니다. 사실무장 편집으로 넣은 개성은 새 게임 설정에서 그 무장의 편집 반영을 켜야 들어갑니다(원작).\n필요: 편의·게임성 기능 전체\n출처: 삼갤 통합패치(180.71·175.115 유동)·SAN14CE Editor"),
         new Feature("게임성", "convenience", "extensions", "stats200", 1, "", "", "능력치 상한 200", "원작: 능력치 상한은 100입니다.\n변경: 상한을 200으로 올립니다.\n효과: 100을 넘는 성장과 명품·개성 보정이 그대로 반영됩니다.\n필요: 편의·게임성 기능 전체\n출처: 삼갤 통합패치(180.71·175.115 유동)·모음팩 v1.9"),
         new Feature("게임성", "convenience", "extensions", "stats200_growth", 1, "extensions.stats200", "", "능력치 100 이후 자연 성장", "원작: 능력치 100에서 경험치 성장이 멈춥니다.\n변경: 100을 넘어서도 경험치로 조금씩 자랍니다(200까지).\n효과: 오래 쓴 장수가 계속 강해집니다.\n필요: 능력치 상한 200"),
+        new Feature("게임성", "convenience", "extensions", "duel_multi", 0, "", "", "다중 일기토 (최대 3:3, 교대) — 시험", "2026-11-22에 삭제했습니다(사용자 「다중일기토 삭제」). 이 값은 더 이상 읽지 않고, 일기토는 원작 1:1입니다. 대기 무장이 함께 나오는 릴레이 일기토는 개발용 「수동 일기토 관문 실험」에 있습니다."),
+        new Feature("게임성", "convenience", "extensions", "duel_relay", 0, "", "", "릴레이 일기토 (삼11식, 최대 3:3) — 시험", "원작: 일기토는 두 무장이 1:1로 5합을 겨룹니다.\n변경(시험 단계): 플레이어가 낀 일기토 장면에서 양쪽 대표 부대 2칸 안의 같은 세력 부대 지휘 무장 중 무력이 높은 순으로 편마다 최대 2명에게 난입할지 묻고(아래 난입 확률, 의용병 무리 제외), 응한 무장이 대기 무장으로 함께 나옵니다. 합마다 짧은 대기(아래 설정)를 두고 한 합씩 이어지며, 왼쪽 아래 띠에서 태세 4가지·필살·교대(일기토마다 한 번, 쓸 수 없으면 퇴각)·자동을 고르고 인원에 따라 최대 15~30합(4명부터 낮은 확률로 5합 연장)까지 삼국지11 규칙으로 싸웁니다. 자동을 누르면 짧은 대기 없이 끝까지 컴퓨터가 고릅니다.\n결과: 승패는 편 단위입니다. 싸운 무장은 모두 공적·경험을 받고, 그 부대는 모두 사기가 바뀝니다(이긴 편 +40, 진 편은 원작 식으로 감소, 무승부 +15). 부상은 무장마다 판정합니다(이긴 편 체력 30 이하, 진 편 60 이하, 무승부 50 이하). 포로·사망은 마지막에 쓰러진 무장만입니다. 마지막 합이 끝나면 체력이 더 남은 쪽이 이깁니다(같으면 무승부). 컴퓨터끼리의 일기토(장면 없음)는 원작 그대로입니다.\n주의: 시험 기능입니다. 합 숫자·투지 바·명령 띠·보조 무장 초상화 테두리는 모드가 직접 그립니다. 끄면 원작 1:1 일기토와 원작 화면입니다.\n출처: 삼국지11(KOEI) 일기토 규칙·나눔손글씨 붓·나눔명조(SIL OFL 1.1)"),
+        new Feature("게임성", "convenience", "extensions", "duel_relay_gap", 0, "extensions.duel_relay", "", "릴레이 일기토 짧은 대기 (0.25~1.5초·없음)", "원작: 없음(원작 일기토는 합 사이에 멈추지 않습니다).\n변경: 릴레이 일기토에서 합과 합 사이 짧은 대기(카메라가 옆에서 두 무장이 함께 달리는 장면) 길이를 0.25 / 0.5 / 0.75 / 1.0 / 1.25 / 1.5초 중에서 고르거나 「없음」(바로 다음 합)으로 둡니다(기본 0.25초).\n효과: 짧을수록 합이 빨리 이어지고, 길수록 달리는 장면이 길어집니다. 「없음」은 자동처럼 합이 바로 이어지고 난입 때만 확정 대기가 나옵니다. 명령은 합 도중에도 다음 합에 들어갑니다.\n필요: 릴레이 일기토"),
+        new Feature("게임성", "convenience", "extensions", "duel_relay_join", 5, "extensions.duel_relay", "", "릴레이 일기토 난입 확률 (0~100%)", "원작: 없음(원작 일기토는 두 무장이 1:1로 겨룹니다).\n변경: 릴레이 일기토가 시작될 때 양쪽 대표 부대 2칸 안의 같은 세력 무장 중 무력이 높은 순으로 최대 2명에게 차례로 난입할지 묻고, 여기서 고른 확률(0~100%, 10% 단위, 기본 50%)로 응한 무장만 대기 무장으로 나옵니다. 거절하면 그 자리는 비고 다른 무장에게 다시 묻지 않습니다(두 명 다 거절하면 그쪽은 혼자 싸웁니다).\n효과: 낮을수록 1:1·2:1 일기토가 많아지고, 100%면 2칸 안에 무장이 있으면 늘 들어옵니다. 플레이어 쪽과 컴퓨터 쪽 모두 같은 확률입니다.\n필요: 릴레이 일기토"),
         new Feature("기타(개발용)", "", "groups", "diagnostics", 0, "", "", "개발용 기능 전체", "용도: 아래 기록·측정 항목의 묶음\n주의: 일반 플레이에는 필요 없음"),
         new Feature("기타(개발용)", "diagnostics", "diagnostics", "enabled", 0, "", "", "진단 로그 기록 (SAN14_*.log)", "용도: 모드 판단과 오류를 게임 폴더 로그에 남김\n필요: 개발용 기능 전체\n주의: 배포용 DLL에서는 효과 없음"),
         new Feature("기타(개발용)", "diagnostics", "diagnostics", "terrain_diag_mode", 0, "", "", "지형 편집 렉 분리 A/B/C", "용도: 지형 편집 렉 원인을 나눠 봅니다. 0=기준(물살·렌더러 ON), 1=A(물살 OFF), 2=B(렌더러·높이 캡처 OFF), 3=C(둘 다 OFF).\n필요: 개발용 기능 전체\n주의: A/B/C는 진단 전용입니다. terrain_edit=1에서 줌 렉 비교만 하고 실제 지형 편집·저장에는 사용하지 마세요."),
@@ -198,6 +205,10 @@ static class Catalog {
         new Feature("기타(개발용)", "diagnostics", "diagnostics", "frame_profile", 0, "", "", "프레임 시간 기록", "용도: 프레임마다 그리기 스레드의 시간(화면 출력 대기, CPU, 그 밖의 대기)과 게임 갱신 횟수를 기록\n필요: 개발용 기능 전체\n주의: 관찰 전용"),
         new Feature("기타(개발용)", "diagnostics", "diagnostics", "present_uncap", 0, "", "", "수직동기 끄기(시험)", "용도: 화면 출력 대기(수직동기)를 끄고 프레임 상한을 푼다\n필요: 개발용 기능 전체\n주의: 시험용. 게임 시간이 프레임 수로 흐르므로 120프레임 시간표 없이 켜면 게임이 빨라질 수 있다"),
         new Feature("기타(개발용)", "diagnostics", "diagnostics", "fps_120", 0, "", "", "120프레임 시간표(시험)", "용도: 원작의 60프레임 설정을 120프레임 기준(1초 120프레임)으로 바꾼다\n필요: 개발용 기능 전체, 게임 옵션 프레임 60\n주의: 시험용. 실제 프레임이 120보다 낮으면 그만큼 느리게 움직인다"),
+        new Feature("기타(개발용)", "diagnostics", "diagnostics", "duel_multi_test", 0, "", "", "다중 일기토 관문 실험 (2:2 기마 모델)", "v16.6에서 게임성 탭 「다중 일기토 — 시험」으로 옮겼고, 그 기능도 2026-11-22에 삭제했습니다."),
+        new Feature("기타(개발용)", "diagnostics", "diagnostics", "duel_multi_motion", 0, "", "", "다중 일기토 관문 실험: 동작 따라 하기", "v16.6에서 다중 일기토의 기본 동작이 되었습니다(추가 무장은 늘 같은 편 대표의 동작을 따라 합니다)."),
+        new Feature("기타(개발용)", "diagnostics", "diagnostics", "duel_manual_test", 0, "", "", "수동 일기토 관문 실험 (삼11식 릴레이)", "v16.7에서 게임성 탭 「릴레이 일기토 — 시험」으로 옮겼습니다. 이 값은 더 이상 읽지 않습니다."),
+        new Feature("기타(개발용)", "diagnostics", "diagnostics", "duel_manual_gap", 4, "", "", "릴레이 일기토 짧은 대기 (0.25~1.5초)", "v16.7에서 게임성 탭 「릴레이 일기토 짧은 대기」로 옮겼습니다. 이 값은 더 이상 읽지 않습니다."),
         new Feature("기타(개발용)", "diagnostics", "progress_native", "profile", 0, "", "", "AI 진행 함수 시간 기록", "용도: 원작 AI 진행 함수 시간을 기록\n필요: 개발용 기능 전체"),
     };
     public static Feature ById(string id) { return Items.First(f => f.Id == id); }
@@ -207,9 +218,10 @@ static class Catalog {
     // user 2026-10-28: retired, conflicts with mission_v2; independent of its current value.
     public static readonly HashSet<string> Retired = new HashSet<string> {
         "diplomacy.diplomacy_overinvest", "combat.departures", "combat.group_advance", "combat.support",
-        "combat.siege_native", "extensions.scenery_skip", "officer_ui.unified", "performance.timer_1ms",
-        "ccz.ccz_hide_model", "ccz.ccz_depth", "ccz.ccz_far_keep", "season.season_fire",
-        "season.season_rain", "diagnostics.band_dev_spawn"
+        "combat.siege_native", "combat.ship_repair_strike", "extensions.scenery_skip", "officer_ui.unified",
+        "performance.timer_1ms", "ccz.ccz_hide_model", "ccz.ccz_depth", "ccz.ccz_far_keep",
+        "extensions.duel_multi", "season.season_fire", "season.season_rain", "diagnostics.band_dev_spawn",
+        "diagnostics.duel_multi_test", "diagnostics.duel_multi_motion", "diagnostics.duel_manual_test", "diagnostics.duel_manual_gap"
     };
     public const string RetiredNote = "임무 일관성 v2와 충돌해 사용이 중지된 기능입니다.";
     // 함께 쓸 수 없는 기능: 키 기능이 켜져 있으면 값 기능은 설치되지 않는다 (DLL도 같은 규칙으로 끈다).
@@ -225,7 +237,9 @@ static class Catalog {
         { "personnel.merit_troops_level", new[] { "무공 1·2단계 병력 1500", "무공 1·2단계 병력 2000", "무공 1·2단계 병력 2500", "무공 1·2단계 병력 3000 (기본)" } },
         { "combat.siege_guard_range", new[] { "요격 거리 6칸", "요격 거리 8칸 (기본)", "요격 거리 10칸", "요격 거리 12칸" } },
         { "ccz.band_troops", new[] { "시작 300명 → 최대 3000명", "시작 400명 → 최대 4000명", "시작 500명 → 최대 5000명 (기본)" } },
-        { "ccz.band_morale", new[] { "약하게 (보통의 절반)", "보통 +30/+15/-30/-20 (기본)", "강하게 (보통의 1.5배)" } }
+        { "ccz.band_morale", new[] { "약하게 (보통의 절반)", "보통 +30/+15/-30/-20 (기본)", "강하게 (보통의 1.5배)" } },
+        { "extensions.duel_relay_gap", new[] { "0.25초 (기본)", "0.5초", "0.75초", "1초", "1.25초", "1.5초", "없음 (바로 다음 합)" } },
+        { "extensions.duel_relay_join", new[] { "0% (난입 없음)", "10%", "20%", "30%", "40%", "50% (기본)", "60%", "70%", "80%", "90%", "100% (늘 난입)" } }
     };
     public static int ChoiceBase(string id) { return id == "domestic.population_rate" || id == "personnel.merit_troops_level" || id == "combat.siege_guard_range" || id == "ccz.band_troops" || id == "ccz.band_morale" ? 1 : 0; }
 }
@@ -268,13 +282,16 @@ sealed class FeatureIni {
     public int Value(Feature f) {
         if (Catalog.Retired.Contains(f.Id)) return 0;
         int value = f.Inherit != "" ? Value(Catalog.ById(f.Inherit)) : f.Default;
-        foreach (var source in new[] { f.Id == "performance.fast_menu" ? Get("game_flow", "fast_menu") : null, Get("features", f.Key), Get(f.Section, f.Key) }) {
+        foreach (var source in new[] { f.Id == "performance.fast_menu" ? Get("game_flow", "fast_menu") : null,
+                                              Get("features", f.Key), Get(f.Section, f.Key) }) {
             int n;
             if (source != null && int.TryParse(source, out n))
                 value = f.Id == "diagnostics.path_fast_verify" ? Math.Max(0, n) :
                     f.Id == "diagnostics.terrain_diag_mode" ? Math.Max(0, Math.Min(3, n)) :
                     f.Id == "domestic.population_rate" || f.Id == "personnel.merit_troops_level" || f.Id == "combat.siege_guard_range" ? Math.Max(1, Math.Min(4, n)) :
-                    f.Id == "ccz.band_troops" || f.Id == "ccz.band_morale" ? Math.Max(1, Math.Min(3, n)) : (n != 0 ? 1 : 0);
+                    f.Id == "ccz.band_troops" || f.Id == "ccz.band_morale" ? Math.Max(1, Math.Min(3, n)) :
+                    f.Id == "extensions.duel_relay_gap" ? Math.Max(0, Math.Min(6, n)) :
+                    f.Id == "extensions.duel_relay_join" ? Math.Max(0, Math.Min(10, n)) : (n != 0 ? 1 : 0);
         }
         return value;
     }
@@ -410,6 +427,7 @@ static class Credits {
         "- 4계절 날씨·재해 규칙·땅 계절 그림 → 4계절 패치 (wprkfdid12-ux)",
         "- 개성 9칸 → 삼갤 통합패치(180.71·175.115 유동)·SAN14CE Editor",
         "- 능력치 상한 200·추가 성장 → 삼갤 통합패치(180.71·175.115 유동)·모음팩 v1.9",
+        "- 릴레이 일기토 규칙·글자 → 삼국지11(KOEI) 일기토 · 나눔손글씨 붓·나눔명조(SIL OFL 1.1)",
     };
 }
 

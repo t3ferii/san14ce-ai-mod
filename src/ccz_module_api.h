@@ -3,13 +3,16 @@
 // keeps the Present hook and the 169F8B CALL publication, and forwards to these entries.
 // The module owns only its army-display vtable slot (13A03D0) and its render-target hook.
 #include <d3d11.h>
-static const unsigned ccz_module_abi=9; // 9 (2026-11-20): band capture entry 2801C0 + bands->exchange/fire (kind traits on normal and fire damage); 8 (2026-11-20): band max morale entry 230460 + bands->power (morale/kind combat factor); 7 (2026-11-19): command-window entry 4522B0 (bands leave the selection); 6 (2026-11-19): install_idle_flags (idle band flags without 조조전 병종 그림); 5 (2026-11-18): band flag portrait (face texture entry 8AD530); 4: bands; 3: far_keep/sprite_fallback.
+static const unsigned ccz_module_abi=10; // 10 (2026-11-22): band duel entry 2CCC60 (the duel generator sees bands as bandits); 9 (2026-11-20): band capture entry 2801C0 + bands->exchange/fire (kind traits on normal and fire damage); 8 (2026-11-20): band max morale entry 230460 + bands->power (morale/kind combat factor); 7 (2026-11-19): command-window entry 4522B0 (bands leave the selection); 6 (2026-11-19): install_idle_flags (idle band flags without 조조전 병종 그림); 5 (2026-11-18): band flag portrait (face texture entry 8AD530); 4: bands; 3: far_keep/sprite_fallback.
 using CczLog=void (__cdecl *)(const char *,unsigned,unsigned,unsigned);
 // 종군 중립군(무리): the convenience module publishes these original entries and jumps to hooks[i]; the gates it hands to
 // configure() run the displaced prologue and continue in the original. Order = native_ccz_bands.inl band_entries.
 // kBandFaceTexture (8AD530, face image from zp1 bytes) is published only in portrait mode (조조전 병종 그림 not installed).
 enum CczBandHook : unsigned {kBandArmyForce,kBandPaint,kBandSupply,kBandRemove,kBandPaintWrite,kBandMorale,kBandDayMove,
-                             kBandSetAction,kBandSetTarget,kBandFaceTexture,kBandUnitTarget,kBandMaxMorale,kBandCapture,kBandHookCount};
+                             kBandSetAction,kBandSetTarget,kBandFaceTexture,kBandUnitTarget,kBandMaxMorale,kBandCapture,kBandDuel,kBandHookCount};
+// kBandDuel (2CCC60, the once-a-day duel generator, 2026-11-22) is always published with the bands: inside it a band army answers its
+// raw force 51, so the original 1..45 filter keeps band commanders out of every duel as candidate, opponent and substitute (user
+// 「의용병무리는 일기토에서 아예빼버려 걸지도 걸리지도 않게」).
 // kBandCapture (2801C0, capture roll (commander, captor) -> bool, 2026-11-20) is always published with the bands: a band commander
 // is never captured, so 25A880 deletes the generic officer (user "포로나 그런거 되면 야전에서 즉시 사라져야해").
 // kBandUnitTarget (4522B0, the selection list -> CStrategyUnitTargetState command window) is always published with the bands.

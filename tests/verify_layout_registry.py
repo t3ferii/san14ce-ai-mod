@@ -28,7 +28,7 @@ reg=(src/'layout_registry.h').read_text(encoding='utf-8')
 body=reg[reg.index('const LayoutRow layout_rows[]'):reg.index('static const unsigned layout_row_count')]
 rows=[(m.group(1),m.group(2),int(m.group(3),16),int(m.group(4),16),m.group(5)) for m in
       re.finditer(r'\{"(\w+)",(LR_\w+),\s*0x([0-9A-Fa-f]+),\s*0x([0-9A-Fa-f]+),\s*([\w|]+)\}',body)]
-ok(len(rows)==389,'389 registry rows parsed (got %d)'%len(rows))   # local237 +16 traits9_screens person detail tabs; local236 +66 traits9_screens (개성 9칸 범위 B); interop S7 (2026-11-16) +20 advisor_briefing state slots   # local166 +1 merit_save game-start guard (13EA960); User 2026-11-10 U35: +4 face_keep_portrait; local27 +1 layout_keep_wrap; local102 +10 normal-mode 설정3 rows; local105 +2 normal-mode frame and 확인; prior rows unchanged.
+ok(len(rows)==389,'389 registry rows parsed (got %d)'%len(rows))   # 2026-11-22 -1 tactic_priority footer button CALL 7DE5BD (button moved to its own bottom-right pane); local283 +1 duel_multi bottom-bar owner (82AF0F); local237 +16 traits9_screens person detail tabs; local236 +66 traits9_screens (개성 9칸 범위 B); interop S7 (2026-11-16) +20 advisor_briefing state slots   # local166 +1 merit_save game-start guard (13EA960); User 2026-11-10 U35: +4 face_keep_portrait; local27 +1 layout_keep_wrap; local102 +10 normal-mode 설정3 rows; local105 +2 normal-mode frame and 확인; prior rows unchanged.
 # 1. exe
 for owner,kind,rva,orig,flags in rows:
     if kind=='LR_VT':

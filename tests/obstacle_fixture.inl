@@ -119,8 +119,6 @@ static void wall_path_policy_tests() {
         const std::vector<Tower> over={{target,1,2}};
         check(tower_reach::stand(target,from,2,over,any)==none,
               "tower reach: every stand under a watchtower's fire - no stand (the wall is left alone)");
-        check(tower_reach::stand(target,from,2,over,any,none,false)<none,
-              "tower reach: the ship rule may still stand under fire when nothing safe exists");
         const std::vector<Tower> catapult={{target,2,3}};
         s=tower_reach::stand(target,from,1,catapult,any);
         check(s<none && wall_path::distance(s,target)==1,"tower reach: a catapult does not hit its own neighbours (range 2..3)");
@@ -128,10 +126,6 @@ static void wall_path_policy_tests() {
         s=tower_reach::stand(target,from,1,west,any);
         check(s<none && !tower_reach::covered(s,west) && wall_path::distance(s,target)==1,
               "tower reach: the near side under a watchtower gives way to a safe far-side stand");
-        const unsigned repairer=wall_hex(27,100);
-        s=tower_reach::stand(target,from,2,no_towers,any,repairer);
-        check(s<none && wall_path::distance(s,target)<=2 && wall_path::distance(s,repairer)<=2,
-              "tower reach: the ship stand reaches the facility and its repairer together");
         const unsigned only=wall_hex(25,102);
         check(tower_reach::stand(target,from,2,no_towers,[&](unsigned h){return h==only;})==only,
               "tower reach: only hexes the army may stand on are chosen");
@@ -179,11 +173,106 @@ static void wall_lock_tests() {
           after_release(locked,changed)==done,"wall lock: a fallen or lost mission ends as done");
     check(after_release(locked,feature_off)==idle,"wall lock: switching the feature off returns to idle");
 }
+// docs/NEUTRAL_WALL_AGE.md 8절: records, score and ties, 6-hex candidates, only_wall, siege round robin and cap, sidecar codec,
+// the chase-hold predicate.
+#include "../src/wall_age_shared.h"
+static void wall_age_policy_tests() {
+    using namespace wall_age;
+    static WallAgeRecord rec[kWallAgeIds];
+    for(auto &r:rec)r=WallAgeRecord{};
+    const unsigned a=wall_hex(50,50),b=wall_hex(52,50),c=wall_hex(60,60);
+    Live day0[]={{100,a,9},{101,b,10},{102,c,16},{40,a,9},{103,b,5}};   // id 40 and kind 5 are no neutral walls of the table
+    check(reconcile(rec,-1,day0,5,100)==3 && rec[100].kind==9 && rec[100].born==100 && rec[101].kind==10 && rec[102].kind==16,"wall_age: new walls start on the first day seen");
+    check(!rec[40].kind && !rec[103].kind,"wall_age: ids below 62 and other kinds are not recorded");
+    count(rec[100],a,9,105);count(rec[100],a,9,106);
+    Live day1[]={{100,a,9},{101,b,9},{102,c,16}};                        // 101 rebuilt as another kind
+    check(reconcile(rec,100,day1,3,130)==1 && rec[100].born==100 && rec[100].count==2,"wall_age: the same wall keeps age and count");
+    check(rec[101].kind==9 && rec[101].born==130 && rec[101].count==0,"wall_age: another wall on the id starts again");
+    Live day2[]={{100,a,9},{101,b,9}};
+    check(reconcile(rec,130,day2,2,140)==0 && !rec[102].kind,"wall_age: a lost wall is cleared");
+    check(reconcile(rec,140,day2,2,90)==2 && rec[100].born==90 && rec[100].count==0,"wall_age: an earlier date (new game, old save) clears everything first");
+    // age and score
+    WallAgeRecord r{};start(r,a,9,0);
+    check(age(r,1089)==108 && age(r,1090)==109 && !siege_target(age(r,1089)) && siege_target(age(r,1090)) && !siege_target(age(r,370)),"wall_age: older than 108 순 (3 years) = siege target");
+    r.count=5;check(score(r,370)==32,"wall_age: score = age - count");
+    WallAgeRecord fresh{};count(fresh,a,9,200);
+    check(fresh.kind==9 && fresh.count==1 && fresh.born==200,"wall_age: a wall counted before its first reconcile starts today with count 1");
+    // the pick is not idempotent: once counted, the same wall scores lower the next day (an assigned army keeps its wall:
+    // route_hook never re-picks while the entry lives)
+    WallAgeRecord x{},y{};start(x,a,9,0);start(y,b,9,0);x.count=0;y.count=0;
+    std::vector<Candidate> two={{100,a,score(x,100),0},{101,b,score(y,100),2}};
+    check(pick(two,100)==0,"wall_age: equal score keeps the original wall");
+    count(x,a,9,100);
+    two[0].score=score(x,101);two[1].score=score(y,101);
+    check(pick(two,100)==1,"wall_age: after its count the next order goes to the other wall");
+    // ties after the original: nearer, then the lower id
+    std::vector<Candidate> ties={{100,a,1,0},{105,b,3,3},{104,c,3,3},{103,c,3,2}};
+    check(pick(ties,100)==3,"wall_age: equal best score - nearer to the original first");
+    ties[3].range=3;check(pick(ties,100)==3,"wall_age: equal range - lower id");
+    check(pick(std::vector<Candidate>{},100)==-1,"wall_age: no candidate");
+    // 6-hex candidates, the original first, 8 at most
+    std::vector<Live> ring;
+    for(unsigned k=0;k<12;++k)ring.push_back({200+k,wall_hex(70+k,80),9});
+    ring.push_back({300,wall_hex(70,95),10});                            // 15 rows away
+    const std::vector<Candidate> cand=nearby(205,wall_hex(75,80),ring.data(),ring.size());
+    bool inside=true;for(const Candidate &k:cand)inside=inside && k.range<=near_hexes && k.id!=300;
+    check(cand.size()==max_candidates && cand[0].id==205 && cand[0].range==0 && inside,"wall_age: up to 8 walls within 6 hexes, the original first");
+    check(cand[1].range==1 && cand[2].range==1 && cand[1].id<cand[2].id,"wall_age: nearest first, then the lower id");
+    // only_wall: a second wall line where only one cell is a wall in a corridor
+    {
+        std::vector<unsigned char> walk(wall_path::cells,neutral_breach::blocked);
+        const unsigned from=wall_hex(90,100),to=wall_hex(110,100);
+        for(unsigned x0=90;x0<=110;++x0)walk[wall_hex(x0,100)]=neutral_breach::open_cell;
+        for(unsigned x0=90;x0<=110;++x0)walk[wall_hex(x0,104)]=neutral_breach::open_cell;   // a parallel corridor
+        for(unsigned y0=100;y0<=104;++y0)walk[wall_hex(110,y0)]=neutral_breach::open_cell;
+        for(unsigned y0=100;y0<=104;++y0)walk[wall_hex(90,y0)]=neutral_breach::open_cell;
+        const unsigned w1=wall_hex(100,100),w2=wall_hex(100,104);
+        walk[w1]=neutral_breach::wall;walk[w2]=neutral_breach::wall;    // both corridors walled: closed = none
+        const neutral_breach::Plan pl=neutral_breach::plan(walk.data(),from,to,0);
+        check(pl.closed==neutral_breach::none && neutral_breach::breach(pl),"wall_age: two walled corridors, closed = none");
+        const unsigned alt=neutral_breach::search(walk.data(),from,to,0,false,nullptr,nullptr,nullptr,w2);
+        check(alt!=neutral_breach::none && opens(pl.closed,alt,1),"wall_age: the other corridor's wall alone opens the way");
+        const unsigned off=neutral_breach::search(walk.data(),from,to,0,false,nullptr,nullptr,nullptr,wall_hex(100,102));
+        check(off==neutral_breach::none && !opens(pl.closed,off,1),"wall_age: a cell that is no wall on the way opens nothing");
+        walk[w1]=neutral_breach::open_cell;                               // the first corridor is open: closed exists and is short
+        const unsigned closed=neutral_breach::search(walk.data(),from,to,0,false,nullptr);
+        const unsigned via=neutral_breach::search(walk.data(),from,to,0,false,nullptr,nullptr,nullptr,w2);
+        check(closed!=neutral_breach::none && !opens(closed,via,1),"wall_age: a wall that saves no detour is not a shortcut");
+    }
+    // siege round robin and the cap of ten
+    std::vector<SiegeTarget> t={{100,a,40,0,a},{101,b,50,0,b},{102,c,50,1,c}};
+    check(siege_pick(t)==1,"wall_age siege: fewest units first, then the higher score");
+    t[1].assigned=1;check(siege_pick(t)==0,"wall_age siege: round robin moves on");
+    t[0].assigned=1;check(siege_pick(t)==1,"wall_age siege: equal counts and scores - the lower id");
+    std::vector<SiegeTarget> one={{100,a,40,0,a}};unsigned out=0;
+    while(siege_room(out) && siege_pick(one)==0) {++one[0].assigned;++out;}
+    check(out==siege_cap && one[0].assigned==10,"wall_age siege: one target takes all ten, never more");
+    // sidecar codec: round trip, binding mismatch, truncated
+    {
+        static WallAgeRecord src[kWallAgeIds],dst[kWallAgeIds];
+        for(auto &q:src)q=WallAgeRecord{};
+        start(src[62],a,9,10);src[62].count=3;start(src[3000],c,16,-5);
+        uint8_t bind[32],other[32];for(unsigned k=0;k<32;++k) {bind[k]=static_cast<uint8_t>(k);other[k]=static_cast<uint8_t>(k^1);}
+        const std::vector<uint8_t> bytes=wall_age_codec::encode(bind,777,src,kWallAgeIds);
+        int32_t last=-1;
+        check(bytes.size()==wall_age_codec::kHead+2*wall_age_codec::kEntry && !memcmp(bytes.data(),"WAGE",4),"wall_age codec: head and two entries");
+        check(wall_age_codec::decode(bytes.data(),bytes.size(),bind,last,dst,kWallAgeIds) && last==777 && dst[62].kind==9 && dst[62].count==3 &&
+              dst[62].born==10 && dst[3000].kind==16 && dst[3000].born==-5 && !dst[63].kind,"wall_age codec: round trip");
+        last=-1;
+        check(!wall_age_codec::decode(bytes.data(),bytes.size(),other,last,dst,kWallAgeIds) && last==-1 && !dst[62].kind,"wall_age codec: another save's binding is refused");
+        check(!wall_age_codec::decode(bytes.data(),bytes.size()-1,bind,last,dst,kWallAgeIds),"wall_age codec: a cut file is refused");
+    }
+    // the chase hold: only a mod wall breaker, while its wall stands, not on the way home, with the switch on
+    check(hold_chase(true,true,true,false),"wall_hold_chase: a wall breaker does not chase");
+    check(!hold_chase(false,true,true,false) && !hold_chase(true,false,true,false) && !hold_chase(true,true,false,false) && !hold_chase(true,true,true,true),
+          "wall_hold_chase: switch off, no wall, fallen wall or going home = 저돌 / engage as the original");
+}
 static void obstacle_policy_tests() {
     wall_path_policy_tests();
     neutral_breach_policy_tests();
     nth_counter_tests();
     wall_lock_tests();
+    wall_age_policy_tests();
     ObstacleHistory h={};
     for(unsigned i=0;i<11;++i) {
         obstacle_sample(h,100+static_cast<int>(i)*10,101+i%2,200,99-static_cast<int>(i%2),100);

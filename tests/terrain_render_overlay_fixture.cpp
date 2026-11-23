@@ -18,14 +18,17 @@ static bool needs_present(){return InterlockedCompareExchange(&pending,0,0)!=0;}
 // User/Claude 2026-10-29: mock counters normally supplied by the adapter/trees.
 namespace terrain_trees {alignas(8) static volatile LONG64 perf_frame_us,perf_total_us,perf_calls,perf_max_us;}
 namespace log_perf {alignas(8) static volatile LONG64 calls,total_us,max_us;}
-static void log_event(const char *,unsigned,unsigned,unsigned) {}
 #endif
+// v16.7: the relay duel rows (native_duel_digits.inl) compile in the release mode too; production keeps log_event there as a
+// discarding macro (native_core.inl), so the stub is in both modes
+static void log_event(const char *,unsigned,unsigned,unsigned) {}
 #include "../src/native_unified_overlay.inl"
 #include "../src/native_ccz_preview.inl"
 // The overlay forward-declares the CCZ world-sprite pass (native_ccz_sprites.inl); this fixture exercises the overlay gate only.
 namespace ccz_sprites {static bool needs_present(){return false;} static void on_present(ID3D11Device *,ID3D11DeviceContext *,ID3D11Texture2D *,const D3D11_TEXTURE2D_DESC &){}}
 // W4-3: the draw loop is driven by the overlay service; the fixture joins the same rows production generates (module_overlay_subscriptions.inl).
-static struct {bool ccz_sprites=true,ccz_bands=false,advisor_briefing=true;} mod_features;   // ccz_bands: the sprite pass also serves bands
+#include "../src/native_duel_digits.inl"   // local298: the relay duel round number row (idle here)
+static struct {bool ccz_sprites=true,ccz_bands=false,advisor_briefing=true,duel_relay=false;} mod_features;   // ccz_bands: the sprite pass also serves bands
 #include "../src/module_overlay_subscriptions.inl"
 static unsigned checks;
 static void check(bool ok,const char *label){++checks;if(!ok){fprintf(stderr,"%s\n",label);ExitProcess(1);}}

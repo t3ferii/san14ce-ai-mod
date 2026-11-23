@@ -28,7 +28,9 @@ ids={s+'.'+k for s,k in cs}
 retired={'combat.departures','combat.group_advance','combat.support','diplomacy.diplomacy_overinvest','officer_ui.unified',
          'ccz.ccz_hide_model','ccz.ccz_depth','ccz.ccz_far_keep','performance.timer_1ms',
          'combat.siege_native','extensions.scenery_skip',
-         'season.season_fire','season.season_rain','diagnostics.band_dev_spawn'}   # local248: band_dev_spawn folded into the band idle rule; 2026-11-12: scenery skip became a briefing topic; v15.17: season fire/rain off since local133
+         'season.season_fire','season.season_rain','diagnostics.band_dev_spawn',
+         'combat.ship_repair_strike','diagnostics.duel_multi_test','diagnostics.duel_multi_motion','extensions.duel_multi',
+         'diagnostics.duel_manual_test','diagnostics.duel_manual_gap'}   # local248: band_dev_spawn folded into the band idle rule; 2026-11-12: scenery skip became a briefing topic; v15.17: season fire/rain off since local133
 retired_body=re.search(r'HashSet<string> Retired = new HashSet<string> \{(.*?)\};',gui,re.S)
 ok(retired_body is not None and set(re.findall(r'"([\w.]+)"',retired_body[1]))==retired,'GUI retired set')
 ps_retired={s+'.'+k for s,k in re.findall(r"Section='(\w+)'; Key='(\w+)';[^\r\n]*Retired=\$true",menu)}
@@ -47,7 +49,7 @@ ok('retired 2026-10-28 (mission_v2 conflict); keys no longer read' in adapter,'D
 ok('f.diplomacy_overinvest = false; // retired 2026-11-03: native cap/marker restored; key no longer read' in adapter and
    not re.search(r'feature_key\(config, L"diplomacy", L"diplomacy_overinvest"',adapter),'retired diplomacy key is not read')
 ok('!f.IsMaster && !Catalog.Retired.Contains(f.Id)' in gui,'tab denominator excludes retired rows')
-ok(menu.count("Retired=$true;")==14 and
+ok(menu.count("Retired=$true;")==20 and   # 2026-11-22 +1 extensions.duel_multi (multi-duel removed); v16.7 +2 relay dev keys moved
    menu.count("Note='\uc784\ubb34 \uc77c\uad00\uc131 v2\uc640 \ucda9\ub3cc\ud574 \uc0ac\uc6a9\uc774 \uc911\uc9c0\ub41c \uae30\ub2a5\uc785\ub2c8\ub2e4.'")==3 and
    menu.count("Note='\uac1c\ubc1c \uc911\uc9c0\ub85c \uc81c\uac70\ub41c \uae30\ub2a5\uc785\ub2c8\ub2e4.'")==1 and
    '\uac1c\ubc1c \uc911\uc9c0\ub85c \uc81c\uac70\ub41c \uae30\ub2a5' in gui,'user decision 2026-11-03: retirement explanations')
@@ -64,7 +66,7 @@ for (s,k),(g,d,r,i,t) in cs.items():
     ok(i=='' or i in ids,'unknown inherit for %s.%s'%(s,k))
     if (s,k)==('diagnostics','ai_trace_original'):
         ok('f.trace_original = f.ai_trace && GetPrivateProfileIntW(L"diagnostics", L"ai_trace_original"' in adapter,'DLL does not AND ai_trace_original with ai_trace')
-    elif r and (s,k) not in {('progress_native','geometry'),('ccz','ccz_hide_model'),('ccz','ccz_depth'),('ccz','ccz_far_keep'),('domestic','population_rate'),('personnel','merit_troops_level'),('combat','siege_guard_range'),('ccz','band_troops'),('ccz','band_morale'),('season','season_fire'),('season','season_rain'),('diagnostics','band_dev_spawn')}:  # season_fire/rain: always false since local133; band_dev_spawn: ccz_bands && dev_group() + raw diagnostics read
+    elif r and (s,k) not in {('progress_native','geometry'),('ccz','ccz_hide_model'),('ccz','ccz_depth'),('ccz','ccz_far_keep'),('domestic','population_rate'),('personnel','merit_troops_level'),('combat','siege_guard_range'),('ccz','band_troops'),('ccz','band_morale'),('extensions','duel_relay_gap'),('extensions','duel_relay_join'),('season','season_fire'),('season','season_rain'),('diagnostics','band_dev_spawn')}:  # season_fire/rain: always false since local133; band_dev_spawn: ccz_bands && dev_group() + raw diagnostics read
         # The DLL must AND the parent so a child can never run alone.
         parent=r.split('.')[1]
         ok(re.search(r'f\.%s = f\.%s && feature_key\(config, L"%s", L"%s"'%(k,parent,s,k),adapter) is not None,'DLL does not AND %s with %s'%(k,parent))
@@ -74,6 +76,9 @@ masters={k for (s,k),(g,*_) in cs.items() if g==''}
 # W9 dependency audit: every feature-level AND / split inheritance in the DLL must be a child row in the installer.
 expected_requires={
  ('combat','builder_ruler_fill'):'combat.mission_v2',
+ ('combat','wall_age_pick'):'combat.path_wall',
+ ('combat','wall_hold_chase'):'combat.obstacle',
+ ('combat','wall_age_siege'):'combat.obstacle',
  ('domestic','region_officer_traits'):'domestic.region_officers',
  ('personnel','awards_ai'):'personnel.awards',
  ('personnel','merit_friendship'):'personnel.merit',
@@ -83,6 +88,8 @@ expected_requires={
  ('performance','face_prefetch'):'performance.face_keep',
  ('diagnostics','ai_trace_original'):'diagnostics.ai_trace',
  ('real_estate','terrain_edit'):'game_flow.advisor_briefing',
+ ('extensions','duel_relay_gap'):'extensions.duel_relay',   # v16.7
+ ('extensions','duel_relay_join'):'extensions.duel_relay',   # local313
 }
 for (s,k),parent in expected_requires.items():
     ok(cs.get((s,k),(None,None,None,None,None))[2]==parent,'installer Requires missing for %s.%s -> %s'%(s,k,parent))
@@ -118,7 +125,7 @@ exe=Path(sys.argv[1]) if len(sys.argv)>1 else None
 # 사용자 결정 2026-10-30: 기능 설명뿐 아니라 출처 탭 전체 목록과 배포 차단을 검증한다.
 credits=[line for line in (P/'docs/CREDITS.md').read_text(encoding='utf-8-sig').splitlines() if line.startswith('- ')]
 credits_body=re.search(r'static class Credits \{.*?string\[\] Lines = \{(.*?)\};',gui,re.S)
-ok(len(credits)==15 and credits_body is not None and re.findall(r'"([^"]+)"',credits_body[1])==credits,'credits tab matches all fifteen canonical lines in order')
+ok(len(credits)==16 and credits_body is not None and re.findall(r'"([^"]+)"',credits_body[1])==credits,'credits tab matches all sixteen canonical lines in order')
 ok('pages["출처"] = creditsPage;' in gui and 'new[] { "출처", "업데이트", "작업 기록" }' in gui,'credits page registered as a peer tab')
 for key,source in re.findall(r'^\* `(\w+)` = (.+)$',(P/'docs/CREDITS.md').read_text(encoding='utf-8-sig'),re.M):
     ok(any('"'+key+'",' in row and '출처: '+source in row for row in gui.splitlines()),'GUI credit note: '+key)

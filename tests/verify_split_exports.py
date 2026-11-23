@@ -14,7 +14,7 @@ def exports(path):
         address=struct.unpack('<I',pe.read(names+i*4,4))[0]
         result.append(pe.read(address,80).split(b'\0')[0].decode('ascii'))
     return sorted(result)
-expected={'dinput8.dll':['DirectInput8Create'],'SAN14_CombatAI.dll':['AIInitialize','SAN14CombatAmbush','SAN14CombatGetApi','SAN14CombatSeasonMobility'],
+expected={'dinput8.dll':['DirectInput8Create'],'SAN14_CombatAI.dll':['AIInitialize','SAN14CombatAmbush','SAN14CombatGetApi','SAN14CombatSeasonMobility','SAN14CombatWallAge'],
           'SAN14_Convenience.dll':['AIInitialize','SAN14ConvenienceInitialize'],'SAN14_CCZ.dll':['SAN14CczGetApi'],
           # User exception 2026-11-05: the fifth DLL. Release Layout exports exactly the API entry, initialize and publish.
           'SAN14_Layout.dll':['SAN14LayoutGetApi','SAN14LayoutInitialize','SAN14LayoutPublish']}

@@ -117,4 +117,7 @@
     X(ambush) \
     X(destruction_ticket) \
     X(ccz_bands) \
-    X(ship_repair_strike)
+    X(duel_relay) \
+    X(wall_age_pick) \
+    X(wall_hold_chase) \
+    X(wall_age_siege)

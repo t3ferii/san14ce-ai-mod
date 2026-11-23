@@ -402,6 +402,16 @@
    "src": "src/native_ccz_bands.inl"
   },
   {
+   "key": "GA_2CCC60",
+   "kind": "jump",
+   "via": "direct",
+   "dll": "convenience",
+   "owner": "ccz_bands",
+   "len": 5,
+   "policy": "refuse_if_changed",
+   "src": "src/native_ccz_bands.inl"
+  },
+  {
    "key": "GA_2DC550",
    "kind": "jump",
    "via": "direct",

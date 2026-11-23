@@ -109,6 +109,31 @@ struct San14LayoutApiV1 {
     //  mouse, nullptr hides it; ui_release destroys it with the owner's panes.
     int (*ui_enable)(void *control,int on);
     int (*ui_tooltip)(const wchar_t *text);
+    // Appended by the multi-duel bar (local283, user 2026-11-20 「체력바 안보여 원작꺼 붙여넣어줘」; size-gated, needs an open ui scope).
+    //  ui_duel_gauge(cell_a,cell_b,x,y): one more original duel gauge, the talk page's 80B220 assembly (3F90E0(0x1D8), 804B90,
+    //  809110(gauge, cell A, cell B): loads "07_02_04_02_gauge_offset_00", face/name/무력/skills from cell +0xB0, bars from +0x3C/+0x40),
+    //  placed at (x, y), hidden (vt+0xC8(0)) and registered with the UI manager (vt+0x38). The cells stay the caller's (slot-shaped,
+    //  read only through +0xB0/+0x3C/+0x40). ui_release destroys it with the owner's panes.
+    void *(*ui_duel_gauge)(void *cell_a,void *cell_b,int x,int y);
+    // Appended by the multi-duel half bars (local285, user 2026-11-20 「조금씩 잘라서 메인 무장들 밑에 크기를 줄여서」; size-gated, needs an open
+    // ui scope). ui_pane_scale(pane,scale): a pane the scope owner made is drawn at `scale` (0.05..4], shrinking toward its top-left
+    // corner. local286: the pane's scene root (pane +0xA0) gets the original scale setters' write (85E9B0: node +0xF4 / +0xF8 = scale,
+    // +0x104 &= ~4, |= 0x20000), so the node update rebuilds its local matrix and recomputes the children. local287: every call runs
+    // that update itself (vt+0x180 on the root and one direct child), shown or hidden. 1 written this call, 2 applied (seen in a direct
+    // child of the root, or in the root matrix when it has none), 6 written but not applied, -1 refused (no root yet, not ours).
+    // local288: the pane's controls (faces, buttons: elements with their own scene root, placed by integer positions) are scaled too:
+    // their root the same way, size +0x28 and position (pane offset) = base * scale. 2 = applied (other controls best effort, only
+    // logged); 8 = applied, but a face control is not scaled, not placed or its portrait node did not take the scale (the caller
+    // hides the faces).
+    int (*ui_pane_scale)(void *pane,float scale);
+    // Appended by the multi-duel half bars (local286, user 2026-11-20 「이거 제대로 짤라서 사용해야지 오버랩되고 크기변화도 안되잖아」;
+    // size-gated, needs an open ui scope). ui_node_rects(pane,out,max): for every control id of a pane the scope owner made (up to max,
+    // 256 at most), out[id * 5 ..] = screen x, y (top-left, original getter 92F050), w, h (size * accumulated scale), parent id (-1 the
+    // scene root or none, -2 no control). All read from the control's node (vt+0x108, local287). Returns the ids filled, -1 refused.
+    // Read-only (92F050 brings the node's world matrix up to date first). local288: an id with a control is read from the control's
+    // integers (x / y = sum of +0x20 up the element chain, w / h = +0x28) and its parent field is -3 - its table kind (0xB / 0xD =
+    // face); any other id from its table node (table+8[id]) as above; -2 = neither.
+    int (*ui_node_rects)(void *pane,int *out,int max);
 };
 // destroy() results: 0 destroyed now, 1 hidden and left to its owner layout (freed when the owner dies), -1 rejected (not created by us / outside an event).
 enum : int {LAYOUT_DESTROY_DONE=0,LAYOUT_DESTROY_DEFERRED=1,LAYOUT_DESTROY_REJECTED=-1};

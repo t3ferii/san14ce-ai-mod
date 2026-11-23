@@ -65,7 +65,7 @@ bool ccz_sprites_guards_match() {return ccz_sprites::guards_match();}
 // entries reads the original bytes where the 16-byte block still holds exactly our patch; any other bytes stay as they are, so a
 // foreign patch on the same entry still fails the guard.
 namespace ccz_band_links {
-static CodeLink links[13];   // = kBandHookCount (ccz_module_api.h; static_assert in native_ccz_bands.inl)
+static CodeLink links[14];   // = kBandHookCount (ccz_module_api.h; static_assert in native_ccz_bands.inl)
 [[maybe_unused]] static unsigned char view(unsigned rva) {
     for(const CodeLink &l:links) {
         if(!l.published || rva<l.block || rva>=l.block+16)continue;

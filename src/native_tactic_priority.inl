@@ -1,5 +1,6 @@
 // [officer_ui] tactic_priority v2 (docs/TACTIC_PRIORITY_V2_PLAN.md). Convenience DLL.
-// Sortie setup screen = CStrategyUnitMakeState (layout 06_01_01_unit_setup): footer button 「전법 우선순위」 (footer node 24) opens the
+// Sortie setup screen = CStrategyUnitMakeState (layout 06_01_01_unit_setup): button 「전법 우선순위」 bottom-right under the ambush 「군사제안수행」 toggle
+// (own one-node Layout pane, grid::build_head; user 2026-11-22: it was footer node 24 via CALL 7DE5BD and overlapped another mod's footer buttons) opens the
 // grid popup (native_tactic_priority_grid.inl); a per-officer 「출진 기억」 toggle sits right of the mode tabs. Per-frame choice of 3 tactics:
 // officers with the remember flag restore their last sortie formation + EXACTLY the remembered tactics (empty slots stay empty), the others
 // get the usable tactics of the player's ranked list for their type, in ranked order, at most 3, unranked slots empty (empty ranked list or
@@ -20,16 +21,13 @@ namespace tactic_priority {
 static SRWLOCK settings_lock=SRWLOCK_INIT;
 static tp::Settings settings;
 static unsigned generation=1;
-using SetText=void(__fastcall *)(Obj,int,const wchar_t *,int);
 using Update=void(__fastcall *)(Obj);
 using Leave=uint64_t(__fastcall *)(Obj,Obj);
 using Dispatch=Obj(__fastcall *)(unsigned *,int);
-static SetText next_set_text;   // Layout manager: next in chain for CALL 7DB950+ (85FEF0)
 static Update next_update;
 static Leave next_leave;
 static Dispatch next_dispatch;  // 1EC890
 // Addresses are written as GA(GA_x) at each use: resolved at call time, after the build table is selected (external review F-01).
-static const int kButton=0x18;
 static std::vector<int> catalog() {   // known tactic ids of the running world (empty before a world exists)
     std::vector<int> ids;
     for(unsigned t=1;t<=200;++t)if(valid(table(0x774D0,t,200)))ids.push_back(static_cast<int>(t));
@@ -113,30 +111,6 @@ static std::vector<int> visible_ranked(const std::vector<int> &ranked,bool marti
     return out;
 }
 #include "native_tactic_priority_grid.inl"
-static void __cdecl clicked(void *,void *) {grid::open_requested=true;log_event("tactic_priority_click");grid::probe_click();}
-static void add_button(Obj bar,int index,int flag) {
-    // Same sequence as lord_change::add_button (85FEF0/85FCE0 for a text button), node 24 of cmn_footer_re_cn; the Layout DLL builds it
-    // (clone_control = 92E430) only while this feature is published.
-    if(!bar || pointer(bar,0)!=image+GA(GA_146E078))return;
-    if(kButton>=static_cast<int>(dword(bar+0x130,0x10))) {log_event("tactic_priority_no_layout_node",dword(bar+0x130,0x10));return;}
-    layout_client::UiScope scope("tactic_priority");
-    if(!scope.ok) {log_event("tactic_priority_no_ui",1);return;}
-    if(layout_client::ui_node(bar,kButton))return;
-    // Same style and kind as the neighbouring text buttons 862010 builds (style 2, kind 2 when the 85FEF0 flag is set, else 0).
-    const int kind=flag?2:0;
-    Obj button=static_cast<Obj>(layout_client::ui_button(bar,kButton,2,kind));
-    if(!button)return;
-    log_event("tactic_priority_footer_style",static_cast<unsigned>(index),static_cast<unsigned>(flag),static_cast<unsigned>(kind));
-    layout_client::ui_text(button,L"전법 우선순위");
-    layout_client::ui_click(button,&clicked,nullptr);
-    layout_client::ui_node_visible(button,0x11,0);
-    layout_client::ui_node_visible(bar,0x15,1);
-    log_event("tactic_priority_button_added");
-}
-static void __fastcall set_text(Obj bar,int index,const wchar_t *text,int flag) { COST_SCOPE("tactic_priority::set_text"); COST_CRUMB("tactic_priority_bar",bar);   // only CALL 7DC20D (last text button of enter)
-    next_pick(next_set_text,GA(GA_862220))(bar,index,text,flag);   // the button must exist before enter ends (later ones stay hidden)
-    if(mod_features.tactic_priority)add_button(bar,index,flag);
-}
 static bool formation_usable(Obj person,unsigned f) {
     Obj form=table(0x77428,f,20);if(!valid(form))return false;
     return form[0x7E]==2?fn<unsigned(__fastcall *)(Obj)>(GA(GA_43660))(person)==f:fn<int(__fastcall *)(Obj,unsigned)>(GA(GA_233CF0))(person,f)!=0;
@@ -331,11 +305,9 @@ static Obj __fastcall depart(unsigned *cmd,int spend) { COST_SCOPE("tactic_prior
     return army;
 }
 static bool guards_match() {
-    static const unsigned char bar_before[]={0x41,0x8D,0x51,0x12,0x49,0x8B,0x8E,0xA0,0x04,0x00,0x00};   // lea edx,[r9+12h]; mov rcx,[r14+4A0h]
     static const unsigned char depart_before[]={0x48,0x8B,0x0C,0x30,0x48,0x83,0xC1,0x04};            // mov rcx,[rax+rsi]; add rcx,4
-    if(!GA(GA_7DE5BD) || !GA(GA_7EE1C4) || !GA(GA_145B8D8) || !GA(GA_145B8C0)) {log_event("tactic_priority_guard_rejected",3);return false;}
+    if(!GA(GA_7EE1C4) || !GA(GA_145B8D8) || !GA(GA_145B8C0)) {log_event("tactic_priority_guard_rejected",3);return false;}
     // CALL targets and the vtable slots are judged by the Layout hook manager (chain / yield / refuse).
-    if(ga::mcmp_at(image,GA(GA_7DE5BD)-sizeof(bar_before),bar_before,sizeof(bar_before))) {log_event("tactic_priority_guard_rejected",1);return false;}
     if(ga::mcmp_at(image,GA(GA_7EE1C4)-sizeof(depart_before),depart_before,sizeof(depart_before))) {log_event("tactic_priority_guard_rejected",2);return false;}
     return true;
 }
@@ -348,8 +320,7 @@ static bool install() {
     // screen hooks, so ambush (which plugs into them) reports ambush_screen_missing and stays off too.
     if(layout_client::yield_to_peer("tactic_priority",GA(GA_145B8D8))) {mod_features.tactic_priority=false;return true;}
     layout_client::Transaction tx;
-    if(!layout_client::call(GA(GA_7DE5BD),reinterpret_cast<void *>(&set_text),reinterpret_cast<void **>(&next_set_text)) ||
-       !layout_client::vt(GA(GA_145B8D8),reinterpret_cast<void *>(&update),reinterpret_cast<void **>(&next_update)) ||
+    if(!layout_client::vt(GA(GA_145B8D8),reinterpret_cast<void *>(&update),reinterpret_cast<void **>(&next_update)) ||
        !layout_client::vt(GA(GA_145B8C0),reinterpret_cast<void *>(&leave),reinterpret_cast<void **>(&next_leave)) ||
        !layout_client::call(GA(GA_7EE1C4),reinterpret_cast<void *>(&depart),reinterpret_cast<void **>(&next_dispatch))) {
         log_event("tactic_priority_register_rejected");return false;
